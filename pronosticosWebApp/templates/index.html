@@ -1,0 +1,97 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pronosticos</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+  <!--estilos dataTables-->
+  <link href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.css" rel="stylesheet">
+  <!--botones dataTables-->
+  <link href="https://cdn.datatables.net/buttons/3.0.2/css/buttons.dataTables.min.css" rel="stylesheet">
+  <!-- Select -->
+  <link href="https://cdn.datatables.net/select/2.0.3/css/select.bootstrap5.min.css" rel="stylesheet">
+  <!--estilos personalizados-->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css"
+    integrity="sha512-MV7K8+y+gLIBoVD59lQIYicR65iaqukzvf/nwasF0nqhPay5w/9lJmVM2hMDcnK1OnMGCdVK+iQrJ7lzPJQd1w=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!--custom css-->
+  <link href="{% static 'css/index.css' %}" rel="stylesheet">
+</head>
+
+<body class="light-mode">
+  <!-- Botón para cambiar de modo -->
+  <button id="mode-toggle">Modo Oscuro</button>
+
+
+  <div class="container">
+    <div class="row my-4">
+      <div class="col-sm-12 col-md-12 col-lg-12 col-xl-12 mx-auto">
+        <div id="chart" class="chart"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="row justify-content-sm-center">
+      <button id="send-data" class="btn btn-primary btn-short">Generar gráfica</button>
+    </div>
+  </div>
+
+  <button id="export-visible">Exportar datos visibles</button>
+  <button id="export-all">Exportar Todo</button>
+
+  <div class="container mt-4">
+    <div class="row">
+      <div class="col-sm-12 col-md-12 col-lg-12 col-xl-12">
+        <div class="table-responsive">
+          <table id="datatable-productos" class="table table-bordered">
+            <caption>Tabla de pronósticos</caption>
+            <thead>
+              <tr>
+                <th class="centered">#</th>
+                <th class="centered">Items</th>
+                <th class="centered">Proveedor</th>
+                <th class="centered">productos</th>
+                <th class="centered">Sede</th>
+                <th class="centered">MAD</th>
+                <th class="centered">MAPE</th>
+                <th class="centered">MAPE'</th>
+                <th class="centered">ECM</th>
+                <th class="centered">Pronostico</th>
+                <th class="centered">Pronostico 2 meses</th>
+                <th class="centered">Pronostico seleccionado</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody_productos"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="loader-container">
+    <span id="loader" style="display: none;"></span>
+  </div>
+
+  <!-- apache Echarts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.min.js"></script>
+  <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
+  <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.min.js"></script>
+
+  <!-- Select -->
+  <script src="https://cdn.datatables.net/select/2.0.3/js/dataTables.select.js"></script>
+  <script src="https://cdn.datatables.net/select/2.0.3/js/select.bootstrap5.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+
+  <!--custom js-->
+  <script src="{% static 'js/index.js' %}"></script>
+</body>
+
+</html>
