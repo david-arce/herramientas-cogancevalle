@@ -30,10 +30,38 @@ document.getElementById('send-data').addEventListener('click', async () => {
 
 // Función para exportar datos visibles del DataTable
 document.getElementById('export-visible').addEventListener('click', function () {
+    // Crear un nuevo libro de trabajo
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.table_to_sheet(document.getElementById('datatable-productos'));
+    
+    // Obtener todos los datos actualmente filtrados y visibles en el DataTable
+    const filteredData = dataTable.rows({ filter: 'applied' }).data().toArray();
+
+    // Obtener los encabezados de la tabla
+    const headers = [];
+    $('#datatable-productos thead th').each(function () {
+        headers.push($(this).text());
+    });
+
+    // Convertir los datos filtrados en un formato adecuado para la exportación
+    const exportData = [headers]; // Incluir encabezados como la primera fila
+    filteredData.forEach(row => {
+        const rowData = [];
+        for (let key in row) {
+            if (row.hasOwnProperty(key)) {
+                rowData.push(row[key]);
+            }
+        }
+        exportData.push(rowData);
+    });
+
+    // Crear una nueva hoja de trabajo con los datos filtrados
+    const ws = XLSX.utils.aoa_to_sheet(exportData);
+
+    // Añadir la hoja de trabajo al libro
     XLSX.utils.book_append_sheet(wb, ws, 'Datos_Productos');
-    XLSX.writeFile(wb, 'Datos_Productos.xlsx');
+
+    // Guardar el archivo Excel
+    XLSX.writeFile(wb, 'Datos_Productos_Filtrados.xlsx');
 });
 
 // Función para exportar todos los datos del DataTable
@@ -84,27 +112,35 @@ function getCookie(name) {
 }
 
 const dataTableOptions = {
+    dom: 'PBfrtip', // Agregar el control de paneles de búsqueda
+    buttons: [
+        {
+            extend: 'pageLength',
+            text: 'Paginación',
+            //className: 'btn btn-info',
+            titleAttr: 'Paginación',
+        },
+    ],
     columnDefs: [
         { className: 'centered', targets: '_all' },
     ],
-    select: true,
-    // dom: 'Bfrtip', // Agregar el control de botones
-    // buttons: [
-    //     {
-    //         extend: 'pageLength',
-    //         text: 'Paginación',
-    //         className: 'btn btn-info',
-    //         titleAttr: 'Paginación',
-    //     },
-    // ],
-
+    select: true, 
+    searchPanes: {
+        cascadePanes: true
+    },
+    columnDefs: [{
+        searchPanes: {
+            show: false,
+        },
+        targets: [0, 5, 6, 7, 8, 9, 10, 11]
+    }],
 };
 
 const initDataTable = async () => {
     if (dataTableIsInitialized) dataTable.destroy();
 
     // await listProductos();
-    // dataTable = $('#datatable-productos').DataTable(dataTableOptions);
+    //dataTable = $('#datatable-productos').DataTable(dataTableOptions);
 
     await listProductos();
     dataTable = $('#datatable-productos').DataTable({
@@ -130,9 +166,11 @@ const initDataTable = async () => {
 };
 
 const listProductos = async () => {
+    const loader = document.querySelector('.spinner-border');
     try {
         // Mostrar el loader
-        document.getElementById('loader').style.display = 'block';
+        // document.getElementById('loader').style.display = 'block';
+        loader.style.display = 'block';
 
         const response = await fetch('http://127.0.0.1:8000/lista/');
         const data = await response.json();
@@ -162,7 +200,8 @@ const listProductos = async () => {
         alert(e);
     } finally {
         // Ocultar el loader
-        document.getElementById('loader').style.display = 'none';
+        // document.getElementById('loader').style.display = 'none';
+        loader.style.display = 'none';
     }
 };
 

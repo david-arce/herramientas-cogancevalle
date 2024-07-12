@@ -12,9 +12,16 @@ class PronosticoExpSimple:
     def __init__(self):
         pass
     
-    def pronosticoExpSimple(alpha, cantidadMeses):
+    def pronosticoExpSimple(alpha):
         print('espere un momento...')
-        demanda = df_demanda.iloc[:, 4:cantidadMeses+4] #se toma desde 4 porque es la posición donde inicia el primer mes en el excel y a la cantidadMeses se le suma 4 porque hay 3 columnas que no se deben tener en cuenta
+        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+    
+        # Filtrar columnas que contienen meses (sin importar mayúsculas o minúsculas)
+        columnas_meses = [col for col in df_demanda.columns if any(mes in col.lower() for mes in meses)]
+        cantidadMeses = len(columnas_meses)
+        
+        # Seleccionar solo las columnas de meses
+        demanda = df_demanda[columnas_meses].copy()
         
         valores_demanda = demanda.values.flatten().tolist() #faltten aplana la matriz resultante y tolist convierte en lista
         
@@ -99,15 +106,15 @@ class PronosticoExpSimple:
         return MAD, MAPE, MAPE_prima, ECM, df_pronostico_ses, lista_pronosticos, lista_pronosticos_redondeo
 
     def productos():
-        items = df_demanda.iloc[:, 0].tolist()
-        proveedor = df_demanda.iloc[:,1].tolist()
-        productos = df_demanda.iloc[:, 2].tolist()
-        sede = df_demanda.iloc[:, 3].tolist()
+        items = df_demanda.iloc[:, 1].tolist()
+        proveedor = df_demanda.iloc[:,2].tolist()
+        productos = df_demanda.iloc[:, 3].tolist()
+        sede = df_demanda.iloc[:, 4].tolist()
         return items, proveedor, productos, sede
 
     def prueba():
         start_time = time.perf_counter()
-        MAD, MAPE, MAPE_prima, ECM, df_pronostico_ses, lista_pronosticos, lista_pronosticos_redondeo = PronosticoExpSimple.pronosticoExpSimple(0.5, 12)
+        MAD, MAPE, MAPE_prima, ECM, df_pronostico_ses, lista_pronosticos, lista_pronosticos_redondeo = PronosticoExpSimple.pronosticoExpSimple(0.5)
         items, proveedor, productos, sede = PronosticoExpSimple.productos()
         
         # serie = pd.concat([pd.Series(productos), pd.Series(MAD), pd.Series(MAPE)], axis=1)

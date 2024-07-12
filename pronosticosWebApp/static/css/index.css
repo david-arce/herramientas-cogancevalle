@@ -8,11 +8,11 @@
 
 .chart {
     width: 100%;
-    min-height: 400px;
+    min-height: 350px;
     transition: background-color 0.5s, color 0.5s;
 }
 
-.loader-container {
+/* .loader-container {
     display: flex;
     justify-content: center;
     align-items: center;
@@ -34,7 +34,7 @@
     100% {
         transform: rotate(1turn);
     }
-}
+} */
 
 .btn-short {
     width: 200px !important;

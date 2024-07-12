@@ -11,9 +11,16 @@ class PronosticoExpDoble:
     def __init__(self):
         pass
     
-    def pronosticoExpDoble(cantidadMeses, alpha, beta, p):
+    def pronosticoExpDoble(alpha, beta, p):
         print('espere un momento...')
-        demanda = df_demanda.iloc[:, 4:cantidadMeses+4]
+        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+    
+        # Filtrar columnas que contienen meses (sin importar mayúsculas o minúsculas)
+        columnas_meses = [col for col in df_demanda.columns if any(mes in col.lower() for mes in meses)]
+        cantidadMeses = len(columnas_meses)
+        
+        # Seleccionar solo las columnas de meses
+        demanda = df_demanda[columnas_meses].copy()
         
         valores_demanda = demanda.values.flatten().tolist()
         
@@ -101,15 +108,15 @@ class PronosticoExpDoble:
         return MAD, MAPE, MAPE_prima, EMC, df_pronostico_sed, lista_pronosticos, lista_pronosticos_redondeo
     
     def productos():
-        items = df_demanda.iloc[:, 0].tolist()
-        proveedor = df_demanda.iloc[:,1].tolist()
-        productos = df_demanda.iloc[:, 2].tolist()
-        sede = df_demanda.iloc[:, 3].tolist()
+        items = df_demanda.iloc[:, 1].tolist()
+        proveedor = df_demanda.iloc[:,2].tolist()
+        productos = df_demanda.iloc[:, 3].tolist()
+        sede = df_demanda.iloc[:, 4].tolist()
         return items, proveedor, productos, sede
     
     def prueba():
         start_time = time.perf_counter()
-        MAD, MAPE, MAPE_prima, ECM, df_pronostico_sed, lista_pronosticos, lista_pronosticos_redondeo = PronosticoExpDoble.pronosticoExpDoble(12, 0.5, 0.5, 1)
+        MAD, MAPE, MAPE_prima, ECM, df_pronostico_sed, lista_pronosticos, lista_pronosticos_redondeo = PronosticoExpDoble.pronosticoExpDoble(0.5, 0.5, 1)
         items, proveedor, productos, sede = PronosticoExpDoble.productos()
         
         # print("MAD: ", MAD[:5])

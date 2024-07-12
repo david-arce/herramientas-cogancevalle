@@ -36,10 +36,10 @@ def send_data(request):
 def lista_productos(request):
     # productos = list(Productos.objects.values())
     # data = {"productos": productos}
-    global mejor_ECM, origen_ECM, serie, MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronostico_movil, datos_excel, MAD1, MAPE1, MAPE_prima1, ECM1, df_pronostico_ses, MAD2, MAPE2, MAPE_prima2, ECM2, df_pronostico_sed, pronostico_final, MAD_final, MAPE_final, MAPE_PRIMA_final, ECM_final, pronostico_seleccionado, df_pronosticos, pronostico_final_redondeado
+    global df_demanda, df_promedio_movil, df_pronostico_ses, df_pronostico_sed, df_pronosticos
     global items, proveedor, productos, sede
     
-    mejor_ECM, origen_ECM, serie, MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronostico_movil, datos_excel, MAD1, MAPE1, MAPE_prima1, ECM1, df_pronostico_ses, MAD2, MAPE2, MAPE_prima2, ECM2, df_pronostico_sed, pronostico_final, MAD_final, MAPE_final, MAPE_PRIMA_final, ECM_final, pronostico_seleccionado, df_pronosticos, pronostico_final_redondeado = Pronosticos.pronosticos()
+    df_demanda, df_promedio_movil, df_pronostico_ses, df_pronostico_sed, df_pronosticos = Pronosticos.pronosticos()
     items, proveedor, productos, sede = pm.productos()
     
     # Convertir el DataFrame a JSON
@@ -58,7 +58,7 @@ def meses():
   # data = {"productos": productos}
   nombres_columnas = [field.name for field in Productos._meta.get_fields()]
   # Definir los campos a eliminar
-  campos_a_eliminar = {'item', 'proveedor', 'descripción', 'sede', 'total', 'promedio'}
+  campos_a_eliminar = {'id', 'item', 'proveedor', 'descripción', 'sede', 'total', 'promedio'}
   
   # Filtrar los nombres de las columnas
   nombres_columnas = [col for col in nombres_columnas if col not in campos_a_eliminar]
@@ -73,8 +73,8 @@ def get_chart(request):
     # list_demanda, list_promedio_movil, list_ses, list_sed = grafica(selected_index)
     
     global list_demanda, list_promedio_movil, list_ses, list_sed
-    list_demanda = demanda.iloc[selected_index][:-1].fillna(0).astype(int).tolist()
-    list_promedio_movil = promedio_movil.iloc[selected_index].fillna(0).astype(int).tolist()
+    list_demanda = df_demanda.iloc[selected_index][:-1].fillna(0).astype(int).tolist()
+    list_promedio_movil = df_promedio_movil.iloc[selected_index].fillna(0).astype(int).tolist()
     list_ses = df_pronostico_ses.iloc[selected_index].fillna(0).astype(int).tolist()
     list_sed = df_pronostico_sed.iloc[selected_index].fillna(0).astype(int).tolist()
     

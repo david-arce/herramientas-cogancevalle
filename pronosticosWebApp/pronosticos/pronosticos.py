@@ -9,10 +9,10 @@ class Pronosticos:
         pass
     
     def pronosticos():
-        MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronostico_movil, lista_pronosticos_redondeo_movil, datos_excel = pm.promedioMovil(5, 12) #se hace el llamado a la función de pronosticoMovil
+        MAD, MAPE, MAPE_prima, ECM, df_demanda, df_promedio_movil, lista_pronostico_movil, lista_pronosticos_redondeo_movil, datos_excel = pm.promedioMovil(5) #se hace el llamado a la función de pronosticoMovil
         items, proveedor, productos, sede = pm.productos()
-        MAD1, MAPE1, MAPE_prima1, ECM1, df_pronostico_ses, lista_pronostico_ses, lista_pronosticos_redondeo_ses = ses.pronosticoExpSimple(0.5, 12)
-        MAD2, MAPE2, MAPE_prima2, ECM2, df_pronostico_sed, lista_pronostico_sed, lista_pronosticos_redondeo_sed = sed.pronosticoExpDoble(12, 0.5, 0.5, 1)
+        MAD1, MAPE1, MAPE_prima1, ECM1, df_pronostico_ses, lista_pronostico_ses, lista_pronosticos_redondeo_ses = ses.pronosticoExpSimple(0.5)
+        MAD2, MAPE2, MAPE_prima2, ECM2, df_pronostico_sed, lista_pronostico_sed, lista_pronosticos_redondeo_sed = sed.pronosticoExpDoble(0.5, 0.5, 1)
 
         mejor_ECM = []
         origen_ECM = []
@@ -32,8 +32,6 @@ class Pronosticos:
             else:
                 pronostico_seleccionado.append('SED')
             
-        # lista_pronostico_ses = df_pronostico_ses.iloc[:,-1].values.tolist()
-        # lista_pronostico_sed = df_pronostico_sed.iloc[:,-1].values.tolist()
         i = 0
         pronostico_final=[]
         for valores in zip(lista_pronostico_movil, lista_pronostico_ses, lista_pronostico_sed):
@@ -78,7 +76,7 @@ class Pronosticos:
         # # Usa el método to_excel() para guardar el DataFrame en el archivo Excel
         # df_pronosticos.to_excel(ruta_archivo_excel, index=False)  # Si no deseas incluir el índice en el archivo Excel, puedes establecer index=False
         
-        return mejor_ECM, origen_ECM, serie, MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronostico_movil, datos_excel, MAD1, MAPE1, MAPE_prima1, ECM1, df_pronostico_ses, MAD2, MAPE2, MAPE_prima2, ECM2, df_pronostico_sed, pronostico_final, MAD_final, MAPE_final, MAPE_PRIMA_final, ECM_final, pronostico_seleccionado, df_pronosticos, pronostico_final_redondeado
+        return df_demanda, df_promedio_movil, df_pronostico_ses, df_pronostico_sed, df_pronosticos
 
     def prueba():
         mejor_ECM, origen_ECM, serie, MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronostico_movil, datos_excel, MAD1, MAPE1, MAPE_prima1, ECM1, df_pronostico_ses, MAD2, MAPE2, MAPE_prima2, ECM2, df_pronostico_sed, pronostico_final, MAD_final, MAPE_final, MAPE_PRIMA_final, ECM_final, pronostico_seleccionado, df_pronosticos, pronostico_final_redondeado = Pronosticos.pronosticos()

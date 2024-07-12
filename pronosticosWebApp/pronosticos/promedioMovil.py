@@ -8,14 +8,21 @@ class PronosticoMovil:
     def __init__(self):
         pass
     
-    def promedioMovil(n, cantidadMeses):
+    def promedioMovil(n):
         productos = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
         df_demanda = pd.DataFrame(productos) # Se convierten los productos en un DataFrame de pandas para su manipulación
         
-        demanda = df_demanda.iloc[:, 4:cantidadMeses+4] # Se extraen la cantidad de ventas de los meses de la base de datos
+        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+    
+        # Filtrar columnas que contienen meses (sin importar mayúsculas o minúsculas)
+        columnas_meses = [col for col in df_demanda.columns if any(mes in col.lower() for mes in meses)]
+        cantidadMeses = len(columnas_meses)
+        
+        # Seleccionar solo las columnas de meses
+        demanda = df_demanda[columnas_meses].copy()
 
         demanda['MAYO_2'] = 0 # Se agrega una columna para el siguiente mes
-        promedio_movil = demanda.rolling(window = n, axis=1).mean().shift(1, axis=1) # Se calcula el promedio móvil de las ventas 
+        promedio_movil = demanda.T.rolling(window=n).mean().shift(1).T # Se calcula el promedio móvil de las ventas 
         print('\n')
     
         errores, erroresMape, erroresMapePrima, erroresCuadraticoMedio = [], [], [], []
@@ -65,25 +72,17 @@ class PronosticoMovil:
     def productos():
         productos = list(Productos.objects.values())
         df_demanda = pd.DataFrame(productos)
-        items = df_demanda.iloc[:, 0].tolist()
-        proveedor = df_demanda.iloc[:,1].tolist()
-        productos = df_demanda.iloc[:, 2].tolist()
-        sede = df_demanda.iloc[:, 3].tolist()
+        items = df_demanda.iloc[:, 1].tolist()
+        proveedor = df_demanda.iloc[:,2].tolist()
+        productos = df_demanda.iloc[:, 3].tolist()
+        sede = df_demanda.iloc[:, 4].tolist()
         return items, proveedor, productos, sede
         
     #funcion para probar el pronostico
     def prueba():
         start_time = time.perf_counter()
-        MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronosticos, lista_pronosticos_redondeo, df_demanda = PronosticoMovil.promedioMovil(5, 12)
+        MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronosticos, lista_pronosticos_redondeo, df_demanda = PronosticoMovil.promedioMovil(5)
         items, proveedor, productos, sede = PronosticoMovil.productos()
-        
-        print("MAD: ", MAD[:5])
-        print("MAPE: ", MAPE[:5])
-        print("MAPE_PRIMA: ", MAPE_prima[:5])
-        print("ECM: ", ECM[:5])
-        print("Pronostico: ", lista_pronosticos[:5])
-        print("Pronostico redondeo: ", lista_pronosticos_redondeo[:5])
-        
         
         # serie = pd.concat([pd.Series(productos), pd.Series(MAD), pd.Series(MAPE)], axis=1)
         # serie.columns = ["Productos", "MAD", "Mejor pronostico"]
