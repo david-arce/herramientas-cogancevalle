@@ -4,15 +4,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pronosticosWebApp.models import Productos
 
-productos = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
-df_demanda = pd.DataFrame(productos) # Se convierten los productos en un DataFrame de pandas para su manipulación
-
 class PronosticoExpSimple:
     
     def __init__(self):
         pass
     
     def pronosticoExpSimple(alpha):
+        productos_data = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
+        df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
         print('espere un momento...')
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
@@ -102,14 +101,17 @@ class PronosticoExpSimple:
         # print(ECM[:5])
         # print(df_pronostico_ses.iloc[:,-1]) #retorna los valores del última columna
         # print(df_pronostico_ses.iloc[:, :-1]) #retorna todos los valores menos la última columna
-
+        del productos_data, df_demanda
         return MAD, MAPE, MAPE_prima, ECM, df_pronostico_ses, lista_pronosticos, lista_pronosticos_redondeo
 
     def productos():
+        productos_data = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
+        df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
         items = df_demanda.iloc[:, 1].tolist()
         proveedor = df_demanda.iloc[:,2].tolist()
         productos = df_demanda.iloc[:, 3].tolist()
         sede = df_demanda.iloc[:, 4].tolist()
+        del productos_data, df_demanda
         return items, proveedor, productos, sede
 
     def prueba():
@@ -128,7 +130,7 @@ class PronosticoExpSimple:
         # df.to_excel(ruta_archivo_excel, index=False)  # Si no deseas incluir el índice en el archivo Excel, puedes establecer index=False
         end_time = time.perf_counter()
         print(f"Tiempo de ejecución: {end_time - start_time} segundos")
-        
+
 # PronosticoExpSimple.prueba()
 
 

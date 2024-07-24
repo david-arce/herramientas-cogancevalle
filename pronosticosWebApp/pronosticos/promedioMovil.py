@@ -8,10 +8,9 @@ class PronosticoMovil:
     def __init__(self):
         pass
     
-    def promedioMovil(n):
-        productos = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
-        df_demanda = pd.DataFrame(productos) # Se convierten los productos en un DataFrame de pandas para su manipulación
-        
+    def promedioMovil_3(n):
+        productos_data = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
+        df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
         # Filtrar columnas que contienen meses (sin importar mayúsculas o minúsculas)
@@ -66,16 +65,137 @@ class PronosticoMovil:
         erroresCuadraticoMedio = erroresAbs ** 2
         ECM = [np.mean(erroresCuadraticoMedio[i:i+total_meses_pronostico]) for i in range(0, len(erroresCuadraticoMedio), total_meses_pronostico)]
         # print(ECM[:5])
+        del productos_data
+        return MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronosticos, lista_pronosticos_redondeo, df_demanda
+    
+    def promedioMovil_4(n):
+        productos_data = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
+        df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
+        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+    
+        # Filtrar columnas que contienen meses (sin importar mayúsculas o minúsculas)
+        columnas_meses = [col for col in df_demanda.columns if any(mes in col.lower() for mes in meses)]
+        cantidadMeses = len(columnas_meses)
         
+        # Seleccionar solo las columnas de meses
+        demanda = df_demanda[columnas_meses].copy()
+
+        demanda['MAYO_2'] = 0 # Se agrega una columna para el siguiente mes
+        promedio_movil = demanda.T.rolling(window=n).mean().shift(1).T # Se calcula el promedio móvil de las ventas 
+        print('\n')
+    
+        errores, erroresMape, erroresMapePrima, erroresCuadraticoMedio = [], [], [], []
+        MAD=[] #mean absolute deviation
+        MAPE=[] #mean absolute percentage error
+        MAPE_prima=[] #mean absolute percentage error prima
+        ECM=[] #error cuadratico medio
+        
+        # Optimización del cálculo de errores utilizando operaciones vectorizadas
+        errores = (demanda.iloc[:, n:cantidadMeses].values - promedio_movil.iloc[:, n:cantidadMeses].values).flatten()
+        # print(errores[:10])
+        erroresAbs = np.abs(errores)
+        # print(erroresAbs[:10])
+        
+        #lista de pronosticos para el siguiente mes
+        lista_pronosticos = [promedio_movil.iloc[i, cantidadMeses] for i in promedio_movil.index]
+        #lista de pronosticos redondeado
+        lista_pronosticos_redondeo = [round(i * 2) for i in lista_pronosticos]
+        
+        total_meses_pronostico = (demanda.shape[1] - 1) - n #total de meses a pronosticar menos el siguiente
+        
+        #CALCULO DEL MAD(MEAN ABSOLUTE DEVIATION) 
+        for i in range(0, len(erroresAbs), total_meses_pronostico):
+            grupo = erroresAbs[i:i+(total_meses_pronostico)]
+            MAD.append(sum(grupo)/len(grupo))
+        # print(MAD[:5])
+            
+        # CALCULO DEL MAPE (MEAN ABSOLUTE PERCENTAGE ERROR)
+        valores_demanda = demanda.iloc[:, n:cantidadMeses].values.flatten()
+        erroresMape = [(ea / vd if vd != 0 else 1) for ea, vd in zip(erroresAbs, valores_demanda)]
+        MAPE = [np.mean(erroresMape[i:i+total_meses_pronostico]) * 100 for i in range(0, len(erroresMape), total_meses_pronostico)]
+        # print(MAPE[:5])    
+        
+        # CALCULO DEL MAPE' (MEAN ABSOLUTE PERCENTAGE ERROR PRIMA)
+        valores_pronosticoMovil = promedio_movil.iloc[:, n:cantidadMeses].values.flatten()
+        erroresMapePrima = [(ea / vp if vp != 0 else 1) for ea, vp in zip(erroresAbs, valores_pronosticoMovil)]
+        MAPE_prima = [np.mean(erroresMapePrima[i:i+total_meses_pronostico]) * 100 for i in range(0, len(erroresMapePrima), total_meses_pronostico)]
+        # print(MAPE_prima[:5])
+        
+        # CALCULO DEL ECM (ERROR CUADRATICO MEDIO)
+        erroresCuadraticoMedio = erroresAbs ** 2
+        ECM = [np.mean(erroresCuadraticoMedio[i:i+total_meses_pronostico]) for i in range(0, len(erroresCuadraticoMedio), total_meses_pronostico)]
+        # print(ECM[:5])
+        del productos_data
+        return MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronosticos, lista_pronosticos_redondeo, df_demanda
+    
+    def promedioMovil_5(n):
+        productos_data = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
+        df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
+        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+    
+        # Filtrar columnas que contienen meses (sin importar mayúsculas o minúsculas)
+        columnas_meses = [col for col in df_demanda.columns if any(mes in col.lower() for mes in meses)]
+        cantidadMeses = len(columnas_meses)
+        
+        # Seleccionar solo las columnas de meses
+        demanda = df_demanda[columnas_meses].copy()
+
+        demanda['MAYO_2'] = 0 # Se agrega una columna para el siguiente mes
+        promedio_movil = demanda.T.rolling(window=n).mean().shift(1).T # Se calcula el promedio móvil de las ventas 
+        print('\n')
+    
+        errores, erroresMape, erroresMapePrima, erroresCuadraticoMedio = [], [], [], []
+        MAD=[] #mean absolute deviation
+        MAPE=[] #mean absolute percentage error
+        MAPE_prima=[] #mean absolute percentage error prima
+        ECM=[] #error cuadratico medio
+        
+        # Optimización del cálculo de errores utilizando operaciones vectorizadas
+        errores = (demanda.iloc[:, n:cantidadMeses].values - promedio_movil.iloc[:, n:cantidadMeses].values).flatten()
+        # print(errores[:10])
+        erroresAbs = np.abs(errores)
+        # print(erroresAbs[:10])
+        
+        #lista de pronosticos para el siguiente mes
+        lista_pronosticos = [promedio_movil.iloc[i, cantidadMeses] for i in promedio_movil.index]
+        #lista de pronosticos redondeado
+        lista_pronosticos_redondeo = [round(i * 2) for i in lista_pronosticos]
+        
+        total_meses_pronostico = (demanda.shape[1] - 1) - n #total de meses a pronosticar menos el siguiente
+        
+        #CALCULO DEL MAD(MEAN ABSOLUTE DEVIATION) 
+        for i in range(0, len(erroresAbs), total_meses_pronostico):
+            grupo = erroresAbs[i:i+(total_meses_pronostico)]
+            MAD.append(sum(grupo)/len(grupo))
+        # print(MAD[:5])
+            
+        # CALCULO DEL MAPE (MEAN ABSOLUTE PERCENTAGE ERROR)
+        valores_demanda = demanda.iloc[:, n:cantidadMeses].values.flatten()
+        erroresMape = [(ea / vd if vd != 0 else 1) for ea, vd in zip(erroresAbs, valores_demanda)]
+        MAPE = [np.mean(erroresMape[i:i+total_meses_pronostico]) * 100 for i in range(0, len(erroresMape), total_meses_pronostico)]
+        # print(MAPE[:5])    
+        
+        # CALCULO DEL MAPE' (MEAN ABSOLUTE PERCENTAGE ERROR PRIMA)
+        valores_pronosticoMovil = promedio_movil.iloc[:, n:cantidadMeses].values.flatten()
+        erroresMapePrima = [(ea / vp if vp != 0 else 1) for ea, vp in zip(erroresAbs, valores_pronosticoMovil)]
+        MAPE_prima = [np.mean(erroresMapePrima[i:i+total_meses_pronostico]) * 100 for i in range(0, len(erroresMapePrima), total_meses_pronostico)]
+        # print(MAPE_prima[:5])
+        
+        # CALCULO DEL ECM (ERROR CUADRATICO MEDIO)
+        erroresCuadraticoMedio = erroresAbs ** 2
+        ECM = [np.mean(erroresCuadraticoMedio[i:i+total_meses_pronostico]) for i in range(0, len(erroresCuadraticoMedio), total_meses_pronostico)]
+        # print(ECM[:5])
+        del productos_data
         return MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronosticos, lista_pronosticos_redondeo, df_demanda
     
     def productos():
-        productos = list(Productos.objects.values())
-        df_demanda = pd.DataFrame(productos)
+        productos_data = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
+        df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
         items = df_demanda.iloc[:, 1].tolist()
         proveedor = df_demanda.iloc[:,2].tolist()
         productos = df_demanda.iloc[:, 3].tolist()
         sede = df_demanda.iloc[:, 4].tolist()
+        del productos_data, df_demanda
         return items, proveedor, productos, sede
         
     #funcion para probar el pronostico

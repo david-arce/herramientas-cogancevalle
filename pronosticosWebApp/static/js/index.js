@@ -1,6 +1,7 @@
 let dataTable;
 let dataTableIsInitialized = false;
 let selectedRowData = null;
+let productosData = null; // Variable global para almacenar los datos
 
 const handleRowClick = (data) => {
     selectedRowData = data;
@@ -172,11 +173,13 @@ const listProductos = async () => {
         // document.getElementById('loader').style.display = 'block';
         loader.style.display = 'block';
 
-        const response = await fetch('http://127.0.0.1:8000/lista/');
-        const data = await response.json();
+        if (!productosData) {  // Si los datos aún no se han cargado
+            const response = await fetch('http://127.0.0.1:8000/lista/');
+            productosData = await response.json();
+        }
 
         let content = ``;
-        data.productos.forEach((producto, index) => {
+        productosData.productos.forEach((producto, index) => {
             content += `
                 <tr>
                     <td>${index + 1}</td>

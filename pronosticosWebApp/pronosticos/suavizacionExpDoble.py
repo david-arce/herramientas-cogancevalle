@@ -3,15 +3,14 @@ import numpy as np
 import time
 from pronosticosWebApp.models import Productos
 
-productos = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
-df_demanda = pd.DataFrame(productos) # Se convierten los productos en un DataFrame de pandas para su manipulación
-
 class PronosticoExpDoble:
     
     def __init__(self):
         pass
     
     def pronosticoExpDoble(alpha, beta, p):
+        productos_data = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
+        df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
         print('espere un momento...')
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
@@ -104,14 +103,17 @@ class PronosticoExpDoble:
         #EMC(CALCULO DEL ERROR CUADRATICO MEDIO) |e|^2
         EMC = [np.mean(np.square(erroresAbs[i:i+total_meses_pronostico])) for i in range(0, len(erroresAbs), total_meses_pronostico)]
         # print('EMC: ', EMC[:5])
-    
+        del productos_data, df_demanda
         return MAD, MAPE, MAPE_prima, EMC, df_pronostico_sed, lista_pronosticos, lista_pronosticos_redondeo
     
     def productos():
+        productos_data = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
+        df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
         items = df_demanda.iloc[:, 1].tolist()
         proveedor = df_demanda.iloc[:,2].tolist()
         productos = df_demanda.iloc[:, 3].tolist()
         sede = df_demanda.iloc[:, 4].tolist()
+        del productos_data, df_demanda
         return items, proveedor, productos, sede
     
     def prueba():
