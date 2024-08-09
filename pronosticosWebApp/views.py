@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.http.response import JsonResponse
 from .models import Productos
 from django.views.decorators.csrf import csrf_exempt
+from django.core.paginator import Paginator
 import json
 
 import pandas as pd
@@ -32,8 +33,7 @@ def send_data(request):
 #     return render(request, 'template.html', {'productos': productos})
 
 def lista_productos(request):
-    # productos = list(Productos.objects.values())
-    # data = {"productos": productos}
+    
     global df_demanda, df_promedio_movil_p3, df_promedio_movil_p4, df_promedio_movil_p5, df_pronostico_ses, df_pronostico_sed, df_pronosticos
     global items, proveedor, productos, sede
     
@@ -42,14 +42,11 @@ def lista_productos(request):
     
     # Convertir el DataFrame a JSON
     df_pronosticos_json = df_pronosticos.to_dict(orient='records')
-    data = {"productos":df_pronosticos_json}
+    data = {
+        "productos": df_pronosticos_json,
+    }
     
     return JsonResponse(data, safe=False)
-  
-def df_productos():
-  productos = list(Productos.objects.values())
-  df_productos = pd.DataFrame(productos)
-  return df_productos
 
 def meses():
   # productos = list(Productos.objects.values_list('descripción', flat=True))
@@ -120,12 +117,12 @@ def get_chart(request):
                 "data": list_promedio_movil_5,
             },
             {
-                "name": "Suavización exponencial simple",
+                "name": "Suavización simple",
                 "type": "line",
                 "data": list_ses,
             },
             {
-                "name": "Suaización exponencial doble",
+                "name": "Suaización doble",
                 "type": "line",
                 "data": list_sed,
             },

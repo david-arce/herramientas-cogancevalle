@@ -2,6 +2,7 @@ from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 from pronosticosWebApp.pronosticos.suavizacionExpSimple import PronosticoExpSimple as ses
 from pronosticosWebApp.pronosticos.suavizacionExpDoble import PronosticoExpDoble as sed
 import pandas as pd
+import math
 
 class Pronosticos:
     
@@ -39,12 +40,10 @@ class Pronosticos:
             else:
                 pronostico_seleccionado.append('SED')
             
-        # lista_pronostico_ses = df_pronostico_ses.iloc[:,-1].values.tolist()
-        # lista_pronostico_sed = df_pronostico_sed.iloc[:,-1].values.tolist()
         i = 0
         pronostico_final=[]
         for valores in zip(lista_pronostico_p3, lista_pronosticos_p4, lista_pronosticos_p5, lista_pronostico_ses, lista_pronostico_sed):
-            pronostico_final.append(round((valores[origen_ECM[i]]), 2))
+            pronostico_final.append(math.ceil(valores[origen_ECM[i]]))
             i += 1
         i = 0
         pronostico_final_redondeado=[]

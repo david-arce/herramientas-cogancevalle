@@ -1,6 +1,5 @@
 import time
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
 from pronosticosWebApp.models import Productos
 
@@ -104,21 +103,10 @@ class PronosticoExpSimple:
         del productos_data, df_demanda
         return MAD, MAPE, MAPE_prima, ECM, df_pronostico_ses, lista_pronosticos, lista_pronosticos_redondeo
 
-    def productos():
-        productos_data = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
-        df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
-        items = df_demanda.iloc[:, 1].tolist()
-        proveedor = df_demanda.iloc[:,2].tolist()
-        productos = df_demanda.iloc[:, 3].tolist()
-        sede = df_demanda.iloc[:, 4].tolist()
-        del productos_data, df_demanda
-        return items, proveedor, productos, sede
-
     def prueba():
         start_time = time.perf_counter()
         MAD, MAPE, MAPE_prima, ECM, df_pronostico_ses, lista_pronosticos, lista_pronosticos_redondeo = PronosticoExpSimple.pronosticoExpSimple(0.5)
-        items, proveedor, productos, sede = PronosticoExpSimple.productos()
-        
+
         # serie = pd.concat([pd.Series(productos), pd.Series(MAD), pd.Series(MAPE)], axis=1)
         # serie.columns = ["Productos", "MAD", "Mejor pronostico"]
         # df = pd.DataFrame({"Items": items, "Proveedor": proveedor, "Productos": productos, "Sede": sede, "MAD": MAD, "MAPE": MAPE, "MAPE_Prima": MAPE_prima, "ECM": ECM, "Pronostico": lista_pronosticos, "Pronostico_redondeo": lista_pronosticos_redondeo})

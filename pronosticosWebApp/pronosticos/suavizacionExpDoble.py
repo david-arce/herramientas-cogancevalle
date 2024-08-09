@@ -106,20 +106,10 @@ class PronosticoExpDoble:
         del productos_data, df_demanda
         return MAD, MAPE, MAPE_prima, EMC, df_pronostico_sed, lista_pronosticos, lista_pronosticos_redondeo
     
-    def productos():
-        productos_data = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
-        df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
-        items = df_demanda.iloc[:, 1].tolist()
-        proveedor = df_demanda.iloc[:,2].tolist()
-        productos = df_demanda.iloc[:, 3].tolist()
-        sede = df_demanda.iloc[:, 4].tolist()
-        del productos_data, df_demanda
-        return items, proveedor, productos, sede
     
     def prueba():
         start_time = time.perf_counter()
         MAD, MAPE, MAPE_prima, ECM, df_pronostico_sed, lista_pronosticos, lista_pronosticos_redondeo = PronosticoExpDoble.pronosticoExpDoble(0.5, 0.5, 1)
-        items, proveedor, productos, sede = PronosticoExpDoble.productos()
         
         # print("MAD: ", MAD[:5])
         # print("MAPE: ", MAPE[:5])
