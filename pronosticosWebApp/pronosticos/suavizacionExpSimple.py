@@ -9,7 +9,7 @@ class PronosticoExpSimple:
         pass
     
     def pronosticoExpSimple(alpha):
-        productos_data = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
+        productos_data = list(Productos.objects.values()[:100]) # Se obtienen los productos de la base de datos en forma de lista
         df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
         print('espere un momento...')
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']

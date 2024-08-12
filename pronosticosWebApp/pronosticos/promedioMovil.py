@@ -9,7 +9,7 @@ class PronosticoMovil:
         pass
     
     def promedioMovil_3(n):
-        productos_data = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
+        productos_data = list(Productos.objects.values()[:100]) # Se obtienen los productos de la base de datos en forma de lista
         df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
@@ -69,7 +69,7 @@ class PronosticoMovil:
         return MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronosticos, lista_pronosticos_redondeo, df_demanda
     
     def promedioMovil_4(n):
-        productos_data = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
+        productos_data = list(Productos.objects.values()[:100]) # Se obtienen los productos de la base de datos en forma de lista
         df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
@@ -129,7 +129,7 @@ class PronosticoMovil:
         return MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronosticos, lista_pronosticos_redondeo, df_demanda
     
     def promedioMovil_5(n):
-        productos_data = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
+        productos_data = list(Productos.objects.values()[:100]) # Se obtienen los productos de la base de datos en forma de lista
         df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
@@ -189,7 +189,7 @@ class PronosticoMovil:
         return MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronosticos, lista_pronosticos_redondeo, df_demanda
     
     def productos():
-        productos_data = list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
+        productos_data = list(Productos.objects.values()[:100]) # Se obtienen los productos de la base de datos en forma de lista
         df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
         items = df_demanda.iloc[:, 1].tolist()
         proveedor = df_demanda.iloc[:,2].tolist()

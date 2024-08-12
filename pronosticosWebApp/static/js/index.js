@@ -104,6 +104,8 @@ document.getElementById('export-all').addEventListener('click', function () {
 
 // Añadir el evento para actualizar los datos
 document.getElementById('update-data').addEventListener('click', async () => {
+    const myElement = document.getElementById('chart');
+    myElement.style.display = 'none';
     productosData = null; // Limpiar los datos almacenados
     await initDataTable(); // Volver a inicializar la tabla con datos nuevos
 });
@@ -218,7 +220,7 @@ const listProductos = async () => {
         loader.style.display = 'block';
 
         if (!productosData) {  // Si los datos aún no se han cargado
-            const response = await fetch('http://127.0.0.1:8000/lista/');
+            const response = await fetch('/lista/');
             productosData = await response.json();
         }
 
@@ -255,7 +257,7 @@ const listProductos = async () => {
 //GRAFICO
 const getOptionChart = async () => {
     try {
-        const response = await fetch('http://127.0.0.1:8000/chart/');
+        const response = await fetch('/chart/');
         return await response.json();
     } catch (e) {
         alert(e)
@@ -264,7 +266,8 @@ const getOptionChart = async () => {
 
 const initChart = async () => {
     const myChart = echarts.init(document.getElementById('chart'));
-
+    const myElement = document.getElementById('chart');
+    myElement.style.display = 'block';
     myChart.setOption(await getOptionChart());
     myChart.resize();
 };
