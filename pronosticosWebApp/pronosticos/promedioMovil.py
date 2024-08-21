@@ -8,9 +8,11 @@ class PronosticoMovil:
     def __init__(self):
         pass
     
+    def getDataBD():
+        return list(Productos.objects.values()[:200]) # Se obtienen los productos de la base de datos en forma de lista
+    
     def promedioMovil_3(n):
-        productos_data = list(Productos.objects.values()[:100]) # Se obtienen los productos de la base de datos en forma de lista
-        df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
+        df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
         # Filtrar columnas que contienen meses (sin importar mayúsculas o minúsculas)
@@ -65,12 +67,11 @@ class PronosticoMovil:
         erroresCuadraticoMedio = erroresAbs ** 2
         ECM = [np.mean(erroresCuadraticoMedio[i:i+total_meses_pronostico]) for i in range(0, len(erroresCuadraticoMedio), total_meses_pronostico)]
         # print(ECM[:5])
-        del productos_data
+        
         return MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronosticos, lista_pronosticos_redondeo, df_demanda
     
     def promedioMovil_4(n):
-        productos_data = list(Productos.objects.values()[:100]) # Se obtienen los productos de la base de datos en forma de lista
-        df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
+        df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
         # Filtrar columnas que contienen meses (sin importar mayúsculas o minúsculas)
@@ -125,12 +126,11 @@ class PronosticoMovil:
         erroresCuadraticoMedio = erroresAbs ** 2
         ECM = [np.mean(erroresCuadraticoMedio[i:i+total_meses_pronostico]) for i in range(0, len(erroresCuadraticoMedio), total_meses_pronostico)]
         # print(ECM[:5])
-        del productos_data
+        
         return MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronosticos, lista_pronosticos_redondeo, df_demanda
     
     def promedioMovil_5(n):
-        productos_data = list(Productos.objects.values()[:100]) # Se obtienen los productos de la base de datos en forma de lista
-        df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
+        df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
         # Filtrar columnas que contienen meses (sin importar mayúsculas o minúsculas)
@@ -185,17 +185,16 @@ class PronosticoMovil:
         erroresCuadraticoMedio = erroresAbs ** 2
         ECM = [np.mean(erroresCuadraticoMedio[i:i+total_meses_pronostico]) for i in range(0, len(erroresCuadraticoMedio), total_meses_pronostico)]
         # print(ECM[:5])
-        del productos_data
+        
         return MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronosticos, lista_pronosticos_redondeo, df_demanda
     
     def productos():
-        productos_data = list(Productos.objects.values()[:100]) # Se obtienen los productos de la base de datos en forma de lista
-        df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
+        df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
         items = df_demanda.iloc[:, 1].tolist()
         proveedor = df_demanda.iloc[:,2].tolist()
         productos = df_demanda.iloc[:, 3].tolist()
         sede = df_demanda.iloc[:, 4].tolist()
-        del productos_data, df_demanda
+        del df_demanda
         return items, proveedor, productos, sede
         
     #funcion para probar el pronostico

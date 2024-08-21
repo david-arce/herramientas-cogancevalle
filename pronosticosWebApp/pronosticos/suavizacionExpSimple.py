@@ -1,7 +1,7 @@
 import time
 import pandas as pd
 import numpy as np
-from pronosticosWebApp.models import Productos
+from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 
 class PronosticoExpSimple:
     
@@ -9,8 +9,7 @@ class PronosticoExpSimple:
         pass
     
     def pronosticoExpSimple(alpha):
-        productos_data = list(Productos.objects.values()[:100]) # Se obtienen los productos de la base de datos en forma de lista
-        df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
+        df_demanda = pd.DataFrame(pm.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
         print('espere un momento...')
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
@@ -100,7 +99,7 @@ class PronosticoExpSimple:
         # print(ECM[:5])
         # print(df_pronostico_ses.iloc[:,-1]) #retorna los valores del última columna
         # print(df_pronostico_ses.iloc[:, :-1]) #retorna todos los valores menos la última columna
-        del productos_data, df_demanda
+        del df_demanda
         return MAD, MAPE, MAPE_prima, ECM, df_pronostico_ses, lista_pronosticos, lista_pronosticos_redondeo
 
     def prueba():

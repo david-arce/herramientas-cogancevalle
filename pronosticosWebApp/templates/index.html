@@ -31,31 +31,89 @@
     </div>
   </div>
 
-
   <div class="d-flex justify-content-center ">
     <div class="spinner-border" role="status" style="display: none;">
       <span class="visually-hidden">Loading...</span>
     </div>
   </div>
 
-
-
   <div class="d-flex justify-content-center p-3">
     <button id="send-data" class="btn btn-primary btn-md">Generar gráfica</button>
   </div>
-
 
   <!-- Botón para actualizar la tabla -->
   <div class="d-flex justify-content-center p-3">
     <button id="update-data" class="btn btn-warning btn-lg" type="button">Actualizar Datos</button>
   </div>
 
-
   <div class="d-grid gap-2 d-md-flex justify-content-md-center">
-    <button id="export-visible" class="btn btn-success btn-md mx-5" type="button"><i class="bi bi-file-earmark-spreadsheet"></i>
+    <button id="export-visible" class="btn btn-success btn-md mx-5" type="button"><i
+        class="bi bi-file-earmark-spreadsheet"></i>
       Exportar datos filtrados</button>
-    <button id="export-all" class="btn btn-success btn-md mx-5" type="button"> <i class="bi bi-file-earmark-spreadsheet"></i>
+    <button id="export-all" class="btn btn-success btn-md mx-5" type="button"> <i
+        class="bi bi-file-earmark-spreadsheet"></i>
       Exportar Todos los datos</button>
+  </div>
+
+  <div class="filter-container">
+    <!-- Filtro por ITEMS -->
+    <div class="filter">
+      <label for="item">ITEMS</label>
+      <input type="text" id="items-search" placeholder="Buscar...">
+      <select id="item" multiple>
+        {% for item in items %}
+        <option value="{{ item }}">{{ item }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Filtro por PROVEEDOR -->
+    <div class="filter">
+      <label for="proveedor">PROVEEDOR</label>
+      <input type="text" id="proveedor-search" placeholder="Buscar...">
+      <select id="proveedor" multiple>
+        {% for proveedor in proveedores %}
+        <option value="{{ proveedor }}">{{ proveedor }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Filtro por PRODUCTOS -->
+    <div class="filter">
+      <label for="productos">PRODUCTOS</label>
+      <input type="text" id="producto-search" placeholder="Buscar...">
+      <select id="producto" multiple>
+        {% for producto in productos %}
+        <option value="{{ producto }}">{{ producto }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Filtro por SEDE -->
+    <div class="filter">
+      <label for="sede">SEDE</label>
+      <input type="text" id="sede-search" placeholder="Buscar sede...">
+      <select id="sede" multiple>
+        {% for sede in sedes %}
+        <option value="{{ sede }}">{{ sede }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <!-- botón de busqueda -->
+  <div class="d-flex justify-content-center p-3">
+    <button id="search" class="btn btn-primary btn-md">Buscar</button>
+  </div>
+
+  <!-- botón de mostrar datos -->
+  <div class="d-flex justify-content-center p-3">
+    <button id="show" class="btn btn-danger btn-md">mostrar datos</button>
+  </div>
+
+  <!-- botón para limpiar filtros -->
+  <div class="d-flex justify-content-center p-3">
+    <button id="clear" class="btn btn-warning btn-md">Limpiar Filtros</button>
   </div>
 
   <div class="container-xxl">

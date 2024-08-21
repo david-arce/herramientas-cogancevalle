@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import time
-from pronosticosWebApp.models import Productos
+from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 
 class PronosticoExpDoble:
     
@@ -9,8 +9,7 @@ class PronosticoExpDoble:
         pass
     
     def pronosticoExpDoble(alpha, beta, p):
-        productos_data = list(Productos.objects.values()[:100]) # Se obtienen los productos de la base de datos en forma de lista
-        df_demanda = pd.DataFrame(productos_data) # Se convierten los productos en un DataFrame de pandas para su manipulación
+        df_demanda = pd.DataFrame(pm.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
         print('espere un momento...')
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
@@ -103,7 +102,7 @@ class PronosticoExpDoble:
         #EMC(CALCULO DEL ERROR CUADRATICO MEDIO) |e|^2
         EMC = [np.mean(np.square(erroresAbs[i:i+total_meses_pronostico])) for i in range(0, len(erroresAbs), total_meses_pronostico)]
         # print('EMC: ', EMC[:5])
-        del productos_data, df_demanda
+        del df_demanda
         return MAD, MAPE, MAPE_prima, EMC, df_pronostico_sed, lista_pronosticos, lista_pronosticos_redondeo
     
     

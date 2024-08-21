@@ -107,8 +107,199 @@ document.getElementById('update-data').addEventListener('click', async () => {
     const myElement = document.getElementById('chart');
     myElement.style.display = 'none';
     productosData = null; // Limpiar los datos almacenados
-    await initDataTable(); // Volver a inicializar la tabla con datos nuevos
+    if (!productosData) {
+        const loader = document.querySelector('.spinner-border');
+        try {
+            loader.style.display = 'block';
+            const response = await fetch('/lista/');
+            productosData = await response.json();
+        } catch (error) {
+            console.error('Error al obtener los datos:', error);
+        } finally {
+            loader.style.display = 'none';
+        }
+    }
+
 });
+
+// ------------------------------------------------------------------------------------
+// Arreglos para almacenar las selecciones
+let selectedItems = [];
+let selectedProveedores = [];
+let selectedProductos = [];
+let selectedSedes = [];
+
+document.getElementById('search').addEventListener('click', async () => {
+
+    // Función para filtrar por Items
+    function filterByItems(data, items) {
+        //convertir a entero
+        items = items.map(Number);
+        return data.productos.filter(producto => items.includes(producto.Items));
+    }
+    // Función para filtrar por Proveedor
+    function filterByProveedor(data, proveedores) {
+        return data.productos.filter(producto => proveedores.includes(producto.Proveedor));
+    }
+    // Función para filtrar por Productos
+    function filterByProductos(data, productos) {
+        return data.productos.filter(producto => productos.includes(producto.Productos));
+    }
+    // Función para filtrar por Sede
+    function filterBySede(data, sedes) {
+        return data.productos.filter(producto => sedes.includes(producto.Sede));
+    }
+
+    //filtrar por item, proovedor, producto o sede
+    function filterBy(data, items, proveedores, productos, sedes) {
+        // Convertir arrays de selección a números (para el filtro de Items)
+        items = items.map(Number);
+
+        // Filtrar los productos que coincidan con todos los criterios seleccionados
+        return data.productos.filter(producto => {
+            // Verificar que el producto cumpla con todos los criterios seleccionados
+            const matchItems = items.length === 0 || items.includes(producto.Items);
+            const matchProveedores = proveedores.length === 0 || proveedores.includes(producto.Proveedor);
+            const matchProductos = productos.length === 0 || productos.includes(producto.Productos);
+            const matchSedes = sedes.length === 0 || sedes.includes(producto.Sede);
+
+            return matchItems && matchProveedores && matchProductos && matchSedes;
+        });
+    }
+
+    const dataFilter = filterBy(productosData, selectedItems, selectedProveedores, selectedProductos, selectedSedes);
+    //convertir a json y asignar
+    const datos = { "productos": dataFilter };
+    console.log("Filtros aplicados:", datos);
+
+    // console.log("Filtrado por Items:", filteredByItems);
+    await initDataTable(datos);
+
+});
+
+// Función para manejar el cambio de selección
+function handleSelectChange(event, selectedArray) {
+    // Obtener los valores seleccionados
+    const selectedValues = Array.from(event.target.selectedOptions).map(option => option.value);
+
+    //comprobar que se esten seleccionando valores
+
+
+    // Actualizar el arreglo correspondiente
+    // selectedArray.length = 0; // Vaciar el arreglo actual
+    selectedArray.push(...selectedValues); // Añadir los valores seleccionados
+
+    //imprimir el arreglo de filtros
+    console.log("Filtros aplicados:", selectedArray);
+}
+
+document.getElementById('show').addEventListener('click', () => {
+    console.log("Filtros items:", selectedItems);
+    console.log("Filtros proveedores:", selectedProveedores);
+    console.log("Filtros productos:", selectedProductos);
+    console.log("Filtros sedes:", selectedSedes);
+});
+
+// Asociar el evento `change` a cada elemento `<select>`
+// document.getElementById('item').addEventListener('change', (event) => {
+//     handleSelectChange(event, selectedItems);
+// });
+// document.getElementById('proveedor').addEventListener('change', (event) => {
+//     handleSelectChange(event, selectedProveedores);
+// });
+// document.getElementById('producto').addEventListener('change', (event) => {
+//     handleSelectChange(event, selectedProductos);
+// });
+// document.getElementById('sede').addEventListener('change', (event) => {
+//     handleSelectChange(event, selectedSedes);
+// });
+
+// verificar que se esten seleccionando valores de un filtro
+// const item = document.getElementById('item').addEventListener('change', (event) => {
+//     if (event.target.selectedOptions.length > 0) {
+//         console.log('Items seleccionados:', event.target.selectedOptions.length);
+//     } else {
+//         console.log('No se han seleccionado items');
+//     }
+// });
+// const proveedor = document.getElementById('proveedor').addEventListener('change', (event) => {
+//     console.log('item', item);
+
+//     if (event.target.selectedOptions.length > 0) {
+//         console.log('Proveedores seleccionados:', event.target.selectedOptions.length);
+//     } else {
+//         console.log('No se han seleccionado proveedores');
+//     }
+// });
+
+
+// Guardar selecciones cada vez que cambien
+document.getElementById('item').addEventListener('change', (event) => {
+    const items = Array.from(event.target.selectedOptions).map(option => option.value);
+    localStorage.setItem('items', JSON.stringify(items));
+    selectedItems = localStorage.getItem('items');
+    console.log('item', localStorage.getItem('items'));
+    console.log('proveedor', localStorage.getItem('proveedores'));
+});
+document.getElementById('proveedor').addEventListener('change', (event) => {
+    const proveedores = Array.from(event.target.selectedOptions).map(option => option.value);
+    localStorage.setItem('proveedores', JSON.stringify(proveedores));
+    selectedProveedores = localStorage.getItem('proveedores');
+    console.log('item', localStorage.getItem('items'));
+    console.log('proveedor', localStorage.getItem('proveedores'));
+});
+
+function restoreSelections() {
+    
+    //eliminar los valores del localstorage
+    localStorage.removeItem('items');
+    localStorage.removeItem('proveedores');
+
+    console.log("Selecciones restauradas desde localStorage.");
+}
+
+
+document.getElementById('clear').addEventListener('click', () => {
+    
+    console.log('item', localStorage.getItem('items'));
+    console.log('proveedor', localStorage.getItem('proveedores'));
+    // Limpiar selecciones
+    restoreSelections();
+    console.log('item', localStorage.getItem('items'));
+    console.log('proveedor', localStorage.getItem('proveedores'));
+});
+
+//------------------------------------------------------------------------------------
+// Añadir el evento para la búsqueda de filtros
+document.addEventListener('DOMContentLoaded', function () {
+    setupSearch('items-search', 'item');
+    setupSearch('proveedor-search', 'proveedor');
+    setupSearch('producto-search', 'producto');
+    setupSearch('sede-search', 'sede');
+});
+
+// Función para configurar la búsqueda de elementos en una lista
+function setupSearch(inputId, listId) {
+    const searchInput = document.getElementById(inputId);
+    const resultList = document.getElementById(listId);
+    const items = resultList.getElementsByTagName('option');
+
+    searchInput.addEventListener('keyup', function () {
+        const filter = searchInput.value.toUpperCase();
+
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            const txtValue = item.textContent || item.innerText;
+
+            if (txtValue.toUpperCase().includes(filter)) {
+                item.style.display = "";
+            } else {
+                item.style.display = "none";
+            }
+        }
+    });
+}
+
 
 // Helper function to get CSRF token from cookies
 function getCookie(name) {
@@ -127,7 +318,7 @@ function getCookie(name) {
 }
 
 const dataTableOptions = {
-    dom: 'PBfrtip', // Agregar el control de paneles de búsqueda
+    dom: 'Brtip', // Agregar el control de paneles de búsqueda B: Buttons, r: processing, t: tabla, i: información, p: paginación
     buttons: [
         {
             extend: 'pageLength',
@@ -168,28 +359,20 @@ const dataTableOptions = {
         "loadingRecords": "Cargando...",
         "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
     },
-    searchPanes: {
-        cascadePanes: true
-    },
+
     columnDefs: [
-        {
-            searchPanes: {
-                show: false,
-            },
-            targets: [0, 5, 6, 7, 8, 9, 10, 11]
-        },
         { className: 'centered', targets: '_all' },
         { targets: [0, 5, 6, 7, 8, 11], visible: false, searchable: false },
     ],
 };
 
-const initDataTable = async () => {
+const initDataTable = async (datos) => {
     if (dataTableIsInitialized) dataTable.destroy();
 
     // await listProductos();
     //dataTable = $('#datatable-productos').DataTable(dataTableOptions);
 
-    await listProductos();
+    await listProductos(datos);
     dataTable = $('#datatable-productos').DataTable({
         ...dataTableOptions,
 
@@ -212,20 +395,16 @@ const initDataTable = async () => {
     dataTableIsInitialized = true;
 };
 
-const listProductos = async () => {
+const listProductos = async (datos) => {
     const loader = document.querySelector('.spinner-border');
     try {
         // Mostrar el loader
         // document.getElementById('loader').style.display = 'block';
         loader.style.display = 'block';
 
-        if (!productosData) {  // Si los datos aún no se han cargado
-            const response = await fetch('/lista/');
-            productosData = await response.json();
-        }
 
         let content = ``;
-        productosData.productos.forEach((producto, index) => {
+        datos.productos.forEach((producto, index) => {
             content += `
                 <tr>
                     <td>${index + 1}</td>

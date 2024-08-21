@@ -13,7 +13,18 @@ selected_index = 0 # Variable global para almacenar el índice seleccionado
 list_demanda, list_promedio_movil, list_ses, list_sed = [], [], [], []
 # Create your views here.
 def dashboard(request):
-    return render(request, "index.html")
+    items = Productos.objects.values_list('item', flat=True).distinct()
+    proveedores = Productos.objects.values_list('proveedor', flat=True).distinct()
+    productos = Productos.objects.values_list('descripción', flat=True).distinct()
+    sedes = Productos.objects.values_list('sede', flat=True).distinct()
+
+    context = {
+        'items': items,
+        'proveedores': proveedores,
+        'productos': productos,
+        'sedes': sedes,
+    }
+    return render(request, "index.html", context)
 
 @csrf_exempt
 def send_data(request):
@@ -36,7 +47,7 @@ def lista_productos(request):
     
     global df_demanda, df_promedio_movil_p3, df_promedio_movil_p4, df_promedio_movil_p5, df_pronostico_ses, df_pronostico_sed, df_pronosticos
     global items, proveedor, productos, sede
-    
+    global df_pronosticos_json
     df_demanda, df_promedio_movil_p3, df_promedio_movil_p4, df_promedio_movil_p5, df_pronostico_ses, df_pronostico_sed, df_pronosticos = Pronosticos.pronosticos()
     items, proveedor, productos, sede = pm.productos()
     
@@ -47,6 +58,9 @@ def lista_productos(request):
     }
     
     return JsonResponse(data, safe=False)
+
+def filtro(request):
+    return 
 
 def meses():
   # productos = list(Productos.objects.values_list('descripción', flat=True))
