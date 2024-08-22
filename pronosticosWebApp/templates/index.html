@@ -60,18 +60,68 @@
       Exportar Todos los datos</button>
   </div>
 
+  <div class="buttons">
+    <button id="cancel">Limpiar filtros</button>
+  </div>
+
   <div class="filter-container">
-    <!-- Filtro por ITEMS -->
+
     <div class="filter">
-      <label for="item">ITEMS</label>
-      <input type="text" id="items-search" placeholder="Buscar...">
-      <select id="item" multiple>
+      <label for="item-search">ITEM</label>
+      <input type="text" id="item-search" placeholder="Buscar...">
+
+      <div class="select-options-items">
+        <label><input type="checkbox" id="select-all-items"> (Seleccionar todo)</label>
         {% for item in items %}
-        <option value="{{ item }}">{{ item }}</option>
+        <label><input type="checkbox" value="{{ item }}">{{ item }}</label>
         {% endfor %}
-      </select>
+      </div>
     </div>
 
+    <div class="filter">
+      <label for="proveedor-search">PROVEEDOR</label>
+      <input type="text" id="proveedor-search" placeholder="Buscar...">
+
+      <div class="select-options-proveedores">
+        <label><input type="checkbox" id="select-all-proveedores"> (Seleccionar todo)</label>
+        {% for proveedor in proveedores %}
+        <label><input type="checkbox" value="{{ proveedor }}">{{ proveedor }}</label>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="filter">
+      <label for="producto-search">PRODUCTO</label>
+      <input type="text" id="producto-search" placeholder="Buscar...">
+
+      <div class="select-options-productos">
+        <label><input type="checkbox" id="select-all-productos"> (Seleccionar todo)</label>
+        {% for producto in productos %}
+        <label><input type="checkbox" value="{{ producto }}">{{ producto }}</label>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="filter">
+      <label for="sede-search">SEDE</label>
+      <input type="text" id="sede-search" placeholder="Buscar...">
+
+      <div class="select-options-sedes">
+        <label><input type="checkbox" id="select-all-sedes"> (Seleccionar todo)</label>
+        {% for sede in sedes %}
+        <label><input type="checkbox" value="{{ sede }}">{{ sede }}</label>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- botón de busqueda -->
+  <div class="d-flex justify-content-center p-3">
+    <button id="search" class="btn btn-primary btn-md">Buscar</button>
+  </div>
+
+   <!-- botón de mostrar datos -->
+   <div class="d-flex justify-content-center p-3">
+    <button id="show" class="btn btn-danger btn-md">mostrar datos</button>
   </div>
 
   <div class="container-xxl">

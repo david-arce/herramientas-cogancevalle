@@ -13,7 +13,18 @@ selected_index = 0 # Variable global para almacenar el índice seleccionado
 list_demanda, list_promedio_movil, list_ses, list_sed = [], [], [], []
 # Create your views here.
 def dashboard(request):
-    return render(request, "index.html")
+    items = Productos.objects.values_list('item', flat=True).distinct()
+    proveedores = Productos.objects.values_list('proveedor', flat=True).distinct()
+    productos = Productos.objects.values_list('descripción', flat=True).distinct()
+    sedes = Productos.objects.values_list('sede', flat=True).distinct()
+
+    context = {
+        'items': items,
+        'proveedores': proveedores,
+        'productos': productos,
+        'sedes': sedes,
+    }
+    return render(request, "index.html", context)
 
 @csrf_exempt
 def send_data(request):
@@ -82,7 +93,7 @@ def get_chart(request):
     # list_sed = [4,5,6,7]
     xAxis = meses()
     chart = {
-        "title": {"text": "Pronósticos", "subtext": "Pronóstico del item: {}".format(items[selected_index])},
+        "title": {"text": "Pronósticos", "subtext": "Pronóstico del producto: {} en la sede: {} del proveedor: {}".format(productos[selected_index], sede[selected_index], proveedor[selected_index])},
         "tooltip": {"trigger": "axis"},
         "legend": {
             "data": ["Demanda", "Promedio móvil n=3","Promedio móvil n=4","Promedio móvil n=5", "Suavización simple", "Suaización doble"]

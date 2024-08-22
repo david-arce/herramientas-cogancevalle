@@ -107,7 +107,18 @@ document.getElementById('update-data').addEventListener('click', async () => {
     const myElement = document.getElementById('chart');
     myElement.style.display = 'none';
     productosData = null; // Limpiar los datos almacenados
-    await initDataTable(); // Volver a inicializar la tabla con datos nuevos
+    if (!productosData) {
+        const loader = document.querySelector('.spinner-border');
+        try {
+            loader.style.display = 'block';
+            const response = await fetch('/lista/');
+            productosData = await response.json();
+        } catch (error) {
+            console.error('Error al obtener los datos:', error);
+        } finally {
+            loader.style.display = 'none';
+        }
+    }
 });
 
 // Helper function to get CSRF token from cookies
@@ -127,7 +138,7 @@ function getCookie(name) {
 }
 
 const dataTableOptions = {
-    dom: 'Bfrtip', // Agregar el control de paneles de búsqueda
+    dom: 'Brtip', // Agregar el control de paneles de búsqueda
     buttons: [
         {
             extend: 'pageLength',
@@ -168,20 +179,20 @@ const dataTableOptions = {
         "loadingRecords": "Cargando...",
         "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
     },
-    
+
     columnDefs: [
         { className: 'centered', targets: '_all' },
         { targets: [0, 5, 6, 7, 8, 11], visible: false, searchable: false },
     ],
 };
 
-const initDataTable = async () => {
+const initDataTable = async (datos) => {
     if (dataTableIsInitialized) dataTable.destroy();
 
     // await listProductos();
     //dataTable = $('#datatable-productos').DataTable(dataTableOptions);
 
-    await listProductos();
+    await listProductos(datos);
     dataTable = $('#datatable-productos').DataTable({
         ...dataTableOptions,
 
@@ -204,20 +215,15 @@ const initDataTable = async () => {
     dataTableIsInitialized = true;
 };
 
-const listProductos = async () => {
+const listProductos = async (datos) => {
     const loader = document.querySelector('.spinner-border');
     try {
         // Mostrar el loader
         // document.getElementById('loader').style.display = 'block';
         loader.style.display = 'block';
 
-        if (!productosData) {  // Si los datos aún no se han cargado
-            const response = await fetch('/lista/');
-            productosData = await response.json();
-        }
-
         let content = ``;
-        productosData.productos.forEach((producto, index) => {
+        datos.productos.forEach((producto, index) => {
             content += `
                 <tr>
                     <td>${index + 1}</td>
@@ -245,9 +251,6 @@ const listProductos = async () => {
         loader.style.display = 'none';
     }
 };
-
-
-
 
 //GRAFICO
 const getOptionChart = async () => {
@@ -293,81 +296,102 @@ document.getElementById('mode-toggle').addEventListener('click', function () {
     }
 });
 
-document.addEventListener('DOMContentLoaded', function () {
-    setupSearch('items-search', 'item');
+document.getElementById('search').addEventListener('click', async () => {
+
+    const selectedItems = getSelectedValues('select-options-items', 'select-all-items');
+    const selectedProveedores = getSelectedValues('select-options-proveedores', 'select-all-proveedores');
+    const selectedProductos = getSelectedValues('select-options-productos', 'select-all-productos');
+    const selectedSedes = getSelectedValues('select-options-sedes', 'select-all-sedes');
+
+    function filter(data, items, proveedores, productos, sedes) {
+        // Convertir arrays de selección a números (para el filtro de Items)
+        items = items.map(Number);
+
+        // Filtrar los productos que coincidan con todos los criterios seleccionados
+        return data.productos.filter(producto => {
+            // Verificar que el producto cumpla con todos los criterios seleccionados
+            const matchItems = items.length === 0 || items.includes(producto.Items);
+            const matchProveedores = proveedores.length === 0 || proveedores.includes(producto.Proveedor);
+            const matchProductos = productos.length === 0 || productos.includes(producto.Productos);
+            const matchSedes = sedes.length === 0 || sedes.includes(producto.Sede);
+
+            return matchItems && matchProveedores && matchProductos && matchSedes;
+        });
+    }
+    const dataFilter = filter(productosData, selectedItems, selectedProveedores, selectedProductos, selectedSedes);
+    //convertir a json y asignar
+    const datos = { "productos": dataFilter };
+    console.log("Filtros aplicados:", datos);
+
+    await initDataTable(datos);
 });
 
-function setupSearch(inputId, listId) {
-    const searchInput = document.getElementById(inputId);
-    const resultList = document.getElementById(listId);
-    const items = resultList.getElementsByTagName('option');
+document.addEventListener('DOMContentLoaded', () => {
+    setupFilter('item-search', 'select-all-items');
+    setupFilter('proveedor-search', 'select-all-proveedores');
+    setupFilter('producto-search', 'select-all-productos');
+    setupFilter('sede-search', 'select-all-sedes');
+});
 
-    searchInput.addEventListener('keyup', function () {
-        const filter = searchInput.value.toUpperCase();
+// Función para obtener todos los valores seleccionados de los checkboxes de un filtro
+function getSelectedValues(selectId, selectAll) {
+    const checkboxes = document.querySelectorAll('.' + selectId + ' input[type="checkbox"]:not(#' + selectAll + ')');
+    const selectedValues = [];
 
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            const txtValue = item.textContent || item.innerText;
-
-            if (txtValue.toUpperCase().includes(filter)) {
-                item.style.display = "";
-            } else {
-                item.style.display = "none";
-            }
+    checkboxes.forEach(function (checkbox) {
+        if (checkbox.checked) {
+            selectedValues.push(checkbox.value);
         }
     });
+    return selectedValues;
 }
 
-// document.addEventListener('DOMContentLoaded', () => {
-//     const selectAllCheckbox = document.getElementById('select-all');
-//     const checkboxes = document.querySelectorAll('.select-options input[type="checkbox"]:not(#select-all)');
-//     const searchInput = document.getElementById('search');
+document.getElementById('show').addEventListener('click', () => {
+    // Ejemplos de uso para cada filtro
+    
+});
 
-//     // Función para seleccionar/deseleccionar todas las opciones
-//     selectAllCheckbox.addEventListener('change', (e) => {
-//         checkboxes.forEach(checkbox => {
-//             checkbox.checked = e.target.checked;
-//         });
-//     });
+function setupFilter(searchInputId, selectAllId) {
+    const searchInput = document.getElementById(searchInputId);
+    const selectAllCheckbox = document.getElementById(selectAllId);
+    const checkboxes = selectAllCheckbox.parentNode.parentNode.querySelectorAll('input[type="checkbox"]:not(#' + selectAllId + ')');
+    // const checkboxes = document.querySelectorAll('.select-options input[type="checkbox"]:not(#' + selectAllId + ')');
 
-//     // Si todas las opciones están seleccionadas, marca "Seleccionar todo"
-//     checkboxes.forEach(checkbox => {
-//         checkbox.addEventListener('change', () => {
-//             const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-//             selectAllCheckbox.checked = allChecked;
-//         });
-//     });
+    // Función para seleccionar/deseleccionar todas las opciones
+    selectAllCheckbox.addEventListener('change', (e) => {
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = e.target.checked;
+        });
+    });
 
-//     // Filtrar las opciones de acuerdo a la búsqueda
-//     searchInput.addEventListener('keyup', () => {
-//         const filter = searchInput.value.toLowerCase();
-//         checkboxes.forEach(checkbox => {
-//             const label = checkbox.parentNode;
-//             const text = label.textContent.toLowerCase();
+    // Si todas las opciones están seleccionadas, marca "Seleccionar todo"
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            selectAllCheckbox.checked = allChecked;
+        });
+    });
 
-//             if (text.includes(filter)) {
-//                 label.style.display = "";
-//             } else {
-//                 label.style.display = "none";
-//             }
-//         });
-//     });
+    // Filtrar las opciones de acuerdo a la búsqueda
+    searchInput.addEventListener('keyup', () => {
+        const filter = searchInput.value.toLowerCase();
+        checkboxes.forEach(checkbox => {
+            const label = checkbox.parentNode;
+            const text = label.textContent.toLowerCase();
 
-//     // Manejo de los botones
-//     document.getElementById('accept').addEventListener('click', () => {
-//         const selectedValues = Array.from(checkboxes)
-//             .filter(checkbox => checkbox.checked)
-//             .map(checkbox => checkbox.value);
+            if (text.includes(filter)) {
+                label.style.display = "";
+            } else {
+                label.style.display = "none";
+            }
+        });
+    });
 
-//         console.log('Valores seleccionados:', selectedValues);
-//         // Aquí puedes hacer lo que necesites con los valores seleccionados
-//     });
-
-//     document.getElementById('cancel').addEventListener('click', () => {
-//         // Puedes añadir lógica para cancelar la selección si es necesario
-//         checkboxes.forEach(checkbox => {
-//             checkbox.checked = false;
-//         });
-//         selectAllCheckbox.checked = false;
-//     });
-// });
+    document.getElementById('cancel').addEventListener('click', () => {
+        // Puedes añadir lógica para cancelar la selección si es necesario
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        selectAllCheckbox.checked = false;
+    });
+};

@@ -9,7 +9,7 @@ class PronosticoMovil:
         pass
     
     def getDataBD():
-        return list(Productos.objects.values()) # Se obtienen los productos de la base de datos en forma de lista
+        return list(Productos.objects.values()[:200]) # Se obtienen los productos de la base de datos en forma de lista
     
     def promedioMovil_3(n):
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
