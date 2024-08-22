@@ -52,10 +52,26 @@
 
 
   <div class="d-grid gap-2 d-md-flex justify-content-md-center">
-    <button id="export-visible" class="btn btn-success btn-md mx-5" type="button"><i class="bi bi-file-earmark-spreadsheet"></i>
+    <button id="export-visible" class="btn btn-success btn-md mx-5" type="button"><i
+        class="bi bi-file-earmark-spreadsheet"></i>
       Exportar datos filtrados</button>
-    <button id="export-all" class="btn btn-success btn-md mx-5" type="button"> <i class="bi bi-file-earmark-spreadsheet"></i>
+    <button id="export-all" class="btn btn-success btn-md mx-5" type="button"> <i
+        class="bi bi-file-earmark-spreadsheet"></i>
       Exportar Todos los datos</button>
+  </div>
+
+  <div class="filter-container">
+    <!-- Filtro por ITEMS -->
+    <div class="filter">
+      <label for="item">ITEMS</label>
+      <input type="text" id="items-search" placeholder="Buscar...">
+      <select id="item" multiple>
+        {% for item in items %}
+        <option value="{{ item }}">{{ item }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
   </div>
 
   <div class="container-xxl">

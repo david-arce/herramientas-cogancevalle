@@ -127,7 +127,7 @@ function getCookie(name) {
 }
 
 const dataTableOptions = {
-    dom: 'PBfrtip', // Agregar el control de paneles de búsqueda
+    dom: 'Bfrtip', // Agregar el control de paneles de búsqueda
     buttons: [
         {
             extend: 'pageLength',
@@ -168,16 +168,8 @@ const dataTableOptions = {
         "loadingRecords": "Cargando...",
         "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
     },
-    searchPanes: {
-        cascadePanes: true
-    },
+    
     columnDefs: [
-        {
-            searchPanes: {
-                show: false,
-            },
-            targets: [0, 5, 6, 7, 8, 9, 10, 11]
-        },
         { className: 'centered', targets: '_all' },
         { targets: [0, 5, 6, 7, 8, 11], visible: false, searchable: false },
     ],
@@ -254,6 +246,9 @@ const listProductos = async () => {
     }
 };
 
+
+
+
 //GRAFICO
 const getOptionChart = async () => {
     try {
@@ -297,3 +292,82 @@ document.getElementById('mode-toggle').addEventListener('click', function () {
         this.textContent = 'Modo Oscuro';
     }
 });
+
+document.addEventListener('DOMContentLoaded', function () {
+    setupSearch('items-search', 'item');
+});
+
+function setupSearch(inputId, listId) {
+    const searchInput = document.getElementById(inputId);
+    const resultList = document.getElementById(listId);
+    const items = resultList.getElementsByTagName('option');
+
+    searchInput.addEventListener('keyup', function () {
+        const filter = searchInput.value.toUpperCase();
+
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            const txtValue = item.textContent || item.innerText;
+
+            if (txtValue.toUpperCase().includes(filter)) {
+                item.style.display = "";
+            } else {
+                item.style.display = "none";
+            }
+        }
+    });
+}
+
+// document.addEventListener('DOMContentLoaded', () => {
+//     const selectAllCheckbox = document.getElementById('select-all');
+//     const checkboxes = document.querySelectorAll('.select-options input[type="checkbox"]:not(#select-all)');
+//     const searchInput = document.getElementById('search');
+
+//     // Función para seleccionar/deseleccionar todas las opciones
+//     selectAllCheckbox.addEventListener('change', (e) => {
+//         checkboxes.forEach(checkbox => {
+//             checkbox.checked = e.target.checked;
+//         });
+//     });
+
+//     // Si todas las opciones están seleccionadas, marca "Seleccionar todo"
+//     checkboxes.forEach(checkbox => {
+//         checkbox.addEventListener('change', () => {
+//             const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+//             selectAllCheckbox.checked = allChecked;
+//         });
+//     });
+
+//     // Filtrar las opciones de acuerdo a la búsqueda
+//     searchInput.addEventListener('keyup', () => {
+//         const filter = searchInput.value.toLowerCase();
+//         checkboxes.forEach(checkbox => {
+//             const label = checkbox.parentNode;
+//             const text = label.textContent.toLowerCase();
+
+//             if (text.includes(filter)) {
+//                 label.style.display = "";
+//             } else {
+//                 label.style.display = "none";
+//             }
+//         });
+//     });
+
+//     // Manejo de los botones
+//     document.getElementById('accept').addEventListener('click', () => {
+//         const selectedValues = Array.from(checkboxes)
+//             .filter(checkbox => checkbox.checked)
+//             .map(checkbox => checkbox.value);
+
+//         console.log('Valores seleccionados:', selectedValues);
+//         // Aquí puedes hacer lo que necesites con los valores seleccionados
+//     });
+
+//     document.getElementById('cancel').addEventListener('click', () => {
+//         // Puedes añadir lógica para cancelar la selección si es necesario
+//         checkboxes.forEach(checkbox => {
+//             checkbox.checked = false;
+//         });
+//         selectAllCheckbox.checked = false;
+//     });
+// });
