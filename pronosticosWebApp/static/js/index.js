@@ -346,9 +346,25 @@ function getSelectedValues(selectId, selectAll) {
     return selectedValues;
 }
 
-document.getElementById('show').addEventListener('click', () => {
-    // Ejemplos de uso para cada filtro
-    
+function cleanSelectedValues(selectId, selectAll) {
+    const checkboxes = document.querySelectorAll('.' + selectId + ' input[type="checkbox"]:not(#' + selectAll + ')');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    selectAllCheckbox.checked = false;
+};
+
+document.getElementById('clean-filter-item').addEventListener('click', () => {
+    cleanSelectedValues('select-options-items', 'select-all-items');
+});
+document.getElementById('clean-filter-proveedor').addEventListener('click', () => {
+    cleanSelectedValues('select-options-proveedores', 'select-all-proveedores');
+});
+document.getElementById('clean-filter-producto').addEventListener('click', () => {
+    cleanSelectedValues('select-options-productos', 'select-all-productos');
+});
+document.getElementById('clean-filter-sede').addEventListener('click', () => {
+    cleanSelectedValues('select-options-sedes', 'select-all-sedes');
 });
 
 function setupFilter(searchInputId, selectAllId) {
@@ -395,3 +411,50 @@ function setupFilter(searchInputId, selectAllId) {
         selectAllCheckbox.checked = false;
     });
 };
+
+
+document.getElementById('clean-filter-item').addEventListener('click', function () {
+    const input = document.getElementById('item-search');
+    input.value = ''; // Borra el texto del input
+    input.focus(); // Vuelve el foco al input
+    // Mostrar todas las opciones después de limpiar el input
+    const checkboxes = document.querySelectorAll('.select-options-items input[type="checkbox"]:not(#select-all-items)');
+    checkboxes.forEach(checkbox => {
+        const label = checkbox.parentNode;
+        label.style.display = ""; // Mostrar todas las opciones
+    });
+});
+document.getElementById('clean-filter-proveedor').addEventListener('click', function () {
+    const input = document.getElementById('proveedor-search');
+    input.value = ''; // Borra el texto del input
+    input.focus(); // Vuelve el foco al input
+    // Mostrar todas las opciones después de limpiar el input
+    const checkboxes = document.querySelectorAll('.select-options-proveedores input[type="checkbox"]:not(#select-all-proveedores)');
+    checkboxes.forEach(checkbox => {
+        const label = checkbox.parentNode;
+        label.style.display = ""; // Mostrar todas las opciones
+    });
+});
+document.getElementById('clean-filter-producto').addEventListener('click', function () {
+    const input = document.getElementById('producto-search');
+    input.value = ''; // Borra el texto del input
+    input.focus(); // Vuelve el foco al input
+    // Mostrar todas las opciones después de limpiar el input
+    const checkboxes = document.querySelectorAll('.select-options-productos input[type="checkbox"]:not(#select-all-productos)');
+    checkboxes.forEach(checkbox => {
+        const label = checkbox.parentNode;
+        label.style.display = ""; // Mostrar todas las opciones
+    });
+});
+document.getElementById('clean-filter-sede').addEventListener('click', function () {
+    const input = document.getElementById('sede-search');
+    input.value = ''; // Borra el texto del input
+    input.focus(); // Vuelve el foco al input
+    // Mostrar todas las opciones después de limpiar el input
+    const checkboxes = document.querySelectorAll('.select-options-sedes input[type="checkbox"]:not(#select-all-sedes)');
+    checkboxes.forEach(checkbox => {
+        const label = checkbox.parentNode;
+        label.style.display = ""; // Mostrar todas las opciones
+    });
+});
+

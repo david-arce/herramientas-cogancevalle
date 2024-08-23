@@ -12,7 +12,7 @@
     transition: background-color 0.5s, color 0.5s;
 }
 
-#chart{
+#chart {
     display: none;
 }
 
@@ -116,7 +116,7 @@ body.light-mode #mode-toggle {
     border-radius: 5px;
 }
 
-.filter{
+.filter {
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -130,7 +130,7 @@ input[type="text"] {
     border-radius: 3px;
 }
 
-.filter div {
+.filter div:nth-of-type(2) {
     max-height: 150px;
     overflow-y: auto;
     border: 1px solid #ccc;
@@ -163,3 +163,24 @@ button {
 button#cancel {
     background-color: #34363a;
 }
+
+.input-container {
+    display: flex;
+    align-items: center;
+}
+
+.input-container input {
+    margin-right: 8px;
+    /* Espacio entre el input y el botón */
+    padding: 5px;
+    font-size: 14px;
+}
+
+.input-container button:nth-of-type(1) {
+    padding: 6px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    background-color: #34363a;
+    margin-bottom: auto;
+}
+

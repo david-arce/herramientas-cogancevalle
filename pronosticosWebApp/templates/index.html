@@ -67,9 +67,12 @@
   <div class="filter-container">
 
     <div class="filter">
+      
       <label for="item-search">ITEM</label>
-      <input type="text" id="item-search" placeholder="Buscar...">
-
+      <div class="input-container">
+        <input type="text" id="item-search" placeholder="Buscar...">
+        <button type="button" id="clean-filter-item">x</button>
+      </div>
       <div class="select-options-items">
         <label><input type="checkbox" id="select-all-items"> (Seleccionar todo)</label>
         {% for item in items %}
@@ -80,8 +83,10 @@
 
     <div class="filter">
       <label for="proveedor-search">PROVEEDOR</label>
-      <input type="text" id="proveedor-search" placeholder="Buscar...">
-
+      <div class="input-container">
+        <input type="text" id="proveedor-search" placeholder="Buscar...">
+        <button type="button" id="clean-filter-proveedor">x</button>
+      </div>
       <div class="select-options-proveedores">
         <label><input type="checkbox" id="select-all-proveedores"> (Seleccionar todo)</label>
         {% for proveedor in proveedores %}
@@ -91,8 +96,10 @@
     </div>
     <div class="filter">
       <label for="producto-search">PRODUCTO</label>
-      <input type="text" id="producto-search" placeholder="Buscar...">
-
+      <div class="input-container">
+        <input type="text" id="producto-search" placeholder="Buscar...">
+        <button type="button" id="clean-filter-producto">x</button>
+      </div>
       <div class="select-options-productos">
         <label><input type="checkbox" id="select-all-productos"> (Seleccionar todo)</label>
         {% for producto in productos %}
@@ -102,8 +109,10 @@
     </div>
     <div class="filter">
       <label for="sede-search">SEDE</label>
-      <input type="text" id="sede-search" placeholder="Buscar...">
-
+      <div class="input-container">
+        <input type="text" id="sede-search" placeholder="Buscar...">
+        <button type="button" id="clean-filter-sede">x</button>
+      </div>
       <div class="select-options-sedes">
         <label><input type="checkbox" id="select-all-sedes"> (Seleccionar todo)</label>
         {% for sede in sedes %}
@@ -119,10 +128,10 @@
     <button id="search" class="btn btn-primary btn-md">Buscar</button>
   </div>
 
-   <!-- botón de mostrar datos -->
-   <div class="d-flex justify-content-center p-3">
+  <!-- botón de mostrar datos -->
+  <!-- <div class="d-flex justify-content-center p-3">
     <button id="show" class="btn btn-danger btn-md">mostrar datos</button>
-  </div>
+  </div> -->
 
   <div class="container-xxl">
     <div class="row">
