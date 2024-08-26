@@ -41,8 +41,7 @@ class PronosticoMovil:
         #lista de pronosticos para el siguiente mes
         lista_pronosticos = [promedio_movil.iloc[i, cantidadMeses] for i in promedio_movil.index]
         #lista de pronosticos redondeado
-        lista_pronosticos_redondeo = [round(i * 2) for i in lista_pronosticos]
-        
+        lista_pronosticos_redondeo = [(i * 2) for i in lista_pronosticos]
         total_meses_pronostico = (demanda.shape[1] - 1) - n #total de meses a pronosticar menos el siguiente
         
         #CALCULO DEL MAD(MEAN ABSOLUTE DEVIATION) 
@@ -100,7 +99,7 @@ class PronosticoMovil:
         #lista de pronosticos para el siguiente mes
         lista_pronosticos = [promedio_movil.iloc[i, cantidadMeses] for i in promedio_movil.index]
         #lista de pronosticos redondeado
-        lista_pronosticos_redondeo = [round(i * 2) for i in lista_pronosticos]
+        lista_pronosticos_redondeo = [(i * 2) for i in lista_pronosticos]
         
         total_meses_pronostico = (demanda.shape[1] - 1) - n #total de meses a pronosticar menos el siguiente
         
@@ -159,7 +158,7 @@ class PronosticoMovil:
         #lista de pronosticos para el siguiente mes
         lista_pronosticos = [promedio_movil.iloc[i, cantidadMeses] for i in promedio_movil.index]
         #lista de pronosticos redondeado
-        lista_pronosticos_redondeo = [round(i * 2) for i in lista_pronosticos]
+        lista_pronosticos_redondeo = [(i * 2) for i in lista_pronosticos]
         
         total_meses_pronostico = (demanda.shape[1] - 1) - n #total de meses a pronosticar menos el siguiente
         

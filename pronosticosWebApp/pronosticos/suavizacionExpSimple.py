@@ -52,7 +52,7 @@ class PronosticoExpSimple:
         #guardar los pronosticos del siguiente mes en una lista
         lista_pronosticos=[demanda.iloc[i,cantidadMeses] for i in demanda.index]
         #lista de pronosticos redondeado
-        lista_pronosticos_redondeo = [round(i*2) for i in lista_pronosticos]
+        lista_pronosticos_redondeo = [(i*2) for i in lista_pronosticos]
         
         errores, erroresMape, erroresMapePrima, erroresCuadraticoMedio = [], [], [], []
         MAD=[] #mean absolute deviation

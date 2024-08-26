@@ -63,7 +63,7 @@ class PronosticoExpDoble:
         #lista de pronosticos para el siguiente mes
         lista_pronosticos = demanda.iloc[:, cantidadMeses].values.tolist()
         #lista de pronosticos redondeado
-        lista_pronosticos_redondeo = [round(i*2) for i in lista_pronosticos]
+        lista_pronosticos_redondeo = [(i*2) for i in lista_pronosticos]
         
         errores, erroresMape, erroresMapePrima, erroresCuadraticoMedio = [], [], [], []
         MAD=[] #mean absolute deviation
