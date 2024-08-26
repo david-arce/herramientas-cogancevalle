@@ -48,7 +48,7 @@ class Pronosticos:
         i = 0
         pronostico_final_redondeado=[]
         for valores in zip(lista_pronosticos_redondeo_movil_p3, lista_pronosticos_redondeo_p4, lista_pronosticos_redondeo_p5,  lista_pronosticos_redondeo_ses, lista_pronosticos_redondeo_sed):
-            pronostico_final_redondeado.append(valores[origen_ECM[i]])
+            pronostico_final_redondeado.append(math.ceil(valores[origen_ECM[i]]))
             i += 1
         
         i = 0
