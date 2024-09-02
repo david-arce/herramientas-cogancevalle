@@ -41,7 +41,7 @@
 
 
   <div class="d-flex justify-content-center p-3">
-    <button id="send-data" class="btn btn-primary btn-md">Generar gráfica</button>
+    <button id="send-data" class="btn btn-primary btn-md">Generar gráfica <i class="bi bi-graph-up"></i></button>
   </div>
 
 
@@ -125,7 +125,7 @@
 
   <!-- botón de busqueda -->
   <div class="d-flex justify-content-center p-3">
-    <button id="search" class="btn btn-primary btn-md">Buscar</button>
+    <button id="search" class="btn btn-primary btn-md">Buscar <i class="bi bi-search"></i></button>
   </div>
 
   <!-- botón de mostrar datos -->
@@ -141,18 +141,20 @@
             <caption>Tabla de pronósticos</caption>
             <thead>
               <tr>
-                <th class="centered">#</th>
-                <th class="centered">ITEMS</th>
-                <th class="centered">PROVEEDOR</th>
-                <th class="centered">PRODUCTOS</th>
-                <th class="centered">SEDE</th>
-                <th class="centered">MAD</th>
-                <th class="centered">MAPE</th>
-                <th class="centered">MAPE'</th>
-                <th class="centered">ECM</th>
-                <th class="centered">PRONOSTICO</th>
-                <th class="centered">PRONOSTICO 2 MESES</th>
-                <th class="centered">PRONOSTICO SELECCIONADO</th>
+                <th class="centered">#</th> <!-- 0 -->
+                <th class="centered">ID</th> <!-- 1 -->
+                <th class="centered">BODEGA</th> <!-- 2 -->
+                <th class="centered">ITEM</th> <!-- 3 -->
+                <th class="centered">CODIGO</th> <!-- 4 --> 
+                <th class="centered">PRODUCTO</th> <!-- 5 -->
+                <th class="centered">UNIMED</th> <!-- 6 -->
+                <th class="centered">LOTEPRO</th> <!-- 7 -->
+                <th class="centered">PROVEEDOR</th>  <!-- 8 -->
+                <th class="centered">SEDE</th> <!-- 9 -->
+                <th class="centered">CANTIDAD</th> <!-- 10 -->
+                <th class="centered">CANTIDAD 2 MESES</th> <!-- 11 -->
+                <th class="centered">PRECIO</th> <!-- 12 -->
+                <th class="centered">FECHA</th> <!-- 13 -->
               </tr>
             </thead>
             <tbody id="tableBody_productos"></tbody>

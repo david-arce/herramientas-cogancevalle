@@ -2,9 +2,15 @@ import os
 import subprocess
 import chardet
 
+# Ruta del archivo models.py
+file_path = 'pronosticosWebApp/models.py'
+
+# Eliminar el archivo models.py si ya existe
+if os.path.exists(file_path):
+    os.remove(file_path)
 
 # Generar el archivo models.py con inspectdb
-subprocess.run(['python', 'manage.py', 'inspectdb', 'productos', '>', 'pronosticosWebApp/models.py'], shell=True)
+subprocess.run(['python', 'manage.py', 'inspectdb', 'demanda', '>', 'pronosticosWebApp/models.py'], shell=True)
 
 # Convertir el archivo models.py a UTF-8
 input_file_path = 'pronosticosWebApp/models.py'
@@ -23,3 +29,7 @@ with open(output_file_path, 'w', encoding='utf-8') as output_file:
     output_file.write(content)
 
 os.replace(output_file_path, input_file_path)
+
+# Crear las migraciones
+subprocess.run(['python', 'manage.py', 'makemigrations'], shell=True)
+subprocess.run(['python', 'manage.py', 'migrate'], shell=True)

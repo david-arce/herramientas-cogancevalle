@@ -3,7 +3,12 @@ let dataTableIsInitialized = false;
 let selectedRowData = null;
 let productosData = null; // Variable global para almacenar los datos
 
+window.addEventListener('load', async () => {
+    updateData();
+});
+
 const handleRowClick = (data) => {
+    // const filteredData = data.slice(1);  // Eliminar el primer elemento (indice de la tabla)
     selectedRowData = data;
     console.log("Selected row data:", selectedRowData);
 };
@@ -36,18 +41,19 @@ document.getElementById('export-visible').addEventListener('click', function () 
 
     // Obtener todos los datos actualmente filtrados y visibles en el DataTable
     const filteredData = dataTable.rows({ filter: 'applied' }).data().toArray();
+    console.log("Datos filtrados:", filteredData);
 
     // Índices de las columnas que deseas exportar (empezando desde 0)
-    const columnsToExport = [1, 2, 3, 4, 9, 10]; // Cambia estos valores según tus necesidades
-    const columnsToExport2 = [0, 1, 2, 3, 4, 5]; // nombre columnas visibles en el datatable
+    const columnsToExport = [0, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13]; // columnas a exportar
+    // const columnsToExport2 = [0, 1, 2, 3, 4, 5]; // nombre columnas 
 
     // Recolectar encabezados de las columnas seleccionadas
-    const headers = [];
-    $('#datatable-productos thead th').each(function (index) {
-        if (columnsToExport2.includes(index)) {
-            headers.push($(this).text());
-        }
-    });
+    const headers = ['REG.N12', 'BODEGA.C5', 'PRODUCTO.C15', 'CODCMC.C50', 'NOMBRE.C100', 'UNIMED.C4', 'LOTEPRO.C12', 'CANTIDAD.N20', 'CANTIDAD.N20', 'PRECIO_UNITARIO.N20', 'FECHAENTREGA.C10'];
+    // $('#datatable-productos thead th').each(function (index) {
+    //     if (columnsToExport2.includes(index)) {
+    //         headers.push($(this).text());
+    //     }
+    // });
 
     // Convertir los datos filtrados en un formato adecuado para la exportación
     const exportData = [headers]; // Incluir encabezados como la primera fila
@@ -72,18 +78,13 @@ document.getElementById('export-visible').addEventListener('click', function () 
 // Función para exportar todos los datos del DataTable
 document.getElementById('export-all').addEventListener('click', function () {
     // Índices de las columnas que deseas exportar (empezando desde 0)
-    const columnsToExport = [1, 2, 3, 4, 9, 10]; // Cambia estos valores según tus necesidades
-    const columnsToExport2 = [0, 1, 2, 3, 4, 5]; // nombre columnas visibles en el datatable
+    const columnsToExport = [0, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13];
+    
     // Obtener todos los datos del DataTable
     const data = dataTable.rows().data().toArray();
 
     // Recolectar encabezados de las columnas seleccionadas
-    const headers = [];
-    $('#datatable-productos thead th').each(function (index) {
-        if (columnsToExport2.includes(index)) {
-            headers.push($(this).text());
-        }
-    });
+    const headers = ['REG.N12', 'BODEGA.C5', 'PRODUCTO.C15', 'CODCMC.C50', 'NOMBRE.C100', 'UNIMED.C4', 'LOTEPRO.C12', 'CANTIDAD.N20', 'CANTIDAD.N20', 'PRECIO_UNITARIO.N20', 'FECHAENTREGA.C10'];
 
     // Recolectar todos los datos en formato Array of Arrays
     const exportData = [headers];
@@ -103,7 +104,7 @@ document.getElementById('export-all').addEventListener('click', function () {
 });
 
 // Añadir el evento para actualizar los datos
-document.getElementById('update-data').addEventListener('click', async () => {
+async function updateData(){
     const myElement = document.getElementById('chart');
     myElement.style.display = 'none';
     productosData = null; // Limpiar los datos almacenados
@@ -119,7 +120,7 @@ document.getElementById('update-data').addEventListener('click', async () => {
             loader.style.display = 'none';
         }
     }
-});
+};
 
 // Helper function to get CSRF token from cookies
 function getCookie(name) {
@@ -142,27 +143,13 @@ const dataTableOptions = {
     buttons: [
         {
             extend: 'pageLength',
-            text: 'Paginación',
+            text: 'Mostrar',
             //className: 'btn btn-info',
             titleAttr: 'Paginación',
         },
     ],
     select: true,
     language: {
-        "searchPanes": {
-            "clearMessage": "Borrar todo",
-            "collapse": {
-                "0": "Paneles de búsqueda",
-                "_": "Paneles de búsqueda (%d)"
-            },
-            "count": "{total}",
-            "countFiltered": "{shown} ({total})",
-            "emptyPanes": "Sin paneles de búsqueda",
-            "loadMessage": "Cargando paneles de búsqueda",
-            "title": "Filtros Activos - %d",
-            "showMessage": "Mostrar Todo",
-            "collapseMessage": "Ocultar Todo"
-        },
         "select": {
             "rows": {
                 "1": "1 fila seleccionada",
@@ -182,7 +169,7 @@ const dataTableOptions = {
 
     columnDefs: [
         { className: 'centered', targets: '_all' },
-        { targets: [0, 5, 6, 7, 8, 11], visible: false, searchable: false },
+        { targets: [0, 1, 2, 4, 6, 7, 12, 13], visible: false, searchable: false },
     ],
 };
 
@@ -204,13 +191,13 @@ const initDataTable = async (datos) => {
     });
 
     // Handle click outside the table to deselect the row
-    $(document).on('click', function (e) {
-        const container = $("#datatable-productos");
-        if (!container.is(e.target) && container.has(e.target).length === 0) {
-            dataTable.rows().deselect();
-            selectedRowData = null; // Clear the selected row data
-        }
-    });
+    // $(document).on('click', function (e) {
+    //     const container = $("#datatable-productos");
+    //     if (!container.is(e.target) && container.has(e.target).length === 0) {
+    //         dataTable.rows().deselect();
+    //         selectedRowData = null; // Clear the selected row data
+    //     }
+    // });
 
     dataTableIsInitialized = true;
 };
@@ -222,22 +209,32 @@ const listProductos = async (datos) => {
         // document.getElementById('loader').style.display = 'block';
         loader.style.display = 'block';
 
+        //obtener fecha actual en formato yyyy-mm-dd
+        const fechaActual = new Date();
+        const año = fechaActual.getFullYear();
+        const mes = String(fechaActual.getMonth() + 1).padStart(2, '0'); // Los meses empiezan en 0
+        const día = String(fechaActual.getDate()).padStart(2, '0');
+
+        const fechaFormateada = `${año}/${mes}/${día}`;
+
         let content = ``;
         datos.productos.forEach((producto, index) => {
             content += `
                 <tr>
                     <td>${index + 1}</td>
-                    <td>${producto.Items}</td>
-                    <td>${producto.Proveedor}</td>
-                    <td>${producto.Productos}</td>
-                    <td>${producto.Sede}</td>
-                    <td>${producto.MAD}</td>
-                    <td>${producto.MAPE}</td>
-                    <td>${producto.MAPE_PRIMA}</td>
-                    <td>${producto.ECM}</td>
-                    <td>${producto.Pronostico}</td>
-                    <td>${producto.Pronostico_2_meses}</td>
-                    <td>${producto.Pronostico_seleccionado}</td>
+                    <td>${producto.id}</td>
+                    <td>${producto.bodega}</td>
+                    <td>${producto.item}</td>
+                    <td>${producto.codigo}</td>
+                    <td>${producto.producto}</td>
+                    <td>${producto.unimed}</td>
+                    <td>${'.'}</td>
+                    <td>${producto.proveedor}</td>
+                    <td>${producto.sede}</td>
+                    <td>${producto.cantidad}</td>
+                    <td>${producto.cantidad_2_meses}</td>
+                    <td>${producto.precio}</td>
+                    <td>${fechaFormateada}</td>
                 </tr>
             `;
         });
@@ -270,9 +267,6 @@ const initChart = async () => {
     myChart.resize();
 };
 
-window.addEventListener('load', async () => {
-    // await initDataTable();
-});
 
 //configurar modo oscuro
 document.getElementById('mode-toggle').addEventListener('click', function () {
@@ -302,7 +296,7 @@ document.getElementById('search').addEventListener('click', async () => {
     const selectedProveedores = getSelectedValues('select-options-proveedores', 'select-all-proveedores');
     const selectedProductos = getSelectedValues('select-options-productos', 'select-all-productos');
     const selectedSedes = getSelectedValues('select-options-sedes', 'select-all-sedes');
-
+    
     function filter(data, items, proveedores, productos, sedes) {
         // Convertir arrays de selección a números (para el filtro de Items)
         items = items.map(Number);
@@ -310,10 +304,10 @@ document.getElementById('search').addEventListener('click', async () => {
         // Filtrar los productos que coincidan con todos los criterios seleccionados
         return data.productos.filter(producto => {
             // Verificar que el producto cumpla con todos los criterios seleccionados
-            const matchItems = items.length === 0 || items.includes(producto.Items);
-            const matchProveedores = proveedores.length === 0 || proveedores.includes(producto.Proveedor);
-            const matchProductos = productos.length === 0 || productos.includes(producto.Productos);
-            const matchSedes = sedes.length === 0 || sedes.includes(producto.Sede);
+            const matchItems = items.length === 0 || items.includes(producto.item);
+            const matchProveedores = proveedores.length === 0 || proveedores.includes(producto.proveedor);
+            const matchProductos = productos.length === 0 || productos.includes(producto.producto);
+            const matchSedes = sedes.length === 0 || sedes.includes(producto.sede);
 
             return matchItems && matchProveedores && matchProductos && matchSedes;
         });
@@ -337,7 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function getSelectedValues(selectId, selectAll) {
     const checkboxes = document.querySelectorAll('.' + selectId + ' input[type="checkbox"]:not(#' + selectAll + ')');
     const selectedValues = [];
-
+    
     checkboxes.forEach(function (checkbox) {
         if (checkbox.checked) {
             selectedValues.push(checkbox.value);
@@ -348,6 +342,7 @@ function getSelectedValues(selectId, selectAll) {
 
 function cleanSelectedValues(selectId, selectAll) {
     const checkboxes = document.querySelectorAll('.' + selectId + ' input[type="checkbox"]:not(#' + selectAll + ')');
+    const selectAllCheckbox = document.getElementById(selectAll);
     checkboxes.forEach(checkbox => {
         checkbox.checked = false;
     });
@@ -372,7 +367,7 @@ function setupFilter(searchInputId, selectAllId) {
     const selectAllCheckbox = document.getElementById(selectAllId);
     const checkboxes = selectAllCheckbox.parentNode.parentNode.querySelectorAll('input[type="checkbox"]:not(#' + selectAllId + ')');
     // const checkboxes = document.querySelectorAll('.select-options input[type="checkbox"]:not(#' + selectAllId + ')');
-
+    
     // Función para seleccionar/deseleccionar todas las opciones
     selectAllCheckbox.addEventListener('change', (e) => {
         checkboxes.forEach(checkbox => {
@@ -387,14 +382,14 @@ function setupFilter(searchInputId, selectAllId) {
             selectAllCheckbox.checked = allChecked;
         });
     });
-
+    
     // Filtrar las opciones de acuerdo a la búsqueda
     searchInput.addEventListener('keyup', () => {
         const filter = searchInput.value.toLowerCase();
         checkboxes.forEach(checkbox => {
             const label = checkbox.parentNode;
             const text = label.textContent.toLowerCase();
-
+            
             if (text.includes(filter)) {
                 label.style.display = "";
             } else {
@@ -457,4 +452,5 @@ document.getElementById('clean-filter-sede').addEventListener('click', function 
         label.style.display = ""; // Mostrar todas las opciones
     });
 });
+
 

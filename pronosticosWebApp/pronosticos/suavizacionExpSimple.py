@@ -1,7 +1,6 @@
 import time
 import pandas as pd
 import numpy as np
-from pronosticosWebApp.models import Productos
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 
 class PronosticoExpSimple:
@@ -22,7 +21,7 @@ class PronosticoExpSimple:
         demanda = df_demanda[columnas_meses].copy()
         
         valores_demanda = demanda.values.flatten().tolist() #faltten aplana la matriz resultante y tolist convierte en lista
-        
+    
         #Ft = Ft-1 + alpha*(Xt-1 - Ft-1)
         pronostico_ses = []
         for i in range(0, len(valores_demanda), cantidadMeses):
@@ -36,7 +35,7 @@ class PronosticoExpSimple:
         valores_pronostico_mes_siguiente = [pronostico_ses[i] for i in range(cantidadMeses, len(pronostico_ses), cantidadMeses+1)]
        
         # Asignar los valores del pronostico al siguiente mes y se agrega al dataframe demanda
-        demanda['MAYO_2'] = valores_pronostico_mes_siguiente
+        demanda['pronostico'] = valores_pronostico_mes_siguiente
         
         lista_nombre_columnas = demanda.columns.to_list()  #lista de los nombres de las columnas
         # Dividir la lista de valores en segmentos de longitud 8(cantidad de meses más el pronostico)
