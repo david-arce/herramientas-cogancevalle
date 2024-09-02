@@ -16,3 +16,4 @@ six==1.16.0
 sqlparse==0.5.1
 tzdata==2024.1
 virtualenv==20.26.3
+SQLAlchemy==2.0.31
