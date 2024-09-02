@@ -3,8 +3,8 @@ let dataTableIsInitialized = false;
 let selectedRowData = null;
 let productosData = null; // Variable global para almacenar los datos
 
+updateData();
 window.addEventListener('load', async () => {
-    updateData();
 });
 
 const handleRowClick = (data) => {
