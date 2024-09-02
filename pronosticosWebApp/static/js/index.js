@@ -290,26 +290,26 @@ const initChart = async () => {
 
 
 //configurar modo oscuro
-document.getElementById('mode-toggle').addEventListener('click', function () {
-    document.body.classList.toggle('dark-mode');
-    document.body.classList.toggle('light-mode');
-    const tables = document.querySelectorAll('.table');
-    tables.forEach(table => {
-        table.classList.toggle('dark-mode');
-        table.classList.toggle('light-mode');
-    });
-    const charts = document.querySelectorAll('.chart');
-    charts.forEach(chart => {
-        chart.classList.toggle('dark-mode');
-        chart.classList.toggle('light-mode');
-    });
-    // Cambiar el texto del botón
-    if (document.body.classList.contains('dark-mode')) {
-        this.textContent = 'Modo Claro';
-    } else {
-        this.textContent = 'Modo Oscuro';
-    }
-});
+// document.getElementById('mode-toggle').addEventListener('click', function () {
+//     document.body.classList.toggle('dark-mode');
+//     document.body.classList.toggle('light-mode');
+//     const tables = document.querySelectorAll('.table');
+//     tables.forEach(table => {
+//         table.classList.toggle('dark-mode');
+//         table.classList.toggle('light-mode');
+//     });
+//     const charts = document.querySelectorAll('.chart');
+//     charts.forEach(chart => {
+//         chart.classList.toggle('dark-mode');
+//         chart.classList.toggle('light-mode');
+//     });
+//     // Cambiar el texto del botón
+//     if (document.body.classList.contains('dark-mode')) {
+//         this.textContent = 'Modo Claro';
+//     } else {
+//         this.textContent = 'Modo Oscuro';
+//     }
+// });
 
 document.getElementById('search').addEventListener('click', async () => {
 
