@@ -1,11 +1,10 @@
 from django.shortcuts import render
 from django.http.response import JsonResponse
+from django.views.decorators.http import require_GET
 from .models import Demanda
 from django.views.decorators.csrf import csrf_exempt
-from django.core.paginator import Paginator
 import json
 
-import pandas as pd
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 from pronosticosWebApp.pronosticos.pronosticos import Pronosticos
 
@@ -44,8 +43,9 @@ def send_data(request):
 #     productos = Productos.objects.values('item', 'proveedor', 'descripción', 'sede', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre', 'enero', 'febrero', 'marzo', 'abril', 'total', 'promedio')
 #     return render(request, 'template.html', {'productos': productos})
 
-def lista_productos(request):
-    
+
+# @require_GET
+def lista_productos():
     global df_demanda, df_promedio_movil_p3, df_promedio_movil_p4, df_promedio_movil_p5, df_pronostico_ses, df_pronostico_sed, df_pronosticos
     global items, proveedor, productos, sede
     
@@ -54,10 +54,13 @@ def lista_productos(request):
     
     # Convertir el DataFrame a JSON
     df_pronosticos_json = df_pronosticos.to_dict(orient='records')
+    global data
     data = {
         "productos": df_pronosticos_json,
     }
-    
+    return 
+
+def demanda(request):
     return JsonResponse(data, safe=False)
 
 def meses():

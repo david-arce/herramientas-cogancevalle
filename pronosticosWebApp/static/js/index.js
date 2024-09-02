@@ -3,8 +3,9 @@ let dataTableIsInitialized = false;
 let selectedRowData = null;
 let productosData = null; // Variable global para almacenar los datos
 
-updateData();
+// updateData();
 window.addEventListener('load', async () => {
+    uploadData();
 });
 
 const handleRowClick = (data) => {
@@ -104,9 +105,29 @@ document.getElementById('export-all').addEventListener('click', function () {
 });
 
 // Añadir el evento para actualizar los datos
-async function updateData(){
-    const myElement = document.getElementById('chart');
-    myElement.style.display = 'none';
+// async function updateData(){
+//     const myElement = document.getElementById('chart');
+//     myElement.style.display = 'none';
+//     productosData = null; // Limpiar los datos almacenados
+//     if (!productosData) {
+//         const loader = document.querySelector('.spinner-border');
+//         try {
+//             loader.style.display = 'block';
+//             const response = await fetch('/lista/');
+//             productosData = await response.json();
+//         } catch (error) {
+//             console.error('Error al obtener los datos:', error);
+//         } finally {
+//             loader.style.display = 'none';
+//         }
+//     }
+// };
+
+// Actualizar cada 10 segundos
+// setInterval(updateData, 2000);
+
+// función para cargar los datos
+async function uploadData() {
     productosData = null; // Limpiar los datos almacenados
     if (!productosData) {
         const loader = document.querySelector('.spinner-border');
