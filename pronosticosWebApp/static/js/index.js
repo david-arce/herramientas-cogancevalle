@@ -60,7 +60,7 @@ document.getElementById('export-visible').addEventListener('click', function () 
     const exportData = [headers]; // Incluir encabezados como la primera fila
     filteredData.forEach(row => {
         const rowData = [];
-        columnsToExport.forEach(colIndex => {
+        columnsToExport.forEach((colIndex) => {
             rowData.push(row[colIndex]);
         });
         exportData.push(rowData);
@@ -72,37 +72,59 @@ document.getElementById('export-visible').addEventListener('click', function () 
     // Añadir la hoja de trabajo al libro
     XLSX.utils.book_append_sheet(wb, ws, 'Datos_Productos');
 
+    //obtener fecha actual 
+    const fechaActual = new Date();
+    const year = fechaActual.getFullYear();
+    const mes = String(fechaActual.getMonth() + 1).padStart(2, '0'); // Los meses empiezan en 0
+    const dia = String(fechaActual.getDate()).padStart(2, '0');
+
+    const fechaFormateada = `${dia}/${mes}/${year}`;
+    const nombreArchivo = `Datos_filtrados_${fechaFormateada}.xlsx`;
     // Guardar el archivo Excel
-    XLSX.writeFile(wb, 'Datos_Productos_Filtrados.xlsx');
+    XLSX.writeFile(wb, nombreArchivo);
 });
 
 // Función para exportar todos los datos del DataTable
-document.getElementById('export-all').addEventListener('click', function () {
-    // Índices de las columnas que deseas exportar (empezando desde 0)
-    const columnsToExport = [0, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13];
+// document.getElementById('export-all').addEventListener('click', function () {
+//     // Índices de las columnas que deseas exportar (empezando desde 0)
+//     const columnsToExport = [0, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13];
     
-    // Obtener todos los datos del DataTable
-    const data = dataTable.rows().data().toArray();
+//     // Obtener todos los datos del json productosData
+//     const data = productosData.productos.map(producto => { 
+//         return [
+//             producto.id,
+//             producto.bodega,
+//             producto.item,
+//             producto.codigo,
+//             producto.producto,
+//             producto.unimed,
+//             producto.lotepro,
+//             producto.cantidad,
+//             producto.cantidad_2_meses,
+//             producto.precio,
+//             producto.fechaentrega,
+//         ];
+//     });
 
-    // Recolectar encabezados de las columnas seleccionadas
-    const headers = ['REG.N12', 'BODEGA.C5', 'PRODUCTO.C15', 'CODCMC.C50', 'NOMBRE.C100', 'UNIMED.C4', 'LOTEPRO.C12', 'CANTIDAD.N20', 'CANTIDAD.N20', 'PRECIO_UNITARIO.N20', 'FECHAENTREGA.C10'];
+//     // Recolectar encabezados de las columnas seleccionadas
+//     const headers = ['REG.N12', 'BODEGA.C5', 'PRODUCTO.C15', 'CODCMC.C50', 'NOMBRE.C100', 'UNIMED.C4', 'LOTEPRO.C12', 'CANTIDAD.N20', 'CANTIDAD.N20', 'PRECIO_UNITARIO.N20', 'FECHAENTREGA.C10'];
 
-    // Recolectar todos los datos en formato Array of Arrays
-    const exportData = [headers];
-    data.forEach(row => {
-        const rowData = [];
-        columnsToExport.forEach(colIndex => {
-            rowData.push(row[colIndex]);
-        });
-        exportData.push(rowData);
-    });
+//     // Recolectar todos los datos en formato Array of Arrays
+//     const exportData = [headers];
+//     data.forEach(row => {
+//         const rowData = [];
+//         columnsToExport.forEach(colIndex => {
+//             rowData.push(row[colIndex]);
+//         });
+//         exportData.push(rowData);
+//     });
 
-    // Crear hoja de cálculo
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(exportData);
-    XLSX.utils.book_append_sheet(wb, ws, 'Datos_Productos');
-    XLSX.writeFile(wb, 'Datos_Productos.xlsx');
-});
+//     // Crear hoja de cálculo
+//     const wb = XLSX.utils.book_new();
+//     const ws = XLSX.utils.aoa_to_sheet(exportData);
+//     XLSX.utils.book_append_sheet(wb, ws, 'Datos_Productos');
+//     XLSX.writeFile(wb, 'Datos_Productos.xlsx');
+// });
 
 // Añadir el evento para actualizar los datos
 // async function updateData(){
@@ -199,17 +221,26 @@ const initDataTable = async (datos) => {
 
     // await listProductos();
     //dataTable = $('#datatable-productos').DataTable(dataTableOptions);
+    const loader = document.querySelector('.spinner-border');
+    try {
+        loader.style.display = 'block';
+        await listProductos(datos);
+        dataTable = $('#datatable-productos').DataTable({
+            ...dataTableOptions,
 
-    await listProductos(datos);
-    dataTable = $('#datatable-productos').DataTable({
-        ...dataTableOptions,
-
-        createdRow: function (row, data, dataIndex) {
-            $(row).click(function () {
-                handleRowClick(data);
-            });
-        }
-    });
+            createdRow: function (row, data, dataIndex) {
+                $(row).click(function () {
+                    handleRowClick(data);
+                });
+            }
+        });
+    } catch (e) {
+        alert(e);
+    } finally {
+        // Ocultar el loader
+        // document.getElementById('loader').style.display = 'none';
+        loader.style.display = 'none';
+    }
 
     // Handle click outside the table to deselect the row
     // $(document).on('click', function (e) {
@@ -226,17 +257,17 @@ const initDataTable = async (datos) => {
 const listProductos = async (datos) => {
     const loader = document.querySelector('.spinner-border');
     try {
+        loader.style.display = 'block';
         // Mostrar el loader
         // document.getElementById('loader').style.display = 'block';
-        loader.style.display = 'block';
 
         //obtener fecha actual en formato yyyy-mm-dd
         const fechaActual = new Date();
-        const año = fechaActual.getFullYear();
+        const year = fechaActual.getFullYear();
         const mes = String(fechaActual.getMonth() + 1).padStart(2, '0'); // Los meses empiezan en 0
-        const día = String(fechaActual.getDate()).padStart(2, '0');
+        const dia = String(fechaActual.getDate()).padStart(2, '0');
 
-        const fechaFormateada = `${año}/${mes}/${día}`;
+        const fechaFormateada = `${year}/${mes}/${dia}`;
 
         let content = ``;
         datos.productos.forEach((producto, index) => {
@@ -249,7 +280,7 @@ const listProductos = async (datos) => {
                     <td>${producto.codigo}</td>
                     <td>${producto.producto}</td>
                     <td>${producto.unimed}</td>
-                    <td>${'.'}</td>
+                    <td>${producto.lotepro}</td>
                     <td>${producto.proveedor}</td>
                     <td>${producto.sede}</td>
                     <td>${producto.cantidad}</td>
@@ -288,31 +319,8 @@ const initChart = async () => {
     myChart.resize();
 };
 
-
-//configurar modo oscuro
-// document.getElementById('mode-toggle').addEventListener('click', function () {
-//     document.body.classList.toggle('dark-mode');
-//     document.body.classList.toggle('light-mode');
-//     const tables = document.querySelectorAll('.table');
-//     tables.forEach(table => {
-//         table.classList.toggle('dark-mode');
-//         table.classList.toggle('light-mode');
-//     });
-//     const charts = document.querySelectorAll('.chart');
-//     charts.forEach(chart => {
-//         chart.classList.toggle('dark-mode');
-//         chart.classList.toggle('light-mode');
-//     });
-//     // Cambiar el texto del botón
-//     if (document.body.classList.contains('dark-mode')) {
-//         this.textContent = 'Modo Claro';
-//     } else {
-//         this.textContent = 'Modo Oscuro';
-//     }
-// });
-
 document.getElementById('search').addEventListener('click', async () => {
-
+    
     const selectedItems = getSelectedValues('select-options-items', 'select-all-items');
     const selectedProveedores = getSelectedValues('select-options-proveedores', 'select-all-proveedores');
     const selectedProductos = getSelectedValues('select-options-productos', 'select-all-productos');
@@ -475,3 +483,24 @@ document.getElementById('clean-filter-sede').addEventListener('click', function 
 });
 
 
+//configurar modo oscuro
+// document.getElementById('mode-toggle').addEventListener('click', function () {
+//     document.body.classList.toggle('dark-mode');
+//     document.body.classList.toggle('light-mode');
+//     const tables = document.querySelectorAll('.table');
+//     tables.forEach(table => {
+//         table.classList.toggle('dark-mode');
+//         table.classList.toggle('light-mode');
+//     });
+//     const charts = document.querySelectorAll('.chart');
+//     charts.forEach(chart => {
+//         chart.classList.toggle('dark-mode');
+//         chart.classList.toggle('light-mode');
+//     });
+//     // Cambiar el texto del botón
+//     if (document.body.classList.contains('dark-mode')) {
+//         this.textContent = 'Modo Claro';
+//     } else {
+//         this.textContent = 'Modo Oscuro';
+//     }
+// });

@@ -31,14 +31,11 @@
     </div>
   </div>
 
-
   <div class="d-flex justify-content-center ">
     <div class="spinner-border" role="status" style="display: none;">
       <span class="visually-hidden">Loading...</span>
     </div>
   </div>
-
-
 
   <div class="d-flex justify-content-center p-3">
     <button id="send-data" class="btn btn-primary btn-md">Generar gráfica <i class="bi bi-graph-up"></i></button>
@@ -48,14 +45,11 @@
   <!-- <div class="d-flex justify-content-center p-3">
     <button id="load-data" class="btn btn-primary btn-md">Cargar datos <i class="bi bi-cloud-arrow-down"></i></button>
   </div> -->
-
+  
   <div class="d-grid gap-2 d-md-flex justify-content-md-center">
     <button id="export-visible" class="btn btn-success btn-md mx-5" type="button"><i
         class="bi bi-file-earmark-spreadsheet"></i>
-      Exportar datos filtrados</button>
-    <button id="export-all" class="btn btn-success btn-md mx-5" type="button"> <i
-        class="bi bi-file-earmark-spreadsheet"></i>
-      Exportar Todos los datos</button>
+      Exportar a excel</button>
   </div>
 
   <div class="buttons">
@@ -144,7 +138,7 @@
                 <th class="centered">LOTEPRO</th> <!-- 7 -->
                 <th class="centered">PROVEEDOR</th>  <!-- 8 -->
                 <th class="centered">SEDE</th> <!-- 9 -->
-                <th class="centered">CANTIDAD</th> <!-- 10 -->
+                <th class="centered">CANTIDAD 1 MES</th> <!-- 10 -->
                 <th class="centered">CANTIDAD 2 MESES</th> <!-- 11 -->
                 <th class="centered">PRECIO</th> <!-- 12 -->
                 <th class="centered">FECHA</th> <!-- 13 -->
@@ -171,6 +165,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
   <!--custom js-->
   <script src="{% static 'js/index.js' %}"></script>
