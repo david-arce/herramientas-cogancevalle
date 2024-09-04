@@ -182,7 +182,7 @@ function getCookie(name) {
 }
 
 const dataTableOptions = {
-    dom: 'Brtip', // Agregar el control de paneles de búsqueda
+    dom: 'PBfrtip', // Agregar el control de paneles de búsqueda
     buttons: [
         {
             extend: 'pageLength',
@@ -209,18 +209,27 @@ const dataTableOptions = {
         "loadingRecords": "Cargando...",
         "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
     },
-
+    searchPanes: {
+        cascadePanes: true
+    },
     columnDefs: [
+        {
+            searchPanes: {
+                show: false,
+            },
+            targets: [0, 5, 6, 7, 8, 9, 10, 11]
+        },
         { className: 'centered', targets: '_all' },
         { targets: [0, 1, 2, 4, 6, 7, 12, 13], visible: false, searchable: false },
     ],
 };
 
-const initDataTable = async (datos) => {
+const initDataTable = async () => {
     if (dataTableIsInitialized) dataTable.destroy();
 
     // await listProductos();
     //dataTable = $('#datatable-productos').DataTable(dataTableOptions);
+
     const loader = document.querySelector('.spinner-border');
     try {
         loader.style.display = 'block';
@@ -254,7 +263,7 @@ const initDataTable = async (datos) => {
     dataTableIsInitialized = true;
 };
 
-const listProductos = async (datos) => {
+const listProductos = async () => {
     const loader = document.querySelector('.spinner-border');
     try {
         loader.style.display = 'block';
@@ -269,8 +278,13 @@ const listProductos = async (datos) => {
 
         const fechaFormateada = `${year}/${mes}/${dia}`;
 
+        if (!productosData) {  // Si los datos aún no se han cargado
+            const response = await fetch('/lista/');
+            productosData = await response.json();
+        }
+
         let content = ``;
-        datos.productos.forEach((producto, index) => {
+        productosData.productos.forEach((producto, index) => {
             content += `
                 <tr>
                     <td>${index + 1}</td>

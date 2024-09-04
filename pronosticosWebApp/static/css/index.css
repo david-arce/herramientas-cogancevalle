@@ -12,7 +12,7 @@
     transition: background-color 0.5s, color 0.5s;
 }
 
-#chart {
+#chart{
     display: none;
 }
 
@@ -103,7 +103,6 @@ body.light-mode #mode-toggle {
     background-color: #fff;
     color: #000;
 }
-
 
 /* Estilos de los filtros */
 .filter-container {
