@@ -103,3 +103,85 @@ body.light-mode #mode-toggle {
     background-color: #fff;
     color: #000;
 }
+
+/* Estilos de los filtros */
+.filter-container {
+    display: flex;
+    justify-content: space-between;
+    /* width: 250px; */
+    gap: 20px;
+    border: 1px solid #ccc;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+}
+
+
+.filter {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+input[type="text"] {
+    width: calc(100% - 20px);
+    padding: 5px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+.filter div:nth-of-type(2) {
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    background-color: white;
+    padding: 5px;
+    border-radius: 3px;
+}
+
+.filter label {
+    display: block;
+    margin-bottom: 5px;
+    cursor: pointer;
+}
+
+.buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+button {
+    padding: 5px 10px;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+button#cancel {
+    background-color: #34363a;
+}
+
+.input-container {
+    display: flex;
+    align-items: center;
+}
+
+.input-container input {
+    margin-right: 8px;
+    /* Espacio entre el input y el botón */
+    padding: 5px;
+    font-size: 14px;
+}
+
+.input-container button:nth-of-type(1) {
+    padding: 6px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    background-color: #34363a;
+    margin-bottom: auto;
+}
+
