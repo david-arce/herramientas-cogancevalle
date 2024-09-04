@@ -16,7 +16,7 @@
     display: none;
 }
 
-/* .loader-container {
+.loader-container {
     display: flex;
     justify-content: center;
     align-items: center;
@@ -38,7 +38,8 @@
     100% {
         transform: rotate(1turn);
     }
-} */
+} 
+
 
 .btn-short {
     width: 200px !important;

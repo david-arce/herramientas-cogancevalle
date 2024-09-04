@@ -18,7 +18,7 @@
 
 <body class="light-mode">
   <!-- Botón para cambiar de modo -->
-  <button id="mode-toggle">Modo Oscuro</button>
+  <!-- <button id="mode-toggle">Modo Oscuro</button> -->
 
 
   <img class="mx-auto d-block" src="{% static '/imgs/logo_cogancevalle2.png' %}" alt="logo" style="width: 22%;">
@@ -31,31 +31,93 @@
     </div>
   </div>
 
-
   <div class="d-flex justify-content-center ">
     <div class="spinner-border" role="status" style="display: none;">
       <span class="visually-hidden">Loading...</span>
     </div>
   </div>
 
-
-
   <div class="d-flex justify-content-center p-3">
-    <button id="send-data" class="btn btn-primary btn-md">Generar gráfica</button>
+    <button id="send-data" class="btn btn-primary btn-md">Generar gráfica <i class="bi bi-graph-up"></i></button>
   </div>
 
-
-  <!-- Botón para actualizar la tabla -->
-  <div class="d-flex justify-content-center p-3">
-    <button id="update-data" class="btn btn-warning btn-lg" type="button">Actualizar Datos</button>
-  </div>
-
-
+  <!-- botón para cargar los datos -->
+  <!-- <div class="d-flex justify-content-center p-3">
+    <button id="load-data" class="btn btn-primary btn-md">Cargar datos <i class="bi bi-cloud-arrow-down"></i></button>
+  </div> -->
+  
   <div class="d-grid gap-2 d-md-flex justify-content-md-center">
-    <button id="export-visible" class="btn btn-success btn-md mx-5" type="button"><i class="bi bi-file-earmark-spreadsheet"></i>
-      Exportar datos filtrados</button>
-    <button id="export-all" class="btn btn-success btn-md mx-5" type="button"> <i class="bi bi-file-earmark-spreadsheet"></i>
-      Exportar Todos los datos</button>
+    <button id="export-visible" class="btn btn-success btn-md mx-5" type="button"><i
+        class="bi bi-file-earmark-spreadsheet"></i>
+      Exportar a excel</button>
+  </div>
+
+  <div class="buttons">
+    <button id="cancel">Limpiar filtros</button>
+  </div>
+
+  <div class="filter-container">
+
+    <div class="filter">
+      
+      <label for="item-search">ITEM</label>
+      <div class="input-container">
+        <input type="text" id="item-search" placeholder="Buscar...">
+        <button type="button" id="clean-filter-item">x</button>
+      </div>
+      <div class="select-options-items">
+        <label><input type="checkbox" id="select-all-items"> (Seleccionar todo)</label>
+        {% for item in items %}
+        <label><input type="checkbox" value="{{ item }}">{{ item }}</label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="filter">
+      <label for="proveedor-search">PROVEEDOR</label>
+      <div class="input-container">
+        <input type="text" id="proveedor-search" placeholder="Buscar...">
+        <button type="button" id="clean-filter-proveedor">x</button>
+      </div>
+      <div class="select-options-proveedores">
+        <label><input type="checkbox" id="select-all-proveedores"> (Seleccionar todo)</label>
+        {% for proveedor in proveedores %}
+        <label><input type="checkbox" value="{{ proveedor }}">{{ proveedor }}</label>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="filter">
+      <label for="producto-search">PRODUCTO</label>
+      <div class="input-container">
+        <input type="text" id="producto-search" placeholder="Buscar...">
+        <button type="button" id="clean-filter-producto">x</button>
+      </div>
+      <div class="select-options-productos">
+        <label><input type="checkbox" id="select-all-productos"> (Seleccionar todo)</label>
+        {% for producto in productos %}
+        <label><input type="checkbox" value="{{ producto }}">{{ producto }}</label>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="filter">
+      <label for="sede-search">SEDE</label>
+      <div class="input-container">
+        <input type="text" id="sede-search" placeholder="Buscar...">
+        <button type="button" id="clean-filter-sede">x</button>
+      </div>
+      <div class="select-options-sedes">
+        <label><input type="checkbox" id="select-all-sedes"> (Seleccionar todo)</label>
+        {% for sede in sedes %}
+        <label><input type="checkbox" value="{{ sede }}">{{ sede }}</label>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- botón de busqueda -->
+  <div class="d-flex justify-content-center p-3">
+    <button id="search" class="btn btn-primary btn-md">Buscar <i class="bi bi-search"></i></button>
   </div>
 
   <div class="container-xxl">
@@ -66,18 +128,20 @@
             <caption>Tabla de pronósticos</caption>
             <thead>
               <tr>
-                <th class="centered">#</th>
-                <th class="centered">ITEMS</th>
-                <th class="centered">PROVEEDOR</th>
-                <th class="centered">PRODUCTOS</th>
-                <th class="centered">SEDE</th>
-                <th class="centered">MAD</th>
-                <th class="centered">MAPE</th>
-                <th class="centered">MAPE'</th>
-                <th class="centered">ECM</th>
-                <th class="centered">PRONOSTICO</th>
-                <th class="centered">PRONOSTICO 2 MESES</th>
-                <th class="centered">PRONOSTICO SELECCIONADO</th>
+                <th class="centered">#</th> <!-- 0 -->
+                <th class="centered">ID</th> <!-- 1 -->
+                <th class="centered">BODEGA</th> <!-- 2 -->
+                <th class="centered">ITEM</th> <!-- 3 -->
+                <th class="centered">CODIGO</th> <!-- 4 --> 
+                <th class="centered">PRODUCTO</th> <!-- 5 -->
+                <th class="centered">UNIMED</th> <!-- 6 -->
+                <th class="centered">LOTEPRO</th> <!-- 7 -->
+                <th class="centered">PROVEEDOR</th>  <!-- 8 -->
+                <th class="centered">SEDE</th> <!-- 9 -->
+                <th class="centered">CANTIDAD 1 MES</th> <!-- 10 -->
+                <th class="centered">CANTIDAD 2 MESES</th> <!-- 11 -->
+                <th class="centered">PRECIO</th> <!-- 12 -->
+                <th class="centered">FECHA</th> <!-- 13 -->
               </tr>
             </thead>
             <tbody id="tableBody_productos"></tbody>
@@ -101,6 +165,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
   <!--custom js-->
   <script src="{% static 'js/index.js' %}"></script>

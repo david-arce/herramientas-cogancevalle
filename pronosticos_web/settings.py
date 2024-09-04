@@ -77,7 +77,7 @@ WSGI_APPLICATION = 'pronosticos_web.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'productos',
+        'NAME': 'demanda_cg',
         'USER': 'postgres',
         'PASSWORD': 'postgres',
         'DATABASE_PORT': '5432',

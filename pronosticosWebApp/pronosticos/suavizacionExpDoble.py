@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 import time
-from pronosticosWebApp.models import Productos
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 
 class PronosticoExpDoble:
@@ -51,7 +50,7 @@ class PronosticoExpDoble:
         # print(valores_mes_siguiente[:20])
 
         # Asignar los valores del pronostico al siguiente mes y se agrega al dataframe demanda
-        demanda['MAYO_2'] = valores_mes_siguiente
+        demanda['pronostico'] = valores_mes_siguiente
         
         lista_nombre_columnas = demanda.columns.to_list()[1:]  #lista de los nombres de las columnas, es decir, los meses
         # Dividir la lista de valores en segmentos 
@@ -63,7 +62,7 @@ class PronosticoExpDoble:
         #lista de pronosticos para el siguiente mes
         lista_pronosticos = demanda.iloc[:, cantidadMeses].values.tolist()
         #lista de pronosticos redondeado
-        lista_pronosticos_redondeo = [round(i*2) for i in lista_pronosticos]
+        lista_pronosticos_redondeo = [(i*2) for i in lista_pronosticos]
         
         errores, erroresMape, erroresMapePrima, erroresCuadraticoMedio = [], [], [], []
         MAD=[] #mean absolute deviation
