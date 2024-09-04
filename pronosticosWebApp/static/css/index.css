@@ -117,6 +117,7 @@ body.light-mode #mode-toggle {
     border-radius: 5px;
 }
 
+
 .filter {
     display: flex;
     flex-direction: column;
