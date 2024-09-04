@@ -167,7 +167,8 @@ class Pronosticos:
         # nueva lista con la cantidad multiplicada por 2
         cantidadx2 = []
         for i in range(len(cantidad)):
-            cantidadx2.append(cantidad[i] * 2)
+            prox2 = listPronostico[i] * 2
+            cantidadx2.append(prox2 - inventario[i])
             
         df_pronosticos = pd.DataFrame(
             {
@@ -189,7 +190,7 @@ class Pronosticos:
         # Agregar un cero a la izquierda a todos los datos de la columna 'bodega'
         df_pronosticos['bodega'] = df_pronosticos['bodega'].apply(lambda x: str(x).zfill(len(str(x)) + 1))
         
-        # df_pronosticos = pd.DataFrame({"id": id, "Items": items, "Proveedor": proveedor, "Productos": productos, "Sede": sede, "MAD": MAD_final, "MAPE": MAPE_final, "MAPE_PRIMA": MAPE_PRIMA_final,"ECM":ECM_final, "Pronostico": pronostico_final, "Pronostico_2_meses": pronostico_final_redondeado, "Pronostico_seleccionado": pronostico_seleccionado})
+        # df_pronosticos = pd.DataFrame({"id": id, "Items": item, "Proveedor": proveedor, "Productos": productos, "Sede": sede, "MAD": MAD_final, "MAPE": MAPE_final, "MAPE_PRIMA": MAPE_PRIMA_final,"ECM":ECM_final, "Pronostico": pronostico_final, "Pronostico_2_meses": pronostico_final_redondeado, "Pronostico_seleccionado": pronostico_seleccionado})
         
         return (
             demanda_p3,
