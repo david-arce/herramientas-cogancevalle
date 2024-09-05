@@ -171,7 +171,7 @@ class Pronosticos:
             cantidadx2.append(prox2 - inventario[i])
             
         df_pronosticos = pd.DataFrame(
-            {
+            {   
                 "id": id, #1
                 "bodega": bodega, #2
                 "item": item, #3
