@@ -211,7 +211,7 @@ const dataTableOptions = {
     },
     columnDefs: [
         { className: 'centered', targets: '_all' },
-        { targets: [0, 1, 2, 4, 6, 7, 12, 13], visible: false, searchable: false },
+        { targets: [0, 1, 3, 5, 6, 11, 12], visible: false, searchable: false },
     ],
 };
 
@@ -273,7 +273,6 @@ const listProductos = async (datos) => {
         datos.productos.forEach((producto, index) => {
             content += `
                 <tr>
-                    <td>${index + 1}</td>
                     <td>${producto.id}</td>
                     <td>${producto.bodega}</td>
                     <td>${producto.item}</td>

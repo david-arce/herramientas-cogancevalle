@@ -4,13 +4,13 @@ from django.views.decorators.http import require_GET
 from .models import Demanda
 from django.views.decorators.csrf import csrf_exempt
 import json
-
+from django.contrib.auth.decorators import login_required
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 from pronosticosWebApp.pronosticos.pronosticos import Pronosticos
 
-
 list_demanda, list_promedio_movil, list_ses, list_sed = [], [], [], []
 # Create your views here.
+@login_required
 def dashboard(request):
     items = Demanda.objects.values_list('producto_c15', flat=True).distinct()
     proveedores = Demanda.objects.values_list('proveedor', flat=True).distinct()
@@ -25,6 +25,10 @@ def dashboard(request):
     }
     return render(request, "index.html", context)
 
+def login(request):
+    return render(request, "login.html")
+
+
 @csrf_exempt
 def send_data(request):
     
@@ -35,7 +39,6 @@ def send_data(request):
         #retornar el indice de la tabla menos 1
         global selected_index
         selected_index = int(selected_rows[0]) - 1
-        
         return JsonResponse({"status": "success", "message": "Datos recibidos correctamente"}) 
     else:
         return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
