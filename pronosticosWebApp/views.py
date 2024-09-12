@@ -7,8 +7,6 @@ import json
 from django.contrib.auth.decorators import login_required
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 from pronosticosWebApp.pronosticos.pronosticos import Pronosticos
-
-from .forms import LoginForm
 from django.contrib.auth.views import LoginView
 
 list_demanda, list_promedio_movil, list_ses, list_sed = [], [], [], []
