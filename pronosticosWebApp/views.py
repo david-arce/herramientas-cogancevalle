@@ -34,7 +34,7 @@ def send_data(request):
         selected_rows = data.get('selectedRows', [])
         #retornar el indice de la tabla menos 1
         global selected_index
-        selected_index = int(selected_rows[0]) - 1
+        selected_index = int(selected_rows[1]) - 1
         
         return JsonResponse({"status": "success", "message": "Datos recibidos correctamente"}) 
     else:
