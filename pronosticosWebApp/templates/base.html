@@ -1,0 +1,64 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+  <link href="https://cdn.datatables.net/v/bs5/jq-3.7.0/dt-2.0.8/b-3.0.2/sp-2.3.1/sl-2.0.3/datatables.min.css"
+    rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <!--custom css-->
+  <link href="{% static 'css/index.css' %}" rel="stylesheet">
+</head>
+
+<body class="light-mode">
+  <!-- Botón para cambiar de modo -->
+  <!-- <button id="mode-toggle">Modo Oscuro</button> -->
+
+  <nav class="navbar">
+    <div class="navbar-logo">
+      
+        <img src="{% static '/imgs/logo_cogancevalle.png' %}" alt="Logo" class="logo">
+    </div>
+    <ul class="navbar-links">
+      {% if user.is_authenticated %}
+        hola {{ user.username }}
+        <li>
+          <form id="logout-form" action="{% url 'logout' %}" method="post" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-link" style="padding: 0; text-decoration: none; color: inherit;">Cerrar Sesión</button>
+          </form>
+        </li>
+      {% else %}
+        <li><a href="{% url 'login' %}">Iniciar Sesión</a></li>
+      {% endif %}
+    </ul>
+    
+  </nav>
+  
+  <div class="content">
+    {% block content %}
+    {% endblock %}
+  </div>
+
+  <!-- apache Echarts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+  <script src="https://cdn.datatables.net/v/bs5/jq-3.7.0/dt-2.0.8/b-3.0.2/sp-2.3.1/sl-2.0.3/datatables.min.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <!--custom js-->
+  <script src="{% static 'js/index.js' %}"></script>
+</body>
+
+</html>

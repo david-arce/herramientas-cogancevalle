@@ -8,9 +8,12 @@ from django.contrib.auth.decorators import login_required
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 from pronosticosWebApp.pronosticos.pronosticos import Pronosticos
 
+from .forms import LoginForm
+from django.contrib.auth.views import LoginView
+
 list_demanda, list_promedio_movil, list_ses, list_sed = [], [], [], []
 # Create your views here.
-# @login_required
+@login_required
 def dashboard(request):
     items = Demanda.objects.values_list('producto_c15', flat=True).distinct()
     proveedores = Demanda.objects.values_list('proveedor', flat=True).distinct()
@@ -23,11 +26,7 @@ def dashboard(request):
         'productos': productos,
         'sedes': sedes,
     }
-    return render(request, "index.html", context)
-
-def login(request):
-    return render(request, "login.html")
-
+    return render(request, "pronosticos.html", context)
 
 @csrf_exempt
 def send_data(request):
@@ -61,7 +60,7 @@ def lista_productos():
     data = {
         "productos": df_pronosticos_json,
     }
-    return 
+    return
 
 def demanda(request):
     return JsonResponse(data, safe=False)
@@ -84,7 +83,7 @@ def get_chart(request):
     if selected_index is None:
         return JsonResponse({"status": "error", "message": "Por favor selecciona una fila de la tabla para generar la gráfica"}, status=400)
     # list_demanda, list_promedio_movil, list_ses, list_sed = grafica(selected_index)
-    
+    print('demanda en views',df_demanda)
     global list_demanda, list_promedio_movil_3, list_promedio_movil_4, list_promedio_movil_5, list_ses, list_sed
     list_demanda = df_demanda.iloc[selected_index][:-1].fillna(0).astype(int).tolist()
     list_promedio_movil_3 = df_promedio_movil_p3.iloc[selected_index].fillna(0).astype(int).tolist()
@@ -93,6 +92,7 @@ def get_chart(request):
     list_ses = df_pronostico_ses.iloc[selected_index].fillna(0).astype(int).tolist()
     list_sed = df_pronostico_sed.iloc[selected_index].fillna(0).astype(int).tolist()
     list_sed.insert(0, '')
+    print(selected_index)
     # list_demanda = [1,2,3,4]
     # list_promedio_movil = [2,3,4,5]
     # list_ses = [3,4,5,6]
