@@ -189,8 +189,6 @@ class PronosticoMovil:
     
     def productos():
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
-        print('demanda en pm')
-        print(df_demanda)
         id = df_demanda['id'].tolist()
         items = df_demanda['producto_c15'].tolist()
         proveedor = df_demanda['proveedor'].tolist()

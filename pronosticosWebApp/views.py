@@ -90,7 +90,6 @@ def get_chart(request):
     list_ses = df_pronostico_ses.iloc[selected_index].fillna(0).astype(int).tolist()
     list_sed = df_pronostico_sed.iloc[selected_index].fillna(0).astype(int).tolist()
     list_sed.insert(0, '')
-    print(selected_index)
     # list_demanda = [1,2,3,4]
     # list_promedio_movil = [2,3,4,5]
     # list_ses = [3,4,5,6]
