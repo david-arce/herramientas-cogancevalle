@@ -116,16 +116,15 @@ class Pronosticos:
             pronostico_final.append(math.ceil(valores[origen_ECM[i]]))
             i += 1
         i = 0
-        pronostico_final_redondeado = []
-        for valores in zip(
-            lista_pronosticos_redondeo_movil_p3,
-            lista_pronosticos_redondeo_p4,
-            lista_pronosticos_redondeo_p5,
-            lista_pronosticos_redondeo_ses,
-            lista_pronosticos_redondeo_sed,
-        ):
-            pronostico_final_redondeado.append(math.ceil(valores[origen_ECM[i]]))
-            i += 1
+        
+        # extraer los ultimos 4 meses de la demanda
+        df_ultimos_4meses = demanda_p3.iloc[:,8:-1]
+        # Iterar por el DataFrame para verificar filas con todos ceros
+        # Iterar sobre el DataFrame y la lista de pronósticos al mismo tiempo
+        for index, (row, pronostico) in enumerate(zip(df_ultimos_4meses.iterrows(), pronostico_final)):
+            _, row_data = row  # Extrae la fila actual de row
+            if (row_data[:-1] == 0).all():  # Verifica si todas las columnas de meses tienen cero
+                pronostico_final[index] = 0  # Cambia el pronóstico a 0 si la fila tiene todos ceros
 
         i = 0
         MAD_final = []
