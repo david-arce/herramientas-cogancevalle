@@ -1,22 +1,7 @@
-:root {
-    --primary: #78e075;
-    --primary-dark: #ffffff;
-    --primary-light: #5DA8FF;
-    --secondary: #1D1D1D;
-    --social-background: #E9E9E9;
-    --social-background-hover: #dddddd;
-    --text: #1F2346;
-    --white: #FFFFFF;
-    --violet: #caebcb;
-}
+/* estilos para el login */
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
 
-body {
+.login-content {
     font-size: 16px;
     font-family: 'Work Sans', sans-serif;
     height: 100vh;
@@ -25,23 +10,16 @@ body {
     height: 100vh;
     justify-content: center;
     align-items: center;
-    background: var(--violet);
-    background: -webkit-linear-gradient(to right, var(--violet),
-            var(--primary-dark));
-    background: linear-gradient(to right, var(--violet),
-            var(--primary-dark));
+    background: var(--background);
 }
 
-.login-welcome-row {
+.login-welcome {
     margin-bottom: 1rem;
     text-align: center;
+    color: var(--text-login);
 }
 
-.welcome-message {
-    max-width: 24rem;
-}
-
-.logo {
+.login-logo {
     height: 3rem;
     margin: 0 auto;
 }
@@ -52,16 +30,17 @@ body {
     justify-content: start;
     position: relative;
     gap: 1rem;
-    background-color: var(--white);
+    background-color: var(--login-navbar-color);
     width: 100%;
     max-width: 32rem;
     padding: 3rem 2rem;
     border-radius: 2rem;
     height: fit-content;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
 }
 
 .my-form__button {
-    background-color: var(--primary);
+    background-color: var(--button-light);
     color: white;
     white-space: nowrap;
     border: none;
@@ -83,71 +62,81 @@ body {
     -webkit-transition: all .3s ease;
 }
 
-.my-form__button:hover {
-    background-color: var(--primary-dark);
+.buttons-login {
+    display: flex;
+    gap: 1rem;
 }
 
-/*? input wrapper */
+.my-form__button:hover {
+    background-color: var(--button-dark);
+}
+
+/* ? input wrapper */
 .input__wrapper {
     position: relative;
     padding: 0.9375rem 0 0;
     margin-bottom: 0.5rem;
 }
 
-.input__field {
-    font-size: 1.5rem;
-    color: var(--text);
+.input__field__username,
+.input__field__password {
+    font-size: 1.2rem;
+    color: rgb(0, 0, 0);
     padding: 0.375rem 0;
     padding-right: 2rem;
-    padding-bottom: 0.5rem;
+    padding-bottom: 0.7rem;
     line-height: 2rem;
     height: 2rem;
     outline: 0;
     border: 0;
     width: 100%;
     vertical-align: middle;
-    padding-bottom: 0.7rem;
-    border-bottom: 3px solid var(--secondary);
+    border-bottom: 2px solid var(--secondary);
     background: transparent;
     transition: border-color 0.2s;
 }
 
-.input__field::placeholder {
+.input__field__username::placeholder,
+.input__field__password::placeholder {
     color: transparent;
 }
 
 
-.input__label {
+.input__label__password,
+.input__label__username {
     user-select: none;
 }
 
-.input__field:placeholder-shown~.input__label {
+.input__field__username:placeholder-shown~.input__label__username,
+.input__field__password:placeholder-shown~.input__label__password {
     cursor: text;
-    color: var(--text);
+    color: var(--text-login);
     top: 0.8rem;
     font-size: 1.2rem;
 }
 
-.input__label,
-.input__field:focus~.input__label {
+/*comportamiento de los inputs*/
+.input__label__username,
+.input__field__username:focus~.input__label__username,
+.input__label__password,
+.input__field__password:focus~.input__label__password {
     position: absolute;
-    top: -0.8rem;
+    top: 0;
     display: block;
-    font-size: 1.2rem;
-    color: var(--text);
+    font-size: 0.875rem;
+    left: -0.0625rem;
+    color: var(--text-login);
     transition: 0.3s;
 }
 
-.input__field:focus~.input__label {
-    color: var(--primary);
+.input__field__username:focus~.input__label__username,
+.input__field__password:focus~.input__label__password {
+    color: var(--text-login);
 }
 
-.input__field:focus {
+.input__field__username:focus,
+.input__field__password:focus {
     border-bottom: 3px solid var(--primary);
-}
-
-.input__field:focus~svg {
-    stroke: var(--primary);
 }
 
 .input__icon {
@@ -156,6 +145,18 @@ body {
     bottom: -0.6875rem;
     width: 2.25rem;
     height: 2.25rem;
+    padding: 0.125rem;
+    transform: translate(-50%, -50%);
+    transform-origin: center;
+    cursor: pointer;
+}
+
+.input__icon__password {
+    position: absolute;
+    right: -0.875rem;
+    bottom: -0.6875rem;
+    width: 2.1rem;
+    height: 2.1rem;
     padding: 0.125rem;
     transform: translate(-50%, -50%);
     transform-origin: center;

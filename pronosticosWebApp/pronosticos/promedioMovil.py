@@ -9,9 +9,10 @@ class PronosticoMovil:
         pass
     
     def getDataBD():
-        return list(Demanda.objects.order_by('id').values()) # Se obtienen los productos de la base de datos en forma de lista
+        return list(Demanda.objects.order_by('id').values()[:200]) # Se obtienen los productos de la base de datos en forma de lista
     
     def promedioMovil_3(n):
+        print('Calculando pronóstico de promedio móvil...')
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
         
@@ -40,8 +41,7 @@ class PronosticoMovil:
         
         #lista de pronosticos para el siguiente mes
         lista_pronosticos = [promedio_movil.iloc[i, cantidadMeses] for i in promedio_movil.index]
-        #lista de pronosticos redondeado
-        lista_pronosticos_redondeo = [(i * 2) for i in lista_pronosticos]
+        
         total_meses_pronostico = (demanda.shape[1] - 1) - n #total de meses a pronosticar menos el siguiente
         
         #CALCULO DEL MAD(MEAN ABSOLUTE DEVIATION) 
@@ -67,7 +67,7 @@ class PronosticoMovil:
         ECM = [np.mean(erroresCuadraticoMedio[i:i+total_meses_pronostico]) for i in range(0, len(erroresCuadraticoMedio), total_meses_pronostico)]
         # print(ECM[:5])
         
-        return MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronosticos, lista_pronosticos_redondeo, df_demanda
+        return MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronosticos
     
     def promedioMovil_4(n):
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
@@ -98,8 +98,6 @@ class PronosticoMovil:
         
         #lista de pronosticos para el siguiente mes
         lista_pronosticos = [promedio_movil.iloc[i, cantidadMeses] for i in promedio_movil.index]
-        #lista de pronosticos redondeado
-        lista_pronosticos_redondeo = [(i * 2) for i in lista_pronosticos]
         
         total_meses_pronostico = (demanda.shape[1] - 1) - n #total de meses a pronosticar menos el siguiente
         
@@ -126,7 +124,7 @@ class PronosticoMovil:
         ECM = [np.mean(erroresCuadraticoMedio[i:i+total_meses_pronostico]) for i in range(0, len(erroresCuadraticoMedio), total_meses_pronostico)]
         # print(ECM[:5])
         
-        return MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronosticos, lista_pronosticos_redondeo, df_demanda
+        return MAD, MAPE, MAPE_prima, ECM, promedio_movil, lista_pronosticos
     
     def promedioMovil_5(n):
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
@@ -157,8 +155,6 @@ class PronosticoMovil:
         
         #lista de pronosticos para el siguiente mes
         lista_pronosticos = [promedio_movil.iloc[i, cantidadMeses] for i in promedio_movil.index]
-        #lista de pronosticos redondeado
-        lista_pronosticos_redondeo = [(i * 2) for i in lista_pronosticos]
         
         total_meses_pronostico = (demanda.shape[1] - 1) - n #total de meses a pronosticar menos el siguiente
         
@@ -185,7 +181,7 @@ class PronosticoMovil:
         ECM = [np.mean(erroresCuadraticoMedio[i:i+total_meses_pronostico]) for i in range(0, len(erroresCuadraticoMedio), total_meses_pronostico)]
         # print(ECM[:5])
         
-        return MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronosticos, lista_pronosticos_redondeo, df_demanda
+        return MAD, MAPE, MAPE_prima, ECM, promedio_movil, lista_pronosticos
     
     def productos():
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación

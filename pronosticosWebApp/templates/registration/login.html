@@ -1,20 +1,9 @@
-{% extends "base.html" %} {% load static %} 
-{% block title %} Log-in {%endblock%} {% block content %}
+{% extends "base.html" %} {% load static %} {% block title %} Log-in
+{%endblock%} {% block content %}
 <div class="login-content">
-  {% if form.errors %}
-  <p>Su nombre de usuario y contraseña no coinciden. Inténtalo de nuevo.</p>
-  {% endif %} {% if next %} {% if user.is_authenticated %}
-  <p>
-    Su cuenta no tiene acceso a esta página. Para continuar, inicie sesión con
-    una cuenta que tenga acceso.
-  </p>
-  {% else %}
-  <p>Por favor inicie sesión para ver esta página.</p>
-  {% endif %} {% endif %}
-
   <form class="my-form" method="post" action="{% url 'login' %}">
     {% csrf_token %}
-    <div class="login-welcome-row">
+    <div class="login-welcome">
       <a href="#" title="Logo">
         <img
           src="{% static '/imgs/logo_cogancevalle.png' %}"
@@ -23,18 +12,27 @@
         />
       </a>
       <h1>BIENVENIDO</h1>
+      {% if form.errors %}
+      <p>Su nombre de usuario y contraseña no coinciden. Inténtalo de nuevo.</p>
+      {% endif %} {% if next %} {% if user.is_authenticated %}
+      <p>
+        Su cuenta no tiene acceso a esta página. Para continuar, inicie sesión
+        con una cuenta que tenga acceso.
+      </p>
+      {% else %}
       <p>Por favor digita tus credenciales!</p>
+      {% endif %} {% endif %}
     </div>
     <div class="input__wrapper">
       <input
         type="text"
         id="{{ form.username.id_for_label }}"
         name="{{ form.username.html_name }}"
-        class="input__field"
+        class="input__field__username"
         placeholder="Your User"
         required
       />
-      <label for="username" class="input__label">Usuario</label>
+      <label for="username" class="input__label__username">Usuario</label>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         class="input__icon"
@@ -59,35 +57,26 @@
         id="{{ form.password.id_for_label }}"
         name="{{ form.password.html_name }}"
         type="password"
-        class="input__field"
+        class="input__field__password"
         placeholder="Your Password"
         title="Minimum 6 characters at least 1 Alphabet and 1 Number"
         pattern="^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$"
         required
       />
-      <label for="password" class="input__label"> Contraseña </label>
-      <svg
-        class="input__icon"
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        stroke-width="2"
-        stroke="currentColor"
-        fill="none"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-        <path
-          d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"
-        ></path>
-        <path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"></path>
-        <path d="M8 11v-4a4 4 0 1 1 8 0v4"></path>
-      </svg>
+      <label for="password" class="input__label__password"> Contraseña </label>
+      <img
+        alt="Eye Icon"
+        title="Eye Icon"
+        src="{% static '/imgs/icons/eye-off.svg' %}"
+        class="input__icon__password"
+      />
     </div>
     <input type="hidden" name="next" value="{{ next }}" />
-    <button type="submit" class="my-form__button">Login</button>
+    <div class="buttons-login">
+      <button type="submit" class="my-form__button">Ingreso usuario</button>
+      {% comment %} configurar boton para ingreso de admin {% endcomment %}
+      <a href="{% url 'admin:index' %}" class="my-form__button">Ir ingreso admin</a>
+    </div>
   </form>
 </div>
 {% endblock %}

@@ -1,9 +1,22 @@
-let loginForm = document.querySelector(".my-form");
+const input = document.querySelector(".input__field__password");
+const inputIcon = document.querySelector(".input__icon__password");
 
-loginForm.addEventListener("submit", (e) => {
-  e.preventDefault();
-  let email = document.getElementById("email");
-  let password = document.getElementById("password");
+inputIcon.addEventListener("click", (e) => {
+    e.preventDefault();
 
-  // process and send to API
+    inputIcon.setAttribute(
+        'src', 
+        input.getAttribute('type') === 'password' ?
+        '/static/imgs/icons/eye.svg'
+          :
+        '/static/imgs/icons/eye-off.svg'
+    );
+
+    input.setAttribute(
+        'type', 
+        input.getAttribute('type') === 'password' ? 
+        'text'
+          :
+        'password'
+    );
 });
