@@ -42,7 +42,14 @@ document.getElementById('export-visible').addEventListener('click', function () 
 
     // Obtener todos los datos actualmente filtrados y visibles en el DataTable
     const filteredData = dataTable.rows({ filter: 'applied' }).data().toArray();
-    console.log("Datos filtrados:", filteredData);
+
+    // Recorrer los datos filtrados y cambiar los valores en los índices 11 y 12 a enteros
+    const updatedData = filteredData.map(row => {
+        row[10] = parseInt(row[10], 10);  // Convertir a entero el índice 11
+        row[11] = parseInt(row[11], 10);  // Convertir a entero el índice 11
+        row[12] = parseInt(row[12], 10);  // Convertir a entero el índice 12
+        return row;
+    });
 
     // Índices de las columnas que deseas exportar (empezando desde 0)
     const columnsToExport = [0, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13]; // columnas a exportar
@@ -58,7 +65,7 @@ document.getElementById('export-visible').addEventListener('click', function () 
 
     // Convertir los datos filtrados en un formato adecuado para la exportación
     const exportData = [headers]; // Incluir encabezados como la primera fila
-    filteredData.forEach(row => {
+    updatedData.forEach(row => {
         const rowData = [];
         columnsToExport.forEach((colIndex) => {
             rowData.push(row[colIndex]);
