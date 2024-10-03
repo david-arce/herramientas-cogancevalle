@@ -33,7 +33,7 @@ class Pronosticos:
             MAPE_p3,
             MAPE_prima_p3,
             ECM_p3,
-            demanda_p3,
+            demanda,
             df_promedio_movil_p3,
             lista_pronostico_p3,
         ) = pm.promedioMovil_3(3)
@@ -105,9 +105,11 @@ class Pronosticos:
         ):    
             pronostico_final.append(math.ceil(valores[origen_ECM[i]]))
             i += 1
-
+        # quitar ultima columna a la demanda_p3
+        demanda = demanda.iloc[:, :-1]
+        
         # extraer los ultimos 4 meses de la demanda
-        df_ultimos_4meses = demanda_p3.iloc[:,8:-1]
+        df_ultimos_4meses = demanda.iloc[:,8:]
         # Iterar por el DataFrame para verificar filas con todos ceros
         # Iterar sobre el DataFrame y la lista de pronósticos al mismo tiempo
         for index, (row, pronostico) in enumerate(zip(df_ultimos_4meses.iterrows(), pronostico_final)):
@@ -145,19 +147,40 @@ class Pronosticos:
         df_demanda = pd.DataFrame(pm.getDataBD())
         # extraer inventario
         inventario = df_demanda['inventario'].tolist()
-        # extraer pronostico
-        listPronostico = pronostico_final
         
+        # Cantidad a comprar para cada producto por 1 mes
         cantidad = []
         for i in range(len(inventario)):
-            cantidad.append(listPronostico[i] - inventario[i])
+            cantidad.append(pronostico_final[i] - inventario[i])
 
-        # nueva lista con la cantidad multiplicada por 2
+        # extraer tiempo de entrega
+        tiempo_entrega = df_demanda['tiempo_entrega'].tolist()
+        # extraer desviación estándar del tiempo de reposición
+        desviacion_tiempo_reposicion = df_demanda['desviación_te'].tolist()
+        # calcular la desviación estándar de la demanda
+        desviacion_estandar = demanda.std(axis=1).tolist()
+        # calcular el promedio de la demanda
+        promedio_demanda = demanda.mean(axis=1).tolist()
         cantidadx2 = []
-        for i in range(len(cantidad)):
-            prox2 = listPronostico[i] * 2
-            cantidadx2.append(prox2 - inventario[i])
+        z = 1.751
+        for i in range(len(inventario)):
+            stock = z * desviacion_estandar[i] * math.sqrt(tiempo_entrega[i])
+            cant_2meses = pronostico_final[i] + stock - inventario[i]
+            cantidadx2.append(math.ceil(cant_2meses))    
             
+            # if pronostico_seleccionado[i] == 'SES' or pronostico_seleccionado[i] == 'SED':
+            #         stock = z * desviacion_estandar[i] * math.sqrt(tiempo_entrega[i])
+            #         cant_2meses = pronostico_final[i] + stock - inventario[i]
+            #         cantidadx2.append(math.ceil(cant_2meses))    
+            # else:
+            #     stock = z * promedio_demanda[i] * desviacion_tiempo_reposicion[i]
+            #     cant_2meses = pronostico_final[i] + stock - inventario[i]
+            #     cantidadx2.append(math.ceil(cant_2meses))
+     
+        # stock = z * math.sqrt((tiempo_entrega[i] * (desviacion_estandar[i] ** 2)) + ((promedio_demanda[i] ** 2) * (desviacion_tiempo_reposicion[i] ** 2)))
+        #     cantidadx2.append(math.ceil(stock))
+        
+        
         df_pronosticos = pd.DataFrame(
             {   
                 "id": id, #1
@@ -170,18 +193,18 @@ class Pronosticos:
                 "proveedor": proveedor, #7
                 "sede": sede, #8
                 "cantidad": cantidad, #9
-                "cantidad_2_meses": cantidadx2, #10
+                "stock_de_seguridad": cantidadx2, #10
                 "precio": precio, #11
             }
         )
         
         # Agregar un cero a la izquierda a todos los datos de la columna 'bodega'
         df_pronosticos['bodega'] = df_pronosticos['bodega'].apply(lambda x: str(x).zfill(len(str(x)) + 1))
-        
+       
         # df_pronosticos = pd.DataFrame({"id": id, "Items": item, "Proveedor": proveedor, "Productos": productos, "Sede": sede, "MAD": MAD_final, "MAPE": MAPE_final, "MAPE_PRIMA": MAPE_PRIMA_final,"ECM":ECM_final, "Pronostico": pronostico_final, "Pronostico_2_meses": pronostico_final_redondeado, "Pronostico_seleccionado": pronostico_seleccionado})
         
         return (
-            demanda_p3,
+            demanda,
             df_promedio_movil_p3,
             df_promedio_movil_p4,
             df_promedio_movil_p5,
@@ -212,9 +235,7 @@ class Pronosticos:
         ruta_archivo_excel = "Pronosticos.xlsx"
 
         # Usa el método to_excel() para guardar el DataFrame en el archivo Excel
-        df.to_excel(
-            ruta_archivo_excel, index=False
-        )  # Si no deseas incluir el índice en el archivo Excel, puedes establecer index=False
+        df.to_excel(ruta_archivo_excel, index=False)  # Si no deseas incluir el índice en el archivo Excel, puedes establecer index=False
 
 
 # Pronosticos.pronosticos()

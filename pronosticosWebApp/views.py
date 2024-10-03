@@ -81,9 +81,8 @@ def get_chart(request):
     if selected_index is None:
         return JsonResponse({"status": "error", "message": "Por favor selecciona una fila de la tabla para generar la gráfica"}, status=400)
     # list_demanda, list_promedio_movil, list_ses, list_sed = grafica(selected_index)
-    print('demanda en views',df_demanda)
     global list_demanda, list_promedio_movil_3, list_promedio_movil_4, list_promedio_movil_5, list_ses, list_sed
-    list_demanda = df_demanda.iloc[selected_index][:-1].fillna(0).astype(int).tolist()
+    list_demanda = df_demanda.iloc[selected_index].fillna(0).astype(int).tolist()
     list_promedio_movil_3 = df_promedio_movil_p3.iloc[selected_index].fillna(0).astype(int).tolist()
     list_promedio_movil_4 = df_promedio_movil_p4.iloc[selected_index].fillna(0).astype(int).tolist()
     list_promedio_movil_5 = df_promedio_movil_p5.iloc[selected_index].fillna(0).astype(int).tolist()

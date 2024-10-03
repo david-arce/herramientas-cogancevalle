@@ -93,67 +93,6 @@ document.getElementById('export-visible').addEventListener('click', function () 
     XLSX.writeFile(wb, nombreArchivo);
 });
 
-// Función para exportar todos los datos del DataTable
-// document.getElementById('export-all').addEventListener('click', function () {
-//     // Índices de las columnas que deseas exportar (empezando desde 0)
-//     const columnsToExport = [0, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13];
-
-//     // Obtener todos los datos del json productosData
-//     const data = productosData.productos.map(producto => { 
-//         return [
-//             producto.id,
-//             producto.bodega,
-//             producto.item,
-//             producto.codigo,
-//             producto.producto,
-//             producto.unimed,
-//             producto.lotepro,
-//             producto.cantidad,
-//             producto.cantidad_2_meses,
-//             producto.precio,
-//             producto.fechaentrega,
-//         ];
-//     });
-
-//     // Recolectar encabezados de las columnas seleccionadas
-//     const headers = ['REG.N12', 'BODEGA.C5', 'PRODUCTO.C15', 'CODCMC.C50', 'NOMBRE.C100', 'UNIMED.C4', 'LOTEPRO.C12', 'CANTIDAD.N20', 'CANTIDAD.N20', 'PRECIO_UNITARIO.N20', 'FECHAENTREGA.C10'];
-
-//     // Recolectar todos los datos en formato Array of Arrays
-//     const exportData = [headers];
-//     data.forEach(row => {
-//         const rowData = [];
-//         columnsToExport.forEach(colIndex => {
-//             rowData.push(row[colIndex]);
-//         });
-//         exportData.push(rowData);
-//     });
-
-//     // Crear hoja de cálculo
-//     const wb = XLSX.utils.book_new();
-//     const ws = XLSX.utils.aoa_to_sheet(exportData);
-//     XLSX.utils.book_append_sheet(wb, ws, 'Datos_Productos');
-//     XLSX.writeFile(wb, 'Datos_Productos.xlsx');
-// });
-
-// Añadir el evento para actualizar los datos
-// async function updateData(){
-//     const myElement = document.getElementById('chart');
-//     myElement.style.display = 'none';
-//     productosData = null; // Limpiar los datos almacenados
-//     if (!productosData) {
-//         const loader = document.querySelector('.spinner-border');
-//         try {
-//             loader.style.display = 'block';
-//             const response = await fetch('/lista/');
-//             productosData = await response.json();
-//         } catch (error) {
-//             console.error('Error al obtener los datos:', error);
-//         } finally {
-//             loader.style.display = 'none';
-//         }
-//     }
-// };
-
 // Actualizar cada 10 segundos
 // setInterval(updateData, 2000);
 
@@ -295,7 +234,7 @@ const listProductos = async (datos) => {
                     <td>${producto.proveedor}</td>
                     <td>${producto.sede}</td>
                     <td>${producto.cantidad}</td>
-                    <td>${producto.cantidad_2_meses}</td>
+                    <td>${producto.stock_de_seguridad}</td>
                     <td>${producto.precio}</td>
                     <td>${fechaFormateada}</td>
                 </tr>

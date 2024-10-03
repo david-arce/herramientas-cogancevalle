@@ -43,7 +43,7 @@ class PronosticoMovil:
         lista_pronosticos = [promedio_movil.iloc[i, cantidadMeses] for i in promedio_movil.index]
         
         total_meses_pronostico = (demanda.shape[1] - 1) - n #total de meses a pronosticar menos el siguiente
-        
+    
         #CALCULO DEL MAD(MEAN ABSOLUTE DEVIATION) 
         for i in range(0, len(erroresAbs), total_meses_pronostico):
             grupo = erroresAbs[i:i+(total_meses_pronostico)]

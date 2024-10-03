@@ -30,6 +30,8 @@ class Demanda(models.Model):
     julio = models.IntegerField(db_column='JULIO', blank=True, null=True)  # Field name made lowercase.
     agosto = models.IntegerField(db_column='AGOSTO', blank=True, null=True)  # Field name made lowercase.
     inventario = models.IntegerField(db_column='INVENTARIO', blank=True, null=True)  # Field name made lowercase.
+    tiempo_entrega = models.CharField(db_column='TIEMPO_ENTREGA', blank=True, null=True)  # Field name made lowercase.
+    desviación_te = models.IntegerField(db_column='DESVIACIÓN_TE', blank=True, null=True)  # Field name made lowercase.
 
     class Meta:
         managed = False
