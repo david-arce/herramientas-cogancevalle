@@ -5,9 +5,5 @@ class PronosticoswebappConfig(AppConfig):
     name = 'pronosticosWebApp'
     
     def ready(self):
-        #importar el archivo prueba.py que está por fuera de la carpeta de la aplicación
-        # from pronosticosWebApp import views
-        # views.lista_productos()
-        # Solo ejecuta la función si estamos en el proceso principal
         import pronosticosWebApp.signals
     

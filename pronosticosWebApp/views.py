@@ -7,11 +7,13 @@ import json
 from django.contrib.auth.decorators import login_required
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 from pronosticosWebApp.pronosticos.pronosticos import Pronosticos
-from django.contrib.auth.views import LoginView
+from django.contrib.auth.decorators import permission_required
+from django.core.exceptions import PermissionDenied
 
 list_demanda, list_promedio_movil, list_ses, list_sed = [], [], [], []
 # Create your views here.
 @login_required
+@permission_required('pronosticosWebApp.view_demanda', raise_exception=True)
 def dashboard(request):
     items = Demanda.objects.values_list('producto_c15', flat=True).distinct()
     proveedores = Demanda.objects.values_list('proveedor', flat=True).distinct()

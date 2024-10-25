@@ -54,11 +54,11 @@ document.getElementById('export-visible').addEventListener('click', function () 
     console.log("Datos cambiados:", updatedData);
 
     // Índices de las columnas que deseas exportar (empezando desde 0)
-    const columnsToExport = [0, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13]; // columnas a exportar
+    const columnsToExport = [0, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14]; // columnas a exportar
     // const columnsToExport2 = [0, 1, 2, 3, 4, 5]; // nombre columnas 
 
     // Recolectar encabezados de las columnas seleccionadas
-    const headers = ['REG.N12', 'BODEGA.C5', 'PRODUCTO.C15', 'CODCMC.C50', 'NOMBRE.C100', 'UNIMED.C4', 'LOTEPRO.C12', 'CANTIDAD.N20', 'CANTIDAD.N20', 'PRECIO_UNITARIO.N20', 'FECHAENTREGA.C10'];
+    const headers = ['REG.N12', 'BODEGA.C5', 'PRODUCTO.C15', 'CODCMC.C50', 'NOMBRE.C100', 'UNIMED.C4', 'LOTEPRO.C12', 'CANTIDAD.N20', 'CANTIDAD.N20', 'PRECIO_UNITARIO.N20', 'DIAS_INVENTARIO', 'FECHAENTREGA.C10'];
     // $('#datatable-productos thead th').each(function (index) {
     //     if (columnsToExport2.includes(index)) {
     //         headers.push($(this).text());
@@ -160,7 +160,7 @@ const dataTableOptions = {
     },
     columnDefs: [
         { className: 'centered', targets: '_all' },
-        { targets: [0, 1, 2, 4, 6, 7, 12, 13], visible: false, searchable: false },
+        { targets: [0, 1, 2, 4, 6, 7, 12, 14], visible: false, searchable: false },
     ],
 };
 
@@ -236,6 +236,7 @@ const listProductos = async (datos) => {
                     <td>${producto.cantidad}</td>
                     <td>${producto.stock_de_seguridad}</td>
                     <td>${producto.precio}</td>
+                    <td>${producto.dias_inventario}</td>
                     <td>${fechaFormateada}</td>
                 </tr>
             `;

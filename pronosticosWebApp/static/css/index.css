@@ -178,40 +178,52 @@ body.light-mode #mode-toggle {
 }
 
 /* estilos para la barra de navegacion */
+
 .navbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 20px;
     background-color: var(--login-navbar-color);
+    padding: 10px 20px;
 }
 
-.logo{
-    height: 3rem;
-}   
-
-.navbar-links {
-    list-style: none;
-    margin: 0;
-    padding: 0;
+.navbar-left {
     display: flex;
+    align-items: center;
 }
 
-.navbar-links li {
-    margin-left: 20px;
+.logo {
+    width: 50px;
+    height: 50px;
+    margin-right: 15px;
 }
 
-.navbar-links a {
-    color: #000;
+.navbar-left a {
+    color: #000000;
     text-decoration: none;
-    padding: 5px 10px;
-    transition: background-color 0.3s, color 0.3s;
+    margin-right: 15px;
+    font-size: 20px;
 }
 
-.navbar-links a:hover {
-    background-color: #555;
-    color: #fff;
+.navbar-left a:hover {
+    text-decoration: underline;
+}
+
+/* .navbar-right {
+} */
+
+.login-btn {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 16px;
     border-radius: 5px;
+    text-decoration: none;
 }
 
+.login-btn:hover {
+    background-color: #45a049;
+}
 

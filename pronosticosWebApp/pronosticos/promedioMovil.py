@@ -9,7 +9,7 @@ class PronosticoMovil:
         pass
     
     def getDataBD():
-        return list(Demanda.objects.order_by('id').values()[:200]) # Se obtienen los productos de la base de datos en forma de lista
+        return list(Demanda.objects.order_by('id').values()[:100]) # Se obtienen los productos de la base de datos en forma de lista
     
     def promedioMovil_3(n):
         print('Calculando pronóstico de promedio móvil...')
@@ -26,7 +26,14 @@ class PronosticoMovil:
         demanda['pronostico'] = 0 # Se agrega una columna para el siguiente mes
         promedio_movil = demanda.T.rolling(window=n).mean().shift(1).T # Se calcula el promedio móvil de las ventas 
         print('\n')
+        
+        # calculo del stock de seguridad
+        # error_pronostico = np.abs((promedio_movil.iloc[:, n:cantidadMeses].values - demanda.iloc[:, n:cantidadMeses].values)).tolist()
     
+        # desviación estandar de una muestra
+        # desviacion_estandar = [np.std(error_pronostico, ddof=1) for error_pronostico in error_pronostico]
+        # print(desviacion_estandar)
+        
         errores, erroresMape, erroresMapePrima, erroresCuadraticoMedio = [], [], [], []
         MAD=[] #mean absolute deviation
         MAPE=[] #mean absolute percentage error
@@ -35,6 +42,7 @@ class PronosticoMovil:
         
         # Optimización del cálculo de errores utilizando operaciones vectorizadas
         errores = (demanda.iloc[:, n:cantidadMeses].values - promedio_movil.iloc[:, n:cantidadMeses].values).flatten()
+        # errores = (demanda.iloc[:, n:cantidadMeses].values - promedio_movil.values).flatten()
         # print(errores[:10])
         erroresAbs = np.abs(errores)
         # print(erroresAbs[:10])

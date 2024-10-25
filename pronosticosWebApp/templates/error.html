@@ -1,0 +1,20 @@
+{% extends "base.html" %} 
+{% load static %}
+{% block title %}Error{% endblock %}
+{% block content %}
+
+{% comment %} mensaje de error por autenticación {% endcomment %}
+<div class="container">
+  <div class="row my-4">
+    <div class="col-sm-12 col-md-12 col-lg-12 col-xl-12 mx-auto">
+      <div class="alert alert-danger" role="alert">
+        <h4 class="alert-heading">Error!</h4>
+        <p>No tienes autorización para ver esta página</p>
+        <hr>
+        <p class="mb-0">Haz clic <a href="{% url 'login' %}">aquí</a> para iniciar sesión.</p>
+      </div>
+    </div>
+  </div>
+</div>
+    
+{% endblock %}

@@ -1,3 +1,4 @@
+import numpy as np
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 from pronosticosWebApp.pronosticos.suavizacionExpSimple import (
     PronosticoExpSimple as ses,
@@ -6,6 +7,7 @@ from pronosticosWebApp.pronosticos.suavizacionExpDoble import PronosticoExpDoble
 import pandas as pd
 import math
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
+import statistics
 
 
 class Pronosticos:
@@ -114,7 +116,7 @@ class Pronosticos:
         # Iterar sobre el DataFrame y la lista de pronósticos al mismo tiempo
         for index, (row, pronostico) in enumerate(zip(df_ultimos_4meses.iterrows(), pronostico_final)):
             _, row_data = row  # Extrae la fila actual de row
-            if (row_data[:-1] == 0).all():  # Verifica si todas las columnas de meses tienen cero
+            if (row_data == 0).all():  # Verifica si todas las columnas de meses tienen cero
                 pronostico_final[index] = 0  # Cambia el pronóstico a 0 si la fila tiene todos ceros
     
         i = 0
@@ -157,30 +159,139 @@ class Pronosticos:
         tiempo_entrega = df_demanda['tiempo_entrega'].tolist()
         # extraer desviación estándar del tiempo de reposición
         desviacion_tiempo_reposicion = df_demanda['desviación_te'].tolist()
-        # calcular la desviación estándar de la demanda
-        desviacion_estandar = demanda.std(axis=1).tolist()
-        # calcular el promedio de la demanda
-        promedio_demanda = demanda.mean(axis=1).tolist()
+        # calcular promedio de la demanda
+        # promedio_demanda = demanda.mean(axis=1).tolist()
+        
+        z = 1.959
+        dias_inventario = []
+        dias_inventario_final = []
         cantidadx2 = []
-        z = 1.751
-        for i in range(len(inventario)):
-            stock = z * desviacion_estandar[i] * math.sqrt(tiempo_entrega[i])
-            cant_2meses = pronostico_final[i] + stock - inventario[i]
-            cantidadx2.append(math.ceil(cant_2meses))    
-            
-            # if pronostico_seleccionado[i] == 'SES' or pronostico_seleccionado[i] == 'SED':
-            #         stock = z * desviacion_estandar[i] * math.sqrt(tiempo_entrega[i])
-            #         cant_2meses = pronostico_final[i] + stock - inventario[i]
-            #         cantidadx2.append(math.ceil(cant_2meses))    
-            # else:
-            #     stock = z * promedio_demanda[i] * desviacion_tiempo_reposicion[i]
-            #     cant_2meses = pronostico_final[i] + stock - inventario[i]
-            #     cantidadx2.append(math.ceil(cant_2meses))
-     
-        # stock = z * math.sqrt((tiempo_entrega[i] * (desviacion_estandar[i] ** 2)) + ((promedio_demanda[i] ** 2) * (desviacion_tiempo_reposicion[i] ** 2)))
-        #     cantidadx2.append(math.ceil(stock))
-        
-        
+        lis_stock = []
+        # calculo del stock de seguridad
+        for index, pronostico in enumerate(pronostico_seleccionado):
+            if 'Promedio movil n=3' in pronostico:
+                error_pronostico = np.abs((df_promedio_movil_p3.iloc[index, 3:12].values - demanda.iloc[index, 3:12].values)).tolist()
+                # desviación estandar de una muestra
+                desviacion_estandar = np.std(error_pronostico, ddof=1)
+                stock = z * desviacion_estandar * math.sqrt(tiempo_entrega[index])
+                list_moda_demanda = (demanda.iloc[index, 3:12].values.tolist())
+                moda_demanda = statistics.mode(list_moda_demanda)
+                if pronostico_final[index] == 0 or moda_demanda == 0:
+                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                else:
+                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                promedio_demanda=(demanda.iloc[index, 3:12].mean())
+                promedio_demanda = round(promedio_demanda)
+                if promedio_demanda != 0:
+                    dias_inventario.append(round((stock / promedio_demanda) * 30))
+                    # extraer el valor que se acaba de añadir a la lista dias_inventario
+                else:
+                    dias_inventario.append(0)
+                if dias_inventario[-1] > 30:
+                    cantidadx2[-1] = math.ceil(promedio_demanda + pronostico_final[index] - inventario[index])
+                if promedio_demanda != 0:
+                    dias_inventario_final.append(round((cantidadx2[-1] / promedio_demanda) * 30))
+                else:
+                    dias_inventario_final.append(0)
+                lis_stock.append(stock)
+            elif 'Promedio movil n=4' in pronostico:
+                error_pronostico = np.abs((df_promedio_movil_p4.iloc[index, 4:12].values - demanda.iloc[index, 4:12].values)).tolist()
+                desviacion_estandar = np.std(error_pronostico, ddof=1)
+                stock = z * desviacion_estandar * math.sqrt(tiempo_entrega[index])
+                list_moda_demanda = (demanda.iloc[index, 4:12].values.tolist())
+                moda_demanda = statistics.mode(list_moda_demanda)
+                if pronostico_final[index] == 0 or moda_demanda == 0:
+                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                else:
+                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                promedio_demanda=(demanda.iloc[index, 4:12].mean())
+                promedio_demanda = round(promedio_demanda)
+                if promedio_demanda != 0:
+                    # new_stock = cantidadx2[-1]
+                    dias_inventario.append(round((stock / promedio_demanda) * 30))
+                else:
+                    dias_inventario.append(0)
+                if dias_inventario[-1] > 30:
+                    cantidadx2[-1] = math.ceil(promedio_demanda + pronostico_final[index] - inventario[index])
+                if promedio_demanda != 0:
+                    dias_inventario_final.append(round((cantidadx2[-1] / promedio_demanda) * 30))
+                else:
+                    dias_inventario_final.append(0)
+                lis_stock.append(stock) 
+            elif 'Promedio movil n=5' in pronostico:
+                error_pronostico = np.abs((df_promedio_movil_p5.iloc[index, 5:12].values - demanda.iloc[index, 5:12].values)).tolist()
+                desviacion_estandar = np.std(error_pronostico, ddof=1)
+                stock = z * desviacion_estandar * math.sqrt(tiempo_entrega[index])
+                list_moda_demanda = (demanda.iloc[index, 5:12].values.tolist())
+                moda_demanda = statistics.mode(list_moda_demanda)
+                if pronostico_final[index] == 0 or moda_demanda == 0:
+                    # stock = 0
+                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                else:
+                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                promedio_demanda=(demanda.iloc[index, 5:12].mean())
+                promedio_demanda = round(promedio_demanda)
+                if promedio_demanda != 0:
+                    # new_stock = cantidadx2[-1]
+                    dias_inventario.append(round((stock / promedio_demanda) * 30))
+                else:
+                    dias_inventario.append(0)
+                if dias_inventario[-1] > 30:
+                    cantidadx2[-1] = math.ceil(promedio_demanda + pronostico_final[index] - inventario[index])
+                if promedio_demanda != 0:
+                    dias_inventario_final.append(round((cantidadx2[-1] / promedio_demanda) * 30))
+                else:
+                    dias_inventario_final.append(0)
+                lis_stock.append(stock)
+            elif 'SES' in pronostico:
+                error_pronostico = np.abs((df_pronostico_ses.iloc[index, 3:12].values - demanda.iloc[index, 3:12].values)).tolist()
+                desviacion_estandar = np.std(error_pronostico, ddof=1)
+                stock = z * desviacion_estandar * math.sqrt(tiempo_entrega[index])
+                list_moda_demanda = (demanda.iloc[index, 3:12].values.tolist())
+                moda_demanda = statistics.mode(list_moda_demanda)
+                if pronostico_final[index] == 0 or moda_demanda == 0:
+                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                else:
+                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                promedio_demanda=(demanda.iloc[index, 3:12].mean())
+                promedio_demanda = round(promedio_demanda)
+                if promedio_demanda != 0:
+                    # new_stock = cantidadx2[-1]
+                    dias_inventario.append(round((stock / promedio_demanda) * 30))
+                else:
+                    dias_inventario.append(0)
+                if dias_inventario[-1] > 30:
+                    cantidadx2[-1] = math.ceil(promedio_demanda + pronostico_final[index] - inventario[index])
+                if promedio_demanda != 0:
+                    dias_inventario_final.append(round((cantidadx2[-1] / promedio_demanda) * 30))
+                else:
+                    dias_inventario_final.append(0)
+                lis_stock.append(stock)
+            else:
+                error_pronostico = np.abs((df_pronostico_sed.iloc[index, 3:12].values - demanda.iloc[index, 3:12].values)).tolist()
+                desviacion_estandar = np.std(error_pronostico, ddof=1)
+                stock = z * desviacion_estandar * math.sqrt(tiempo_entrega[index])
+                list_moda_demanda = (demanda.iloc[index, 3:12].values.tolist())
+                moda_demanda = statistics.mode(list_moda_demanda)
+                if pronostico_final[index] == 0 or moda_demanda == 0:
+                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                else:
+                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                promedio_demanda=(demanda.iloc[index, 3:12].mean())
+                promedio_demanda = round(promedio_demanda)
+                if promedio_demanda != 0:
+                    # new_stock = cantidadx2[-1]
+                    dias_inventario.append(round((stock / promedio_demanda) * 30))
+                else:
+                    dias_inventario.append(0)
+                if dias_inventario[-1] > 30:
+                    cantidadx2[-1] = math.ceil(promedio_demanda + pronostico_final[index] - inventario[index])
+                if promedio_demanda != 0:
+                    dias_inventario_final.append(round((cantidadx2[-1] / promedio_demanda) * 30))
+                else:
+                    dias_inventario_final.append(0)
+                lis_stock.append(stock)
+                
         df_pronosticos = pd.DataFrame(
             {   
                 "id": id, #1
@@ -195,13 +306,18 @@ class Pronosticos:
                 "cantidad": cantidad, #9
                 "stock_de_seguridad": cantidadx2, #10
                 "precio": precio, #11
+                "dias_inventario": dias_inventario_final, #12
             }
         )
         
         # Agregar un cero a la izquierda a todos los datos de la columna 'bodega'
         df_pronosticos['bodega'] = df_pronosticos['bodega'].apply(lambda x: str(x).zfill(len(str(x)) + 1))
-       
-        # df_pronosticos = pd.DataFrame({"id": id, "Items": item, "Proveedor": proveedor, "Productos": productos, "Sede": sede, "MAD": MAD_final, "MAPE": MAPE_final, "MAPE_PRIMA": MAPE_PRIMA_final,"ECM":ECM_final, "Pronostico": pronostico_final, "Pronostico_2_meses": pronostico_final_redondeado, "Pronostico_seleccionado": pronostico_seleccionado})
+        
+        # Especifica la ruta del archivo Excel donde deseas guardar el DataFrame
+        # ruta_archivo_excel = "Pronosticos.xlsx"
+
+        # # Usa el método to_excel() para guardar el DataFrame en el archivo Excel
+        # df_pronosticos.to_excel(ruta_archivo_excel, index=False) 
         
         return (
             demanda,

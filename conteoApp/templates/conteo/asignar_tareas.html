@@ -1,0 +1,37 @@
+{% extends "base.html" %} 
+{% load static %}
+{% block title %}Conteo{% endblock %}
+{% block content %}
+<h1>Asignar Tarea</h1>
+<form method="post" id="tareaForm">
+    {% csrf_token %}
+    {{ form.as_p }}  <!-- Renderiza todo el formulario de forma automática -->
+    <button type="submit">Asignar Tarea</button>
+</form>
+
+{% if usuario %}
+    <h3>Tareas Asignadas a {{ usuario.username }}</h3>
+    {% if tareas %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Estado</th>
+                    <th>Fecha de Asignación</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tarea in tareas %}
+                    <tr>
+                        <td>{{ tarea.producto.pronombre }}</td>
+                        <td>{{ tarea.estado }}</td>
+                        <td>{{ tarea.fecha_asignacion }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay tareas asignadas a este usuario.</p>
+    {% endif %}
+{% endif %}
+{% endblock %}
