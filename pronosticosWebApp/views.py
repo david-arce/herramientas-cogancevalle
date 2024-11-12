@@ -26,7 +26,7 @@ def dashboard(request):
         'productos': productos,
         'sedes': sedes,
     }
-    return render(request, "pronosticos.html", context)
+    return render(request, "pronosticosWebApp/pronosticos.html", context)
 
 @csrf_exempt
 def send_data(request):

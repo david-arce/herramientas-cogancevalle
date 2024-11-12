@@ -116,9 +116,9 @@ class Pronosticos:
         # Iterar sobre el DataFrame y la lista de pronósticos al mismo tiempo
         for index, (row, pronostico) in enumerate(zip(df_ultimos_4meses.iterrows(), pronostico_final)):
             _, row_data = row  # Extrae la fila actual de row
-            if (row_data == 0).all():  # Verifica si todas las columnas de meses tienen cero
+            if (row_data[:-1] == 0).all():  # Verifica si todas las columnas de meses tienen cero
                 pronostico_final[index] = 0  # Cambia el pronóstico a 0 si la fila tiene todos ceros
-    
+        
         i = 0
         MAD_final = []
         for valores in zip(MAD_p3, MAD_p4, MAD_p5, MAD1, MAD2):
@@ -155,13 +155,18 @@ class Pronosticos:
         for i in range(len(inventario)):
             cantidad.append(pronostico_final[i] - inventario[i])
 
+        # nueva lista con la cantidad multiplicada por 2
+        cantidadx2 = []
+        for i in range(len(cantidad)):
+            prox2 = pronostico_final[i] * 2
+            cantidadx2.append(prox2 - inventario[i])
+
+        '''
         # extraer tiempo de entrega
         tiempo_entrega = df_demanda['tiempo_entrega'].tolist()
         # extraer desviación estándar del tiempo de reposición
         desviacion_tiempo_reposicion = df_demanda['desviación_te'].tolist()
-        # calcular promedio de la demanda
-        # promedio_demanda = demanda.mean(axis=1).tolist()
-        
+       
         z = 1.959
         dias_inventario = []
         dias_inventario_final = []
@@ -291,7 +296,7 @@ class Pronosticos:
                 else:
                     dias_inventario_final.append(0)
                 lis_stock.append(stock)
-                
+        '''
         df_pronosticos = pd.DataFrame(
             {   
                 "id": id, #1
@@ -306,7 +311,6 @@ class Pronosticos:
                 "cantidad": cantidad, #9
                 "stock_de_seguridad": cantidadx2, #10
                 "precio": precio, #11
-                "dias_inventario": dias_inventario_final, #12
             }
         )
         

@@ -28,47 +28,59 @@ import random
 @login_required
 def asignar_tareas(request):
     tareas = None  # Inicializamos la variable de las tareas
-    usuario = None
+    selected_users = None
 
     if request.method == 'POST':
         form = AsignarTareaForm(request.POST)
         if form.is_valid():
             # Obtener el usuario seleccionado
-            usuario = form.cleaned_data['usuario']
+            selected_users = form.cleaned_data['users']
 
             # Seleccionar productos aleatorios del modelo Venta
             productos = list(Venta.objects.all())  # Obtenemos todos los productos
             productos_random = random.sample(productos, min(len(productos), 5))  # Ejemplo: Asignar 5 productos aleatorios
 
             # Crear una tarea para cada producto seleccionado
-            for producto in productos_random:
-                Tarea.objects.create(
-                    usuario=usuario,
-                    producto=producto,
-                    conteo=0,  # Puedes asignar un valor por defecto o personalizarlo
-                    estado='pendiente'
-                )
+            for usuario in selected_users:
+                for producto in productos_random:
+                    Tarea.objects.create(
+                        usuario=usuario,
+                        producto=producto,
+                        conteo=0,  # Puedes asignar un valor por defecto o personalizarlo
+                        estado='pendiente'
+                    )
 
             # Obtener las tareas asignadas a ese usuario para mostrarlas
-            tareas = Tarea.objects.filter(usuario=usuario)
+            tareas = Tarea.objects.filter(usuario__in=selected_users)
 
     else:
         form = AsignarTareaForm()
 
-    return render(request, 'conteo/asignar_tareas.html', {
+    return render(request, 'conteoApp/user_selection.html', {
         'form': form,
         'tareas': tareas,
-        'usuario': usuario,
+        'selected_users': selected_users,
     })
     
 @login_required
 def lista_tareas(request):
-    tareas = Tarea.objects.filter(usuario=request.user)
-    return render(request, 'conteo/lista_tareas.html', {'tareas': tareas})
+    tareas = None
+    # tareas = Tarea.objects.filter(usuario=request.user)
+    if request.method == 'POST':
+        form = AsignarTareaForm(request.POST)
+        if form.is_valid():
+            selected_users = form.cleaned_data['users']
+            tareas = Tarea.objects.filter(usuario__in=selected_users)
+            # Reiniciar el formulario con los usuarios seleccionados
+            form = AsignarTareaForm(initial={'users': selected_users})
+    else:
+        form = AsignarTareaForm()
+    
+    return render(request, 'conteoApp/lista_tareas.html', {'form': form, 'tareas': tareas})
 
 @permission_required('conteoApp.view_conteo', raise_exception=True)
 def conteo(request):
-    return render(request, 'conteo/conteo.html')
+    return render(request, 'conteoApp/conteo.html')
 
 def error_permiso(request, exception):
     return render(request, 'error.html', status=403)

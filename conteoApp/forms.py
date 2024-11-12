@@ -11,6 +11,13 @@ class TareaForm(forms.ModelForm):
         fields = ['venta']
 
 class AsignarTareaForm(forms.Form):
-    usuario = forms.ModelChoiceField(queryset=User.objects.all(), label="Selecciona un Usuario")
-    
-    
+    # usuario = forms.ModelChoiceField(queryset=User.objects.all(), label="Selecciona un Usuario")
+    users = forms.ModelMultipleChoiceField(
+        queryset=User.objects.all(),
+        label="Select Users",
+        widget=forms.SelectMultiple(attrs={
+            'class': 'form-control select2',  # Add CSS class for JavaScript library support
+            'style': 'width: 25%;'
+        })
+    )
+
