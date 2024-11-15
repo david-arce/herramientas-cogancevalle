@@ -1,42 +1,67 @@
 {% extends "base.html" %} 
 {% load static %}
-{% block title %}Conteo{% endblock %}
-
+{% block title %}Tareas{% endblock %}
+{% block css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/css/select2.min.css" rel="stylesheet" />
+<link href="{% static 'conteoApp/css/conteoApp.css' %}" rel="stylesheet">
+{% endblock %}
 
 {% block content %}
-<h1>Asignar Tarea</h1>
-<form method="post" id="tareaForm">
+<h1>Seleccionar Usuarios</h1>
+<form method="post">
     {% csrf_token %}
-    {{ form.as_p }}  <!-- Renderiza todo el formulario de forma automática -->
-    <button type="submit">Asignar Tarea</button>
+    <div>
+        {{ form.users.label_tag }}<br>
+        {{ form.users }}
+    </div>
+    <button type="submit">Submit</button>
 </form>
 
-{% if usuario %}
-    <h3>Tareas Asignadas a {{ usuario.username }}</h3>
-    {% if tareas %}
-        <table class="table-tarea">
-            <thead>
+{% if tareas %}
+    <h2>Mis Tareas</h2>
+    
+<!-- Tabla de Tareas -->
+<div class="table-container">
+    <table id = "myTable">
+        <thead>
+            <tr>
+                <th onclick="sortTable(0)">Usuario</th>
+                <th onclick="sortTable(1)">Id</th>
+                <th onclick="sortTable(2)">Producto</th>
+                <th onclick="sortTable(3)">Conteo</th>
+                <th onclick="sortTable(4)">Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tarea in tareas %}
                 <tr>
-                    <th>Proveedor</th>
-                    <th>Estado</th>
-                    <th>Fecha de Asignación</th>
+                    <td>{{ tarea.usuario.username }}</td>
+                    <td>{{ tarea.producto.id }}</td>
+                    <td>{{ tarea.producto.marnombre }}</td>
+                    <td>{{ tarea.conteo }}</td>
+                    <td>{{ tarea.estado }}</td>
                 </tr>
-            </thead>
-            <tbody>
-                {% for tarea in tareas %}
-                    <tr>
-                        <td>{{ tarea.producto.marnombre }}</td>
-                        <td>{{ tarea.estado }}</td>
-                        <td>{{ tarea.fecha_asignacion }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p>No hay tareas asignadas a este usuario.</p>
-    {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p>Selecciona usuarios para ver sus tareas asignadas.</p>
 {% endif %}
 
 {% endblock %}
 
-
+{% block js %}
+<script src="{% static 'conteoApp/js/conteoApp.js' %}"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/js/select2.min.js"></script>
+<script>
+    // Activate select2 on the multiple select field
+    $(document).ready(function() {
+        $('.select2').select2({
+            placeholder: 'Search for a user...',
+            allowClear: true
+        });
+    });
+</script>
+{% endblock %}

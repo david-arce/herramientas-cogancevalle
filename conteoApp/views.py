@@ -36,19 +36,32 @@ def asignar_tareas(request):
             # Obtener el usuario seleccionado
             selected_users = form.cleaned_data['users']
 
-            # Seleccionar productos aleatorios del modelo Venta
-            productos = list(Venta.objects.all())  # Obtenemos todos los productos
-            productos_random = random.sample(productos, min(len(productos), 5))  # Ejemplo: Asignar 5 productos aleatorios
+            # Filtrar productos donde 'mcnproduct' contenga solo valores numéricos
+            productos = list(Venta.objects.filter(mcnproduct__regex=r'^\d+$'))
+            productos_random = random.sample(productos, min(len(productos), 5 * len(selected_users)))  # Ejemplo: Asignar 5 productos aleatorios
 
-            # Crear una tarea para cada producto seleccionado
+            # Crear un índice para distribuir productos entre usuarios
+            producto_index = 0
+            total_productos = len(productos_random)
+
+            # Asignar productos únicos a cada usuario seleccionado
             for usuario in selected_users:
-                for producto in productos_random:
-                    Tarea.objects.create(
-                        usuario=usuario,
-                        producto=producto,
-                        conteo=0,  # Puedes asignar un valor por defecto o personalizarlo
-                        estado='pendiente'
-                    )
+                # Asignar productos únicos hasta alcanzar el límite por usuario (ejemplo: 5 productos)
+                for _ in range(5):
+                    if producto_index < total_productos:
+                        producto = productos_random[producto_index]
+
+                        # Verificar que el producto no ha sido asignado a otro usuario
+                        if not Tarea.objects.filter(producto=producto).exists():
+                            Tarea.objects.create(
+                                usuario=usuario,
+                                producto=producto,
+                                conteo=0,  # Valor por defecto o personalizado
+                                estado='pendiente'
+                            )
+                        producto_index += 1
+                    else:
+                        break  # Romper si no hay más productos disponibles
 
             # Obtener las tareas asignadas a ese usuario para mostrarlas
             tareas = Tarea.objects.filter(usuario__in=selected_users)
@@ -56,7 +69,7 @@ def asignar_tareas(request):
     else:
         form = AsignarTareaForm()
 
-    return render(request, 'conteoApp/user_selection.html', {
+    return render(request, 'conteoApp/asignar_tareas.html', {
         'form': form,
         'tareas': tareas,
         'selected_users': selected_users,

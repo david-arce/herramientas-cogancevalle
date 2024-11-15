@@ -31,4 +31,4 @@ class Tarea(models.Model):
         verbose_name_plural = 'Tareas'
 
     def __str__(self):
-        return self.usuario.username
+        return self.usuario.username + ' - ' + self.producto.marnombre
