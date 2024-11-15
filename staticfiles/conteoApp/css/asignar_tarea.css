@@ -1,0 +1,12 @@
+.table-tarea {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+.table-tarea, th, td {
+    border: 1px solid black;
+}
+th, td {
+    padding: 10px;
+    text-align: left;
+}

@@ -1,0 +1,205 @@
+/* estilos para el login */
+:root {
+    --primary: #5f695f;
+    --button-dark: #373b52;
+    --button-light: #315d77;
+    --secondary: #000000;
+    --text-login: #000000;
+    --login-filter-color: #fcfcfc;
+    --navbar-color: #f3f3f3;
+    --background: #ffffff;
+}
+
+.login-content {
+    font-size: 16px;
+    font-family: 'Work Sans', sans-serif;
+    height: 100vh;
+    padding: 1rem;
+    display: flex;
+    height: 100vh;
+    justify-content: center;
+    align-items: center;
+    background: var(--background);
+}
+
+.login-welcome {
+    margin-bottom: 1rem;
+    text-align: center;
+    color: var(--text-login);
+}
+
+.login-logo {
+    height: 3rem;
+    margin: 0 auto;
+}
+
+.my-form {
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    position: relative;
+    gap: 1rem;
+    background-color: var(--login-filter-color);
+    width: 100%;
+    max-width: 32rem;
+    padding: 3rem 2rem;
+    border-radius: 2rem;
+    height: fit-content;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+.my-form__button {
+    background-color: var(--button-light);
+    color: white;
+    white-space: nowrap;
+    border: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 1rem;
+    line-height: 3.125rem;
+    outline: none;
+    font-size: 1.125rem;
+    letter-spacing: .025rem;
+    text-decoration: none;
+    cursor: pointer;
+    font-weight: 800;
+    min-height: 3.125rem;
+    width: 100%;
+    border-radius: 10rem;
+    transition: all .3s ease;
+    -webkit-transition: all .3s ease;
+}
+
+.buttons-login {
+    display: flex;
+    gap: 1rem;
+}
+
+.my-form__button:hover {
+    background-color: var(--button-dark);
+}
+
+/* ? input wrapper */
+.input__wrapper {
+    position: relative;
+    padding: 0.9375rem 0 0;
+    margin-bottom: 0.5rem;
+}
+
+.input__field__username,
+.input__field__password {
+    font-size: 1.2rem;
+    color: rgb(0, 0, 0);
+    padding: 0.375rem 0;
+    padding-right: 2rem;
+    padding-bottom: 0.7rem;
+    line-height: 2rem;
+    height: 2rem;
+    outline: 0;
+    border: 0;
+    width: 100%;
+    vertical-align: middle;
+    border-bottom: 2px solid var(--secondary);
+    background: transparent;
+    transition: var(--button-dark) 0.2s;
+}
+
+.input__field__username::placeholder,
+.input__field__password::placeholder {
+    color: transparent;
+}
+
+
+.input__label__password,
+.input__label__username {
+    user-select: none;
+}
+
+.input__field__username:placeholder-shown~.input__label__username,
+.input__field__password:placeholder-shown~.input__label__password {
+    cursor: text;
+    color: var(--text-login);
+    top: 0.8rem;
+    font-size: 1.2rem;
+}
+
+/*comportamiento de los inputs*/
+.input__label__username,
+.input__field__username:focus~.input__label__username,
+.input__label__password,
+.input__field__password:focus~.input__label__password {
+    position: absolute;
+    top: 0;
+    display: block;
+    font-size: 0.875rem;
+    left: -0.0625rem;
+    color: var(--text-login);
+    transition: 0.3s;
+}
+
+.input__field__username:focus~.input__label__username,
+.input__field__password:focus~.input__label__password {
+    color: var(--text-login);
+}
+
+.input__field__username:focus,
+.input__field__password:focus {
+    background-color: transparent; /* elimina el sombreado azul claro */
+    border-bottom: 3px solid var(--primary);
+}
+
+.input__icon {
+    position: absolute;
+    right: -0.875rem;
+    bottom: -0.6875rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0.125rem;
+    transform: translate(-50%, -50%);
+    transform-origin: center;
+    cursor: pointer;
+}
+
+.input__icon__password {
+    position: absolute;
+    right: -0.875rem;
+    bottom: -0.6875rem;
+    width: 2.1rem;
+    height: 2.1rem;
+    padding: 0.125rem;
+    transform: translate(-50%, -50%);
+    transform-origin: center;
+    cursor: pointer;
+}
+
+.input__icon:hover {
+    border-radius: 50%;
+}
+
+/* my form actions */
+
+.my-form__actions {
+    display: flex;
+    flex-direction: column;
+    align-self: center;
+    color: var(--secondary);
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.my-form__actions a {
+    color: var(--secondary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.my-form__actions a:hover {
+    text-decoration: underline;
+}
+
+.my-form__row {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: space-between;
+}

@@ -10,7 +10,7 @@ class PronosticoExpDoble:
     
     def pronosticoExpDoble(alpha, beta, p):
         df_demanda = pd.DataFrame(pm.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
-        print('espere un momento...')
+        print('Calculando suavización exponencial doble...')
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
         # Filtrar columnas que contienen meses (sin importar mayúsculas o minúsculas)
@@ -61,8 +61,6 @@ class PronosticoExpDoble:
         
         #lista de pronosticos para el siguiente mes
         lista_pronosticos = demanda.iloc[:, cantidadMeses].values.tolist()
-        #lista de pronosticos redondeado
-        lista_pronosticos_redondeo = [(i*2) for i in lista_pronosticos]
         
         errores, erroresMape, erroresMapePrima, erroresCuadraticoMedio = [], [], [], []
         MAD=[] #mean absolute deviation
@@ -103,7 +101,7 @@ class PronosticoExpDoble:
         EMC = [np.mean(np.square(erroresAbs[i:i+total_meses_pronostico])) for i in range(0, len(erroresAbs), total_meses_pronostico)]
         # print('EMC: ', EMC[:5])
         del df_demanda
-        return MAD, MAPE, MAPE_prima, EMC, df_pronostico_sed, lista_pronosticos, lista_pronosticos_redondeo
+        return MAD, MAPE, MAPE_prima, EMC, df_pronostico_sed, lista_pronosticos
     
     
     def prueba():

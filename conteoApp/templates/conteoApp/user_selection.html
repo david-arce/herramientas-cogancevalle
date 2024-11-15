@@ -1,0 +1,43 @@
+<!-- user_selection.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Select Users</title>
+    <!-- Load jQuery and Select2 CSS and JS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/css/select2.min.css" rel="stylesheet" />
+    
+</head>
+<body>
+    <h1>Select Users</h1>
+    <form method="post">
+        {% csrf_token %}
+        <div>
+            {{ form.users.label_tag }}<br>
+            {{ form.users }}
+        </div>
+        <button type="submit">Submit</button>
+    </form>
+
+    {% if tareas %}
+        <h2>Assigned Tasks</h2>
+        <ul>
+            {% for tarea in tareas %}
+                <li>{{ tarea.usuario.username }} - {{ tarea.producto.marnombre }} - {{ tarea.estado }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <script>
+        // Activate select2 on the multiple select field
+        $(document).ready(function() {
+            $('.select2').select2({
+                placeholder: 'Search for a user...',
+                allowClear: true
+            });
+        });
+    </script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/js/select2.min.js"></script>
+</body>
+</html>
