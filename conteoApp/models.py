@@ -9,10 +9,10 @@ from django.db import models
 from django.contrib.auth.models import User
 
 class Venta(models.Model):
-    mcnproduct = models.CharField(db_column='MCNPRODUCT', blank=True, null=True)  # Field name made lowercase.
-    marnombre = models.CharField(db_column='MARNOMBRE', blank=True, null=True)  # Field name made lowercase.
-    pronombre = models.CharField(db_column='PRONOMBRE', blank=True, null=True)  # Field name made lowercase.
-    docfecha = models.DateField(db_column='DOCFECHA', blank=True, null=True)  # Field name made lowercase.
+    mcnproduct = models.CharField(db_column='MCNPRODUCT', blank=True, null=True)  # item
+    marnombre = models.CharField(db_column='MARNOMBRE', blank=True, null=True)  # proveedor
+    pronombre = models.CharField(db_column='PRONOMBRE', blank=True, null=True)  # descripcion
+    docfecha = models.DateField(db_column='DOCFECHA', blank=True, null=True)  # fecha
 
     class Meta:
         managed = False
@@ -23,7 +23,8 @@ class Tarea(models.Model):
     producto = models.ForeignKey(Venta, on_delete=models.CASCADE)
     conteo = models.IntegerField(null=True, blank=True)
     fecha_asignacion = models.DateField(auto_now_add=True)
-    estado = models.CharField(max_length=255, choices=[('pendiente', 'Pendiente'), ('completada', 'Completada')], default='pendiente')
+    observacion = models.TextField(null=True, blank=True)
+    diferencia = models.IntegerField(null=True, blank=True)
 
     class Meta:
         db_table = 'tarea'
@@ -31,4 +32,7 @@ class Tarea(models.Model):
         verbose_name_plural = 'Tareas'
 
     def __str__(self):
-        return self.usuario.username + ' - ' + self.producto.marnombre
+        username = self.usuario.username if self.usuario and self.usuario.username else "Unknown User"
+        marnombre = self.producto.marnombre if self.producto and self.producto.marnombre else "Unknown Product"
+        observacion = self.observacion if self.observacion else "No Observations"
+        return f"{username} - {marnombre} - {self.conteo} - {observacion}"

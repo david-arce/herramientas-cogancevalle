@@ -4,11 +4,14 @@ from django.contrib.auth.decorators import permission_required, login_required
 from django.core.exceptions import PermissionDenied
 from django.views.generic import ListView
 from django.views.generic import CreateView
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from .models import Venta
 from .models import Tarea
+from pronosticosWebApp.models import Demanda
 from .forms import AsignarTareaForm
 import random
+from django.contrib import messages
+from django.db.models import Count
 
 # class TareaListView(ListView):
 #     model = Tarea
@@ -32,42 +35,62 @@ def asignar_tareas(request):
 
     if request.method == 'POST':
         form = AsignarTareaForm(request.POST)
-        if form.is_valid():
-            # Obtener el usuario seleccionado
-            selected_users = form.cleaned_data['users']
+        if 'assign_users' in request.POST:
+            if form.is_valid():
+                # Obtener el usuario seleccionado
+                selected_users = form.cleaned_data['users']
 
-            # Filtrar productos donde 'mcnproduct' contenga solo valores numéricos
-            productos = list(Venta.objects.filter(mcnproduct__regex=r'^\d+$'))
-            productos_random = random.sample(productos, min(len(productos), 5 * len(selected_users)))  # Ejemplo: Asignar 5 productos aleatorios
+                # Filtrar productos disponibles con un valor numérico en 'mcnproduct'
+                productos = list(Venta.objects.filter(mcnproduct__regex=r'^\d+$'))
+                total_productos = len(productos)
 
-            # Crear un índice para distribuir productos entre usuarios
-            producto_index = 0
-            total_productos = len(productos_random)
+                # Verificar que hay suficientes productos para asignar
+                if total_productos == 0 or len(selected_users) == 0:
+                    messages.error(request, "No hay productos disponibles o no se seleccionaron usuarios.")
+                    return redirect('asignar_tareas')
 
-            # Asignar productos únicos a cada usuario seleccionado
-            for usuario in selected_users:
-                # Asignar productos únicos hasta alcanzar el límite por usuario (ejemplo: 5 productos)
-                for _ in range(5):
-                    if producto_index < total_productos:
-                        producto = productos_random[producto_index]
+                # Calcular productos por usuario
+                productos_por_usuario = total_productos // len(selected_users)
+                productos_restantes = total_productos % len(selected_users)
 
-                        # Verificar que el producto no ha sido asignado a otro usuario
-                        if not Tarea.objects.filter(producto=producto).exists():
-                            Tarea.objects.create(
-                                usuario=usuario,
-                                producto=producto,
-                                conteo=0,  # Valor por defecto o personalizado
-                                estado='pendiente'
-                            )
-                        producto_index += 1
-                    else:
-                        break  # Romper si no hay más productos disponibles
+                # Barajar los productos para distribuir aleatoriamente
+                random.shuffle(productos)
 
-            # Obtener las tareas asignadas a ese usuario para mostrarlas
-            tareas = Tarea.objects.filter(usuario__in=selected_users)
+                # Crear tareas para cada usuario
+                producto_index = 0
+                for usuario in selected_users:
+                    # Determinar cuántos productos asignar a este usuario
+                    cantidad_a_asignar = productos_por_usuario
+                    if productos_restantes > 0:  # Repartir los productos sobrantes
+                        cantidad_a_asignar += 1
+                        productos_restantes -= 1
+
+                    # Asignar productos a este usuario
+                    for _ in range(cantidad_a_asignar):
+                        if producto_index < total_productos:
+                            producto = productos[producto_index]
+
+                            # Verificar que el producto no ha sido asignado previamente
+                            if not Tarea.objects.filter(producto=producto).exists():
+                                Tarea.objects.create(
+                                    usuario=usuario,
+                                    producto=producto,
+                                    conteo=0,
+                                    observacion='',
+                                )
+                            producto_index += 1
+
+                # Mensaje de éxito y redirección
+                messages.success(request, f"Tareas asignadas equitativamente a {', '.join([user.username for user in selected_users])}.")
+                return redirect(reverse('asignar_tareas') + '?assigned=1')
 
     else:
         form = AsignarTareaForm()
+    
+    # Limpiar usuarios seleccionados y mostrar tareas si `assigned=1`
+    if 'assigned' in request.GET:
+        tareas = Tarea.objects.filter(usuario__in=selected_users) if selected_users else None
+        selected_users = None  # Limpiar seleccionados para evitar reasignación
 
     return render(request, 'conteoApp/asignar_tareas.html', {
         'form': form,
@@ -78,18 +101,67 @@ def asignar_tareas(request):
 @login_required
 def lista_tareas(request):
     tareas = None
-    # tareas = Tarea.objects.filter(usuario=request.user)
+    usuarios_con_tareas = []  # Lista para almacenar los usuarios y la cantidad de tareas asignadas
+    # tareass = Tarea.objects.filter(usuario=request.user)
+    
     if request.method == 'POST':
+        # Verificar si el formulario es para filtrar usuarios o actualizar valores de conteo
         form = AsignarTareaForm(request.POST)
-        if form.is_valid():
-            selected_users = form.cleaned_data['users']
-            tareas = Tarea.objects.filter(usuario__in=selected_users)
-            # Reiniciar el formulario con los usuarios seleccionados
-            form = AsignarTareaForm(initial={'users': selected_users})
+        if 'filter_users' in request.POST:
+            if form.is_valid():
+                selected_users = form.cleaned_data['users']
+                tareas = Tarea.objects.filter(usuario__in=selected_users)
+                
+                # Calcular el número de tareas por usuario
+                usuarios_con_tareas = (
+                    Tarea.objects.filter(usuario__in=selected_users)
+                    .values('usuario__username')  # Agrupar por nombre de usuario
+                    .annotate(total_tareas=Count('id'))  # Contar las tareas
+                )
+                
+                # Reiniciar el formulario con los usuarios seleccionados
+                # form = AsignarTareaForm(initial={'users': selected_users})
+
+            # Redirigir para evitar reenvío del formulario
+            # return redirect('tareas_contador')
     else:
         form = AsignarTareaForm()
     
-    return render(request, 'conteoApp/lista_tareas.html', {'form': form, 'tareas': tareas})
+    return render(request, 'conteoApp/tareas_contador.html', {
+        'form': form, 
+        'tareas': tareas, 
+        'usuarios_con_tareas': usuarios_con_tareas})
+
+@login_required
+def actualizar_tarea(request):
+    tareas = None
+    if request.method == 'POST':
+        if 'update_tarea' in request.POST:
+            # Actualizar los valores de conteo y observación
+            for key, value in request.POST.items():
+                if key.startswith('conteo_'):  # Identificar los campos de conteo
+                    tarea_id = key.split('_')[1] # Obtener el ID de la tarea a partir del nombre del campo (tarea_1, tarea_2, etc.)
+                    try:
+                        tarea = Tarea.objects.get(id=tarea_id)
+                        tarea.conteo = int(value)  # Actualizar el conteo
+                        tarea.save()
+                    except (Tarea.DoesNotExist, ValueError):
+                        tarea.conteo = 0
+                
+                if key.startswith('observacion_'):  # Identificar los campos de observación
+                    tarea_id = key.split('_')[1] 
+                    try:
+                        tarea = Tarea.objects.get(id=tarea_id)
+                        tarea.observacion = value.strip()  # Actualizar observación. Eliminar espacios en blanco al inicio y al final con `strip()`
+                        tarea.save()
+                    except Tarea.DoesNotExist:
+                        pass  # Manejar errores si la tarea no existe
+    else:
+        form = AsignarTareaForm()
+    
+    return render(request, 'conteoApp/tareas_contadores.html', {
+        'form': form, 
+        'tareas': tareas})
 
 @permission_required('conteoApp.view_conteo', raise_exception=True)
 def conteo(request):
