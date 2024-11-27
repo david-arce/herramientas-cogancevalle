@@ -14,7 +14,7 @@
         {{ form.users.label_tag }}<br>
         {{ form.users }}
     </div>
-    <button type="submit" name="filter_users">Submit</button>
+    <button type="submit" name="filter_users">Ver usuarios</button>
 </form>
 
 {% if tareas %}
@@ -33,7 +33,7 @@
 <!-- Tabla de Tareas -->
 <form method="post">
     {% csrf_token %}
-    
+<button type="submit" name="update_tarea">Actualizar Tarea</button>
 <div class="table-container">
     <table id = "myTable">
         <thead>
@@ -59,7 +59,6 @@
         </tbody>
     </table>
 </div>
-<button type="submit" name="update_tarea">Actualizar Tarea</button>
 </form>
 {% else %}
 <p>Selecciona usuarios para ver sus tareas asignadas.</p>

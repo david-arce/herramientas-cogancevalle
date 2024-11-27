@@ -12,6 +12,7 @@ from .forms import AsignarTareaForm
 import random
 from django.contrib import messages
 from django.db.models import Count
+from django.db.models import Q # Importar el objeto Q para consultas complejas con filtros lógicos
 
 # class TareaListView(ListView):
 #     model = Tarea
@@ -32,10 +33,11 @@ from django.db.models import Count
 def asignar_tareas(request):
     tareas = None  # Inicializamos la variable de las tareas
     selected_users = None
+    usuarios_con_tareas = []  # Lista para almacenar los usuarios y la cantidad de tareas asignadas
 
     if request.method == 'POST':
         form = AsignarTareaForm(request.POST)
-        if 'assign_users' in request.POST:
+        if 'assign_task' in request.POST:
             if form.is_valid():
                 # Obtener el usuario seleccionado
                 selected_users = form.cleaned_data['users']
@@ -77,13 +79,32 @@ def asignar_tareas(request):
                                     producto=producto,
                                     conteo=0,
                                     observacion='',
+                                    diferencia=0
                                 )
                             producto_index += 1
 
                 # Mensaje de éxito y redirección
-                messages.success(request, f"Tareas asignadas equitativamente a {', '.join([user.username for user in selected_users])}.")
-                return redirect(reverse('asignar_tareas') + '?assigned=1')
-
+                # messages.success(request, f"Tareas asignadas equitativamente a {', '.join([user.username for user in selected_users])}.")
+                # return redirect(reverse('asignar_tareas') + '?assigned=1')    
+        if 'delete_task' in request.POST:
+            if form.is_valid():
+                # Obtener el usuario seleccionado
+                selected_users = form.cleaned_data['users']
+                tareas = Tarea.objects.filter(usuario__in=selected_users)
+                tareas.delete()
+                messages.success(request, f"Tareas eliminadas de {', '.join([user.username for user in selected_users])}.")
+                # return redirect(reverse('asignar_tareas') + '?assigned=1')
+        if 'filter_users' in request.POST:
+            if form.is_valid():
+                selected_users = form.cleaned_data['users']
+                tareas = Tarea.objects.filter(usuario__in=selected_users)
+                
+                # Calcular el número de tareas por usuario
+                usuarios_con_tareas = (
+                    Tarea.objects.filter(usuario__in=selected_users)
+                    .values('usuario__username')  # Agrupar por nombre de usuario
+                    .annotate(total_tareas=Count('id'))  # Contar las tareas
+                )
     else:
         form = AsignarTareaForm()
     
@@ -96,12 +117,16 @@ def asignar_tareas(request):
         'form': form,
         'tareas': tareas,
         'selected_users': selected_users,
+        'usuarios_con_tareas': usuarios_con_tareas
     })
-    
+
+from django.db.models import Q, CharField, IntegerField
+from django.db.models.functions import Cast
 @login_required
 def lista_tareas(request):
-    tareas = None
+    tareas = Tarea.objects.none()  # Inicializamos la variable de las tareas
     usuarios_con_tareas = []  # Lista para almacenar los usuarios y la cantidad de tareas asignadas
+    inventarios = []  # Lista para almacenar las coincidencias de productos y su inventario
     # tareass = Tarea.objects.filter(usuario=request.user)
     
     if request.method == 'POST':
@@ -119,11 +144,69 @@ def lista_tareas(request):
                     .annotate(total_tareas=Count('id'))  # Contar las tareas
                 )
                 
+                # Filtrar inventarios relacionados con tipo de dato compatible
+                inventarios = Demanda.objects.filter(
+                    Q(
+                        codcmc_c50__in=(
+                            tareas.annotate(
+                                cod_producto=Cast('producto__mcnproduct', output_field=IntegerField())
+                            ).values_list('cod_producto', flat=True)
+                        )
+                    )
+                    & Q(
+                        proveedor__in=(
+                            tareas.annotate(
+                                proveedor_cast=Cast('producto__marnombre', output_field=CharField())
+                            ).values_list('proveedor_cast', flat=True)
+                        )
+                    )
+                    & Q(
+                        nombre_c100__in=(
+                            tareas.annotate(
+                                nombre_cast=Cast('producto__pronombre', output_field=CharField())
+                            ).values_list('nombre_cast', flat=True)
+                        )
+                    )
+                    & Q(
+                        bodega_c5__in=(
+                            tareas.annotate(
+                                bodega_cast=Cast('producto__mcnbodega', output_field=IntegerField())
+                            ).values_list('bodega_cast', flat=True)
+                        )
+                    )
+                ).values('codcmc_c50', 'inventario')
+
+                # print(list(inventarios.values_list('inventario', flat=True)))
+                print(inventarios)
+                
                 # Reiniciar el formulario con los usuarios seleccionados
                 # form = AsignarTareaForm(initial={'users': selected_users})
 
             # Redirigir para evitar reenvío del formulario
             # return redirect('tareas_contador')
+        if 'update_tarea' in request.POST:
+            # Actualizar los valores de conteo y observación
+            for key, value in request.POST.items():
+                if key.startswith('conteo_'):  # Identificar los campos de conteo
+                    tarea_id = key.split('_')[1] # Obtener el ID de la tarea a partir del nombre del campo (tarea_1, tarea_2, etc.)
+                    try:
+                        tarea = Tarea.objects.get(id=tarea_id)
+                        tarea.conteo = int(value)  # Actualizar el conteo
+                        tarea.save()
+                    except (Tarea.DoesNotExist, ValueError):
+                        tarea.conteo = 0
+                
+                if key.startswith('observacion_'):  # Identificar los campos de observación
+                    tarea_id = key.split('_')[1] 
+                    try:
+                        tarea = Tarea.objects.get(id=tarea_id)
+                        tarea.observacion = value.strip()  # Actualizar observación. Eliminar espacios en blanco al inicio y al final con `strip()`
+                        tarea.save()
+                    except Tarea.DoesNotExist:
+                        pass  # Manejar errores si la tarea no existe
+            
+        
+
     else:
         form = AsignarTareaForm()
     
@@ -135,6 +218,7 @@ def lista_tareas(request):
 @login_required
 def actualizar_tarea(request):
     tareas = None
+    inventarios = []
     if request.method == 'POST':
         if 'update_tarea' in request.POST:
             # Actualizar los valores de conteo y observación
@@ -156,6 +240,7 @@ def actualizar_tarea(request):
                         tarea.save()
                     except Tarea.DoesNotExist:
                         pass  # Manejar errores si la tarea no existe
+            
     else:
         form = AsignarTareaForm()
     
