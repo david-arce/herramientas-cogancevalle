@@ -12,7 +12,7 @@ class Venta(models.Model):
     mcnproduct = models.CharField(db_column='MCNPRODUCT', blank=True, null=True)  # item
     marnombre = models.CharField(db_column='MARNOMBRE', blank=True, null=True)  # proveedor
     pronombre = models.CharField(db_column='PRONOMBRE', blank=True, null=True)  # descripcion
-    mcnbodega = models.CharField(db_column='MCNBODEGA', blank=True, null=True)  # bodega
+    mcnbodega = models.FloatField(db_column='MCNBODEGA', blank=True, null=True)  # bodega
     docfecha = models.DateField(db_column='DOCFECHA', blank=True, null=True)  # fecha
 
     class Meta:

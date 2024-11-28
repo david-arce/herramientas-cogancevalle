@@ -120,7 +120,7 @@ def asignar_tareas(request):
         'usuarios_con_tareas': usuarios_con_tareas
     })
 
-from django.db.models import Q, CharField, IntegerField
+from django.db.models import Q, CharField, IntegerField, FloatField
 from django.db.models.functions import Cast
 @login_required
 def lista_tareas(request):
@@ -146,28 +146,28 @@ def lista_tareas(request):
                 
                 # Filtrar inventarios relacionados con tipo de dato compatible
                 inventarios = Demanda.objects.filter(
+                    # Q(
+                    #     codcmc_c50__in=(
+                    #         tareas.annotate(
+                    #             cod_producto=Cast('producto__mcnproduct', output_field=IntegerField())
+                    #         ).values_list('cod_producto', flat=True)
+                    #     )
+                    # )
+                    # & Q(
+                    #     proveedor__in=(
+                    #         tareas.annotate(
+                    #             proveedor_cast=Cast('producto__marnombre', output_field=CharField())
+                    #         ).values_list('proveedor_cast', flat=True)
+                    #     )
+                    # )
+                    # & Q(
+                    #     nombre_c100__in=(
+                    #         tareas.annotate(
+                    #             nombre_cast=Cast('producto__pronombre', output_field=CharField())
+                    #         ).values_list('nombre_cast', flat=True)
+                    #     )
+                    # )
                     Q(
-                        codcmc_c50__in=(
-                            tareas.annotate(
-                                cod_producto=Cast('producto__mcnproduct', output_field=IntegerField())
-                            ).values_list('cod_producto', flat=True)
-                        )
-                    )
-                    & Q(
-                        proveedor__in=(
-                            tareas.annotate(
-                                proveedor_cast=Cast('producto__marnombre', output_field=CharField())
-                            ).values_list('proveedor_cast', flat=True)
-                        )
-                    )
-                    & Q(
-                        nombre_c100__in=(
-                            tareas.annotate(
-                                nombre_cast=Cast('producto__pronombre', output_field=CharField())
-                            ).values_list('nombre_cast', flat=True)
-                        )
-                    )
-                    & Q(
                         bodega_c5__in=(
                             tareas.annotate(
                                 bodega_cast=Cast('producto__mcnbodega', output_field=IntegerField())
