@@ -23,10 +23,10 @@ def mapear_tipos(columna):
         return String  # Por defecto, cualquier otro tipo se mapea como String
 
 # Función para cargar datos de un archivo Excel a PostgreSQL
-def cargar_excel_a_postgresql(file_path, sheet_name, db_url, table_name):
+def cargar_excel_a_postgresql(file_path, sheet_name, db_url, table_name, columnas):
     try:
         # Leer el archivo Excel
-        df = pd.read_excel(file_path, sheet_name=sheet_name)
+        df = pd.read_excel(file_path, sheet_name=sheet_name, usecols=columnas)
         logger.info(f"Hoja '{sheet_name}' del archivo Excel leída correctamente.")
         
         # Conectar a PostgreSQL
@@ -69,10 +69,11 @@ def cargar_excel_a_postgresql(file_path, sheet_name, db_url, table_name):
 # Parámetros
 ruta_carpeta = os.path.join('..', 'bd')
 file_path = os.path.join(ruta_carpeta, 'BD_venta.xlsx')
-sheet_name = 'venta'
+sheet_name = 'ventaD'
 db_url = 'postgresql+psycopg2://postgres:postgres@localhost:5432/demanda_cg'
 table_name = 'venta'
 
+columnas = ['MCNPRODUCT', 'MARNOMBRE', 'PRONOMBRE', 'MCNBODEGA', 'DOCFECHA']
 
 # Llamada a la función
-cargar_excel_a_postgresql(file_path, sheet_name, db_url, table_name)
+cargar_excel_a_postgresql(file_path, sheet_name, db_url, table_name, columnas)

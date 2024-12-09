@@ -14,37 +14,59 @@
         {{ form.users.label_tag }}<br>
         {{ form.users }}
     </div>
-    <button type="submit">Submit</button>
+    <button type="submit" name="assign_task">Asginar</button>
+    <button type="submit" name="delete_task">Eliminar</button>
+    <button type="submit" name="filter_users">Listar usuarios</button>
 </form>
 
 {% if tareas %}
     <h2>Mis Tareas</h2>
     
+{% if usuarios_con_tareas %}
+    <h2>Tareas por Usuario</h2>
+    <ul>
+        {% for usuario in usuarios_con_tareas %}
+            <li>{{ usuario.usuario__username }}: {{ usuario.total_tareas }} tareas</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+
 <!-- Tabla de Tareas -->
+<form method="post">
+    {% csrf_token %}
+    
 <div class="table-container">
     <table id = "myTable">
         <thead>
             <tr>
-                <th onclick="sortTable(0)">Usuario</th>
-                <th onclick="sortTable(1)">Id</th>
-                <th onclick="sortTable(2)">Producto</th>
-                <th onclick="sortTable(3)">Conteo</th>
-                <th onclick="sortTable(4)">Estado</th>
+                <th onclick="sortTable(0)">PROVEEDOR</th>
+                <th onclick="sortTable(1)">ITEM</th>
+                <th onclick="sortTable(2)">PRODUCTO</th>
+                <th onclick="sortTable(3)">FECHA VENCE</th>
+                <th onclick="sortTable(4)">EXISTENCIA</th>
+                <th onclick="sortTable(5)">CONTEO</th>
+                <th onclick="sortTable(7)">DIFERENCIAS</th>
+                <th onclick="sortTable(6)">OBSERVACION</th>
             </tr>
         </thead>
         <tbody>
             {% for tarea in tareas %}
                 <tr>
-                    <td>{{ tarea.usuario.username }}</td>
-                    <td>{{ tarea.producto.id }}</td>
                     <td>{{ tarea.producto.marnombre }}</td>
+                    <td>{{ tarea.producto.mcnproduct }}</td>
+                    <td>{{ tarea.producto.pronombre }}</td>
+                    <td>{{ tarea.producto.fecvence }}</td>
+                    <td>{{ tarea.producto.saldo }}</td>
                     <td>{{ tarea.conteo }}</td>
-                    <td>{{ tarea.estado }}</td>
+                    <td>{{ tarea.diferencia }}</td>
+                    <td>{{ tarea.observacion }}</td>
                 </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+</form>
 {% else %}
 <p>Selecciona usuarios para ver sus tareas asignadas.</p>
 {% endif %}
