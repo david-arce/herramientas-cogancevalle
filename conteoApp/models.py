@@ -19,9 +19,26 @@ class Venta(models.Model):
         managed = False
         db_table = 'venta'
 
+class Inv06(models.Model):
+    mcncuenta = models.IntegerField(db_column='MCNCUENTA', blank=True, null=True)  # cuenta
+    promarca = models.IntegerField(db_column='PROMARCA', blank=True, null=True)  # marca
+    marnombre = models.CharField(db_column='MARNOMBRE', blank=True, null=True)  # laboratorio
+    mcnproduct = models.IntegerField(db_column='MCNPRODUCT', blank=True, null=True)  # item producto
+    pronombre = models.CharField(db_column='PRONOMBRE', blank=True, null=True)  # descripcion
+    fecvence = models.DateField(db_column='FECVENCE', blank=True, null=True)  # fecha vencimiento
+    mcnbodega = models.IntegerField(db_column='MCNBODEGA', blank=True, null=True)  # bodega
+    bodnombre = models.CharField(db_column='BODNOMBRE', blank=True, null=True)  # nombre bodega
+    saldo = models.IntegerField(db_column='SALDO', blank=True, null=True)  # saldo
+    vrunit = models.FloatField(db_column='VRUNIT', blank=True, null=True)  # valor unitario
+    vrtotal = models.FloatField(db_column='VRTOTAL', blank=True, null=True)  # valor total
+    
+    class Meta:
+        managed = False
+        db_table = 'inv06'
+
 class Tarea(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
-    producto = models.ForeignKey(Venta, on_delete=models.CASCADE)
+    producto = models.ForeignKey(Inv06, on_delete=models.CASCADE)
     conteo = models.IntegerField(null=True, blank=True)
     fecha_asignacion = models.DateField(auto_now_add=True)
     observacion = models.TextField(null=True, blank=True)

@@ -40,13 +40,14 @@
     <table id = "myTable">
         <thead>
             <tr>
-                <th onclick="sortTable(0)">Proveedor</th>
-                <th onclick="sortTable(1)">Item</th>
-                <th onclick="sortTable(2)">Descripción</th>
-                {% comment %} <th onclick="sortTable(3)">Fecha vencimiento</th> {% endcomment %}
-                <th onclick="sortTable(3)">Conteo</th>
-                <th onclick="sortTable(4)">Observación</th>
-                <th onclick="sortTable(5)">Diferencias</th>
+                <th onclick="sortTable(0)">PROVEEDOR</th>
+                <th onclick="sortTable(1)">ITEM</th>
+                <th onclick="sortTable(2)">PRODUCTO</th>
+                <th onclick="sortTable(3)">FECHA VENCE</th>
+                <th onclick="sortTable(4)">EXISTENCIA</th>
+                <th onclick="sortTable(5)">CONTEO</th>
+                <th onclick="sortTable(7)">DIFERENCIAS</th>
+                <th onclick="sortTable(6)">OBSERVACION</th>
             </tr>
         </thead>
         <tbody>
@@ -55,9 +56,11 @@
                     <td>{{ tarea.producto.marnombre }}</td>
                     <td>{{ tarea.producto.mcnproduct }}</td>
                     <td>{{ tarea.producto.pronombre }}</td>
+                    <td>{{ tarea.producto.fecvence }}</td>
+                    <td>{{ tarea.producto.saldo }}</td>
                     <td>{{ tarea.conteo }}</td>
+                    <td>{{ tarea.diferencia }}</td>
                     <td>{{ tarea.observacion }}</td>
-                    <td>{{ tarea.diferencias }}</td>
                 </tr>
             {% endfor %}
         </tbody>
