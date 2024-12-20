@@ -6,7 +6,6 @@ from django.views.generic import ListView
 from django.views.generic import CreateView
 from django.urls import reverse, reverse_lazy
 from .models import Venta, Tarea, Inv06
-from pronosticosWebApp.models import Demanda
 from .forms import AsignarTareaForm
 import random
 from django.contrib import messages

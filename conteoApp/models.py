@@ -16,7 +16,7 @@ class Venta(models.Model):
     docfecha = models.DateField(db_column='DOCFECHA', blank=True, null=True)  # fecha
 
     class Meta:
-        managed = False
+        managed = False 
         db_table = 'venta'
 
 class Inv06(models.Model):

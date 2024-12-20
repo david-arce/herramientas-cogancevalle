@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import time
-from pronosticosWebApp.models import Demanda
+from pronosticosWebApp.models import Producto
 
 class PronosticoMovil:
     
@@ -9,11 +9,60 @@ class PronosticoMovil:
         pass
     
     def getDataBD():
-        return list(Demanda.objects.order_by('id').values()) # Se obtienen los productos de la base de datos en forma de lista
-    
+        return list(Producto.objects.order_by('id').values()) # Se obtienen los productos de la base de datos en forma de lista
+        
     def promedioMovil_3(n):
         print('Calculando pronóstico de promedio móvil...')
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
+        
+        # Se filtran los productos de la sede de Tuluá y mes de enero
+        venta_tulua_mes1 = df_demanda[df_demanda['mm'] == 1].groupby(['sku', 'sku_nom', 'marca_nom', 'bod']).agg({'cantidad': 'sum'}).reset_index()
+        venta_buga = df_demanda[df_demanda['tipo'] == 'B2'].groupby('sku_nom')['cantidad'].sum().reset_index()
+        venta_cartago = df_demanda[df_demanda['tipo'] == 'C3'].groupby('sku_nom')['cantidad'].sum().reset_index()
+        venta_cali = df_demanda[df_demanda['tipo'] == 'A4'].groupby('sku_nom')['cantidad'].sum().reset_index()
+
+        venta_tulua_mes1.to_excel('venta_mes1.xlsx', index=False)
+        
+        devoluciones_tulua_mes1 = df_demanda.groupby('sku_nom')['cantidad'].sum().reset_index()
+        devoluciones_buga = df_demanda[df_demanda['tipo'] == 'D2'].groupby('sku_nom')['cantidad'].sum().reset_index()
+        devoluciones_cartago = df_demanda[df_demanda['tipo'] == 'D3'].groupby('sku_nom')['cantidad'].sum().reset_index()
+        devoluciones_cali = df_demanda[df_demanda['tipo'] == 'D4'].groupby('sku_nom')['cantidad'].sum().reset_index()
+        # print(df_demanda[
+        #     (df_demanda['tipo'] == 'T1') & 
+        #     (df_demanda['mm'] == 1) & 
+        #     (df_demanda['bod'].isin(['0101','0102','0105']))].groupby(['bod']).agg({'cantidad': 'count'}).reset_index())
+        # Se unen las tablas de venta y devolución por el nombre del producto (sku_nom) y se rellenan los valores NaN con 0 en la columna de devolución
+        coincidencias_tulua_mes1 = pd.merge(venta_tulua_mes1, devoluciones_tulua_mes1, on='sku_nom', how='left', suffixes=('_venta', '_devolucion'))
+        # Reemplazar los valores NaN por 0
+        coincidencias_tulua_mes1['cantidad_devolucion'] = coincidencias_tulua_mes1['cantidad_devolucion'].fillna(0)
+        # Sumar las cantidades de venta y devolución
+        coincidencias_tulua_mes1['demanda'] = coincidencias_tulua_mes1['cantidad_venta'] + coincidencias_tulua_mes1['cantidad_devolucion']
+        # Se eliminan las columnas de cantidad de venta y devolución
+        coincidencias_tulua_mes1 = coincidencias_tulua_mes1.drop(columns=['cantidad_venta', 'cantidad_devolucion'])
+        
+        coincidencias_buga = pd.merge(venta_buga, devoluciones_buga, on='sku_nom', how='left', suffixes=('_venta', '_devolucion'))
+        coincidencias_buga['cantidad_devolucion'] = coincidencias_buga['cantidad_devolucion'].fillna(0)
+        coincidencias_buga['demanda'] = coincidencias_buga['cantidad_venta'] + coincidencias_buga['cantidad_devolucion']
+        coincidencias_buga = coincidencias_buga.drop(columns=['cantidad_venta', 'cantidad_devolucion'])
+        
+        coincidencias_cartago = pd.merge(venta_cartago, devoluciones_cartago, on='sku_nom', how='left', suffixes=('_venta', '_devolucion'))
+        coincidencias_cartago['cantidad_devolucion'] = coincidencias_cartago['cantidad_devolucion'].fillna(0)
+        coincidencias_cartago['demanda'] = coincidencias_cartago['cantidad_venta'] + coincidencias_cartago['cantidad_devolucion']
+        coincidencias_cartago = coincidencias_cartago.drop(columns=['cantidad_venta', 'cantidad_devolucion'])
+        
+        coincidencias_cali = pd.merge(venta_cali, devoluciones_cali, on='sku_nom', how='left', suffixes=('_venta', '_devolucion'))
+        coincidencias_cali['cantidad_devolucion'] = coincidencias_cali['cantidad_devolucion'].fillna(0)
+        coincidencias_cali['demanda'] = coincidencias_cali['cantidad_venta'] + coincidencias_cali['cantidad_devolucion']
+        coincidencias_cali = coincidencias_cali.drop(columns=['cantidad_venta', 'cantidad_devolucion'])
+        
+        # Se unen las tablas de coincidencias de las sedes de Tuluá, Buga, Cartago y Cali
+        demanda_total = pd.concat([coincidencias_tulua_mes1, coincidencias_buga, coincidencias_cartago, coincidencias_cali], ignore_index=True)
+        
+        # demanda_total.to_excel('demanda.xlsx', index=False)
+        # coincidencias_tulua_mes1.to_excel('coincidencias_tulua.xlsx', index=False)
+        # print(coincidencias_tulua_mes1)
+
+        
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
         
         # Filtrar columnas que contienen meses (sin importar mayúsculas o minúsculas)
