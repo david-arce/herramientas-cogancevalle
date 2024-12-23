@@ -15,8 +15,19 @@ class PronosticoMovil:
         print('Calculando pronóstico de promedio móvil...')
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
         
-        # Se filtran los productos de la sede de Tuluá y mes de enero
-        venta_tulua_mes1 = df_demanda[df_demanda['mm'] == 1].groupby(['sku', 'sku_nom', 'marca_nom', 'bod']).agg({'cantidad': 'sum'}).reset_index()
+        # Se filtran los productos de la sede de Tuluá y mes 1
+        venta_tulua_mes1 = df_demanda[(df_demanda['mm'] == 1) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'})
+        venta_tulua_mes2 = df_demanda[(df_demanda['mm'] == 2) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'})
+        venta_tulua_mes3 = df_demanda[(df_demanda['mm'] == 3) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'})
+        venta_tulua_mes4 = df_demanda[(df_demanda['mm'] == 4) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'})
+        venta_tulua_mes5 = df_demanda[(df_demanda['mm'] == 5) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'})
+        venta_tulua_mes6 = df_demanda[(df_demanda['mm'] == 6) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'})
+        venta_tulua_mes7 = df_demanda[(df_demanda['mm'] == 7) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'})
+        venta_tulua_mes8 = df_demanda[(df_demanda['mm'] == 8) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'})
+        venta_tulua_mes9 = df_demanda[(df_demanda['mm'] == 9) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'})
+        venta_tulua_mes10 = df_demanda[(df_demanda['mm'] == 10) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'})
+        venta_tulua_mes11 = df_demanda[(df_demanda['mm'] == 11) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'})
+        
         venta_buga = df_demanda[df_demanda['tipo'] == 'B2'].groupby('sku_nom')['cantidad'].sum().reset_index()
         venta_cartago = df_demanda[df_demanda['tipo'] == 'C3'].groupby('sku_nom')['cantidad'].sum().reset_index()
         venta_cali = df_demanda[df_demanda['tipo'] == 'A4'].groupby('sku_nom')['cantidad'].sum().reset_index()
