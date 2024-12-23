@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
                 ('marnombre', models.CharField(blank=True, db_column='MARNOMBRE', null=True)),
                 ('mcnproduct', models.IntegerField(blank=True, db_column='MCNPRODUCT', null=True)),
                 ('pronombre', models.CharField(blank=True, db_column='PRONOMBRE', null=True)),
-                ('fecvence', models.DateField(blank=True, db_column='FECVENCE', null=True)),
+                ('fecvence', models.CharField(blank=True, db_column='FECVENCE', null=True)),
                 ('mcnbodega', models.IntegerField(blank=True, db_column='MCNBODEGA', null=True)),
                 ('bodnombre', models.CharField(blank=True, db_column='BODNOMBRE', null=True)),
                 ('saldo', models.IntegerField(blank=True, db_column='SALDO', null=True)),

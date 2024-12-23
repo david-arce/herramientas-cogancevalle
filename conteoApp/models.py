@@ -25,7 +25,7 @@ class Inv06(models.Model):
     marnombre = models.CharField(db_column='MARNOMBRE', blank=True, null=True)  # laboratorio
     mcnproduct = models.IntegerField(db_column='MCNPRODUCT', blank=True, null=True)  # item producto
     pronombre = models.CharField(db_column='PRONOMBRE', blank=True, null=True)  # descripcion
-    fecvence = models.DateField(db_column='FECVENCE', blank=True, null=True)  # fecha vencimiento
+    fecvence = models.CharField(db_column='FECVENCE', blank=True, null=True)  # fecha vencimiento
     mcnbodega = models.IntegerField(db_column='MCNBODEGA', blank=True, null=True)  # bodega
     bodnombre = models.CharField(db_column='BODNOMBRE', blank=True, null=True)  # nombre bodega
     saldo = models.IntegerField(db_column='SALDO', blank=True, null=True)  # saldo
