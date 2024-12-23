@@ -63,7 +63,7 @@ def asignar_tareas(request):
                         mcnproduct__in=mcnproduct_list,
                         mcnbodega__in=mcnbodega_list,
                         saldo__gt=0
-                    )
+                    ).order_by('marnombre') # Ordenar por nombre de laboratorio
 
                     # Contar los productos que cumplen la condición
                     cantidad_productos = productos_disponibles.count()
@@ -78,6 +78,9 @@ def asignar_tareas(request):
                 # df = pd.DataFrame(list(productos_disponibles.values()))
                 # df.to_excel('productos_disponibles.xlsx', index=False)
                 
+                # Convertir la consulta a una lista para facilitar el manejo posterior
+                productos_disponibles = list(productos_disponibles)
+                
                 total_productos = len(productos_disponibles)
                 # Verificar que hay suficientes productos para asignar
                 if total_productos == 0 or len(selected_users) == 0:
@@ -87,11 +90,9 @@ def asignar_tareas(request):
                 # Calcular productos por usuario
                 productos_por_usuario = total_productos // len(selected_users)
                 productos_restantes = total_productos % len(selected_users)
-                
-                productos_disponibles = list(productos_disponibles)
 
                 # Barajar los productos para distribuir aleatoriamente
-                random.shuffle(productos_disponibles)
+                # random.shuffle(productos_disponibles)
                 
 
                 # Crear tareas para cada usuario
@@ -122,6 +123,7 @@ def asignar_tareas(request):
                 # Mensaje de éxito y redirección
                 # messages.success(request, f"Tareas asignadas equitativamente a {', '.join([user.username for user in selected_users])}.")
                 # return redirect(reverse('asignar_tareas') + '?assigned=1')    
+        
         if 'delete_task' in request.POST:
             if form.is_valid():
                 # Obtener el usuario seleccionado
@@ -236,31 +238,24 @@ def lista_tareas(request):
                         tarea = Tarea.objects.get(id=tarea_id)
                         tarea.conteo = int(value)  # Actualizar el conteo
                         tarea.save()
+                        # obtener la tarea
                         
                         # Obtener el producto relacionado con la tarea
                         producto = tarea.producto
 
                         # Convertir docfecha a formato de fecha (datetime.date)
-                        try:
-                            fecha_vencimiento = datetime.strptime(str(producto.fecvence), "%Y%m%d").date()
-                        except ValueError:
-                            # Manejar el caso donde la fecha no esté en el formato esperado
-                            fecha_vencimiento = None
-
+                        # try:
+                        #     fecha_vencimiento = datetime.strptime(str(producto.fecvence), "%Y%m%d").date()
+                        # except ValueError:
+                        #     # Manejar el caso donde la fecha no esté en el formato esperado
+                        #     fecha_vencimiento = None
+                        fecha_vencimiento = producto.fecvence
                         if fecha_vencimiento:
-                            # Convertir el campo 'fecvence' a tipo Date para la comparación
-                            inv06_records = Inv06.objects.annotate(
-                                fecvence_date=Cast('fecvence', DateField())  # Convertir 'fecvence' a tipo Date
-                            ).filter(
-                                mcnproduct=producto.mcnproduct,
-                                mcnbodega=producto.mcnbodega,
-                                fecvence_date=fecha_vencimiento  # Comparar con fecha_vencimiento que ya es de tipo Date
-                            )
-                        else:
-                            # Si fecha_vencimiento no es válida, omitir la condición
+                            
                             inv06_records = Inv06.objects.filter(
-                                mcnproduct=producto.mcnproduct,
-                                mcnbodega=producto.mcnbodega
+                                mcnproduct=producto.mcnproduct, 
+                                mcnbodega=producto.mcnbodega,
+                                fecvence=fecha_vencimiento
                             )
                             # Tomar el saldo del primer registro encontrado o manejar duplicados si existen
                             saldo = inv06_records.first().saldo if inv06_records.exists() and inv06_records.first().saldo is not None else 0
@@ -268,6 +263,18 @@ def lista_tareas(request):
                             # Calcular y guardar la diferencia
                             tarea.diferencia = tarea.conteo - saldo
                             tarea.save()
+                        # else:
+                        #     # Si fecha_vencimiento no es válida, omitir la condición
+                        #     inv06_records = Inv06.objects.filter(
+                        #         mcnproduct=producto.mcnproduct,
+                        #         mcnbodega=producto.mcnbodega
+                        #     )
+                        #     # Tomar el saldo del primer registro encontrado o manejar duplicados si existen
+                        #     saldo = inv06_records.first().saldo if inv06_records.exists() and inv06_records.first().saldo is not None else 0
+
+                        #     # Calcular y guardar la diferencia
+                        #     tarea.diferencia = tarea.conteo - saldo
+                        #     tarea.save()
 
                         
                     except (Tarea.DoesNotExist, ValueError):
