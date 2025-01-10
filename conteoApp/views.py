@@ -242,13 +242,7 @@ def lista_tareas(request):
                         
                         # Obtener el producto relacionado con la tarea
                         producto = tarea.producto
-
-                        # Convertir docfecha a formato de fecha (datetime.date)
-                        # try:
-                        #     fecha_vencimiento = datetime.strptime(str(producto.fecvence), "%Y%m%d").date()
-                        # except ValueError:
-                        #     # Manejar el caso donde la fecha no esté en el formato esperado
-                        #     fecha_vencimiento = None
+                        
                         fecha_vencimiento = producto.fecvence
                         if fecha_vencimiento:
                             
@@ -262,20 +256,8 @@ def lista_tareas(request):
 
                             # Calcular y guardar la diferencia
                             tarea.diferencia = tarea.conteo - saldo
+                            tarea.consolidado = inv06_records.first().vrunit * tarea.diferencia
                             tarea.save()
-                        # else:
-                        #     # Si fecha_vencimiento no es válida, omitir la condición
-                        #     inv06_records = Inv06.objects.filter(
-                        #         mcnproduct=producto.mcnproduct,
-                        #         mcnbodega=producto.mcnbodega
-                        #     )
-                        #     # Tomar el saldo del primer registro encontrado o manejar duplicados si existen
-                        #     saldo = inv06_records.first().saldo if inv06_records.exists() and inv06_records.first().saldo is not None else 0
-
-                        #     # Calcular y guardar la diferencia
-                        #     tarea.diferencia = tarea.conteo - saldo
-                        #     tarea.save()
-
                         
                     except (Tarea.DoesNotExist, ValueError):
                         tarea.conteo = 0
@@ -288,6 +270,15 @@ def lista_tareas(request):
                         tarea.save()
                     except Tarea.DoesNotExist:
                         pass  # Manejar errores si la tarea no existe
+                
+                if key.startswith('consolidado_'):
+                    tarea_id = key.split('_')[1]
+                    try:
+                        tarea = Tarea.objects.get(id=tarea_id)
+                        tarea.consolidado = 1
+                        tarea.save()
+                    except Tarea.DoesNotExist:
+                        pass
                     
 
     # else:

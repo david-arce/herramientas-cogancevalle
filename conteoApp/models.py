@@ -42,7 +42,8 @@ class Tarea(models.Model):
     conteo = models.IntegerField(null=True, blank=True)
     fecha_asignacion = models.DateField(auto_now_add=True)
     observacion = models.TextField(null=True, blank=True)
-    diferencia = models.IntegerField(null=True, blank=True)
+    diferencia = models.IntegerField(null=True, blank=True) 
+    consolidado = models.FloatField(null=True, blank=True, default=0)
 
     class Meta:
         db_table = 'tarea'

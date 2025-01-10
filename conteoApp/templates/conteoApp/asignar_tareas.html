@@ -46,8 +46,9 @@
                 <th onclick="sortTable(3)">FECHA VENCE</th>
                 <th onclick="sortTable(4)">EXISTENCIA</th>
                 <th onclick="sortTable(5)">CONTEO</th>
-                <th onclick="sortTable(7)">DIFERENCIAS</th>
-                <th onclick="sortTable(6)">OBSERVACION</th>
+                <th onclick="sortTable(6)">DIFERENCIAS</th>
+                <th onclick="sortTable(7)">CONSOLIDADO</th>
+                <th onclick="sortTable(8)">OBSERVACION</th>
             </tr>
         </thead>
         <tbody>
@@ -60,6 +61,7 @@
                     <td>{{ tarea.producto.saldo }}</td>
                     <td>{{ tarea.conteo }}</td>
                     <td>{{ tarea.diferencia }}</td>
+                    <td>{{ tarea.consolidado }}</td>
                     <td>{{ tarea.observacion }}</td>
                 </tr>
             {% endfor %}
