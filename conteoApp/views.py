@@ -1,3 +1,4 @@
+import datetime
 from django.contrib.auth.mixins import PermissionRequiredMixin, LoginRequiredMixin
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import permission_required, login_required
@@ -8,10 +9,11 @@ from django.urls import reverse, reverse_lazy
 from .models import Venta, Tarea, Inv06
 from pronosticosWebApp.models import Demanda
 from .forms import AsignarTareaForm
-import random
 from django.contrib import messages
 from django.db.models import Count
 from django.db.models import Q # Importar el objeto Q para consultas complejas con filtros lógicos
+import pandas as pd
+from django.http import HttpResponse
 
 # class TareaListView(ListView):
 #     model = Tarea
@@ -143,6 +145,17 @@ def asignar_tareas(request):
                     .values('usuario__username')  # Agrupar por nombre de usuario
                     .annotate(total_tareas=Count('id'))  # Contar las tareas
                 )
+        if 'export_excel' in request.POST:
+            if form.is_valid():
+                selected_users = form.cleaned_data['users']
+                tareas = Tarea.objects.filter(usuario__in=selected_users)
+                
+                # Crear un DataFrame con las tareas
+                df = pd.DataFrame(list(tareas.values('usuario__username', 'producto__marnombre', 'producto__fecvence', 'producto__saldo', 'conteo', 'diferencia', 'consolidado', 'observacion', 'fecha_asignacion')))
+                response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                response['Content-Disposition'] = 'attachment; filename=tareas.xlsx'
+                df.to_excel(response, index=False)
+                return response
     else:
         form = AsignarTareaForm()
     
@@ -157,78 +170,21 @@ def asignar_tareas(request):
         'selected_users': selected_users,
         'usuarios_con_tareas': usuarios_con_tareas
     })
-from datetime import datetime
-from django.db.models import Q, CharField, IntegerField, FloatField
-from django.db.models.functions import Cast
-from django.db.models import DateField
+    
 @login_required
 def lista_tareas(request):
     # tareas = Tarea.objects.none()  # Inicializamos la variable de las tareas
     usuarios_con_tareas = []  # Lista para almacenar los usuarios y la cantidad de tareas asignadas
-    inventarios = []  # Lista para almacenar las coincidencias de productos y su inventario
-    tareas = Tarea.objects.filter(usuario=request.user)
+    # tareas = Tarea.objects.filter(usuario=request.user)
+    
+    # filtrar las tareas por fecha de asignación y usuario. La fecha de asignación se debe comparar con una fecha específica
+    # fecha_especifica = datetime.date(2024, 12, 31)  # Reemplaza con la fecha específica deseada
+    fecha_especifica = datetime.date.today() - datetime.timedelta(days=1) # Reemplaza con la fecha específica deseada (ayer). Se resta un día a la fecha actual
+    tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica)
+    
+    # tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=datetime.date.today())
     
     if request.method == 'POST':
-        # Verificar si el formulario es para filtrar usuarios o actualizar valores de conteo
-        # form = AsignarTareaForm(request.POST)
-        # if 'filter_users' in request.POST:
-            # if form.is_valid():
-            #     selected_users = form.cleaned_data['users']
-            #     tareas = Tarea.objects.filter(usuario__in=selected_users)
-                
-            #     # Calcular el número de tareas por usuario
-            #     usuarios_con_tareas = (
-            #         Tarea.objects.filter(usuario__in=selected_users)
-            #         .values('usuario__username')  # Agrupar por nombre de usuario
-            #         .annotate(total_tareas=Count('id'))  # Contar las tareas
-            #     )
-                
-            #     # Filtrar inventarios relacionados con tipo de dato compatible
-            #     # inventarios = Inv06.objects.filter(
-            #     #     Q(
-            #     #         mcnproduct__in=(
-            #     #             tareas.annotate(
-            #     #                 cod_producto=Cast('producto__mcnproduct', output_field=IntegerField())
-            #     #             ).values_list('cod_producto', flat=True)
-            #     #         )
-            #     #     )
-            #     #     & 
-            #     #     Q(
-            #     #         mcnbodega__in=(
-            #     #             tareas.annotate(
-            #     #                 bodega_cast=Cast('producto__mcnbodega', output_field=IntegerField())
-            #     #             ).values_list('bodega_cast', flat=True)
-            #     #         )
-            #     #     )
-            #     # ).values()
-                
-            #     # print(list(inventarios.values_list('saldo', flat=True)))
-            #     # print(inventarios)
-                
-            #     # Obtener los inventarios filtrados como un diccionario para un acceso más rápido
-            #     # inventarios_dict = {}
-            #     # for inv in inventarios:
-            #     #     key = (inv['mcnproduct'], inv['mcnbodega'])  # Usamos (mcnproduct, mcnbodega) como clave
-            #     #     inventarios_dict[key] = inv['saldo'] # Usamos 'saldo' como valor del diccionario para cada clave (mcnproduct, mcnbodega) 
-
-            #     # # Iterar sobre las tareas y actualizar el campo 'diferencia'
-            #     # for tarea in tareas:
-            #     #     producto = tarea.producto  # Obtenemos el producto relacionado con la tarea
-            #     #     key = (producto.mcnproduct, producto.mcnbodega)  # Crear la clave para buscar en el diccionario
-
-            #     #     # Buscar el saldo en los inventarios
-            #     #     saldo = inventarios_dict.get(key, 0)  # Devuelve 0 si no se encuentra en el diccionario
-
-            #     #     # Calcular la diferencia (saldo - conteo)
-            #     #     tarea.diferencia = saldo - (tarea.conteo or 0)  # Asegurar que conteo no sea None
-            #     #     tarea.save()  # Guardar los cambios en la base de datos
-
-                
-            #     # Reiniciar el formulario con los usuarios seleccionados
-            #     # form = AsignarTareaForm(initial={'users': selected_users})
-
-            # Redirigir para evitar reenvío del formulario
-            # return redirect('tareas_contador')
         if 'update_tarea' in request.POST:
             # Actualizar los valores de conteo y observación
             for key, value in request.POST.items():
@@ -255,8 +211,8 @@ def lista_tareas(request):
                             saldo = inv06_records.first().saldo if inv06_records.exists() and inv06_records.first().saldo is not None else 0
 
                             # Calcular y guardar la diferencia
-                            tarea.diferencia = tarea.conteo - saldo
-                            tarea.consolidado = inv06_records.first().vrunit * tarea.diferencia
+                            tarea.diferencia = tarea.conteo - saldo 
+                            tarea.consolidado = round((inv06_records.first().vrunit * tarea.diferencia), 2)
                             tarea.save()
                         
                     except (Tarea.DoesNotExist, ValueError):
@@ -279,7 +235,6 @@ def lista_tareas(request):
                         tarea.save()
                     except Tarea.DoesNotExist:
                         pass
-                    
 
     # else:
     #     form = AsignarTareaForm()
@@ -288,39 +243,6 @@ def lista_tareas(request):
         # 'form': form, 
         'tareas': tareas, 
         'usuarios_con_tareas': usuarios_con_tareas})
-
-@login_required
-def actualizar_tarea(request):
-    tareas = None
-    inventarios = []
-    if request.method == 'POST':
-        if 'update_tarea' in request.POST:
-            # Actualizar los valores de conteo y observación
-            for key, value in request.POST.items():
-                if key.startswith('conteo_'):  # Identificar los campos de conteo
-                    tarea_id = key.split('_')[1] # Obtener el ID de la tarea a partir del nombre del campo (tarea_1, tarea_2, etc.)
-                    try:
-                        tarea = Tarea.objects.get(id=tarea_id)
-                        tarea.conteo = int(value)  # Actualizar el conteo
-                        tarea.save()
-                    except (Tarea.DoesNotExist, ValueError):
-                        tarea.conteo = 0
-                
-                if key.startswith('observacion_'):  # Identificar los campos de observación
-                    tarea_id = key.split('_')[1] 
-                    try:
-                        tarea = Tarea.objects.get(id=tarea_id)
-                        tarea.observacion = value.strip()  # Actualizar observación. Eliminar espacios en blanco al inicio y al final con `strip()`
-                        tarea.save()
-                    except Tarea.DoesNotExist:
-                        pass  # Manejar errores si la tarea no existe
-            
-    else:
-        form = AsignarTareaForm()
-    
-    return render(request, 'conteoApp/tareas_contadores.html', {
-        'form': form, 
-        'tareas': tareas})
 
 @permission_required('conteoApp.view_conteo', raise_exception=True)
 def conteo(request):
