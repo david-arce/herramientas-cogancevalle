@@ -20,4 +20,5 @@ class AsignarTareaForm(forms.Form):
             'style': 'width: 25%;'
         })
     )
+    # fecha_asignacion = forms.DateField(required=True, widget=forms.DateInput(attrs={'type': 'date'}))
 

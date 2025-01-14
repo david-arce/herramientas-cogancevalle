@@ -7,21 +7,56 @@
 {% endblock %}
 
 {% block content %}
-<h1>Seleccionar Usuarios</h1>
-<form method="post">
-    {% csrf_token %}
-    <div>
-        {{ form.users.label_tag }}<br>
-        {{ form.users }}
+
+<div class="container">
+    <form method="post">
+        {% csrf_token %}
+        <div class = "dropdown">
+            <h3 style="max-width:350px">Buscar usuarios para asignar o eliminar tareas</h3>
+            <input type="text" id="searchInput" class="search-box" placeholder="Buscar usuarios...">
+                <div id="checkboxList" class="dropdown-content">
+                    {% for usuario in usuarios %}
+                        <label><input type="checkbox" name="usuarios" value="{{ usuario.id }}"> {{ usuario.username }}</label>
+                    {% endfor %}
+                </div>
+            <button type="submit" name="assign_task">Asignar Tareas</button>
+            <button type="submit" name="delete_task">Eliminar</button>
+            <button type="submit" name="export_excel">Exportar a Excel</button>
+        </div>
+    </form>
+
+    <form method="post" id="filter_users_form">
+        {% csrf_token %}
+        <div class = "dropdown">
+            <h3 style="max-width:350px">Seleccione usuarios para buscar tareas asignadas</h3>
+            <input type="text" id="searchInput_homework" class="search-box" placeholder="Buscar usuarios...">
+                <div id="checkboxList_homework" class="dropdown-content">
+                    {% for usuario in usuarios %}
+                        <label><input type="checkbox" name="usuarios" value="{{ usuario.id }}"> {{ usuario.username }}</label>
+                    {% endfor %}
+                </div>
+                <!-- Campo de selección de fecha -->
+                <label for="fecha_asignacion">Selecciona una fecha:</label>
+                <input type="date" id="fecha_asignacion" name="fecha_asignacion" required>
+            <button type="submit" name="filter_users">Filtrar tareas</button>
+        </div>
+    </form>
+
+    <!-- Modal de alerta personalizado -->
+    <div id="customAlert" class="modal">
+        <div class="modal-content">
+            <p id="alertMessage">Por favor, selecciona al menos un usuario.</p>
+            <button id="closeAlert">Aceptar</button>
+        </div>
     </div>
-    <button type="submit" name="assign_task">Asginar</button>
-    <button type="submit" name="delete_task">Eliminar</button>
-    <button type="submit" name="filter_users">Listar usuarios</button>
-    <button type="submit" name="export_excel">Exportar a Excel</button>
-</form>
+</div>
+
+{% if error_message %}
+<p style="color: red;">{{ error_message }}</p>
+{% endif %}
+
 
 {% if tareas %}
-    <h2>Mis Tareas</h2>
     
 {% if usuarios_con_tareas %}
     <h2>Tareas por Usuario</h2>
@@ -70,8 +105,7 @@
     </table>
 </div>
 </form>
-{% else %}
-<p>Selecciona usuarios para ver sus tareas asignadas.</p>
+
 {% endif %}
 
 {% endblock %}
