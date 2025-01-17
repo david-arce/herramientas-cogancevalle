@@ -44,6 +44,7 @@ class Tarea(models.Model):
     observacion = models.TextField(null=True, blank=True)
     diferencia = models.IntegerField(null=True, blank=True) 
     consolidado = models.FloatField(null=True, blank=True, default=0)
+    activo = models.BooleanField(default=True)
 
     class Meta:
         db_table = 'tarea'

@@ -20,8 +20,8 @@
                     {% endfor %}
                 </div>
             <button type="submit" name="assign_task">Asignar Tareas</button>
-            <button type="submit" name="delete_task">Eliminar</button>
-            <button type="submit" name="export_excel">Exportar a Excel</button>
+            <button type="submit" name="delete_task">Deshacer tareas</button>
+            <button type="submit" name="activate_task">Activar usuario</button>
         </div>
     </form>
 
@@ -38,9 +38,11 @@
                 <!-- Campo de selección de fecha -->
                 <label for="fecha_asignacion">Selecciona una fecha:</label>
                 <input type="date" id="fecha_asignacion" name="fecha_asignacion" required>
-            <button type="submit" name="filter_users">Filtrar tareas</button>
+            <button name="filter_users">Filtrar tareas</button>
         </div>
     </form>
+
+    
 
     <!-- Modal de alerta personalizado -->
     <div id="customAlert" class="modal">
@@ -51,22 +53,41 @@
     </div>
 </div>
 
-{% if error_message %}
-<p style="color: red;">{{ error_message }}</p>
-{% endif %}
-
-
-{% if tareas %}
-    
-{% if usuarios_con_tareas %}
-    <h2>Tareas por Usuario</h2>
+<div>
+    <h3>Usuarios con tareas asignadas para hoy</h3>
     <ul>
         {% for usuario in usuarios_con_tareas %}
-            <li>{{ usuario.usuario__username }}: {{ usuario.total_tareas }} tareas</li>
+        <form method="post">
+            <li>{{ usuario.usuario__username }}: {{ usuario.total_tareas}} 
+                {%csrf_token%}
+                <input type="hidden" name="usuario_id" value="{{ usuario.usuario__id }}">
+                <button class="button-view-task" name="view_user_tasks">ver tareas</button>
+            </li> 
+        </form>
         {% endfor %}
     </ul>
-{% endif %}
+    <form method="post">
+        {%csrf_token%}
+        <p>Total tareas: {{ total_tareas_hoy }} 
+            <button class="button-view-task" name="view_all_tasks">ver tareas</button>
+        </p>
+    </form>
+</div>
 
+{% if tareas %}
+    {% if cant_tareas_por_usuario %}
+        <h4>Tareas asignadas al usuario filtrado</h4>
+        <ul>
+            {% for usuario in cant_tareas_por_usuario %}
+                <li>{{ usuario.usuario__username }}: {{ usuario.total_tareas }} tareas</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+<form method="post">
+    {% csrf_token %} 
+    <button type="submit" name="export_excel">Exportar a Excel</button>
+</form>
 
 <!-- Tabla de Tareas -->
 <form method="post">

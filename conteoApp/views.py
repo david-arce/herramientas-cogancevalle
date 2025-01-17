@@ -19,7 +19,9 @@ from django.http import HttpResponse
 def asignar_tareas(request):
     tareas = None  # Inicializamos la variable de las tareas
     selected_users = None
-    usuarios_con_tareas = []  # Lista para almacenar los usuarios y la cantidad de tareas asignadas
+    fecha_asignacion = None
+    cant_tareas_por_usuario = []  # Lista para almacenar los usuarios y la cantidad de tareas asignadas
+    usuarios_con_tareas = []  
 
     if request.method == 'POST':
         if 'assign_task' in request.POST:
@@ -107,44 +109,77 @@ def asignar_tareas(request):
         if 'delete_task' in request.POST:
             selected_user_ids = request.POST.getlist('usuarios')  # Obtiene una lista de IDs de los usuarios seleccionados
             selected_users = User.objects.filter(id__in=selected_user_ids)
-            tareas = Tarea.objects.filter(usuario__in=selected_users)
+            fecha = datetime.date.today()
+            tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha)
             tareas.delete()
-            messages.success(request, f"Tareas eliminadas de {', '.join([user.username for user in selected_users])}.")
             # return redirect(reverse('asignar_tareas') + '?assigned=1')
         if 'filter_users' in request.POST:
             selected_user_ids = request.POST.getlist('usuarios')  # Obtiene una lista de IDs de los usuarios seleccionados
             selected_users = User.objects.filter(id__in=selected_user_ids) # Obtener los objetos Usuario a partir de los IDs
             fecha_asignacion = request.POST.get('fecha_asignacion') # obtener la fecha seleccionada
+            
+            # Guardar los datos en la sesión
+            request.session['selected_user_ids'] = selected_user_ids
+            request.session['fecha_asignacion'] = fecha_asignacion
+           
             # Verificar si se seleccionaron usuarios 
             if not selected_users:
                 tareas = []
-                usuarios_con_tareas = []
+                cant_tareas_por_usuario = []
             else:
                 # Filtrar las tareas por esos usuarios.
                 tareas = Tarea.objects.filter(usuario__in=selected_user_ids, fecha_asignacion = fecha_asignacion)
-
+                
                 # Si quieres agrupar y contar tareas por usuario:
-                usuarios_con_tareas = (
+                cant_tareas_por_usuario = (
                     Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion = fecha_asignacion)
                     .values('usuario__username')
                     .annotate(total_tareas=Count('id'))
                 )
-        # if 'view_users' in request.POST:
-        #     if form.is_valid():
-        #         selected_users = form.cleaned_data['users']
-        #         tareas = Tarea.objects.filter(usuario__in=selected_users)
+                print(cant_tareas_por_usuario)
+        if 'view_user_tasks' in request.POST:
+            # Mostrar las tareas de un usuario específico
+            usuario_id = request.POST.get('usuario_id')  # Obtener el ID del usuario
+            tareas = Tarea.objects.filter(usuario__id=usuario_id, fecha_asignacion=datetime.date.today())
+            # guardar tareas en la session
+            request.session['selected_user_ids'] = usuario_id
+            request.session['fecha_asignacion'] = str(datetime.date.today())
+            
+
+        if 'view_all_tasks' in request.POST:
+            # Mostrar todas las tareas asignadas para hoy
+            tareas = Tarea.objects.filter(fecha_asignacion=datetime.date.today())
+            # guardar un solo id de los usuarios que están en tareas obteniendo el numero, quitando el queryset
+            usuario_id = list(tareas.values_list('usuario__id', flat=True).distinct())
+            request.session['selected_user_ids'] = usuario_id
+            request.session['fecha_asignacion'] = str(datetime.date.today())
+        
+        if 'activate_task' in request.POST:
+            selected_user_ids = request.POST.getlist('usuarios')
+            fecha = datetime.date.today()
+            tareas = Tarea.objects.filter(usuario__in=selected_user_ids, fecha_asignacion=fecha)
+            for tarea in tareas:
+                tarea.activo = True
+                tarea.save()
+            
         
         if 'export_excel' in request.POST:
-            selected_user_ids = request.POST.getlist('usuarios')  # Obtiene una lista de IDs de los usuarios seleccionados
-            selected_users = User.objects.filter(id__in=selected_user_ids)
-            tareas = Tarea.objects.filter(usuario__in=selected_users)
-            
-            # Crear un DataFrame con las tareas
-            df = pd.DataFrame(list(tareas.values('usuario__username', 'producto__marnombre', 'producto__fecvence', 'producto__saldo', 'conteo', 'diferencia', 'consolidado', 'observacion', 'fecha_asignacion')))
-            response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-            response['Content-Disposition'] = 'attachment; filename=tareas.xlsx'
-            df.to_excel(response, index=False)
-            return response
+            # Recuperar los datos de la sesión
+            selected_user_ids = request.session.get('selected_user_ids', [])
+            fecha_asignacion = request.session.get('fecha_asignacion', None)
+            if selected_user_ids and fecha_asignacion:
+                selected_users = User.objects.filter(id__in=selected_user_ids)
+                tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion)
+                
+                # Crear un DataFrame con las tareas
+                df = pd.DataFrame(list(tareas.values('usuario__username', 'producto__marnombre', 'producto__fecvence', 'producto__saldo', 'conteo', 'diferencia', 'consolidado', 'observacion', 'fecha_asignacion')))
+                response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                response['Content-Disposition'] = 'attachment; filename=tareas.xlsx'
+                df.to_excel(response, index=False)
+                # Limpiar la sesión
+                selected_user_ids = request.session.pop('selected_user_ids', [])
+                fecha_asignacion = request.session.pop('fecha_asignacion', None)
+                return response
     # else:
     #     form = AsignarTareaForm()
     
@@ -153,28 +188,32 @@ def asignar_tareas(request):
         tareas = Tarea.objects.filter(usuario__in=selected_users) if selected_users else None
         selected_users = None  # Limpiar seleccionados para evitar reasignación
 
-    # retornar todos los usuarios
-    usuarios = User.objects.all()
+    usuarios = User.objects.all() # retornar todos los usuarios
+    usuarios_con_tareas = (Tarea.objects.filter(fecha_asignacion = datetime.date.today())
+                           .values('usuario__id', 'usuario__username')
+                           .annotate(total_tareas=Count('id'))) # retornar los usuarios que tienen tareas asignadas
+    
+    total_tareas_hoy = Tarea.objects.filter(fecha_asignacion=datetime.date.today()).count()
     return render(request, 'conteoApp/asignar_tareas.html', {
         # 'form': form,
         'tareas': tareas,
         'selected_users': selected_users,
+        'cant_tareas_por_usuario': cant_tareas_por_usuario,
         'usuarios_con_tareas': usuarios_con_tareas,
-        'usuarios': usuarios,
+        'total_tareas_hoy': total_tareas_hoy,
+        'usuarios': usuarios
     })
     
 @login_required
 def lista_tareas(request):
     # tareas = Tarea.objects.none()  # Inicializamos la variable de las tareas
     usuarios_con_tareas = []  # Lista para almacenar los usuarios y la cantidad de tareas asignadas
-    # tareas = Tarea.objects.filter(usuario=request.user)
     
     # filtrar las tareas por fecha de asignación y usuario. La fecha de asignación se debe comparar con una fecha específica
     # fecha_especifica = datetime.date(2024, 12, 31)  # Reemplaza con la fecha específica deseada
-    fecha_especifica = datetime.date.today() - datetime.timedelta(days=1) # Reemplaza con la fecha específica deseada (ayer). Se resta un día a la fecha actual
-    tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica)
+    fecha_especifica = datetime.date.today() #- datetime.timedelta(days=1) # Reemplaza con la fecha específica deseada (ayer). Se resta un día a la fecha actual
     
-    # tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=datetime.date.today())
+    tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica, activo=True)
     
     if request.method == 'POST':
         if 'update_tarea' in request.POST:
@@ -205,6 +244,7 @@ def lista_tareas(request):
                             # Calcular y guardar la diferencia
                             tarea.diferencia = tarea.conteo - saldo 
                             tarea.consolidado = round((inv06_records.first().vrunit * tarea.diferencia), 2)
+                            tarea.activo = False
                             tarea.save()
                         
                     except (Tarea.DoesNotExist, ValueError):
