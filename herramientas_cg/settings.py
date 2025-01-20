@@ -37,12 +37,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'whiteNoise.runserver_nostatic',  # Para servir archivos estáticos en producción
     'pronosticosWebApp',
     'conteoApp',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -127,8 +129,16 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),  # Carpeta global para archivos estáticos
 ]
 
-# Configura dónde se almacenan los archivos estáticos en producción
+# Configura dónde se almacenan los archivos estáticos en producción 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Configura el almacenamiento de archivos estáticos en producción para WhiteNoise (whitenoise.runserver_nostatic) 
+STORAGES = {
+    # ...
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

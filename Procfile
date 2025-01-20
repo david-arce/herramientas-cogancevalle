@@ -1,1 +1,1 @@
-web: gunicorn herramientas_cg.wsgi
+web: python manage.py collectstatic && gunicorn herramientas_cg.wsgi
