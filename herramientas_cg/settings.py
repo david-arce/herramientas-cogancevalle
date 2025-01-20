@@ -52,7 +52,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
 ]
 
-ROOT_URLCONF = 'pronosticos_web.urls'
+ROOT_URLCONF = 'herramientas_cg.urls'
 
 TEMPLATES = [
     {
@@ -70,7 +70,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'pronosticos_web.wsgi.application'
+WSGI_APPLICATION = 'herramientas_cg.wsgi.application'
 
 
 # Database

@@ -1,5 +1,5 @@
 """
-ASGI config for pronosticos_web project.
+ASGI config for herramientas_cg project.
 
 It exposes the ASGI callable as a module-level variable named ``application``.
 
@@ -11,6 +11,6 @@ import os
 
 from django.core.asgi import get_asgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'pronosticos_web.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'herramientas_cg.settings')
 
 application = get_asgi_application()

@@ -8,7 +8,6 @@ from django.views.generic import CreateView
 from django.urls import reverse, reverse_lazy
 from .models import Venta, Tarea, Inv06, User
 from pronosticosWebApp.models import Demanda
-from .forms import AsignarTareaForm
 from django.contrib import messages
 from django.db.models import Count
 from django.db.models import Q # Importar el objeto Q para consultas complejas con filtros lógicos
