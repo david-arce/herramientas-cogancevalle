@@ -7,30 +7,87 @@
 {% endblock %}
 
 {% block content %}
-<h1>Seleccionar Usuarios</h1>
-<form method="post">
-    {% csrf_token %}
-    <div>
-        {{ form.users.label_tag }}<br>
-        {{ form.users }}
-    </div>
-    <button type="submit" name="assign_task">Asginar</button>
-    <button type="submit" name="delete_task">Eliminar</button>
-    <button type="submit" name="filter_users">Listar usuarios</button>
-</form>
 
-{% if tareas %}
-    <h2>Mis Tareas</h2>
+<div class="container">
+    <form method="post">
+        {% csrf_token %}
+        <div class = "dropdown">
+            <h3 style="max-width:350px">Buscar usuarios para asignar o eliminar tareas</h3>
+            <input type="text" id="searchInput" class="search-box" placeholder="Buscar usuarios...">
+                <div id="checkboxList" class="dropdown-content">
+                    {% for usuario in usuarios %}
+                        <label><input type="checkbox" name="usuarios" value="{{ usuario.id }}"> {{ usuario.username }}</label>
+                    {% endfor %}
+                </div>
+            <button type="submit" name="assign_task">Asignar Tareas</button>
+            <button type="submit" name="delete_task">Deshacer tareas</button>
+            <button type="submit" name="activate_task">Activar usuario</button>
+        </div>
+    </form>
+
+    <form method="post" id="filter_users_form">
+        {% csrf_token %}
+        <div class = "dropdown">
+            <h3 style="max-width:350px">Seleccione usuarios para buscar tareas asignadas</h3>
+            <input type="text" id="searchInput_homework" class="search-box" placeholder="Buscar usuarios...">
+                <div id="checkboxList_homework" class="dropdown-content">
+                    {% for usuario in usuarios %}
+                        <label><input type="checkbox" name="usuarios" value="{{ usuario.id }}"> {{ usuario.username }}</label>
+                    {% endfor %}
+                </div>
+                <!-- Campo de selección de fecha -->
+                <label for="fecha_asignacion">Selecciona una fecha:</label>
+                <input type="date" id="fecha_asignacion" name="fecha_asignacion" required>
+            <button name="filter_users">Filtrar tareas</button>
+        </div>
+    </form>
+
     
-{% if usuarios_con_tareas %}
-    <h2>Tareas por Usuario</h2>
+
+    <!-- Modal de alerta personalizado -->
+    <div id="customAlert" class="modal">
+        <div class="modal-content">
+            <p id="alertMessage">Por favor, selecciona al menos un usuario.</p>
+            <button id="closeAlert">Aceptar</button>
+        </div>
+    </div>
+</div>
+
+<div>
+    <h3>Usuarios con tareas asignadas para hoy</h3>
     <ul>
         {% for usuario in usuarios_con_tareas %}
-            <li>{{ usuario.usuario__username }}: {{ usuario.total_tareas }} tareas</li>
+        <form method="post">
+            <li>{{ usuario.usuario__username }}: {{ usuario.total_tareas}} 
+                {%csrf_token%}
+                <input type="hidden" name="usuario_id" value="{{ usuario.usuario__id }}">
+                <button class="button-view-task" name="view_user_tasks">ver tareas</button>
+            </li> 
+        </form>
         {% endfor %}
     </ul>
-{% endif %}
+    <form method="post">
+        {%csrf_token%}
+        <p>Total tareas: {{ total_tareas_hoy }} 
+            <button class="button-view-task" name="view_all_tasks">ver tareas</button>
+        </p>
+    </form>
+</div>
 
+{% if tareas %}
+    {% if cant_tareas_por_usuario %}
+        <h4>Tareas asignadas al usuario filtrado</h4>
+        <ul>
+            {% for usuario in cant_tareas_por_usuario %}
+                <li>{{ usuario.usuario__username }}: {{ usuario.total_tareas }} tareas</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+<form method="post">
+    {% csrf_token %} 
+    <button type="submit" name="export_excel">Exportar a Excel</button>
+</form>
 
 <!-- Tabla de Tareas -->
 <form method="post">
@@ -46,8 +103,9 @@
                 <th onclick="sortTable(3)">FECHA VENCE</th>
                 <th onclick="sortTable(4)">EXISTENCIA</th>
                 <th onclick="sortTable(5)">CONTEO</th>
-                <th onclick="sortTable(7)">DIFERENCIAS</th>
-                <th onclick="sortTable(6)">OBSERVACION</th>
+                <th onclick="sortTable(6)">DIFERENCIAS</th>
+                <th onclick="sortTable(7)">CONSOLIDADO</th>
+                <th onclick="sortTable(8)">OBSERVACION</th>
             </tr>
         </thead>
         <tbody>
@@ -60,6 +118,7 @@
                     <td>{{ tarea.producto.saldo }}</td>
                     <td>{{ tarea.conteo }}</td>
                     <td>{{ tarea.diferencia }}</td>
+                    <td>{{ tarea.consolidado }}</td>
                     <td>{{ tarea.observacion }}</td>
                 </tr>
             {% endfor %}
@@ -67,8 +126,7 @@
     </table>
 </div>
 </form>
-{% else %}
-<p>Selecciona usuarios para ver sus tareas asignadas.</p>
+
 {% endif %}
 
 {% endblock %}

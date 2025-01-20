@@ -7,28 +7,9 @@
 {% endblock %}
 
 {% block content %}
-{% comment %} <h1>Seleccionar Usuarios</h1>
-<form method="post">
-    {% csrf_token %}
-    <div>
-        {{ form.users.label_tag }}<br>
-        {{ form.users }}
-    </div>
-    <button type="submit" name="filter_users">Ver usuarios</button>
-</form> {% endcomment %}
 
 {% if tareas %}
-    <h2>Mis Tareas</h2>
-    
-{% comment %} {% if usuarios_con_tareas %}
-    <h2>Tareas por Usuario</h2>
-    <ul>
-        {% for usuario in usuarios_con_tareas %}
-            <li>{{ usuario.usuario__username }}: {{ usuario.total_tareas }} tareas</li>
-        {% endfor %}
-    </ul>
-{% endif %} {% endcomment %}
-
+<h2>Mis Tareas</h2>
 
 <!-- Tabla de Tareas -->
 <form method="post">
@@ -53,8 +34,8 @@
                     <td>{{ tarea.producto.mcnproduct}}</td>
                     <td>{{ tarea.producto.pronombre}}</td>
                     <td>{{ tarea.producto.fecvence }}</td>
-                    <td><input type="number" name="conteo_{{ tarea.id }}" value="{{ tarea.conteo }}" min="0"></td>
-                    <td><input type="text" name="observacion_{{ tarea.id }}" value="{{ tarea.observacion }}"></td>
+                    <td><input class="input-conteo" type="number" name="conteo_{{ tarea.id }}" value="{{ tarea.conteo }}" min="0"></td>
+                    <td><textarea class="input-observacion" type="text" name="observacion_{{ tarea.id }}">{{ tarea.observacion }}</textarea></td>
                 </tr>
             {% endfor %}
         </tbody>
@@ -62,7 +43,7 @@
 </div>
 </form>
 {% else %}
-<p>Selecciona usuarios para ver sus tareas asignadas.</p>
+<p>No hay tareas asignadas para hoy</p>
 {% endif %}
 
 {% endblock %}
