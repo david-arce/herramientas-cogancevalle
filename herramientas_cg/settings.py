@@ -29,15 +29,14 @@ ALLOWED_HOSTS = ['192.168.30.6','190.14.241.186','127.0.0.1', 'localhost', 'pron
 
 
 # Application definition
-
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    'django.contrib.admin', 
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'whiteNoise.runserver_nostatic',  # Para servir archivos estáticos en producción
+    'whitenoise.runserver_nostatic',  # Para servir archivos estáticos en producción con WhiteNoise
     'pronosticosWebApp',
     'conteoApp',
 ]
@@ -134,10 +133,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Configura el almacenamiento de archivos estáticos en producción para WhiteNoise (whitenoise.runserver_nostatic) 
 STORAGES = {
-    # ...
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
+    }
 }
 
 # Default primary key field type
