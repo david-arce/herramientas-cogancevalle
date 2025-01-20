@@ -1,0 +1,1 @@
+web: gunicorn herramientas_cg.wsgi
