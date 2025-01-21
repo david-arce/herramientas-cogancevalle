@@ -3,6 +3,9 @@ from sqlalchemy.orm import sessionmaker
 import pandas as pd
 import logging
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -70,7 +73,8 @@ def cargar_excel_a_postgresql(file_path, sheet_name, db_url, table_name, columna
 ruta_carpeta = os.path.join('..', 'bd')
 file_path = os.path.join(ruta_carpeta, 'BD_venta.xlsx')
 sheet_name = 'ventaD'
-db_url = 'postgresql+psycopg2://postgres:postgres@localhost:5432/demanda_cg'
+# db_url = 'postgresql+psycopg2://postgres:postgres@localhost:5432/demanda_cg'
+db_url = os.getenv('DATABASE_URL')
 table_name = 'venta'
 
 columnas = ['MCNPRODUCT', 'MARNOMBRE', 'PRONOMBRE', 'MCNBODEGA', 'DOCFECHA']
