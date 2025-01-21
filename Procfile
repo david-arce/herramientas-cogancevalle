@@ -1,1 +1,1 @@
-web: python manage.py collectstatic && gunicorn herramientas_cg.wsgi
+web: python manage.py collectstatic && gunicorn herramientas_cg.wsgi:application --workers 2 --timeout 120
