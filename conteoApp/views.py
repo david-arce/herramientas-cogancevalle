@@ -223,7 +223,10 @@ def lista_tareas(request):
                     try:
                         tarea = Tarea.objects.get(id=tarea_id)
                         tarea.conteo = int(value)  # Actualizar el conteo
-                        tarea.save()
+                        try:
+                            tarea.save()
+                        except Exception as e:
+                            print(f"Error al guardar la tarea {tarea.id}: {e}")
                         # obtener la tarea
                         
                         # Obtener el producto relacionado con la tarea
@@ -240,11 +243,20 @@ def lista_tareas(request):
                             # Tomar el saldo del primer registro encontrado o manejar duplicados si existen
                             saldo = inv06_records.first().saldo if inv06_records.exists() and inv06_records.first().saldo is not None else 0
 
-                            # Calcular y guardar la diferencia
-                            tarea.diferencia = tarea.conteo - saldo 
-                            tarea.consolidado = round((inv06_records.first().vrunit * tarea.diferencia), 2)
-                            tarea.activo = False
-                            tarea.save()
+                            if inv06_records.exists():
+                                # Calcular y guardar la diferencia
+                                tarea.diferencia = tarea.conteo - saldo 
+                                tarea.consolidado = round((inv06_records.first().vrunit * tarea.diferencia), 2)
+                                tarea.activo = False
+                                try:
+                                    tarea.save()
+                                except Exception as e:
+                                    print(f"Error al guardar la tarea {tarea.id}: {e}")
+                            else: 
+                                print('No hay registros en Inv06')
+                                # Maneja el caso donde no hay registros en Inv06
+                                tarea.diferencia = tarea.conteo
+                                tarea.consolidado = 0
                         
                     except (Tarea.DoesNotExist, ValueError):
                         tarea.conteo = 0
@@ -254,7 +266,10 @@ def lista_tareas(request):
                     try:
                         tarea = Tarea.objects.get(id=tarea_id)
                         tarea.observacion = value.strip()  # Actualizar observación. Eliminar espacios en blanco al inicio y al final con `strip()`
-                        tarea.save()
+                        try:
+                            tarea.save()
+                        except Exception as e:
+                            print(f"Error al guardar la tarea {tarea.id}: {e}")
                     except Tarea.DoesNotExist:
                         pass  # Manejar errores si la tarea no existe
                 
@@ -263,7 +278,10 @@ def lista_tareas(request):
                     try:
                         tarea = Tarea.objects.get(id=tarea_id)
                         tarea.consolidado = 1
-                        tarea.save()
+                        try:
+                            tarea.save()
+                        except Exception as e:
+                            print(f"Error al guardar la tarea {tarea.id}: {e}")
                     except Tarea.DoesNotExist:
                         pass
 
