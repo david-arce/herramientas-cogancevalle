@@ -3,16 +3,16 @@ from django.contrib.auth.mixins import PermissionRequiredMixin, LoginRequiredMix
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import permission_required, login_required
 from django.core.exceptions import PermissionDenied
-from django.views.generic import ListView
-from django.views.generic import CreateView
-from django.urls import reverse, reverse_lazy
 from .models import Venta, Tarea, Inv06, User
 from pronosticosWebApp.models import Demanda
 from django.contrib import messages
 from django.db.models import Count
-from django.db.models import Q # Importar el objeto Q para consultas complejas con filtros lógicos
 import pandas as pd
 from django.http import HttpResponse
+import logging
+from django.db import transaction
+
+logger = logging.getLogger(__name__)
     
 @login_required
 def asignar_tareas(request):
@@ -216,77 +216,80 @@ def lista_tareas(request):
     
     if request.method == 'POST':
         if 'update_tarea' in request.POST:
+            with transaction.atomic():
             # Actualizar los valores de conteo y observación
-            for key, value in request.POST.items():
-                if key.startswith('conteo_'):  # Identificar los campos de conteo
-                    tarea_id = key.split('_')[1] # Obtener el ID de la tarea a partir del nombre del campo (tarea_1, tarea_2, etc.)
-                    try:
-                        tarea = Tarea.objects.get(id=tarea_id)
-                        tarea.conteo = int(value)  # Actualizar el conteo
+                for key, value in request.POST.items():
+                    if key.startswith('conteo_'):  # Identificar los campos de conteo
+                        tarea_id = key.split('_')[1] # Obtener el ID de la tarea a partir del nombre del campo (tarea_1, tarea_2, etc.)
                         try:
-                            tarea.save()
-                        except Exception as e:
-                            print(f"Error al guardar la tarea {tarea.id}: {e}")
-                        # obtener la tarea
-                        
-                        # Obtener el producto relacionado con la tarea
-                        producto = tarea.producto
-                        
-                        fecha_vencimiento = producto.fecvence
-                        if fecha_vencimiento:
+                            tarea = Tarea.objects.get(id=tarea_id)
+                            tarea.conteo = int(value)  # Actualizar el conteo
+                            try:
+                                tarea.save()
+                            except Exception as e:
+                                print(f"Error al guardar la tarea {tarea.id}: {e}")
+                            # obtener la tarea
                             
-                            inv06_records = Inv06.objects.filter(
-                                mcnproduct=producto.mcnproduct, 
-                                mcnbodega=producto.mcnbodega,
-                                fecvence=fecha_vencimiento
-                            )
-                            # Tomar el saldo del primer registro encontrado o manejar duplicados si existen
-                            saldo = inv06_records.first().saldo if inv06_records.exists() and inv06_records.first().saldo is not None else 0
+                            # Obtener el producto relacionado con la tarea
+                            producto = tarea.producto
+                            
+                            fecha_vencimiento = producto.fecvence
+                            if fecha_vencimiento:
+                                
+                                inv06_records = Inv06.objects.filter(
+                                    mcnproduct=producto.mcnproduct, 
+                                    mcnbodega=producto.mcnbodega,
+                                    fecvence=fecha_vencimiento
+                                )
+                                # Tomar el saldo del primer registro encontrado o manejar duplicados si existen
+                                saldo = inv06_records.first().saldo if inv06_records.exists() and inv06_records.first().saldo is not None else 0
 
-                            if inv06_records.exists():
-                                # Calcular y guardar la diferencia
-                                tarea.diferencia = tarea.conteo - saldo 
-                                tarea.consolidado = round((inv06_records.first().vrunit * tarea.diferencia), 2)
-                                tarea.activo = False
-                                try:
-                                    tarea.save()
-                                except Exception as e:
-                                    print(f"Error al guardar la tarea {tarea.id}: {e}")
-                            else: 
-                                print('No hay registros en Inv06')
-                                # Maneja el caso donde no hay registros en Inv06
-                                tarea.diferencia = tarea.conteo
-                                tarea.consolidado = 0
-                        
-                    except (Tarea.DoesNotExist, ValueError):
-                        tarea.conteo = 0
-                
-                if key.startswith('observacion_'):  # Identificar los campos de observación
-                    tarea_id = key.split('_')[1] 
-                    try:
-                        tarea = Tarea.objects.get(id=tarea_id)
-                        tarea.observacion = value.strip()  # Actualizar observación. Eliminar espacios en blanco al inicio y al final con `strip()`
+                                if inv06_records.exists():
+                                    # Calcular y guardar la diferencia
+                                    tarea.diferencia = tarea.conteo - saldo 
+                                    tarea.consolidado = round((inv06_records.first().vrunit * tarea.diferencia), 2)
+                                    tarea.activo = False
+                                    try:
+                                        tarea.save()
+                                    except Exception as e:
+                                        print(f"Error al guardar la tarea {tarea.id}: {e}")
+                                else: 
+                                    print('No hay registros en Inv06')
+                                    # Maneja el caso donde no hay registros en Inv06
+                                    tarea.diferencia = tarea.conteo
+                                    tarea.consolidado = 0
+                            
+                        except Tarea.DoesNotExist:
+                            # Manejar el caso donde la tarea no existe
+                            logger.error(f"Tarea con ID {tarea_id} no existe.")
+                            # Puedes optar por saltar, registrar el error o notificar al usuario
+                        except ValueError:
+                            # Manejar el caso donde la conversión a entero falla
+                            logger.error(f"Valor inválido para conteo: {value} para tarea ID {tarea_id}.")
+                    
+                    if key.startswith('observacion_'):  # Identificar los campos de observación
+                        tarea_id = key.split('_')[1] 
                         try:
-                            tarea.save()
-                        except Exception as e:
-                            print(f"Error al guardar la tarea {tarea.id}: {e}")
-                    except Tarea.DoesNotExist:
-                        pass  # Manejar errores si la tarea no existe
-                
-                if key.startswith('consolidado_'):
-                    tarea_id = key.split('_')[1]
-                    try:
-                        tarea = Tarea.objects.get(id=tarea_id)
-                        tarea.consolidado = 1
+                            tarea = Tarea.objects.get(id=tarea_id)
+                            tarea.observacion = value.strip()  # Actualizar observación. Eliminar espacios en blanco al inicio y al final con `strip()`
+                            try:
+                                tarea.save()
+                            except Exception as e:
+                                print(f"Error al guardar la tarea {tarea.id}: {e}")
+                        except Tarea.DoesNotExist:
+                            pass  # Manejar errores si la tarea no existe
+                    
+                    if key.startswith('consolidado_'):
+                        tarea_id = key.split('_')[1]
                         try:
-                            tarea.save()
-                        except Exception as e:
-                            print(f"Error al guardar la tarea {tarea.id}: {e}")
-                    except Tarea.DoesNotExist:
-                        pass
-
-    # else:
-    #     form = AsignarTareaForm()
+                            tarea = Tarea.objects.get(id=tarea_id)
+                            tarea.consolidado = 1
+                            try:
+                                tarea.save()
+                            except Exception as e:
+                                print(f"Error al guardar la tarea {tarea.id}: {e}")
+                        except Tarea.DoesNotExist:
+                            pass
     
     return render(request, 'conteoApp/tareas_contador.html', {
         # 'form': form, 
