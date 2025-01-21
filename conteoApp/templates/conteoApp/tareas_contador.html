@@ -20,7 +20,7 @@
         <thead>
             <tr>
                 <th onclick="sortTable(0)">PROVEEDOR</th>
-                <th onclick="sortTable(1)">ITEM</th>
+                {% comment %} <th onclick="sortTable(1)">ITEM</th> {% endcomment %}
                 <th onclick="sortTable(2)">PRODUCTO</th>
                 <th onclick="sortTable(3)">FECHA VENCE</th>
                 <th onclick="sortTable(4)">CONTEO</th>
@@ -31,7 +31,7 @@
             {% for tarea in tareas %}
                 <tr>
                     <td>{{ tarea.producto.marnombre }}</td>
-                    <td>{{ tarea.producto.mcnproduct}}</td>
+                    {% comment %} <td>{{ tarea.producto.mcnproduct}}</td> {% endcomment %}
                     <td>{{ tarea.producto.pronombre}}</td>
                     <td>{{ tarea.producto.fecvence }}</td>
                     <td><input class="input-conteo" type="number" name="conteo_{{ tarea.id }}" value="{{ tarea.conteo }}" min="0"></td>
