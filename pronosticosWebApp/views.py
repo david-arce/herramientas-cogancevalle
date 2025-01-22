@@ -9,7 +9,6 @@ from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 from pronosticosWebApp.pronosticos.pronosticos import Pronosticos
 from django.contrib.auth.decorators import permission_required
 from django.core.exceptions import PermissionDenied
-import requests
 
 
 list_demanda, list_promedio_movil, list_ses, list_sed = [], [], [], []
