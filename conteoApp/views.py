@@ -137,7 +137,7 @@ def asignar_tareas(request):
                     .values('usuario__username')
                     .annotate(total_tareas=Count('id'))
                 )
-            return redirect('asignar_tareas')
+            # return redirect('asignar_tareas')
         if 'view_user_tasks' in request.POST:
             # Mostrar las tareas de un usuario específico
             usuario_id = request.POST.get('usuario_id')  # Obtener el ID del usuario
