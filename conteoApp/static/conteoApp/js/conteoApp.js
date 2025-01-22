@@ -1,3 +1,72 @@
+// seleccionar el formulario especifico
+const formTareas = document.getElementById('form-tareas');
+
+// Variable para rastrear si hay cambios en el formulario
+let isFormDirty = false;
+
+// Detecta cambios en los inputs y textareas dentro del formulario
+formTareas.querySelectorAll('input, textarea').forEach(element => {
+    element.addEventListener('change', (event) => {
+        // Marca el formulario como modificado
+        isFormDirty = true;
+    });
+});
+
+// Advertir al usuario antes de salir si hay cambios no guardados
+window.addEventListener('beforeunload', function (e) {
+    if (isFormDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+// obtener el evento de click en el boton de enviar conteo
+document.getElementById('update-tarea').addEventListener('click', function () {
+    isFormDirty = false;
+});
+
+// guardar los valores de los inputs y textareas en el formulario por medio del sessionStorage y localStorage en caso de refrescar la pagina
+document.addEventListener("DOMContentLoaded", function() {
+    const inputs = document.querySelectorAll(".input-conteo, .input-observacion");
+
+    // Cargar valores guardados
+    inputs.forEach(input => {
+        const savedValue = sessionStorage.getItem(input.name);
+        if (savedValue !== null) {
+            input.value = savedValue;
+        }
+    });
+
+    // Guardar valores en tiempo real
+    inputs.forEach(input => {
+        input.addEventListener("input", () => {
+            sessionStorage.setItem(input.name, input.value);
+        });
+    });
+});
+
+// borrar el cero por defecto del input de conteo al hacer clic en el input
+document.addEventListener("DOMContentLoaded", function () {
+    const inputs = document.querySelectorAll(".input-conteo"); // Seleccionar todos los campos de conteo
+
+    inputs.forEach(input => {
+        // Eliminar el cero inicial al enfocar el input
+        input.addEventListener("focus", () => {
+            if (input.value === "0") {
+                input.value = ""; // Borra el cero
+            }
+        });
+
+        // Si el usuario deja el input vacío, volver a poner el cero
+        input.addEventListener("blur", () => {
+            if (input.value === "") {
+                input.value = "0"; // Restaura el cero si está vacío
+            }
+        });
+    });
+});
+
+
 // Función para ordenar la tabla
 function sortTable(columnIndex) {
     const table = document.getElementById("myTable");
@@ -78,3 +147,4 @@ document.getElementById('filter_users_form').addEventListener('submit', function
         });
     }
 });
+

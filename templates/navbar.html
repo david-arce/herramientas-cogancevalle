@@ -4,8 +4,8 @@
       <img src="{% static '/img/logo_cogancevalle.png' %}" alt="Logo" class="logo">
     {% if user.is_authenticated %}
       <a href="{% url 'dashboard' %}">Pronosticos</a>
-      {% comment %} <a href="{% url 'conteo' %}">Conteo</a>
-      <a href="{% url 'lista_tareas' %}">Tareas asignadas</a> {% endcomment %}
+      {% comment %} <a href="{% url 'conteo' %}">Conteo</a> {% endcomment %}
+      <a href="{% url 'lista_tareas' %}">Tareas asignadas</a>
       <a href="{% url 'asignar_tareas' %}">Asignar tarea</a>
     {% endif %}
     </div>

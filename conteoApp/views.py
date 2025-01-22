@@ -15,6 +15,7 @@ from django.db import transaction
 logger = logging.getLogger(__name__)
     
 @login_required
+# @permission_required('conteoApp.view_tarea', raise_exception=True)
 def asignar_tareas(request):
     tareas = None  # Inicializamos la variable de las tareas
     selected_users = None
@@ -104,6 +105,7 @@ def asignar_tareas(request):
                                 diferencia=0
                             )
                         producto_index += 1 
+            return redirect('asignar_tareas')
     
         if 'delete_task' in request.POST:
             selected_user_ids = request.POST.getlist('usuarios')  # Obtiene una lista de IDs de los usuarios seleccionados
@@ -111,7 +113,7 @@ def asignar_tareas(request):
             fecha = datetime.date.today()
             tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha)
             tareas.delete()
-            # return redirect(reverse('asignar_tareas') + '?assigned=1')
+            return redirect('asignar_tareas')
         if 'filter_users' in request.POST:
             selected_user_ids = request.POST.getlist('usuarios')  # Obtiene una lista de IDs de los usuarios seleccionados
             selected_users = User.objects.filter(id__in=selected_user_ids) # Obtener los objetos Usuario a partir de los IDs
@@ -135,7 +137,7 @@ def asignar_tareas(request):
                     .values('usuario__username')
                     .annotate(total_tareas=Count('id'))
                 )
-                print(cant_tareas_por_usuario)
+            return redirect('asignar_tareas')
         if 'view_user_tasks' in request.POST:
             # Mostrar las tareas de un usuario específico
             usuario_id = request.POST.get('usuario_id')  # Obtener el ID del usuario
@@ -143,7 +145,7 @@ def asignar_tareas(request):
             # guardar tareas en la session
             request.session['selected_user_ids'] = usuario_id
             request.session['fecha_asignacion'] = str(datetime.date.today())
-            
+            # return redirect('asignar_tareas')
 
         if 'view_all_tasks' in request.POST:
             # Mostrar todas las tareas asignadas para hoy
@@ -152,6 +154,7 @@ def asignar_tareas(request):
             usuario_id = list(tareas.values_list('usuario__id', flat=True).distinct())
             request.session['selected_user_ids'] = usuario_id
             request.session['fecha_asignacion'] = str(datetime.date.today())
+            # return redirect('asignar_tareas')
         
         if 'activate_task' in request.POST:
             selected_user_ids = request.POST.getlist('usuarios')
@@ -160,6 +163,7 @@ def asignar_tareas(request):
             for tarea in tareas:
                 tarea.activo = True
                 tarea.save()
+            return redirect('asignar_tareas')
             
         
         if 'export_excel' in request.POST:
@@ -179,6 +183,7 @@ def asignar_tareas(request):
                 selected_user_ids = request.session.pop('selected_user_ids', [])
                 fecha_asignacion = request.session.pop('fecha_asignacion', None)
                 return response
+            # return redirect('asignar_tareas')
     # else:
     #     form = AsignarTareaForm()
     
@@ -204,6 +209,7 @@ def asignar_tareas(request):
     })
     
 @login_required
+# @permission_required('conteoApp.view_tarea', raise_exception=True)
 def lista_tareas(request):
     # tareas = Tarea.objects.none()  # Inicializamos la variable de las tareas
     usuarios_con_tareas = []  # Lista para almacenar los usuarios y la cantidad de tareas asignadas
@@ -290,6 +296,7 @@ def lista_tareas(request):
                                 print(f"Error al guardar la tarea {tarea.id}: {e}")
                         except Tarea.DoesNotExist:
                             pass
+            return redirect('lista_tareas')
     
     return render(request, 'conteoApp/tareas_contador.html', {
         # 'form': form, 
