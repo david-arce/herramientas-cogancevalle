@@ -30,7 +30,7 @@ def asignar_tareas(request):
 
             # Filtrar productos disponibles con un valor numérico en 'mcnproduct' y 'mcnbodega' = 101
             productos = list(Venta.objects.filter(mcnproduct__regex=r'^\d+$', mcnbodega = 101).distinct('mcnproduct', 'mcnbodega'))
-            
+            print(productos)
             # Convertir a listas y validar
             mcnproduct_list = []
             mcnbodega_list = []
