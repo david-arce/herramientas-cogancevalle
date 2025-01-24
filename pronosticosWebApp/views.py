@@ -145,3 +145,4 @@ def get_chart(request):
         ],
     }
     return JsonResponse(chart)
+

@@ -8,7 +8,7 @@ from pronosticosWebApp.models import Demanda
 from django.contrib import messages
 from django.db.models import Count
 import pandas as pd
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
 import logging
 from django.db import transaction
 
@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
 def asignar_tareas(request):
+    if request.user.username != "admin":
+        return HttpResponseForbidden("No tienes permiso para acceder a esta vista.")
     tareas = None  # Inicializamos la variable de las tareas
     selected_users = None
     fecha_asignacion = None
@@ -30,7 +32,7 @@ def asignar_tareas(request):
 
             # Filtrar productos disponibles con un valor numérico en 'mcnproduct' y 'mcnbodega' = 101
             productos = list(Venta.objects.filter(mcnproduct__regex=r'^\d+$', mcnbodega = 101).distinct('mcnproduct', 'mcnbodega'))
-            
+            print(productos)
             # Convertir a listas y validar
             mcnproduct_list = []
             mcnbodega_list = []
@@ -209,7 +211,7 @@ def asignar_tareas(request):
     })
     
 @login_required
-# @permission_required('conteoApp.view_tarea', raise_exception=True)
+@permission_required('conteoApp.view_tarea', raise_exception=True)
 def lista_tareas(request):
     # tareas = Tarea.objects.none()  # Inicializamos la variable de las tareas
     usuarios_con_tareas = []  # Lista para almacenar los usuarios y la cantidad de tareas asignadas
