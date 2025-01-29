@@ -9,10 +9,10 @@
 {% block content %}
 
 <div class="container">
-    <form method="post">
+    <form method="post" id="assign_delete_activate_form">
         {% csrf_token %}
         <div class = "dropdown">
-            <h3 style="max-width:350px">Buscar usuarios para asignar o eliminar tareas</h3>
+            <h4 style="max-width:350px">Asignar, eliminar o activar tareas</h4>
             <input type="text" id="searchInput" class="search-box" placeholder="Buscar usuarios...">
                 <div id="checkboxList" class="dropdown-content">
                     {% for usuario in usuarios %}
@@ -20,7 +20,7 @@
                     {% endfor %}
                 </div>
             <button type="submit" name="assign_task">Asignar Tareas</button>
-            <button type="submit" name="delete_task">Deshacer tareas</button>
+            <button type="button" name="delete_task" id="openConfirmModal">Deshacer tareas</button>
             <button type="submit" name="activate_task">Activar usuario</button>
         </div>
     </form>
@@ -28,7 +28,8 @@
     <form method="post" id="filter_users_form">
         {% csrf_token %}
         <div class = "dropdown">
-            <h3 style="max-width:350px">Seleccione usuarios para buscar tareas asignadas</h3>
+            <h3 style="max-width:350px">Historial</h3>
+            <p style="max-width:350px; font-size:15px">Seleccione usuarios para buscar tareas asignadas</p>
             <input type="text" id="searchInput_homework" class="search-box" placeholder="Buscar usuarios...">
                 <div id="checkboxList_homework" class="dropdown-content">
                     {% for usuario in usuarios %}
@@ -42,13 +43,20 @@
         </div>
     </form>
 
-    
-
     <!-- Modal de alerta personalizado -->
     <div id="customAlert" class="modal">
         <div class="modal-content">
             <p id="alertMessage">Por favor, selecciona al menos un usuario.</p>
-            <button id="closeAlert">Aceptar</button>
+            <button class="buttonModal" id="closeAlert">Aceptar</button>
+        </div>
+    </div>
+
+    <!-- Modal de confirmación de eliminación de tareas -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <p>¿Estás seguro de que deseas eliminar las tareas seleccionadas?</p>
+            <button class="buttonModal" id="confirmDelete">Sí</button>
+            <button class="buttonModalClose" id="cancelDelete">No</button>
         </div>
     </div>
 </div>
@@ -133,15 +141,4 @@
 
 {% block js %}
 <script src="{% static 'conteoApp/js/conteoApp.js' %}"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/js/select2.min.js"></script>
-<script>
-    // Activate select2 on the multiple select field
-    $(document).ready(function() {
-        $('.select2').select2({
-            placeholder: 'Search for a user...',
-            allowClear: true
-        });
-    });
-</script>
 {% endblock %}

@@ -62,7 +62,7 @@
 }
 
 /* Botón de cerrar */
-#closeAlert {
+.buttonModal {
     background-color: #4CAF50;
     color: white;
     border: none;
@@ -71,8 +71,17 @@
     cursor: pointer;
     margin-top: 10px;
 }
+.buttonModalClose {
+    background-color: #e43a3a;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+}
 
-#closeAlert:hover {
+.buttonModal:hover {
     background-color: #45a049;
 }
 
