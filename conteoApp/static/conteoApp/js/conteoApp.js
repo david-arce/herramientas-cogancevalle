@@ -5,12 +5,14 @@ const formTareas = document.getElementById('form-tareas');
 let isFormDirty = false;
 
 // Detecta cambios en los inputs y textareas dentro del formulario
-formTareas.querySelectorAll('input, textarea').forEach(element => {
-    element.addEventListener('change', (event) => {
-        // Marca el formulario como modificado
-        isFormDirty = true;
+if (formTareas !== null) {
+    formTareas.querySelectorAll('input, textarea').forEach(element => {
+        element.addEventListener('change', (event) => {
+            // Marca el formulario como modificado
+            isFormDirty = true;
+        });
     });
-});
+}
 
 // Advertir al usuario antes de salir si hay cambios no guardados
 window.addEventListener('beforeunload', function (e) {
@@ -21,9 +23,12 @@ window.addEventListener('beforeunload', function (e) {
 });
 
 // obtener el evento de click en el boton de enviar conteo
-document.getElementById('update-tarea').addEventListener('click', function () {
-    isFormDirty = false;
-});
+const btnUpdateTarea = document.getElementById('update-tarea');
+if (btnUpdateTarea !== null) {
+    btnUpdateTarea.addEventListener('click', function () {
+        isFormDirty = false;
+    });   
+}
 
 // guardar los valores de los inputs y textareas en el formulario por medio del sessionStorage y localStorage en caso de refrescar la pagina
 document.addEventListener("DOMContentLoaded", function() {
@@ -89,7 +94,7 @@ function sortTable(columnIndex) {
     rows.forEach(row => table.appendChild(row)); // Reorganizar filas
 }
 
-//funcion para buscar usuarios en el formnulario de asignar, eliminar 
+//funcion para buscar usuarios en el formnulario de asignar, eliminar y activar
 document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('searchInput');
     const checkboxList = document.getElementById('checkboxList');
@@ -148,3 +153,40 @@ document.getElementById('filter_users_form').addEventListener('submit', function
     }
 });
 
+// funcion para confirmar la eliminacion de las tareas de un usuario
+document.addEventListener("DOMContentLoaded", function() {
+    const modal = document.getElementById("confirmModal");
+    const openModalBtn = document.getElementById("openConfirmModal");
+    const closeModalBtn = document.getElementById("cancelDelete");
+    const confirmBtn = document.getElementById("confirmDelete");
+    const form = document.getElementById("assign_delete_activate_form");
+
+    // Abrir el modal cuando el usuario haga clic en el botón
+    openModalBtn.addEventListener("click", function() {
+        modal.style.display = "block";
+    });
+
+    // Cerrar el modal si el usuario cancela
+    closeModalBtn.addEventListener("click", function() {
+        modal.style.display = "none";
+    });
+
+    // Si el usuario confirma, enviar el formulario manualmente
+    confirmBtn.addEventListener("click", function() {
+        // Crear un input oculto para enviar el nombre del botón (Django lo espera en request.POST)
+        let hiddenInput = document.createElement("input");
+        hiddenInput.type = "hidden";
+        hiddenInput.name = "delete_task";  // Debe coincidir con lo que Django espera
+        hiddenInput.value = "1"; // Un valor cualquiera
+
+        form.appendChild(hiddenInput);
+        form.submit();
+    });
+
+    // Cerrar el modal si el usuario hace clic fuera de él
+    window.addEventListener("click", function(event) {
+        if (event.target === modal) {
+            modal.style.display = "none";
+        }
+    });
+});
