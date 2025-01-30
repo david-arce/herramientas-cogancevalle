@@ -29,8 +29,8 @@ SECRET_KEY = 'django-insecure-)6)&ci1^y^-tkw5y&c^e6(z%#1+c+t-yph_3*nu0j570ie8279
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['192.168.30.6','190.14.241.186','127.0.0.1', 'localhost', 'pronostico-cogansevalle-web-production.up.railway.app']
-CRFS_TRUSTED_ORIGINS = ['https://pronostico-cogansevalle-web-production.up.railway.app']
+ALLOWED_HOSTS = ['192.168.30.6','190.14.241.186','127.0.0.1', 'localhost', 'herramientas-cogancevalle.up.railway.app']
+CRFS_TRUSTED_ORIGINS = ['herramientas-cogancevalle.up.railway.app']
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') # Para que Django detecte que la conexión es segura en producción
 
 # Application definition
