@@ -36,7 +36,6 @@ def asignar_tareas(request):
                 sku__regex=r'^\d+$', 
                 bod = '0101', 
                 fecha = datetime.datetime.now().strftime("%Y%m%d")).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
-            print(datetime.datetime.now().strftime("%Y%m%d"))
             print(productos)
             # Convertir a listas y validar
             sku_list = []
