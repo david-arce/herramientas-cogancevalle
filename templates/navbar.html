@@ -11,7 +11,7 @@
 
     <div class="navbar-right">
       {% if user.is_authenticated %}
-      Hola, {{ user.username }}
+      Hola, {{ user.first_name }} {{ user.last_name }}
       <form id="logout-form" action="{% url 'logout' %}" method="post" style="display: inline;">
         {% csrf_token %}
         <button type="submit" class="btn btn-secondary">Cerrar Sesión</button>

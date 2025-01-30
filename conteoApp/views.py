@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
 def asignar_tareas(request):
-    if request.user.username != "admin":
-        return HttpResponseForbidden("No tienes permiso para acceder a esta vista.")
+    if request.user.username != "JPRADO":
+        raise PermissionDenied("No tienes permiso para acceder a esta vista.")
     tareas = None  # Inicializamos la variable de las tareas
     selected_users = None
     fecha_asignacion = None
