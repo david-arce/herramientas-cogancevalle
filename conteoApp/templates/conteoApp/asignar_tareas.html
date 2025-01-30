@@ -111,9 +111,10 @@
                 <th onclick="sortTable(3)">FECHA VENCE</th>
                 <th onclick="sortTable(4)">EXISTENCIA</th>
                 <th onclick="sortTable(5)">CONTEO</th>
-                <th onclick="sortTable(6)">DIFERENCIAS</th>
-                <th onclick="sortTable(7)">CONSOLIDADO</th>
-                <th onclick="sortTable(8)">OBSERVACION</th>
+                <th onclick="sortTable(6)">VALOR_UNIT</th>
+                <th onclick="sortTable(7)">DIFERENCIAS</th>
+                <th onclick="sortTable(8)">CONSOLIDADO</th>
+                <th onclick="sortTable(9)">OBSERVACION</th>
             </tr>
         </thead>
         <tbody>
@@ -125,6 +126,7 @@
                     <td>{{ tarea.producto.fecvence }}</td>
                     <td>{{ tarea.producto.saldo }}</td>
                     <td>{{ tarea.conteo }}</td>
+                    <td>{{ tarea.producto.vrunit }}</td>
                     <td>{{ tarea.diferencia }}</td>
                     <td>{{ tarea.consolidado }}</td>
                     <td>{{ tarea.observacion }}</td>
