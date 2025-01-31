@@ -23,8 +23,7 @@ def asignar_tareas(request):
     selected_users = None
     fecha_asignacion = None
     cant_tareas_por_usuario = []  # Lista para almacenar los usuarios y la cantidad de tareas asignadas
-    usuarios_con_tareas = []  
-
+    usuarios_con_tareas = [] 
     if request.method == 'POST':
         if 'assign_task' in request.POST:
             selected_user_ids = request.POST.getlist('usuarios')  # Obtiene una lista de IDs de los usuarios seleccionados
@@ -136,7 +135,7 @@ def asignar_tareas(request):
                 # Si quieres agrupar y contar tareas por usuario:
                 cant_tareas_por_usuario = (
                     Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion = fecha_asignacion)
-                    .values('usuario__username')
+                    .values('usuario__username', 'usuario__first_name', 'usuario__last_name')
                     .annotate(total_tareas=Count('id'))
                 )
             # return redirect('asignar_tareas')
@@ -148,6 +147,7 @@ def asignar_tareas(request):
             request.session['selected_user_ids'] = usuario_id
             request.session['fecha_asignacion'] = str(datetime.date.today())
             # return redirect('asignar_tareas')
+            
 
         if 'view_all_tasks' in request.POST:
             # Mostrar todas las tareas asignadas para hoy
@@ -158,16 +158,15 @@ def asignar_tareas(request):
             request.session['fecha_asignacion'] = str(datetime.date.today())
             # return redirect('asignar_tareas')
         
-        if 'activate_task' in request.POST:
-            selected_user_ids = request.POST.getlist('usuarios')
-            fecha = datetime.date.today()
-            tareas = Tarea.objects.filter(usuario__in=selected_user_ids, fecha_asignacion=fecha)
-            for tarea in tareas:
-                tarea.activo = True
-                tarea.save()
-            return redirect('asignar_tareas')
+        # if 'activate_task' in request.POST:
+        #     selected_user_ids = request.POST.getlist('usuarios')
+        #     fecha = datetime.date.today()
+        #     tareas = Tarea.objects.filter(usuario__in=selected_user_ids, fecha_asignacion=fecha)
+        #     for tarea in tareas:
+        #         tarea.activo = True
+        #         tarea.save()
+        #     return redirect('asignar_tareas')
             
-        
         if 'export_excel' in request.POST:
             # Recuperar los datos de la sesión
             selected_user_ids = request.session.get('selected_user_ids', [])
@@ -177,7 +176,24 @@ def asignar_tareas(request):
                 tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion)
                 
                 # Crear un DataFrame con las tareas
-                df = pd.DataFrame(list(tareas.values('usuario__username', 'producto__marnombre', 'producto__fecvence', 'producto__saldo', 'conteo', 'diferencia', 'consolidado', 'observacion', 'fecha_asignacion')))
+                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marnombre', 'producto__mcnproduct','producto__pronombre','producto__fecvence', 'producto__saldo', 'conteo', 'diferencia','producto__vrunit', 'consolidado', 'observacion', 'fecha_asignacion')))
+                
+                # Renombrar las columnas con nombres personalizados
+                df.rename(columns={
+                    'usuario__first_name': 'Nombre',
+                    'usuario__last_name': 'Apellido',
+                    'producto__marnombre': 'Marca',
+                    'producto__mcnproduct': 'Item',
+                    'producto__pronombre': 'Nombre Producto',
+                    'producto__fecvence': 'Fecha Vencimiento',
+                    'producto__saldo': 'Inventario',
+                    'conteo': 'Conteo',
+                    'diferencia': 'Diferencia',
+                    'producto__vrunit': 'Valor Unitario',
+                    'consolidado': 'Valor total',
+                    'observacion': 'Observaciones',
+                    'fecha_asignacion': 'Fecha Asignación'
+                }, inplace=True)
                 response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 response['Content-Disposition'] = 'attachment; filename=tareas.xlsx'
                 df.to_excel(response, index=False)
@@ -187,8 +203,8 @@ def asignar_tareas(request):
                 return response
             # return redirect('asignar_tareas')
         if 'reconteo' in request.POST:
-            selected_user_ids = request.POST.getlist('usuarios')
-            tareas = Tarea.objects.filter(usuario__in=selected_user_ids, fecha_asignacion=datetime.date.today()).exclude(consolidado=0)
+            usuario_id = request.POST.get('usuario_id')
+            tareas = Tarea.objects.filter(usuario__id=usuario_id, fecha_asignacion=datetime.date.today()).exclude(consolidado=0)
             for tarea in tareas:
                 tarea.activo = True
                 tarea.save()
@@ -203,16 +219,34 @@ def asignar_tareas(request):
 
     usuarios = User.objects.all() # retornar todos los usuarios
     usuarios_con_tareas = (Tarea.objects.filter(fecha_asignacion = datetime.date.today())
-                           .values('usuario__id', 'usuario__username')
+                           .values('usuario__id', 'usuario__username', 'usuario__first_name', 'usuario__last_name')
                            .annotate(total_tareas=Count('id'))) # retornar los usuarios que tienen tareas asignadas
     
-    total_tareas_hoy = Tarea.objects.filter(fecha_asignacion=datetime.date.today()).count()
+    total_tareas_usuarios = Tarea.objects.filter(fecha_asignacion=datetime.date.today()).count()
+    productos = list(Venta.objects.filter(sku__regex=r'^\d+$',bod = '0101',fecha = datetime.datetime.now().strftime("%Y%m%d")).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
+    sku_list = []
+    bod_list = []
+    for producto in productos:
+        try:
+            sku_list.append(int(producto.sku))
+            bod_list.append(int(producto.bod))
+        except (ValueError, TypeError):
+            continue
+    total_tareas_hoy = []
+    if sku_list and bod_list:
+        total_tareas_hoy = Inv06.objects.filter(
+            mcnproduct__in=sku_list,
+            mcnbodega__in=bod_list,
+            saldo__gt=0
+        )
+    total_tareas_hoy = len(total_tareas_hoy)
     return render(request, 'conteoApp/asignar_tareas.html', {
         # 'form': form,
         'tareas': tareas,
         'selected_users': selected_users,
         'cant_tareas_por_usuario': cant_tareas_por_usuario,
         'usuarios_con_tareas': usuarios_con_tareas,
+        'total_tareas_usuarios': total_tareas_usuarios,
         'total_tareas_hoy': total_tareas_hoy,
         'usuarios': usuarios
     })

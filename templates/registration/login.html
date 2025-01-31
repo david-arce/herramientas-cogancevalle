@@ -78,9 +78,9 @@
     </div>
     <input type="hidden" name="next" value="{{ next }}" />
     <div class="buttons-login">
-      <button type="submit" class="my-form__button">Ingreso usuario</button>
+      <button type="submit" class="my-form__button">Iniciar sesión</button>
       {% comment %} configurar boton para ingreso de admin {% endcomment %}
-      <a href="{% url 'admin:index' %}" class="my-form__button">Ir ingreso admin</a>
+      {% comment %} <a href="{% url 'admin:index' %}" class="my-form__button">Ir ingreso admin</a> {% endcomment %}
     </div>
   </form>
 </div>

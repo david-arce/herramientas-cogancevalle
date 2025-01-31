@@ -1,40 +1,110 @@
-/* Estilos básicos para una tabla responsive */
-
+/* Contenedor principal que distribuye los formularios */
 .container{
     display: flex;
     justify-content: space-between;
+    gap: 20px;
+    padding: 20px;
+    flex-wrap: wrap;
+}
+
+/* Estilos para cada formulario */
+.container form {
+    flex: 1;
+    min-width: 300px; /* Asegura un tamaño mínimo adecuado */
+    max-width: 450px;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Espaciado entre elementos del formulario */
+}
+
+/* Encabezados */
+.container h4, .container h3 {
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+    color: #333;
+    font-weight: bold;
 }
 
 /* estilos para la seleccion de usuarios */
-
 .dropdown {
     position: relative;
-    display: inline-block;
+    display: block;
 }
 
+/* estilos del contenido de los formularios que contienen los usuarios */
 .dropdown-content {
     display: block;
     position: relative;
-    background-color: #f9f9f9;
+    background-color: #fff;
     min-width: 200px;
-    max-height: 150px;  /* Límite de altura */
-    overflow-y: auto;   /* Scroll vertical */
-    box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+    max-height: 150px;
+    overflow-y: auto;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
     padding: 10px;
     z-index: 1;
-    border: 1px solid #ccc;
-}
-
-.search-box {
-    margin-bottom: 10px;
-    padding: 5px;
-    width: 200px;
     border: 1px solid #ccc;
     border-radius: 5px;
 }
 
+/* Moderniza el estilo del scroll */
+.dropdown-content::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.dropdown-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 5px;
+}
+
+.dropdown-content::-webkit-scrollbar-thumb {
+    background: #71767a;
+    border-radius: 5px;
+}
+
+.dropdown-content::-webkit-scrollbar-thumb:hover {
+    background: #505458;
+}
+
+/* cuadro de busqueda */
+.search-box {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1rem;
+    margin-bottom: 10px;
+}
+
 .dropdown-content label {
     display: block;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+/* Estilos responsivos */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .container form {
+        width: 90%; /* Ocupa casi todo el ancho en móviles */
+    }
+    .container form .button-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .container form .button-generic {
+        width: 100%;
+    }
 }
 
 /* Estilo del modal */
@@ -67,7 +137,7 @@
     color: white;
     border: none;
     padding: 10px 20px;
-    border-radius: 5px;
+    border-radius: 25px;
     cursor: pointer;
     margin-top: 10px;
 }
@@ -76,7 +146,7 @@
     color: white;
     border: none;
     padding: 10px 20px;
-    border-radius: 5px;
+    border-radius: 25px;
     cursor: pointer;
     margin-top: 10px;
 }
@@ -87,13 +157,55 @@
 
 /* Estilos para el botón de ver tareas */
 .button-view-task{
-    background-color: #4CAF50;
+    background-color: #2f7732;
     color: white;
     border: none;
-    padding: 0px 2px;
-    border-radius: 5px;
+    padding: 5px 5px;
+    border-radius: 15px;
     cursor: pointer;
-    margin-top: 5px;
+    margin: 5px 5px;
+}
+.button-view-task:hover {
+    background-color: #4CAF50;
+}
+.button-view-task:active{
+    position: relative;
+    top: 1px;
+}
+/* Estilos para el botón de reconteo */
+.button-reconteo{
+    background-color: #30418d;
+    color: white;
+    border: none;
+    padding: 5px 5px;
+    border-radius: 15px;
+    cursor: pointer;
+    margin: 5px 5px;
+}
+.button-reconteo:hover {
+    background-color: #4c5baf;
+}
+.button-reconteo:active{
+    position: relative;
+    top: 1px;
+}
+
+/* Estilos para un botón generico */
+.button-generic{
+    background-color: #525252be;
+    color: white;
+    border: none;
+    padding: 5px 5px;
+    border-radius: 15px;
+    cursor: pointer;
+    margin: 5px 5px;
+}
+.button-generic:hover {
+    background-color: #464646;
+}
+.button-generic:active{
+    position: relative;
+    top: 1px;
 }
 
 /* estilos para la tabla */

@@ -215,7 +215,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 
-// funcion para que cambiar el type al botoón de 'submit' a 'button'
+// funcion para que cambiar el type al botoón de 'submit' a 'button' al enviar el conteo
 document.addEventListener("DOMContentLoaded", function () {
     const updateButton = document.getElementById("update-tarea");
     const form = document.getElementById("form-tareas");
@@ -231,8 +231,6 @@ document.addEventListener("DOMContentLoaded", function () {
             form.appendChild(hiddenInput);
             form.submit();  // Enviar el formulario manualmente
         });
-    } else {
-        console.error("El botón o el formulario no existen en el DOM.");
     }
 });
 
@@ -242,11 +240,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const assignButton = document.getElementById("assignButton");
     const modal = document.getElementById("processingModal");
 
-    form.addEventListener("submit", function (event) {
-        if (event.submitter === assignButton) { // Solo deshabilita si se presiona "Asignar Tareas"
-            // ocultar el botón de asignar tareas
-            assignButton.style.display = "none";
-            modal.style.display = "block";
-        }
-    });
+    // Verificar que los elementos existen antes de agregar eventos
+    if (form && assignButton && modal) {
+        form.addEventListener("submit", function (event) {
+            if (event.submitter === assignButton) { // Solo si se presiona "Asignar Tareas"
+                assignButton.style.display = "none"; // Oculta el botón
+                modal.style.display = "block"; // Muestra el modal
+            }
+        });
+    }
 });
