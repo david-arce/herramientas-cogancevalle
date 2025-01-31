@@ -19,7 +19,7 @@
                         <label><input type="checkbox" name="usuarios" value="{{ usuario.id }}"> {{ usuario.username }}</label>
                     {% endfor %}
                 </div>
-            <button type="submit" name="assign_task">Asignar Tareas</button>
+            <button type="submit" name="assign_task" id="assignButton">Asignar Tareas</button>
             <button type="button" name="delete_task" id="openConfirmModal">Deshacer tareas</button>
             <button type="submit" name="activate_task">Activar usuario</button>
         </div>
@@ -57,6 +57,13 @@
             <p>¿Estás seguro de que deseas eliminar las tareas seleccionadas?</p>
             <button class="buttonModal" id="confirmDelete">Sí</button>
             <button class="buttonModalClose" id="cancelDelete">No</button>
+        </div>
+    </div>
+
+    <!-- Modal de procesamiento -->
+    <div id="processingModal" class="modal">
+        <div class="modal-content">
+            <p>Procesando...</p>
         </div>
     </div>
 </div>

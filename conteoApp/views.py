@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
 def asignar_tareas(request):
-    if request.user.username != "JPRADO":
+    if request.user.username != "JPRADO" and request.user.username != "admin":
         raise PermissionDenied("No tienes permiso para acceder a esta vista.")
     tareas = None  # Inicializamos la variable de las tareas
     selected_users = None
@@ -36,7 +36,6 @@ def asignar_tareas(request):
                 sku__regex=r'^\d+$', 
                 bod = '0101', 
                 fecha = datetime.datetime.now().strftime("%Y%m%d")).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
-            print(productos)
             # Convertir a listas y validar
             sku_list = []
             bod_list = []
@@ -144,7 +143,7 @@ def asignar_tareas(request):
         if 'view_user_tasks' in request.POST:
             # Mostrar las tareas de un usuario específico
             usuario_id = request.POST.get('usuario_id')  # Obtener el ID del usuario
-            tareas = Tarea.objects.filter(usuario__id=usuario_id, fecha_asignacion=datetime.date.today())
+            tareas = Tarea.objects.filter(usuario__id=usuario_id, fecha_asignacion=datetime.date.today()).exclude(consolidado=0)
             # guardar tareas en la session
             request.session['selected_user_ids'] = usuario_id
             request.session['fecha_asignacion'] = str(datetime.date.today())
@@ -239,6 +238,9 @@ def lista_tareas(request):
                         tarea_id = int(key.split('_')[1]) # Obtener el ID de la tarea a partir del nombre del campo (tarea_1, tarea_2, etc.)
                         if tarea_id in tareas_dict:
                             tarea = tareas_dict[tarea_id]
+                            # si el valor no es un entero o es null o vacío, se asigna 0
+                            if not value or not value.isdigit():
+                                value = 0 
                             tarea.conteo = int(value)
                             tarea_ids.add(tarea_id)
                     
