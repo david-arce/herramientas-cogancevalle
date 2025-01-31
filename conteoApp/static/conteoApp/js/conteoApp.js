@@ -230,9 +230,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
             form.appendChild(hiddenInput);
             form.submit();  // Enviar el formulario manualmente
+            
         });
     }
 });
+
 
 // funcion para deshabilitar el botón de asignar tareas y mostrar un mensaje de procesamiento
 document.addEventListener("DOMContentLoaded", function () {
