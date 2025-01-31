@@ -186,6 +186,13 @@ def asignar_tareas(request):
                 fecha_asignacion = request.session.pop('fecha_asignacion', None)
                 return response
             # return redirect('asignar_tareas')
+        if 'reconteo' in request.POST:
+            selected_user_ids = request.POST.getlist('usuarios')
+            tareas = Tarea.objects.filter(usuario__in=selected_user_ids, fecha_asignacion=datetime.date.today()).exclude(consolidado=0)
+            for tarea in tareas:
+                tarea.activo = True
+                tarea.save()
+            return redirect('asignar_tareas')
     # else:
     #     form = AsignarTareaForm()
     
