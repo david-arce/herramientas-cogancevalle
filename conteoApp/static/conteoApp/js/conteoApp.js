@@ -215,7 +215,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 
-// funcion para que cambiar el type al botoón de 'submit' a 'button' al enviar el conteo
+// funcion para que cambiar el type al botón de 'submit' a 'button' al enviar el conteo
 document.addEventListener("DOMContentLoaded", function () {
     const updateButton = document.getElementById("update-tarea");
     const form = document.getElementById("form-tareas");
@@ -258,3 +258,4 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 });
+

@@ -2,36 +2,34 @@
 {% load static %}
 {% block title %}Tareas{% endblock %}
 {% block css %}
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/css/select2.min.css" rel="stylesheet" />
 <link href="{% static 'conteoApp/css/conteoApp.css' %}" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
 
-{% if tareas %}
 <h2>Mis Tareas</h2>
-
+{% if tareas %}
+<button type="button" name="update_tarea" id="update-tarea" class="button-generic">Actualizar conteo</button>
 <!-- Tabla de Tareas -->
 <form method="post" id="form-tareas">
     {% csrf_token %}
-<button type="button" name="update_tarea" id="update-tarea" class="button-generic">Enviar conteo</button>
 <div class="table-container">
     <table id = "myTable">
         <thead>
             <tr>
                 <th onclick="sortTable(0)">PROVEEDOR</th>
-                {% comment %} <th onclick="sortTable(1)">ITEM</th> {% endcomment %}
-                <th onclick="sortTable(1)">PRODUCTO</th>
-                <th onclick="sortTable(2)">FECHA VENCE</th>
-                <th onclick="sortTable(3)">CONTEO</th>
-                <th onclick="sortTable(4)">OBSERVACION</th>
+                <th onclick="sortTable(1)">ITEM</th>
+                <th onclick="sortTable(2)">PRODUCTO</th>
+                <th onclick="sortTable(3)">FECHA VENCE</th>
+                <th onclick="sortTable(4)">CONTEO</th>
+                <th onclick="sortTable(5)">OBSERVACION</th>
             </tr>
         </thead>
         <tbody>
             {% for tarea in tareas %}
                 <tr>
                     <td>{{ tarea.producto.marnombre }}</td>
-                    {% comment %} <td>{{ tarea.producto.mcnproduct}}</td> {% endcomment %}
+                    <td>{{ tarea.producto.mcnproduct}}</td>
                     <td>{{ tarea.producto.pronombre}}</td>
                     <td>{{ tarea.producto.fecvence }}</td>
                     <td><input id="input-conteo" class="input-conteo" type="number" name="conteo_{{ tarea.id }}" value="{{ tarea.conteo }}" min="0"></td>
@@ -53,8 +51,6 @@
 {% else %}
 <p>No hay tareas asignadas para hoy</p>
 {% endif %}
-
-
 
 {% endblock %}
 

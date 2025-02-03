@@ -144,7 +144,7 @@ def asignar_tareas(request):
         if 'view_user_tasks' in request.POST:
             # Mostrar las tareas de un usuario específico
             usuario_id = request.POST.get('usuario_id')  # Obtener el ID del usuario
-            tareas = Tarea.objects.filter(usuario__id=usuario_id, fecha_asignacion=datetime.date.today()).exclude(consolidado=0)
+            tareas = Tarea.objects.filter(usuario__id=usuario_id, fecha_asignacion=datetime.date.today()).exclude(diferencia=0)
             # guardar tareas en la session
             request.session['selected_user_ids'] = usuario_id
             request.session['fecha_asignacion'] = str(datetime.date.today())
@@ -206,7 +206,7 @@ def asignar_tareas(request):
             # return redirect('asignar_tareas')
         if 'reconteo' in request.POST:
             usuario_id = request.POST.get('usuario_id')
-            tareas = Tarea.objects.filter(usuario__id=usuario_id, fecha_asignacion=datetime.date.today()).exclude(consolidado=0)
+            tareas = Tarea.objects.filter(usuario__id=usuario_id, fecha_asignacion=datetime.date.today()).exclude(diferencia=0)
             for tarea in tareas:
                 tarea.activo = True
                 tarea.save()
@@ -263,10 +263,9 @@ def lista_tareas(request):
     # fecha_especifica = datetime.date(2024, 12, 31)  # Reemplaza con la fecha específica deseada
     fecha_especifica = datetime.date.today() #- datetime.timedelta(days=1) # Reemplaza con la fecha específica deseada (ayer). Se resta un día a la fecha actual
     
-    tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica, activo=True)
-    
+    tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica)
     if request.method == 'POST':
-        if 'update_tarea' in request.POST:
+        if 'update_tarea' in request.POST: 
             with transaction.atomic():
                 tarea_ids = set()
                 tareas_a_actualizar = []
@@ -325,18 +324,17 @@ def lista_tareas(request):
 
                     tarea.diferencia = tarea.conteo - saldo
                     tarea.consolidado = round(vrunit * tarea.diferencia, 2)
-                    tarea.activo = False  # Se desactiva la tarea tras ser procesada
+                    # tarea.activo = False  # Se desactiva la tarea tras ser procesada
 
                     tareas_a_actualizar.append(tarea)
                 
                 # Guardar todos los cambios en una sola operación
                 if tareas_a_actualizar:
                     Tarea.objects.bulk_update(
-                        tareas_a_actualizar, ['conteo', 'observacion', 'diferencia', 'consolidado', 'activo']
+                        tareas_a_actualizar, ['conteo', 'observacion', 'diferencia', 'consolidado']
                     )
-                
-            return redirect('lista_tareas')
-    
+            tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica).exclude(diferencia=0)
+            # return redirect('lista_tareas')
     return render(request, 'conteoApp/tareas_contador.html', {
         # 'form': form, 
         'tareas': tareas, 
