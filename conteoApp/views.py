@@ -13,6 +13,8 @@ import logging
 from django.db import transaction
 
 logger = logging.getLogger(__name__)
+# fecha = datetime.datetime.now().strftime("%Y%m%d")
+fecha_asignar = '20250201'
     
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
@@ -34,7 +36,7 @@ def asignar_tareas(request):
             productos = list(Venta.objects.filter(
                 sku__regex=r'^\d+$', 
                 bod = '0101', 
-                fecha = datetime.datetime.now().strftime("%Y%m%d")).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
+                fecha = fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
             # Convertir a listas y validar
             sku_list = []
             bod_list = []
@@ -217,13 +219,13 @@ def asignar_tareas(request):
         tareas = Tarea.objects.filter(usuario__in=selected_users) if selected_users else None
         selected_users = None  # Limpiar seleccionados para evitar reasignación
 
-    usuarios = User.objects.all() # retornar todos los usuarios
+    usuarios = User.objects.exclude(username="admin") # retornar todos los usuarios
     usuarios_con_tareas = (Tarea.objects.filter(fecha_asignacion = datetime.date.today())
                            .values('usuario__id', 'usuario__username', 'usuario__first_name', 'usuario__last_name')
                            .annotate(total_tareas=Count('id'))) # retornar los usuarios que tienen tareas asignadas
     
     total_tareas_usuarios = Tarea.objects.filter(fecha_asignacion=datetime.date.today()).count()
-    productos = list(Venta.objects.filter(sku__regex=r'^\d+$',bod = '0101',fecha = datetime.datetime.now().strftime("%Y%m%d")).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
+    productos = list(Venta.objects.filter(sku__regex=r'^\d+$',bod = '0101',fecha = fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
     sku_list = []
     bod_list = []
     for producto in productos:

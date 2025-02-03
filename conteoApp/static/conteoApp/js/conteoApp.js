@@ -219,8 +219,10 @@ document.addEventListener("DOMContentLoaded", function() {
 document.addEventListener("DOMContentLoaded", function () {
     const updateButton = document.getElementById("update-tarea");
     const form = document.getElementById("form-tareas");
+    const modal = document.getElementById("processingModal");
 
-    if (updateButton && form) {
+    // Verificar que los elementos existen antes de agregar eventos
+    if (updateButton && form && modal) {
         updateButton.addEventListener("click", function () {
             // Crear un input oculto para enviar el nombre del botón (Django lo espera en request.POST)
             let hiddenInput = document.createElement("input");
@@ -229,8 +231,12 @@ document.addEventListener("DOMContentLoaded", function () {
             hiddenInput.value = "1"; // Un valor cualquiera
 
             form.appendChild(hiddenInput);
-            form.submit();  // Enviar el formulario manualmente
             
+            // Ocultar el botón de actualizar y mostrar el modal
+            updateButton.style.display = "none"; // Ocultar el botón
+            modal.style.display = "block"; // Mostrar el modal de procesamiento
+
+            form.submit();  // Enviar el formulario manualmente
         });
     }
 });

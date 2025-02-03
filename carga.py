@@ -34,25 +34,11 @@ def cargar_excel_a_postgresql(file_path, sheet_name, db_url, table_name):
         Session = sessionmaker(bind=engine)
         session = Session()
         
-        # Definir la tabla con SQLAlchemy
-        metadata = MetaData()
-
-        # Crear una estructura de tabla con un campo 'id' como llave primaria
-        tabla = Table(
-            table_name, metadata,
-            Column('id', Integer, primary_key=True),  # Definición del campo id como llave primaria
-            *(Column(col_name, mapear_tipos(df[col_name])) for col_name in df.columns if col_name != 'id')  # Otras columnas
-        )
-        
         try:
-             # Eliminar la tabla si existe
-            session.execute(text(f"DROP TABLE IF EXISTS {table_name} CASCADE"))
+            # Borrar el contenido de la tabla sin eliminar la estructura
+            session.execute(text(f"DELETE FROM {table_name}"))
             session.commit()
-            logger.info(f"Tabla '{table_name}' eliminada si existía.")
-
-            # Crear la tabla en la base de datos
-            metadata.create_all(engine)
-            logger.info(f"Tabla '{table_name}' creada con éxito.")
+            logger.info(f"Contenido de la tabla '{table_name}' eliminado correctamente.")
 
             # Cargar los datos en la tabla
             df.to_sql(table_name, engine, if_exists='append', index=False)
@@ -70,10 +56,8 @@ def cargar_excel_a_postgresql(file_path, sheet_name, db_url, table_name):
 ruta_carpeta = os.path.join('..', 'bd')
 file_path = os.path.join(ruta_carpeta, 'BD.xlsx')
 sheet_name = 'ROTACIÓN'
-# db_url = 'postgresql+psycopg2://postgres:postgres@localhost:5432/demanda_cg'
 db_url = os.getenv('DATABASE_URL')
 table_name = 'demanda'
-
 
 # Llamada a la función
 cargar_excel_a_postgresql(file_path, sheet_name, db_url, table_name)
