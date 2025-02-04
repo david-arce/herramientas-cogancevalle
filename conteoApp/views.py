@@ -98,8 +98,8 @@ def asignar_tareas(request):
                         if producto_index < total_productos:
                             producto = productos_disponibles[producto_index]
 
-                            # Verificar que el producto no ha sido asignado previamente
-                            if not Tarea.objects.filter(producto=producto).exists():
+                            # Verificar que el producto no ha sido asignado previamente en la fecha actual
+                            if not Tarea.objects.filter(producto=producto, fecha_asignacion = datetime.date.today()).exists():
                                 tareas_a_crear.append(Tarea(
                                     usuario=usuario,
                                     producto=producto,
