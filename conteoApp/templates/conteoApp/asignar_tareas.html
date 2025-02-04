@@ -76,7 +76,7 @@
                 {%csrf_token%}
                 <input type="hidden" name="usuario_id" value="{{ usuario.usuario__id }}">
                 <button class="button-view-task" name="view_user_tasks">Diferencias</button>
-                <button class="button-reconteo" name="reconteo">Reconteo</button>
+                {% comment %} <button class="button-reconteo" name="reconteo">Reconteo</button> {% endcomment %}
             </li> 
         </form>
         {% endfor %}
