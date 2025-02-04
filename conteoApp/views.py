@@ -14,7 +14,8 @@ from django.db import transaction
 
 logger = logging.getLogger(__name__)
 # fecha = datetime.datetime.now().strftime("%Y%m%d")
-fecha_asignar = '20250201'
+fecha_asignar = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y%m%d")
+# fecha_asignar = '20250201'
     
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
@@ -346,3 +347,45 @@ def conteo(request):
 
 def error_permiso(request, exception):
     return render(request, 'error.html', status=403)
+
+import os
+# Cargar el archivo Excel
+def actualizar_saldo_desde_excel(request):
+    ruta_carpeta = os.path.join('..', 'bd')
+    ruta_excel = os.path.join(ruta_carpeta, 'inv06.xlsx')
+    df = pd.read_excel(ruta_excel, sheet_name="inv", dtype={"FECVENCE": str})
+    
+    with transaction.atomic():  # Usar transacción para mayor seguridad
+        # Primero, insertar los productos que no existen
+        for _, row in df.iterrows():
+            if not Inv06.objects.filter(
+                marnombre=row["MARNOMBRE"],
+                mcnproduct=row["MCNPRODUCT"],
+                pronombre=row["PRONOMBRE"],
+                fecvence=row["FECVENCE"]
+            ).exists():
+                Inv06.objects.create(
+                    mcncuenta=row["MCNCUENTA"],
+                    promarca=row["PROMARCA"],
+                    marnombre=row["MARNOMBRE"],
+                    mcnproduct=row["MCNPRODUCT"],
+                    pronombre=row["PRONOMBRE"],
+                    fecvence=row["FECVENCE"],
+                    mcnbodega=row["MCNBODEGA"],
+                    bodnombre=row["BODNOMBRE"],
+                    saldo=row["SALDO"],
+                    vrunit=row["VRUNIT"],
+                    vrtotal=row["VRTOTAL"]
+                )
+        
+        # Luego, actualizar los saldos de todos los productos
+        for _, row in df.iterrows():
+            Inv06.objects.filter(
+                marnombre=row["MARNOMBRE"],
+                mcnproduct=row["MCNPRODUCT"],
+                pronombre=row["PRONOMBRE"],
+                fecvence=row["FECVENCE"]
+            ).update(saldo=row["SALDO"])
+    
+    print("Inserción y actualización completadas.")
+    return HttpResponse("Inserción y actualización completadas.")
