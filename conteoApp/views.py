@@ -350,42 +350,132 @@ def error_permiso(request, exception):
 
 import os
 # Cargar el archivo Excel
+# def actualizar_saldo_desde_excel(request):
+#     ruta_carpeta = os.path.join('..', 'bd')
+#     ruta_excel = os.path.join(ruta_carpeta, 'inv06.xlsx')
+#     df = pd.read_excel(ruta_excel, sheet_name="inv", dtype={"FECVENCE": str})
+    
+#     with transaction.atomic():  # Usar transacción para mayor seguridad
+#         # Primero, insertar los productos que no existen
+#         for _, row in df.iterrows():
+#             if not Inv06.objects.filter(
+#                 marnombre=row["MARNOMBRE"],
+#                 mcnproduct=row["MCNPRODUCT"],
+#                 pronombre=row["PRONOMBRE"],
+#                 fecvence=row["FECVENCE"]
+#             ).exists():
+#                 Inv06.objects.create(
+#                     mcncuenta=row["MCNCUENTA"],
+#                     promarca=row["PROMARCA"],
+#                     marnombre=row["MARNOMBRE"],
+#                     mcnproduct=row["MCNPRODUCT"],
+#                     pronombre=row["PRONOMBRE"],
+#                     fecvence=row["FECVENCE"],
+#                     mcnbodega=row["MCNBODEGA"],
+#                     bodnombre=row["BODNOMBRE"],
+#                     saldo=row["SALDO"],
+#                     vrunit=row["VRUNIT"],
+#                     vrtotal=row["VRTOTAL"]
+#                 )
+        
+#         # Luego, actualizar los saldos de todos los productos
+#         for _, row in df.iterrows():
+#             Inv06.objects.filter(
+#                 marnombre=row["MARNOMBRE"],
+#                 mcnproduct=row["MCNPRODUCT"],
+#                 pronombre=row["PRONOMBRE"],
+#                 fecvence=row["FECVENCE"]
+#             ).update(saldo=row["SALDO"])
+    
+#     print("Inserción y actualización completadas.")
+#     return HttpResponse("Inserción y actualización completadas.")
+
+from django.db.models import Q
+from functools import reduce
+import operator
+
 def actualizar_saldo_desde_excel(request):
     ruta_carpeta = os.path.join('..', 'bd')
     ruta_excel = os.path.join(ruta_carpeta, 'inv06.xlsx')
     df = pd.read_excel(ruta_excel, sheet_name="inv", dtype={"FECVENCE": str})
     
-    with transaction.atomic():  # Usar transacción para mayor seguridad
-        # Primero, insertar los productos que no existen
-        for _, row in df.iterrows():
-            if not Inv06.objects.filter(
-                marnombre=row["MARNOMBRE"],
-                mcnproduct=row["MCNPRODUCT"],
-                pronombre=row["PRONOMBRE"],
-                fecvence=row["FECVENCE"]
-            ).exists():
-                Inv06.objects.create(
-                    mcncuenta=row["MCNCUENTA"],
-                    promarca=row["PROMARCA"],
-                    marnombre=row["MARNOMBRE"],
-                    mcnproduct=row["MCNPRODUCT"],
-                    pronombre=row["PRONOMBRE"],
-                    fecvence=row["FECVENCE"],
-                    mcnbodega=row["MCNBODEGA"],
-                    bodnombre=row["BODNOMBRE"],
-                    saldo=row["SALDO"],
-                    vrunit=row["VRUNIT"],
-                    vrtotal=row["VRTOTAL"]
+    # 2. Crear una columna clave (tupla) para identificar unívocamente cada registro
+    df["__key__"] = df.apply(
+        lambda row: (
+            row["MARNOMBRE"],
+            row["MCNPRODUCT"],
+            row["PRONOMBRE"],
+            row["FECVENCE"]
+        ),
+        axis=1
+    )
+
+    # 3. Crear un diccionario de clave -> datos de la fila
+    data_dict = df.set_index("__key__").to_dict(orient="index")
+
+    # Tomamos todas las tuplas clave
+    all_keys = list(data_dict.keys())
+
+    # Para evitar un query gigante con OR en caso de muchísimas claves,
+    # podrías partirlo en lotes más pequeños (chunking) si se requiere.
+    # Aquí lo hacemos en una sola consulta para simplificar.
+
+    with transaction.atomic():
+        # 4. Buscar todos los objetos existentes que coinciden con alguna clave
+        #    Esto produce una sola consulta con OR encadenados.
+        if all_keys:
+            # Generamos una lista de condiciones Q
+            q_objects = [
+                Q(marnombre=k[0], mcnproduct=k[1], pronombre=k[2], fecvence=k[3])
+                for k in all_keys
+            ]
+            existing_objs = Inv06.objects.filter(reduce(operator.or_, q_objects))
+        else:
+            existing_objs = Inv06.objects.none()
+
+        # 5. Preparar lista de objetos a actualizar
+        to_update = []
+        existing_keys = set()
+        for obj in existing_objs:
+            # Creamos la clave a partir del objeto
+            obj_key = (
+                obj.marnombre,
+                obj.mcnproduct,
+                obj.pronombre,
+                obj.fecvence
+            )
+            existing_keys.add(obj_key)
+
+            # Actualizamos solo el campo saldo (u otros campos si hiciera falta)
+            obj.saldo = float(data_dict[obj_key]["SALDO"])
+            to_update.append(obj)
+
+        # 6. Hacer bulk update de todos los objetos existentes
+        if to_update:
+            Inv06.objects.bulk_update(to_update, ["saldo"])
+
+        # 7. Preparar la lista de nuevos objetos para creación masiva
+        new_keys = set(all_keys) - existing_keys
+        new_objs = []
+        for key in new_keys:
+            row_data = data_dict[key]
+            new_objs.append(
+                Inv06(
+                    mcncuenta=row_data["MCNCUENTA"],
+                    promarca=row_data["PROMARCA"],
+                    marnombre=key[0],
+                    mcnproduct=key[1],
+                    pronombre=key[2],
+                    fecvence=key[3],
+                    mcnbodega=row_data["MCNBODEGA"],
+                    bodnombre=row_data["BODNOMBRE"],
+                    saldo=float(row_data["SALDO"]),
+                    vrunit=row_data["VRUNIT"],
+                    vrtotal=row_data["VRTOTAL"],
                 )
-        
-        # Luego, actualizar los saldos de todos los productos
-        for _, row in df.iterrows():
-            Inv06.objects.filter(
-                marnombre=row["MARNOMBRE"],
-                mcnproduct=row["MCNPRODUCT"],
-                pronombre=row["PRONOMBRE"],
-                fecvence=row["FECVENCE"]
-            ).update(saldo=row["SALDO"])
-    
-    print("Inserción y actualización completadas.")
+            )
+
+        # 8. Crear en lote los nuevos objetos
+        if new_objs:
+            Inv06.objects.bulk_create(new_objs)
     return HttpResponse("Inserción y actualización completadas.")
