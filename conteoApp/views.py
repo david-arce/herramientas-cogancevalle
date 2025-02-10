@@ -14,8 +14,8 @@ from django.db import transaction
 
 logger = logging.getLogger(__name__)
 # fecha = datetime.datetime.now().strftime("%Y%m%d")
-fecha_asignar = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y%m%d")
-# fecha_asignar = '20250201'
+# fecha_asignar = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y%m%d")
+fecha_asignar = '20250208'
     
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
@@ -84,7 +84,7 @@ def asignar_tareas(request):
             # Crear tareas para cada usuario
             tareas_a_crear = []
             producto_index = 0
-            
+            sum_item_last = 0
             with transaction.atomic():
                 for usuario in selected_users:
                     # Determinar cuántos productos asignar a este usuario
@@ -92,12 +92,30 @@ def asignar_tareas(request):
                     if productos_restantes > 0:  # Repartir los productos sobrantes
                         cantidad_a_asignar += 1
                         productos_restantes -= 1
-
+                    
+                    # bloque de codigo para verificar si el ultimo producto asignado al usuario es igual al siguiente, de ser asi, aumentar la cantidad a asignar
+                    sum_item_last += cantidad_a_asignar
+                    item_last = productos_disponibles[sum_item_last-1].mcnproduct
+                    bandera = True
+                    sum_item_next = sum_item_last
+                    while bandera:
+                        # obtener el proximo item de los productos disponibles, si no hay o se desborda, no asignar
+                        try:
+                            item_next = productos_disponibles[sum_item_next].mcnproduct
+                        except IndexError:
+                            item_next = None
+                            
+                        if item_last == item_next:
+                            cantidad_a_asignar += 1
+                            sum_item_next += 1
+                        else:
+                            bandera = False
+                    # print(f"Item last: {item_last}, Item next: {item_next}")
+                    
                     # Asignar productos a este usuario
                     for _ in range(cantidad_a_asignar):
                         if producto_index < total_productos:
                             producto = productos_disponibles[producto_index]
-
                             # Verificar que el producto no ha sido asignado previamente en la fecha actual
                             if not Tarea.objects.filter(producto=producto, fecha_asignacion = datetime.date.today()).exists():
                                 tareas_a_crear.append(Tarea(
