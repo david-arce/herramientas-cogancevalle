@@ -14,8 +14,8 @@ from django.db import transaction
 
 logger = logging.getLogger(__name__)
 # fecha = datetime.datetime.now().strftime("%Y%m%d")
-# fecha_asignar = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y%m%d")
-fecha_asignar = '20250208'
+fecha_asignar = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y%m%d")
+# fecha_asignar = '20250208'
     
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
