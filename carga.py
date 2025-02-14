@@ -34,11 +34,21 @@ def cargar_excel_a_postgresql(file_path, sheet_name, db_url, table_name):
         Session = sessionmaker(bind=engine)
         session = Session()
         
+        # Definir la tabla con SQLAlchemy
+        metadata = MetaData()
+
+        # Crear una estructura de tabla con un campo 'id' como llave primaria
+        tabla = Table(
+            table_name, metadata,
+            Column('id', Integer, primary_key=True),  # Definición del campo id como llave primaria
+            *(Column(col_name, mapear_tipos(df[col_name])) for col_name in df.columns if col_name != 'id')  # Otras columnas
+        )
+        
         try:
-            # Borrar el contenido de la tabla sin eliminar la estructura
-            session.execute(text(f"DELETE FROM {table_name}"))
+            # Borrar todo el contenido de la tabla y reiniciar el índice
+            session.execute(text(f"TRUNCATE TABLE {table_name} RESTART IDENTITY CASCADE"))
             session.commit()
-            logger.info(f"Contenido de la tabla '{table_name}' eliminado correctamente.")
+            logger.info(f"Todo el contenido de la tabla '{table_name}' ha sido eliminado y el índice reiniciado.")
 
             # Cargar los datos en la tabla
             df.to_sql(table_name, engine, if_exists='append', index=False)

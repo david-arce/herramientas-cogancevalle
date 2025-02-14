@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # fecha = datetime.datetime.now().strftime("%Y%m%d")
 fecha_asignar = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y%m%d")
 # fecha_asignar = '20250208'
-    
+print(fecha_asignar)
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
 def asignar_tareas(request):
@@ -368,43 +368,117 @@ def error_permiso(request, exception):
 
 import os
 # Cargar el archivo Excel
-def actualizar_saldo_desde_excel(request):
-    ruta_carpeta = os.path.join('..', 'bd')
-    ruta_excel = os.path.join(ruta_carpeta, 'inv06.xlsx')
-    df = pd.read_excel(ruta_excel, sheet_name="inv", dtype={"FECVENCE": str})
+# def actualizar_saldo_desde_excel(request):
+#     ruta_carpeta = os.path.join('..', 'bd')
+#     ruta_excel = os.path.join(ruta_carpeta, 'inv06a.xlsx')
+#     df = pd.read_excel(ruta_excel, sheet_name="inv", dtype={"FECVENCE": str})
     
-    with transaction.atomic():  # Usar transacción para mayor seguridad
-        # Primero, insertar los productos que no existen
-        for _, row in df.iterrows():
-            if not Inv06.objects.filter(
-                marnombre=row["MARNOMBRE"],
-                mcnproduct=row["MCNPRODUCT"],
-                pronombre=row["PRONOMBRE"],
-                fecvence=row["FECVENCE"]
-            ).exists():
-                Inv06.objects.create(
-                    mcncuenta=row["MCNCUENTA"],
-                    promarca=row["PROMARCA"],
-                    marnombre=row["MARNOMBRE"],
-                    mcnproduct=row["MCNPRODUCT"],
-                    pronombre=row["PRONOMBRE"],
-                    fecvence=row["FECVENCE"],
-                    mcnbodega=row["MCNBODEGA"],
-                    bodnombre=row["BODNOMBRE"],
-                    saldo=row["SALDO"],
-                    vrunit=row["VRUNIT"],
-                    vrtotal=row["VRTOTAL"]
-                )
+#     with transaction.atomic():  # Usar transacción para mayor seguridad
+#         # Primero, insertar los productos que no existen
+#         for _, row in df.iterrows():
+#             if not Inv06.objects.filter(
+#                 marnombre=row["MARNOMBRE"],
+#                 mcnproduct=row["MCNPRODUCT"],
+#                 pronombre=row["PRONOMBRE"],
+#                 fecvence=row["FECVENCE"]
+#             ).exists():
+#                 Inv06.objects.create(
+#                     mcncuenta=row["MCNCUENTA"],
+#                     promarca=row["PROMARCA"],
+#                     marnombre=row["MARNOMBRE"],
+#                     mcnproduct=row["MCNPRODUCT"],
+#                     pronombre=row["PRONOMBRE"],
+#                     fecvence=row["FECVENCE"],
+#                     mcnbodega=row["MCNBODEGA"],
+#                     bodnombre=row["BODNOMBRE"],
+#                     saldo=row["SALDO"],
+#                     vrunit=row["VRUNIT"],
+#                     vrtotal=row["VRTOTAL"]
+#                 )
         
-        # Luego, actualizar los saldos de todos los productos
-        for _, row in df.iterrows():
-            Inv06.objects.filter(
+#         # Luego, actualizar los saldos de todos los productos
+#         for _, row in df.iterrows():
+#             Inv06.objects.filter(
+#                 marnombre=row["MARNOMBRE"],
+#                 mcnproduct=row["MCNPRODUCT"],
+#                 pronombre=row["PRONOMBRE"],
+#                 fecvence=row["FECVENCE"]
+#             ).update(saldo=row["SALDO"])
+    
+#     print("Inserción y actualización completadas.")
+#     return HttpResponse("Inserción y actualización completadas.")
+
+
+def actualizar_saldo_desde_excel(request):
+    import os
+    import pandas as pd
+    from django.db import transaction
+
+    # Construir la ruta y cargar el archivo Excel
+    ruta_carpeta = os.path.join('..', 'bd')
+    ruta_excel = os.path.join(ruta_carpeta, 'inv06a.xlsx')
+    df = pd.read_excel(ruta_excel, sheet_name="inv", dtype={"FECVENCE": str})
+
+    # Construir el conjunto de llaves únicas del Excel
+    claves_df = set(
+        tuple(row) for row in df[['MARNOMBRE', 'MCNPRODUCT', 'PRONOMBRE', 'FECVENCE']].values
+    )
+
+    # Consultar en bloque las llaves existentes en la base de datos
+    # Se utiliza __in para cada campo basado en las llaves únicas del DataFrame
+    registros_existentes = Inv06.objects.filter(
+        marnombre__in=[clave[0] for clave in claves_df],
+        mcnproduct__in=[clave[1] for clave in claves_df],
+        pronombre__in=[clave[2] for clave in claves_df],
+        fecvence__in=[clave[3] for clave in claves_df]
+    ).values_list('marnombre', 'mcnproduct', 'pronombre', 'fecvence')
+    claves_existentes = set(registros_existentes)
+
+    nuevos_registros = []
+    # Diccionario para almacenar el saldo que se usará en la actualización
+    saldo_mapping = {}
+
+    # Recorrer cada fila del DataFrame una sola vez
+    for _, row in df.iterrows():
+        clave = (row["MARNOMBRE"], row["MCNPRODUCT"], row["PRONOMBRE"], row["FECVENCE"])
+        saldo_mapping[clave] = row["SALDO"]
+        if clave not in claves_existentes:
+            nuevos_registros.append(Inv06(
+                mcncuenta=row["MCNCUENTA"],
+                promarca=row["PROMARCA"],
                 marnombre=row["MARNOMBRE"],
                 mcnproduct=row["MCNPRODUCT"],
                 pronombre=row["PRONOMBRE"],
-                fecvence=row["FECVENCE"]
-            ).update(saldo=row["SALDO"])
-    
+                fecvence=row["FECVENCE"],
+                mcnbodega=row["MCNBODEGA"],
+                bodnombre=row["BODNOMBRE"],
+                saldo=row["SALDO"],
+                vrunit=row["VRUNIT"],
+                vrtotal=row["VRTOTAL"]
+            ))
+
+    with transaction.atomic():
+        # Inserción en bloque de los registros nuevos
+        if nuevos_registros:
+            Inv06.objects.bulk_create(nuevos_registros)
+
+        # Actualización en bloque de los saldos en los registros existentes
+        qs = Inv06.objects.filter(
+            marnombre__in=[clave[0] for clave in claves_df],
+            mcnproduct__in=[clave[1] for clave in claves_df],
+            pronombre__in=[clave[2] for clave in claves_df],
+            fecvence__in=[clave[3] for clave in claves_df]
+        )
+        registros_a_actualizar = []
+        for registro in qs:
+            clave = (registro.marnombre, registro.mcnproduct, registro.pronombre, registro.fecvence)
+            nuevo_saldo = saldo_mapping.get(clave)
+            if nuevo_saldo is not None and registro.saldo != nuevo_saldo:
+                registro.saldo = nuevo_saldo
+                registros_a_actualizar.append(registro)
+
+        if registros_a_actualizar:
+            Inv06.objects.bulk_update(registros_a_actualizar, ['saldo'])
+
     print("Inserción y actualización completadas.")
     return HttpResponse("Inserción y actualización completadas.")
-
