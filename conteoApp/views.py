@@ -15,8 +15,8 @@ from django.db import transaction
 logger = logging.getLogger(__name__)
 # fecha = datetime.datetime.now().strftime("%Y%m%d")
 # fecha_asignar = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y%m%d")
-# fecha_asignar = '20250128'
-# print(fecha_asignar)
+fecha_asignar = '20250215'
+print(fecha_asignar)
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
 def asignar_tareas(request):
@@ -36,7 +36,7 @@ def asignar_tareas(request):
             productos = list(Venta.objects.filter(
                 sku__regex=r'^\d+$', 
                 bod = '0101', 
-                fecha__range = ('20250213','20250214')).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
+                fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
             # Convertir a listas y validar
             sku_list = []
             bod_list = []
@@ -243,7 +243,7 @@ def asignar_tareas(request):
                            .annotate(total_tareas=Count('id'))) # retornar los usuarios que tienen tareas asignadas
     
     total_tareas_usuarios = Tarea.objects.filter(fecha_asignacion=datetime.date.today()).count()
-    productos = list(Venta.objects.filter(sku__regex=r'^\d+$',bod = '0101',fecha__range = ('20250213','20250214')).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
+    productos = list(Venta.objects.filter(sku__regex=r'^\d+$',bod = '0101',fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
     sku_list = []
     bod_list = []
     for producto in productos:
