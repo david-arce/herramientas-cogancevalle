@@ -14,8 +14,8 @@ from django.db import transaction
 
 logger = logging.getLogger(__name__)
 # fecha = datetime.datetime.now().strftime("%Y%m%d")
-fecha_asignar = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y%m%d")
-# fecha_asignar = '20250215'
+# fecha_asignar = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y%m%d")
+fecha_asignar = '20250217'
 print(fecha_asignar)
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
@@ -351,6 +351,12 @@ def lista_tareas(request):
                     Tarea.objects.bulk_update(
                         tareas_a_actualizar, ['conteo', 'observacion', 'diferencia', 'consolidado']
                     )
+            # obtener el saldo de los productos del inv06 y sumarlos
+            
+            # guardar los productos en un excel
+            # df = pd.DataFrame(list(productos))
+            # df.to_excel('productos.xlsx', index=False)
+            
             tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica).exclude(diferencia=0)
             # return redirect('lista_tareas')
     return render(request, 'conteoApp/tareas_contador.html', {
