@@ -81,12 +81,16 @@
         </form>
         {% endfor %}
     </ul>
+    {% for usuario in usuarios_con_tareas %}
     <form method="post">
         {%csrf_token%}
-        <p>Total tareas: {{ total_tareas_usuarios }} 
-            <button class="button-view-task" name="view_all_tasks">ver tareas</button>
+        <input type="hidden" name="usuario_id" value="{{ usuario.usuario__id }}">
+        <p>Total tareas: {{ total_tareas_usuarios }}
+            <button class="button-view-task" name="view_all_tasks" title="ver todas las tareas">ver todo</button>
+            <button class="button-generic" name="view_all_user_tasks" title="ver todas las diferencias de los contadores">ver todas las diferencias</button>
         </p>
     </form>
+    {% endfor %}
 </div>
 
 {% if tareas %}
@@ -101,7 +105,8 @@
 
 <form method="post">
     {% csrf_token %} 
-    <button type="submit" name="export_excel" class="button-generic">Exportar a Excel</button>
+    <button type="submit" name="export_excel" class="button-generic">Exportar todo</button>
+    <button type="submit" name="export_excel_diferencias" class="button-generic">Exportar diferencias</button>
 </form>
 
 <!-- Tabla de Tareas -->

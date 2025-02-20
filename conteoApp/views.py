@@ -11,6 +11,7 @@ import pandas as pd
 from django.http import HttpResponse, HttpResponseForbidden
 import logging
 from django.db import transaction
+from django.db.models import Sum
 
 logger = logging.getLogger(__name__)
 # fecha = datetime.datetime.now().strftime("%Y%m%d")
@@ -167,7 +168,12 @@ def asignar_tareas(request):
             request.session['selected_user_ids'] = usuario_id
             request.session['fecha_asignacion'] = str(datetime.date.today())
             # return redirect('asignar_tareas')
-            
+        if 'view_all_user_tasks' in request.POST:
+            usuario_id = request.POST.get('usuario_id')  # Obtener el ID del usuario
+            tareas = Tarea.objects.filter(usuario__id=usuario_id, fecha_asignacion=datetime.date.today(), activo=True).exclude(diferencia=0)
+            # guardar tareas en la session
+            request.session['selected_user_ids'] = usuario_id
+            request.session['fecha_asignacion'] = str(datetime.date.today())
 
         if 'view_all_tasks' in request.POST:
             # Mostrar todas las tareas asignadas para hoy
@@ -222,6 +228,44 @@ def asignar_tareas(request):
                 fecha_asignacion = request.session.pop('fecha_asignacion', None)
                 return response
             # return redirect('asignar_tareas')
+        
+        if 'export_excel_diferencias' in request.POST:
+            # Recuperar los datos de la sesión
+            selected_user_ids = request.session.get('selected_user_ids', [])
+            fecha_asignacion = request.session.get('fecha_asignacion', None)
+            if selected_user_ids and fecha_asignacion:
+                selected_users = User.objects.filter(id__in=selected_user_ids)
+                tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion, activo=True).exclude(diferencia=0)
+                
+                # Crear un DataFrame con las tareas
+                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marnombre', 'producto__mcnproduct','producto__pronombre','producto__fecvence', 'producto__saldo', 'conteo', 'diferencia','producto__vrunit', 'consolidado', 'observacion', 'fecha_asignacion')))
+                
+                # Renombrar las columnas con nombres personalizados
+                df.rename(columns={
+                    'usuario__first_name': 'Nombre',
+                    'usuario__last_name': 'Apellido',
+                    'producto__marnombre': 'Marca',
+                    'producto__mcnproduct': 'Item',
+                    'producto__pronombre': 'Nombre Producto',
+                    'producto__fecvence': 'Fecha Vencimiento',
+                    'producto__saldo': 'Inventario',
+                    'conteo': 'Conteo',
+                    'diferencia': 'Diferencia',
+                    'producto__vrunit': 'Valor Unitario',
+                    'consolidado': 'Valor total',
+                    'observacion': 'Observaciones',
+                    'fecha_asignacion': 'Fecha Asignación'
+                }, inplace=True)
+                response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                response['Content-Disposition'] = 'attachment; filename=diferencias.xlsx'
+                df.to_excel(response, index=False)
+                # Limpiar la sesión
+                selected_user_ids = request.session.pop('selected_user_ids', [])
+                fecha_asignacion = request.session.pop('fecha_asignacion', None)
+                return response
+            # return redirect('asignar_tareas')
+        
+        
         if 'reconteo' in request.POST:
             usuario_id = request.POST.get('usuario_id')
             tareas = Tarea.objects.filter(usuario__id=usuario_id, fecha_asignacion=datetime.date.today()).exclude(diferencia=0)
@@ -351,13 +395,68 @@ def lista_tareas(request):
                     Tarea.objects.bulk_update(
                         tareas_a_actualizar, ['conteo', 'observacion', 'diferencia', 'consolidado']
                     )
-            # obtener el saldo de los productos del inv06 y sumarlos
             
-            # guardar los productos en un excel
-            # df = pd.DataFrame(list(productos))
-            # df.to_excel('productos.xlsx', index=False)
-            
-            tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica).exclude(diferencia=0)
+            #-------------------------------------------------------------------------------
+            productos_filtrados = list(Venta.objects.filter(
+                sku__regex=r'^\d+$', 
+                bod = '0101', 
+                fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
+            # Convertir a listas y validar
+            sku_list = []
+            bod_list = []
+            for producto in productos_filtrados:
+                try:
+                    # Convertir mcnproduct y mcnbodega a enteros
+                    sku_list.append(int(producto.sku))
+                    bod_list.append(int(producto.bod))
+                except (ValueError, TypeError):
+                    # Si no se puede convertir, continuar sin agregar el producto
+                    continue
+
+            # productos_disponibles = [] # Inicializar la lista de productos disponibles
+            # Buscar en la tabla Inv06 los productos que cumplen con las condiciones y tienen saldo mayor a 0
+            if sku_list and bod_list:
+                productos_disponibles = Inv06.objects.filter(
+                    mcnproduct__in=sku_list,
+                    mcnbodega__in=bod_list,
+                    saldo__gt=0
+                ).values('mcnproduct', 'marnombre', 'pronombre').annotate(total_saldo=Sum('saldo'))
+            # print(list(productos_disponibles))
+            #----------------------------------------------------------------------------
+            # obtener el total del conteo de la tarea agrupando por marnombre, pronombre y mcnproduct 
+            conteo = (
+                Tarea.objects
+                .filter(usuario=request.user, fecha_asignacion=datetime.date.today())
+                .values('producto__mcnproduct', 'producto__marnombre', 'producto__pronombre')
+                .annotate(total_conteo=Sum('conteo'))
+            )
+            # Convertir los querysets a listas de diccionarios
+            productos_list = list(productos_disponibles)
+            conteo_list = list(conteo)
+            # print(productos_list)
+            # Crear diccionarios indexados por la clave compuesta
+            productos_dict = {
+                (p['mcnproduct'], p['marnombre'], p['pronombre']): p['total_saldo']
+                for p in productos_list
+            }
+            conteo_dict = {
+                (c['producto__mcnproduct'], c['producto__marnombre'], c['producto__pronombre']): c['total_conteo']
+                for c in conteo_list
+            }
+            for key, total_saldo in productos_dict.items():
+                total_conteo = conteo_dict.get(key, 0)  # Si no existe, se considera 0
+                if total_saldo != total_conteo:
+                    # print(f"Para el producto {key}, el saldo ({total_saldo}) difiere del conteo ({total_conteo}).")
+                    print()
+                else:
+                    print(f"Para el producto {key}, el saldo y el conteo son iguales ({total_saldo}).")
+                    Tarea.objects.filter(
+                        producto__mcnproduct=key[0],
+                        producto__marnombre=key[1],
+                        producto__pronombre=key[2],
+                        fecha_asignacion=datetime.date.today()
+                    ).update(activo=False)
+            tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica, activo=True).exclude(diferencia=0)
             # return redirect('lista_tareas')
     return render(request, 'conteoApp/tareas_contador.html', {
         # 'form': form, 
