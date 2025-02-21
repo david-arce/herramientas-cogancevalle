@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'whitenoise.runserver_nostatic',  # Para servir archivos estáticos en producción con WhiteNoise
     'pronosticosWebApp',
     'conteoApp',
+    'presupuestoApp'
 ]
 
 MIDDLEWARE = [
