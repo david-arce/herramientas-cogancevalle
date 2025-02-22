@@ -191,7 +191,7 @@ def guardar_productos(request):
             "mnguser":"mngapi",
             "service":"MSVT01T6DHD",
             "entity":"HK1A010G1J34",
-            "data":{"fechaini":"20241101","fechafin":"20241130"}
+            "data":{"fechaini":"20250101","fechafin":"20250131"}
         }
         
         # Intenta realizar la solicitud GET a la API
