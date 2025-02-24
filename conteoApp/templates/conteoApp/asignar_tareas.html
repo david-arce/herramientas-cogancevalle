@@ -87,7 +87,7 @@
         <input type="hidden" name="usuario_id" value="{{ usuario.usuario__id }}">
         <p>Total tareas: {{ total_tareas_usuarios }}
             <button class="button-view-task" name="view_all_tasks" title="ver todas las tareas">ver todo</button>
-            <button class="button-generic" name="view_all_user_tasks" title="ver todas las diferencias de los contadores">ver todas las diferencias</button>
+            {% comment %} <button class="button-generic" name="view_all_user_tasks" title="ver todas las diferencias de los contadores">ver todas las diferencias</button> {% endcomment %}
         </p>
     </form>
     {% endfor %}
@@ -106,7 +106,7 @@
 <form method="post">
     {% csrf_token %} 
     <button type="submit" name="export_excel" class="button-generic">Exportar todo</button>
-    <button type="submit" name="export_excel_diferencias" class="button-generic">Exportar diferencias</button>
+    {% comment %} <button type="submit" name="export_excel_diferencias" class="button-generic">Exportar diferencias</button> {% endcomment %}
 </form>
 
 <!-- Tabla de Tareas -->
