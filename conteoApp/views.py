@@ -21,7 +21,7 @@ if hoy.weekday() == 0:
     fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
 else:
     fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-# fecha_asignar = '20250217'
+fecha_asignar = '20250217'
 
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
@@ -403,65 +403,65 @@ def lista_tareas(request):
                     )
             
             #-------------------------------------------------------------------------------
-            # productos_filtrados = list(Venta.objects.filter(
-            #     sku__regex=r'^\d+$', 
-            #     bod = '0101', 
-            #     fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
-            # # Convertir a listas y validar
-            # sku_list = []
-            # bod_list = []
-            # for producto in productos_filtrados:
-            #     try:
-            #         # Convertir mcnproduct y mcnbodega a enteros
-            #         sku_list.append(int(producto.sku))
-            #         bod_list.append(int(producto.bod))
-            #     except (ValueError, TypeError):
-            #         # Si no se puede convertir, continuar sin agregar el producto
-            #         continue
+            productos_filtrados = list(Venta.objects.filter(
+                sku__regex=r'^\d+$', 
+                bod = '0101', 
+                fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
+            # Convertir a listas y validar
+            sku_list = []
+            bod_list = []
+            for producto in productos_filtrados:
+                try:
+                    # Convertir mcnproduct y mcnbodega a enteros
+                    sku_list.append(int(producto.sku))
+                    bod_list.append(int(producto.bod))
+                except (ValueError, TypeError):
+                    # Si no se puede convertir, continuar sin agregar el producto
+                    continue
 
-            # # productos_disponibles = [] # Inicializar la lista de productos disponibles
-            # # Buscar en la tabla Inv06 los productos que cumplen con las condiciones y tienen saldo mayor a 0
-            # if sku_list and bod_list:
-            #     productos_disponibles = Inv06.objects.filter(
-            #         mcnproduct__in=sku_list,
-            #         mcnbodega__in=bod_list,
-            #         saldo__gt=0
-            #     ).values('mcnproduct', 'marnombre', 'pronombre').annotate(total_saldo=Sum('saldo'))
-            # # print(list(productos_disponibles))
+            # productos_disponibles = [] # Inicializar la lista de productos disponibles
+            # Buscar en la tabla Inv06 los productos que cumplen con las condiciones y tienen saldo mayor a 0
+            if sku_list and bod_list:
+                productos_disponibles = Inv06.objects.filter(
+                    mcnproduct__in=sku_list,
+                    mcnbodega__in=bod_list,
+                    saldo__gt=0
+                ).values('mcnproduct', 'marnombre', 'pronombre').annotate(total_saldo=Sum('saldo'))
+            # print(list(productos_disponibles))
             
-            # # obtener el total del conteo de la tarea agrupando por marnombre, pronombre y mcnproduct 
-            # conteo = (
-            #     Tarea.objects
-            #     .filter(usuario=request.user, fecha_asignacion=datetime.date.today())
-            #     .values('producto__mcnproduct', 'producto__marnombre', 'producto__pronombre')
-            #     .annotate(total_conteo=Sum('conteo'))
-            # )
-            # # Convertir los querysets a listas de diccionarios
-            # productos_list = list(productos_disponibles)
-            # conteo_list = list(conteo)
-            # # print(productos_list)
-            # # Crear diccionarios indexados por la clave compuesta
-            # productos_dict = {
-            #     (p['mcnproduct'], p['marnombre'], p['pronombre']): p['total_saldo']
-            #     for p in productos_list
-            # }
-            # conteo_dict = {
-            #     (c['producto__mcnproduct'], c['producto__marnombre'], c['producto__pronombre']): c['total_conteo']
-            #     for c in conteo_list
-            # }
-            # for key, total_saldo in productos_dict.items():
-            #     total_conteo = conteo_dict.get(key, 0)  # Si no existe, se considera 0
-            #     if total_saldo != total_conteo:
-            #         # print(f"Para el producto {key}, el saldo ({total_saldo}) difiere del conteo ({total_conteo}).")
-            #         print()
-            #     else:
-            #         print(f"Para el producto {key}, el saldo y el conteo son iguales ({total_saldo}).")
-            #         Tarea.objects.filter(
-            #             producto__mcnproduct=key[0],
-            #             producto__marnombre=key[1],
-            #             producto__pronombre=key[2],
-            #             fecha_asignacion=datetime.date.today()
-            #         ).update(activo=False)
+            # obtener el total del conteo de la tarea agrupando por marnombre, pronombre y mcnproduct 
+            conteo = (
+                Tarea.objects
+                .filter(usuario=request.user, fecha_asignacion=datetime.date.today())
+                .values('producto__mcnproduct', 'producto__marnombre', 'producto__pronombre')
+                .annotate(total_conteo=Sum('conteo'))
+            )
+            # Convertir los querysets a listas de diccionarios
+            productos_list = list(productos_disponibles)
+            conteo_list = list(conteo)
+            # print(productos_list)
+            # Crear diccionarios indexados por la clave compuesta
+            productos_dict = {
+                (p['mcnproduct'], p['marnombre'], p['pronombre']): p['total_saldo']
+                for p in productos_list
+            }
+            conteo_dict = {
+                (c['producto__mcnproduct'], c['producto__marnombre'], c['producto__pronombre']): c['total_conteo']
+                for c in conteo_list
+            }
+            for key, total_saldo in productos_dict.items():
+                total_conteo = conteo_dict.get(key, 0)  # Si no existe, se considera 0
+                if total_saldo != total_conteo:
+                    # print(f"Para el producto {key}, el saldo ({total_saldo}) difiere del conteo ({total_conteo}).")
+                    print()
+                else:
+                    # print(f"Para el producto {key}, el saldo y el conteo son iguales ({total_saldo}).")
+                    Tarea.objects.filter(
+                        producto__mcnproduct=key[0],
+                        producto__marnombre=key[1],
+                        producto__pronombre=key[2],
+                        fecha_asignacion=datetime.date.today()
+                    ).update(activo=False)
             #----------------------------------------------------------------------------
             tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica, activo=True).exclude(diferencia=0)
             # return redirect('lista_tareas')
