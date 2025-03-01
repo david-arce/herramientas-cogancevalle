@@ -1,3 +1,5 @@
+from datetime import date, datetime, timedelta
+from django.db.models import Sum
 import pandas as pd
 import numpy as np
 import time
@@ -9,15 +11,54 @@ class PronosticoMovil:
         pass
     
     def getDataBD():
-        return list(Producto.objects.order_by('id').values()) # Se obtienen los productos de la base de datos en forma de lista
+        return list(Producto.objects.order_by('id').values()[:100]) # Se obtienen los productos de la base de datos en forma de lista
         
     def promedioMovil_3(n):
         print('Calculando pronóstico de promedio móvil...')
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
         
+        # 1. Obtener la fecha más reciente en la base de datos
+        ultima_fecha_str = Producto.objects.order_by('-fecha').values_list('fecha', flat=True).first()
+        if not ultima_fecha_str:
+            print("No hay datos disponibles.")
+            exit()
+
+        # Convertir la fecha de string a objeto date (asumiendo formato 'YYYYMMDD')
+        ultima_fecha = datetime.strptime(ultima_fecha_str, "%Y%m%d").date()
+
+        # 2. Obtener el último día del mes anterior
+        primer_dia_mes_actual = date(ultima_fecha.year, ultima_fecha.month, 1)
+        ultimo_dia_mes_anterior = primer_dia_mes_actual - timedelta(days=1)
+        
+        # 3. Obtener la fecha de inicio (primer día del mes hace 11 meses)
+        meses_atras = 11
+        anio_inicio = ultimo_dia_mes_anterior.year
+        mes_inicio = ultimo_dia_mes_anterior.month
+
+        for _ in range(meses_atras):
+            mes_inicio -= 1
+            if mes_inicio == 0:  # Si llegamos a enero, retrocedemos un año
+                mes_inicio = 12
+                anio_inicio -= 1
+
+        fecha_inicio = date(anio_inicio, mes_inicio, 1)  # Primer día del mes 12 contando hacia atrás
+        
+        # 4. Filtrar productos de los últimos 12 meses y de las bodegas de Tuluá
+        ventas_ultimos_12_meses = (
+            Producto.objects
+            .filter(
+                fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
+                fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
+                bod__in=['0101', '0102', '0105', '0180']  # Solo las bodegas de Tuluá
+            )
+            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
+            .annotate(total_cantidad=Sum('cantidad'))
+            .order_by('-yyyy', '-mm')  # Orden descendente (más reciente primero)
+        )
+        print(ventas_ultimos_12_meses)
+        
         # Se filtran los productos de la sede de Tuluá y mes 1
-        venta_tulua_mes1 = df_demanda[(df_demanda['mm'] == 1) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index()
-        # cambiar el nombre de la columna cantidad a 
+        venta_tulua_mes1 = df_demanda[(df_demanda['mm'] == 1) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index() 
         venta_tulua_mes2 = df_demanda[(df_demanda['mm'] == 2) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index()
         venta_tulua_mes3 = df_demanda[(df_demanda['mm'] == 3) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index()
         venta_tulua_mes4 = df_demanda[(df_demanda['mm'] == 4) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index()
@@ -28,6 +69,7 @@ class PronosticoMovil:
         venta_tulua_mes9 = df_demanda[(df_demanda['mm'] == 9) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index()
         venta_tulua_mes10 = df_demanda[(df_demanda['mm'] == 10) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index()
         venta_tulua_mes11 = df_demanda[(df_demanda['mm'] == 11) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index()
+        venta_tulua_mes12 = df_demanda[(df_demanda['mm'] == 12) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index()
         
         venta_buga = df_demanda[df_demanda['tipo'] == 'B2'].groupby('sku_nom')['cantidad'].sum().reset_index()
         venta_cartago = df_demanda[df_demanda['tipo'] == 'C3'].groupby('sku_nom')['cantidad'].sum().reset_index()
@@ -37,10 +79,10 @@ class PronosticoMovil:
         
         demanda_total = pd.concat([venta_tulua_mes1, venta_tulua_mes2, venta_tulua_mes3, venta_tulua_mes4,
                                    venta_tulua_mes5, venta_tulua_mes6, venta_tulua_mes7, venta_tulua_mes8,
-                                   venta_tulua_mes9, venta_tulua_mes10, venta_tulua_mes11], ignore_index=True)
+                                   venta_tulua_mes9, venta_tulua_mes10, venta_tulua_mes11, venta_tulua_mes12], ignore_index=True)
         
         # print(demanda_total)
-        demanda_total.to_excel('demanda.xlsx', index=False)
+        # demanda_total.to_excel('demanda.xlsx', index=False)
         # coincidencias_tulua_mes1.to_excel('coincidencias_tulua.xlsx', index=False)
         # print(coincidencias_tulua_mes1)
 
