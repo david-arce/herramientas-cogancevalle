@@ -53,11 +53,13 @@ class PronosticoMovil:
                 fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
                 bod__in=['0101', '0102', '0105', '0180']  # Solo las bodegas de Tuluá
             )
-            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
+            .values('yyyy', 'mm', 'sku', 'bod', 'sku_nom', 'marca_nom')
             .annotate(total_cantidad=Sum('cantidad'))
             .order_by('-yyyy', '-mm')  # Orden descendente (más reciente primero)
         )
-        print(ventas_ultimos_12_meses)
+        ventas_ultimos_12_meses = list(ventas_ultimos_12_meses)
+        pd_ventas = pd.DataFrame(ventas_ultimos_12_meses)
+        pd_ventas.to_excel('ventas_ultimos_12_meses.xlsx', index=False)
         
         # Se filtran los productos de la sede de Tuluá y mes 1
         venta_tulua_mes1 = df_demanda[(df_demanda['mm'] == 1) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index() 
