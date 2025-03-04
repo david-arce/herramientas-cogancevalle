@@ -42,7 +42,9 @@ class PronosticoMovil:
                 anio_inicio -= 1
 
         fecha_inicio = date(anio_inicio, mes_inicio, 1)  # Primer día del mes 12 contando hacia atrás
-        
+        print(fecha_inicio)
+        print(ultimo_dia_mes_anterior)
+        print(primer_dia_mes_actual)
         # 4. Filtrar productos de los últimos 12 meses y de las bodegas de Tuluá
         ventas_ultimos_12_meses = (
             Producto.objects
