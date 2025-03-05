@@ -1,5 +1,5 @@
 from datetime import date, datetime, timedelta
-from django.db.models import Sum
+from django.db.models import Sum, Case, When, IntegerField, Value, CharField
 import pandas as pd
 import numpy as np
 import time
@@ -42,26 +42,86 @@ class PronosticoMovil:
                 anio_inicio -= 1
 
         fecha_inicio = date(anio_inicio, mes_inicio, 1)  # Primer día del mes 12 contando hacia atrás
-        print(fecha_inicio)
-        print(ultimo_dia_mes_anterior)
-        print(primer_dia_mes_actual)
-        # 4. Filtrar productos de los últimos 12 meses y de las bodegas de Tuluá
-        ventas_ultimos_12_meses = (
+
+        ''' # 4. Filtrar productos de los últimos 12 meses y de las bodegas de Tuluá
+        ventas_ultimos_12_meses = list(
             Producto.objects
             .filter(
                 fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
                 fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
-                bod__in=['0101', '0102', '0105', '0180']  # Solo las bodegas de Tuluá
+                bod__in=['0101', '0102', '0105', '0201','0202','0205','0301','0302','0305','0401','0402','0405']  # Solo las bodegas de Tuluá
             )
-            .values('yyyy', 'mm', 'sku', 'bod', 'sku_nom', 'marca_nom')
-            .annotate(total_cantidad=Sum('cantidad'))
+            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
+            .annotate( tulua=Sum(
+                Case(When(bod__in=['0101', '0102', '0105'], then='cantidad'), output_field=IntegerField())
+                ),
+                buga=Sum(
+                    Case(When(bod__in=['0201', '0202', '0205'], then='cantidad'), output_field=IntegerField())
+                ),
+                cartago=Sum(
+                    Case(When(bod__in=['0301', '0302', '0305'], then='cantidad'), output_field=IntegerField())
+                ),
+                cali=Sum(
+                    Case(When(bod__in=['0401', '0402', '0405'], then='cantidad'), output_field=IntegerField())
+                ))
+            .order_by('-yyyy', '-mm')  # Orden descendente (más reciente primero)
+        ) '''
+        
+        ventas_ultimos_12_meses_tulua = list(
+            Producto.objects
+            .filter(
+                fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
+                fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
+                bod__in=['0101', '0102', '0105']  # Solo las bodegas de Tuluá
+            )
+            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
+            .annotate(total=Sum('cantidad'), origen=Value("Tuluá", output_field=CharField()))
             .order_by('-yyyy', '-mm')  # Orden descendente (más reciente primero)
         )
-        ventas_ultimos_12_meses = list(ventas_ultimos_12_meses)
+        ventas_ultimos_12_meses_buga = list(
+            Producto.objects
+            .filter(
+                fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
+                fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
+                bod__in=['0201','0202','0205']  # Solo las bodegas de Tuluá
+            )
+            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
+            .annotate(total=Sum('cantidad'), origen=Value("Buga", output_field=CharField()))
+            .order_by('-yyyy', '-mm')  # Orden descendente (más reciente primero)
+        )
+        ventas_ultimos_12_meses_cartago = list(
+            Producto.objects
+            .filter(
+                fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
+                fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
+                bod__in=['0301','0302','0305']  # Solo las bodegas de Tuluá
+            )
+            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
+            .annotate(total=Sum('cantidad'), origen=Value("cartago", output_field=CharField()))
+            .order_by('-yyyy', '-mm')  # Orden descendente (más reciente primero)
+        )
+        ventas_ultimos_12_meses_cali = list(
+            Producto.objects
+            .filter(
+                fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
+                fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
+                bod__in=['0401','0402','0405']  # Solo las bodegas de Tuluá
+            )
+            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
+            .annotate(total=Sum('cantidad'), origen=Value("cali", output_field=CharField()))
+            .order_by('-yyyy', '-mm')  # Orden descendente (más reciente primero)
+        )
+        #unir las dos listas
+        ventas_ultimos_12_meses = ventas_ultimos_12_meses_tulua + ventas_ultimos_12_meses_buga + ventas_ultimos_12_meses_cartago + ventas_ultimos_12_meses_cali
+        ventas_ultimos_12_meses = ventas_ultimos_12_meses
         pd_ventas = pd.DataFrame(ventas_ultimos_12_meses)
-        pd_ventas.to_excel('ventas_ultimos_12_meses.xlsx', index=False)
+        # pd_ventas.to_excel('ventas_ultimos_12_meses.xlsx', index=False)
         
-        # Se filtran los productos de la sede de Tuluá y mes 1
+        # 5. Crear un DataFrame de pandas con los datos de ventas
+        df_demanda = pd.DataFrame(ventas_ultimos_12_meses)
+        # print(df_demanda)
+        
+        ''' # Se filtran los productos de la sede de Tuluá
         venta_tulua_mes1 = df_demanda[(df_demanda['mm'] == 1) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index() 
         venta_tulua_mes2 = df_demanda[(df_demanda['mm'] == 2) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index()
         venta_tulua_mes3 = df_demanda[(df_demanda['mm'] == 3) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index()
@@ -74,22 +134,11 @@ class PronosticoMovil:
         venta_tulua_mes10 = df_demanda[(df_demanda['mm'] == 10) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index()
         venta_tulua_mes11 = df_demanda[(df_demanda['mm'] == 11) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index()
         venta_tulua_mes12 = df_demanda[(df_demanda['mm'] == 12) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index()
+         '''
+       
         
-        venta_buga = df_demanda[df_demanda['tipo'] == 'B2'].groupby('sku_nom')['cantidad'].sum().reset_index()
-        venta_cartago = df_demanda[df_demanda['tipo'] == 'C3'].groupby('sku_nom')['cantidad'].sum().reset_index()
-        venta_cali = df_demanda[df_demanda['tipo'] == 'A4'].groupby('sku_nom')['cantidad'].sum().reset_index()
-        
-        # Se unen todos lo dataframes de ventas de Tuluá en un solo dataframe conservando sus columnas
-        
-        demanda_total = pd.concat([venta_tulua_mes1, venta_tulua_mes2, venta_tulua_mes3, venta_tulua_mes4,
-                                   venta_tulua_mes5, venta_tulua_mes6, venta_tulua_mes7, venta_tulua_mes8,
-                                   venta_tulua_mes9, venta_tulua_mes10, venta_tulua_mes11, venta_tulua_mes12], ignore_index=True)
-        
-        # print(demanda_total)
-        # demanda_total.to_excel('demanda.xlsx', index=False)
-        # coincidencias_tulua_mes1.to_excel('coincidencias_tulua.xlsx', index=False)
-        # print(coincidencias_tulua_mes1)
-
+       
+        #-----------------------------------------------------------------------------------------------------------------
         
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
         
@@ -99,7 +148,6 @@ class PronosticoMovil:
         
         # Seleccionar solo las columnas de meses
         demanda = df_demanda[columnas_meses].copy()
-        
         demanda['pronostico'] = 0 # Se agrega una columna para el siguiente mes
         promedio_movil = demanda.T.rolling(window=n).mean().shift(1).T # Se calcula el promedio móvil de las ventas 
         print('\n')
