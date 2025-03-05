@@ -75,8 +75,8 @@ class PronosticoMovil:
                 bod__in=['0101', '0102', '0105']  # Solo las bodegas de Tuluá
             )
             .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
-            .annotate(total=Sum('cantidad'), origen=Value("Tuluá", output_field=CharField()))
-            .order_by('-yyyy', '-mm')  # Orden descendente (más reciente primero)
+            .annotate(total=Sum('cantidad'), sede=Value("Tuluá", output_field=CharField()))
+            .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
         )
         ventas_ultimos_12_meses_buga = list(
             Producto.objects
@@ -86,8 +86,8 @@ class PronosticoMovil:
                 bod__in=['0201','0202','0205']  # Solo las bodegas de Tuluá
             )
             .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
-            .annotate(total=Sum('cantidad'), origen=Value("Buga", output_field=CharField()))
-            .order_by('-yyyy', '-mm')  # Orden descendente (más reciente primero)
+            .annotate(total=Sum('cantidad'), sede=Value("Buga", output_field=CharField()))
+            .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
         )
         ventas_ultimos_12_meses_cartago = list(
             Producto.objects
@@ -97,8 +97,8 @@ class PronosticoMovil:
                 bod__in=['0301','0302','0305']  # Solo las bodegas de Tuluá
             )
             .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
-            .annotate(total=Sum('cantidad'), origen=Value("cartago", output_field=CharField()))
-            .order_by('-yyyy', '-mm')  # Orden descendente (más reciente primero)
+            .annotate(total=Sum('cantidad'), sede=Value("cartago", output_field=CharField()))
+            .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
         )
         ventas_ultimos_12_meses_cali = list(
             Producto.objects
@@ -108,8 +108,8 @@ class PronosticoMovil:
                 bod__in=['0401','0402','0405']  # Solo las bodegas de Tuluá
             )
             .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
-            .annotate(total=Sum('cantidad'), origen=Value("cali", output_field=CharField()))
-            .order_by('-yyyy', '-mm')  # Orden descendente (más reciente primero)
+            .annotate(total=Sum('cantidad'), sede=Value("cali", output_field=CharField()))
+            .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
         )
         #unir las dos listas
         ventas_ultimos_12_meses = ventas_ultimos_12_meses_tulua + ventas_ultimos_12_meses_buga + ventas_ultimos_12_meses_cartago + ventas_ultimos_12_meses_cali
@@ -119,8 +119,7 @@ class PronosticoMovil:
         
         # 5. Crear un DataFrame de pandas con los datos de ventas
         df_demanda = pd.DataFrame(ventas_ultimos_12_meses)
-        # print(df_demanda)
-        
+        print(df_demanda)
         ''' # Se filtran los productos de la sede de Tuluá
         venta_tulua_mes1 = df_demanda[(df_demanda['mm'] == 1) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index() 
         venta_tulua_mes2 = df_demanda[(df_demanda['mm'] == 2) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index()
