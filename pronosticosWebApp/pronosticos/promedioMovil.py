@@ -67,58 +67,114 @@ class PronosticoMovil:
             .order_by('-yyyy', '-mm')  # Orden descendente (más reciente primero)
         ) '''
         
-        ventas_ultimos_12_meses_tulua = list(
-            Producto.objects
-            .filter(
-                fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
-                fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
-                bod__in=['0101', '0102', '0105']  # Solo las bodegas de Tuluá
-            )
-            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
-            .annotate(total=Sum('cantidad'), sede=Value("Tuluá", output_field=CharField()))
-            .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
-        )
-        ventas_ultimos_12_meses_buga = list(
-            Producto.objects
-            .filter(
-                fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
-                fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
-                bod__in=['0201','0202','0205']  # Solo las bodegas de Tuluá
-            )
-            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
-            .annotate(total=Sum('cantidad'), sede=Value("Buga", output_field=CharField()))
-            .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
-        )
-        ventas_ultimos_12_meses_cartago = list(
-            Producto.objects
-            .filter(
-                fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
-                fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
-                bod__in=['0301','0302','0305']  # Solo las bodegas de Tuluá
-            )
-            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
-            .annotate(total=Sum('cantidad'), sede=Value("cartago", output_field=CharField()))
-            .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
-        )
-        ventas_ultimos_12_meses_cali = list(
-            Producto.objects
-            .filter(
-                fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
-                fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
-                bod__in=['0401','0402','0405']  # Solo las bodegas de Tuluá
-            )
-            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
-            .annotate(total=Sum('cantidad'), sede=Value("cali", output_field=CharField()))
-            .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
-        )
-        #unir las dos listas
-        ventas_ultimos_12_meses = ventas_ultimos_12_meses_tulua + ventas_ultimos_12_meses_buga + ventas_ultimos_12_meses_cartago + ventas_ultimos_12_meses_cali
-        ventas_ultimos_12_meses = ventas_ultimos_12_meses
+        
+        # 4. Obtener todos los productos únicos en el rango de fechas
+        productos_unicos = Producto.objects.filter(
+            fecha__gte=fecha_inicio.strftime("%Y%m%d"),
+            fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),
+        ).values_list('sku', 'sku_nom', 'marca_nom').distinct()
+        # 5. Generar un rango de meses
+        rango_meses = [
+            (fecha_inicio.year + (fecha_inicio.month + i - 1) // 12, (fecha_inicio.month + i - 1) % 12 + 1)
+            for i in range(12)
+        ]
+        # 6. Crear una estructura con todos los productos y meses inicializando con 0
+        ventas_completas = []
+        for sku, sku_nom, marca_nom in productos_unicos:
+            for anio, mes in rango_meses:
+                ventas_completas.append({
+                    'yyyy': anio,
+                    'mm': mes,
+                    'sku': sku,
+                    'sku_nom': sku_nom,
+                    'marca_nom': marca_nom,
+                    'total': 0,  # Inicializamos en 0
+                    'sede': '',  # Se agregará en cada consulta según la bodega
+                })
+        # 7. Función para actualizar ventas de cada sede
+        def obtener_ventas_bodega(bodegas, sede_nombre):
+            ventas = Producto.objects.filter(
+                fecha__gte=fecha_inicio.strftime("%Y%m%d"),
+                fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),
+                bod__in=bodegas
+            ).values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom').annotate(
+                total=Sum('cantidad'),
+                sede=Value(sede_nombre, output_field=CharField())
+            ).order_by('yyyy', 'mm')
+
+            # Convertimos a diccionario para fácil acceso
+            ventas_dict = {(v['yyyy'], v['mm'], v['sku']): v for v in ventas}
+
+            # Llenamos la lista ventas_completas con los valores obtenidos
+            for venta in ventas_completas:
+                if (venta['yyyy'], venta['mm'], venta['sku']) in ventas_dict:
+                    venta['total'] = ventas_dict[(venta['yyyy'], venta['mm'], venta['sku'])]['total']
+                    venta['sede'] = sede_nombre
+
+        # 8. Ejecutar la función para cada sede
+        obtener_ventas_bodega(['0101', '0102', '0105'], "Tuluá")
+        obtener_ventas_bodega(['0201', '0202', '0205'], "Buga")
+        obtener_ventas_bodega(['0301', '0302', '0305'], "Cartago")
+        obtener_ventas_bodega(['0401', '0402', '0405'], "Cali")
+
+        # 9. Lista final con ventas, donde los productos que no tenían datos aparecen con '0'
+        ventas_ultimos_12_meses = ventas_completas    
         pd_ventas = pd.DataFrame(ventas_ultimos_12_meses)
+        pd_ventas.to_excel('ventas_ultimos_12_meses.xlsx', index=False)
+        
+        # ventas_ultimos_12_meses_tulua = list(
+        #     Producto.objects
+        #     .filter(
+        #         fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
+        #         fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
+        #         bod__in=['0101', '0102', '0105']  # Solo las bodegas de Tuluá
+        #     )
+        #     .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
+        #     .annotate(total=Sum('cantidad'), sede=Value("Tuluá", output_field=CharField()))
+        #     .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
+        # )
+        # ventas_ultimos_12_meses_buga = list(
+        #     Producto.objects
+        #     .filter(
+        #         fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
+        #         fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
+        #         bod__in=['0201','0202','0205']  # Solo las bodegas de Tuluá
+        #     )
+        #     .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
+        #     .annotate(total=Sum('cantidad'), sede=Value("Buga", output_field=CharField()))
+        #     .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
+        # )
+        # ventas_ultimos_12_meses_cartago = list(
+        #     Producto.objects
+        #     .filter(
+        #         fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
+        #         fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
+        #         bod__in=['0301','0302','0305']  # Solo las bodegas de Tuluá
+        #     )
+        #     .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
+        #     .annotate(total=Sum('cantidad'), sede=Value("cartago", output_field=CharField()))
+        #     .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
+        # )
+        # ventas_ultimos_12_meses_cali = list(
+        #     Producto.objects
+        #     .filter(
+        #         fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
+        #         fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
+        #         bod__in=['0401','0402','0405']  # Solo las bodegas de Tuluá
+        #     )
+        #     .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
+        #     .annotate(total=Sum('cantidad'), sede=Value("cali", output_field=CharField()))
+        #     .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
+        # )
+        
+        # #unir las dos listas
+        # ventas_ultimos_12_meses = ventas_ultimos_12_meses_tulua + ventas_ultimos_12_meses_buga + ventas_ultimos_12_meses_cartago + ventas_ultimos_12_meses_cali
+        # ventas_ultimos_12_meses = ventas_ultimos_12_meses
+        # pd_ventas = pd.DataFrame(ventas_ultimos_12_meses)
         # pd_ventas.to_excel('ventas_ultimos_12_meses.xlsx', index=False)
         
         # 5. Crear un DataFrame de pandas con los datos de ventas
-        df_demanda = pd.DataFrame(ventas_ultimos_12_meses)
+        # df_demanda = pd.DataFrame(ventas_ultimos_12_meses)
         print(df_demanda)
         ''' # Se filtran los productos de la sede de Tuluá
         venta_tulua_mes1 = df_demanda[(df_demanda['mm'] == 1) & (df_demanda['bod'].isin(['0101','0102','0105','0180']))].groupby(['sku', 'sku_nom', 'marca_nom']).agg({'cantidad': 'sum'}).reset_index() 
