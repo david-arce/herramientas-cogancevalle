@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin, LoginRequiredMix
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import permission_required, login_required
 from django.core.exceptions import PermissionDenied
-from .models import Venta, Tarea, Inv06, User
+from .models import Venta, Tarea, Inv06, User, Inventario
 from pronosticosWebApp.models import Demanda
 from django.contrib import messages
 from django.db.models import Count
@@ -60,8 +60,8 @@ def asignar_tareas(request):
             productos_disponibles = [] # Inicializar la lista de productos disponibles
             # Buscar en la tabla Inv06 los productos que cumplen con las condiciones y tienen saldo mayor a 0
             if sku_list and bod_list:
-                productos_disponibles = Inv06.objects.filter(
-                    mcnproduct__in=sku_list,
+                productos_disponibles = Inventario.objects.filter(
+                    sku__in=sku_list, #pendiente------------------!!!!!!!!!!!!
                     mcnbodega__in=bod_list,
                     saldo__gt=0
                 ).order_by('marnombre') # Ordenar por nombre de laboratorio
