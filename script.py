@@ -31,5 +31,5 @@ with open(output_file_path, 'w', encoding='utf-8') as output_file:
 os.replace(output_file_path, input_file_path)
 
 subprocess.run(['python', 'manage.py', 'makemigrations', 'pronosticosWebApp'], shell=True)
-subprocess.run(['python', 'manage.py', 'migrate'], shell=True)
+subprocess.run(['python', 'manage.py', 'migrate', 'pronosticosWebApp'], shell=True)
 
