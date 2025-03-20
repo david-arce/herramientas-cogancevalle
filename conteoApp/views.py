@@ -21,7 +21,7 @@ if hoy.weekday() == 0:
     fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
 else:
     fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-# fecha_asignar = '20250217'
+fecha_asignar = '20250217'
 
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
@@ -44,27 +44,30 @@ def asignar_tareas(request):
                 sku__regex=r'^\d+$', 
                 bod = '0101', 
                 fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
-            # Convertir a listas y validar
-            sku_list = []
-            bod_list = []
             print(len(productos))
-            for producto in productos:
-                try:
-                    # Convertir mcnproduct y mcnbodega a enteros
-                    sku_list.append(int(producto.sku))
-                    bod_list.append(int(producto.bod))
-                except (ValueError, TypeError):
-                    # Si no se puede convertir, continuar sin agregar el producto
-                    continue
+            
+            productos_disponibles = [
+                producto for producto in productos 
+                if Inventario.objects.filter(sku=producto.sku, bod=producto.bod).exists()
+            ]
 
-            productos_disponibles = [] # Inicializar la lista de productos disponibles
-            # Buscar en la tabla Inv06 los productos que cumplen con las condiciones y tienen saldo mayor a 0
-            if sku_list and bod_list:
-                productos_disponibles = Inventario.objects.filter(
-                    sku__in=sku_list, #pendiente------------------!!!!!!!!!!!!
-                    mcnbodega__in=bod_list,
-                    saldo__gt=0
-                ).order_by('marnombre') # Ordenar por nombre de laboratorio
+            # Convertir a listas y validar
+            # sku_list = []
+            # bod_list = []
+            # for producto in productos:
+            #     try:
+            #         # Convertir mcnproduct y mcnbodega a enteros
+            #         sku_list.append(int(producto.sku))
+            #         bod_list.append(int(producto.bod))
+            #     except (ValueError, TypeError):
+            #         # Si no se puede convertir, continuar sin agregar el producto
+            #         continue
+            
+            # productos_disponibles = Inv06.objects.filter(
+            #     mcnproduct__in=sku_list, 
+            #     mcnbodega__in=bod_list,
+            #     saldo__gt=0
+            # ).order_by('marnombre') # Ordenar por nombre de laboratorio
             
             # Procesar la cantidad de productos disponibles o asignar tarea según sea necesario
             print(f"Cantidad de productos disponibles: {len(productos_disponibles)}")
@@ -101,13 +104,13 @@ def asignar_tareas(request):
                     
                     # bloque de codigo para verificar si el ultimo producto asignado al usuario es igual al siguiente, de ser asi, aumentar la cantidad a asignar
                     sum_item_last += cantidad_a_asignar
-                    item_last = productos_disponibles[sum_item_last-1].mcnproduct
+                    item_last = productos_disponibles[sum_item_last-1].sku
                     bandera = True
                     sum_item_next = sum_item_last
                     while bandera:
                         # obtener el proximo item de los productos disponibles, si no hay o se desborda, no asignar
                         try:
-                            item_next = productos_disponibles[sum_item_next].mcnproduct
+                            item_next = productos_disponibles[sum_item_next].sku
                         except IndexError:
                             item_next = None
                             
@@ -294,21 +297,24 @@ def asignar_tareas(request):
     
     total_tareas_usuarios = Tarea.objects.filter(fecha_asignacion=datetime.date.today()).count()
     productos = list(Venta.objects.filter(sku__regex=r'^\d+$',bod = '0101',fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
-    sku_list = []
-    bod_list = []
-    for producto in productos:
-        try:
-            sku_list.append(int(producto.sku))
-            bod_list.append(int(producto.bod))
-        except (ValueError, TypeError):
-            continue
-    total_tareas_hoy = []
-    if sku_list and bod_list:
-        total_tareas_hoy = Inv06.objects.filter(
-            mcnproduct__in=sku_list,
-            mcnbodega__in=bod_list,
-            saldo__gt=0
-        )
+    # sku_list = []
+    # bod_list = []
+    # for producto in productos:
+    #     try:
+    #         sku_list.append(int(producto.sku))
+    #         bod_list.append(int(producto.bod))
+    #     except (ValueError, TypeError):
+    #         continue
+    # if sku_list and bod_list:
+    #     total_tareas_hoy = Inv06.objects.filter(
+    #         mcnproduct__in=sku_list,
+    #         mcnbodega__in=bod_list,
+    #         saldo__gt=0
+    #     )
+    total_tareas_hoy = [
+        producto for producto in productos 
+        if Inventario.objects.filter(sku=producto.sku, bod=producto.bod).exists()
+    ]
     total_tareas_hoy = len(total_tareas_hoy)
     return render(request, 'conteoApp/asignar_tareas.html', {
         # 'form': form,
@@ -370,25 +376,25 @@ def lista_tareas(request):
                             
                 # Obtener productos y sus registros de Inv06 en una sola consulta
                 productos_ids = {tareas_dict[tid].producto.id for tid in tarea_ids}
-                inv06_records = Inv06.objects.filter(
-                    mcnproduct__in=[tareas_dict[tid].producto.mcnproduct for tid in tarea_ids],
-                    mcnbodega__in=[tareas_dict[tid].producto.mcnbodega for tid in tarea_ids],
-                    fecvence__in=[tareas_dict[tid].producto.fecvence for tid in tarea_ids]
-                ).values('mcnproduct', 'mcnbodega', 'fecvence', 'saldo', 'vrunit')
+                inv_records = Inventario.objects.filter(
+                    sku__in=[tareas_dict[tid].producto.sku for tid in tarea_ids],
+                    bod__in=[tareas_dict[tid].producto.bod for tid in tarea_ids],
+                    lpt__in=[tareas_dict[tid].producto.lpt for tid in tarea_ids]
+                ).values('sku', 'bod', 'lpt', 'inv_saldo', 'vlr_unit')
                 
                 # Convertir resultados en un diccionario para acceso rápido
-                for record in inv06_records:
-                    key = (record['mcnproduct'], record['mcnbodega'], record['fecvence'])
-                    inv06_data[key] = {'saldo': record['saldo'], 'vrunit': record['vrunit']}
+                for record in inv_records:
+                    key = (record['sku'], record['bod'], record['lpt'])
+                    inv06_data[key] = {'inv_saldo': record['inv_saldo'], 'vlr_unit': record['vlr_unit']}
                     
                 # Procesar las tareas para consolidar valores y aplicar cálculos
                 for tarea_id in tarea_ids:
                     tarea = tareas_dict[tarea_id]
                     producto = tarea.producto
 
-                    key = (producto.mcnproduct, producto.mcnbodega, producto.fecvence)
-                    saldo = inv06_data.get(key, {}).get('saldo', 0)
-                    vrunit = inv06_data.get(key, {}).get('vrunit', 0)
+                    key = (producto.sku, producto.bod, producto.lpt)
+                    saldo = inv06_data.get(key, {}).get('inv_saldo', 0)
+                    vrunit = inv06_data.get(key, {}).get('vlr_unit', 0)
 
                     tarea.diferencia = tarea.conteo - saldo
                     tarea.consolidado = round(vrunit * tarea.diferencia, 2)
@@ -407,33 +413,35 @@ def lista_tareas(request):
                 sku__regex=r'^\d+$', 
                 bod = '0101', 
                 fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
+            productos_disponibles = [
+                producto for producto in productos_filtrados 
+                if Inventario.objects.filter(sku=producto.sku, bod=producto.bod).exists()
+            ]
             # Convertir a listas y validar
-            sku_list = []
-            bod_list = []
-            for producto in productos_filtrados:
-                try:
-                    # Convertir mcnproduct y mcnbodega a enteros
-                    sku_list.append(int(producto.sku))
-                    bod_list.append(int(producto.bod))
-                except (ValueError, TypeError):
-                    # Si no se puede convertir, continuar sin agregar el producto
-                    continue
+            # sku_list = []
+            # bod_list = []
+            # for producto in productos_filtrados:
+            #     try:
+            #         # Convertir mcnproduct y mcnbodega a enteros
+            #         sku_list.append(int(producto.sku))
+            #         bod_list.append(int(producto.bod))
+            #     except (ValueError, TypeError):
+            #         # Si no se puede convertir, continuar sin agregar el producto
+            #         continue
 
-            # productos_disponibles = [] # Inicializar la lista de productos disponibles
-            # Buscar en la tabla Inv06 los productos que cumplen con las condiciones y tienen saldo mayor a 0
-            if sku_list and bod_list:
-                productos_disponibles = Inv06.objects.filter(
-                    mcnproduct__in=sku_list,
-                    mcnbodega__in=bod_list,
-                    saldo__gt=0
-                ).values('mcnproduct', 'marnombre', 'pronombre').annotate(total_saldo=Sum('saldo'))
-            # print(list(productos_disponibles))
+            # # Buscar en la tabla Inv06 los productos que cumplen con las condiciones y tienen saldo mayor a 0
+            # if sku_list and bod_list:
+            #     productos_disponibles = Inv06.objects.filter(
+            #         mcnproduct__in=sku_list,
+            #         mcnbodega__in=bod_list,
+            #         saldo__gt=0
+            #     ).values('mcnproduct', 'marnombre', 'pronombre').annotate(total_saldo=Sum('saldo'))
             
             # obtener el total del conteo de la tarea agrupando por marnombre, pronombre y mcnproduct 
             conteo = (
                 Tarea.objects
                 .filter(usuario=request.user, fecha_asignacion=datetime.date.today())
-                .values('producto__mcnproduct', 'producto__marnombre', 'producto__pronombre')
+                .values('producto__sku', 'producto__marca_nom', 'producto__sku_nom')
                 .annotate(total_conteo=Sum('conteo'))
             )
             # Convertir los querysets a listas de diccionarios
@@ -442,11 +450,11 @@ def lista_tareas(request):
             # print(productos_list)
             # Crear diccionarios indexados por la clave compuesta
             productos_dict = {
-                (p['mcnproduct'], p['marnombre'], p['pronombre']): p['total_saldo']
+                (p['sku'], p['marca_nom'], p['sku_nom']): p['total_saldo']
                 for p in productos_list
             }
             conteo_dict = {
-                (c['producto__mcnproduct'], c['producto__marnombre'], c['producto__pronombre']): c['total_conteo']
+                (c['producto__sku'], c['producto__marca_nom'], c['producto__sku_nom']): c['total_conteo']
                 for c in conteo_list
             }
             for key, total_saldo in productos_dict.items():
@@ -457,9 +465,9 @@ def lista_tareas(request):
                 else:
                     # print(f"Para el producto {key}, el saldo y el conteo son iguales ({total_saldo}).")
                     Tarea.objects.filter(
-                        producto__mcnproduct=key[0],
-                        producto__marnombre=key[1],
-                        producto__pronombre=key[2],
+                        producto__sku=key[0],
+                        producto__marca_nom=key[1],
+                        producto__sku_nom=key[2],
                         fecha_asignacion=datetime.date.today()
                     ).update(activo=False)
             #----------------------------------------------------------------------------
