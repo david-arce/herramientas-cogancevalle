@@ -28,10 +28,10 @@
         <tbody>
             {% for tarea in tareas %}
                 <tr>
-                    <td>{{ tarea.producto.marnombre }}</td>
-                    <td>{{ tarea.producto.mcnproduct}}</td>
-                    <td>{{ tarea.producto.pronombre}}</td>
-                    <td>{{ tarea.producto.fecvence }}</td>
+                    <td>{{ tarea.producto.marca_nom }}</td>
+                    <td>{{ tarea.producto.sku}}</td>
+                    <td>{{ tarea.producto.sku_nom}}</td>
+                    <td>{{ tarea.producto.lpt }}</td>
                     <td><input id="input-conteo" class="input-conteo" type="number" name="conteo_{{ tarea.id }}" value="{{ tarea.conteo }}" min="0"></td>
                     <td><textarea id="textarea-observacion" class="input-observacion" type="text" name="observacion_{{ tarea.id }}">{{ tarea.observacion }}</textarea></td>
                 </tr>

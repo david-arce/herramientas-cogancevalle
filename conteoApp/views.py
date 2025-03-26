@@ -21,7 +21,7 @@ if hoy.weekday() == 0:
     fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
 else:
     fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-fecha_asignar = '20250217'
+fecha_asignar = '20250322'
 
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
@@ -40,35 +40,29 @@ def asignar_tareas(request):
             selected_users = User.objects.filter(id__in=selected_user_ids)
 
             # Filtrar productos disponibles con un valor numérico en 'mcnproduct' y 'mcnbodega' = 101
-            productos = list(Venta.objects.filter(
+            productos = (Venta.objects.filter(
                 sku__regex=r'^\d+$', 
                 bod = '0101', 
                 fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
             print(len(productos))
-            
-            productos_disponibles = [
-                producto for producto in productos 
-                if Inventario.objects.filter(sku=producto.sku, bod=producto.bod).exists()
-            ]
 
-            # Convertir a listas y validar
-            # sku_list = []
-            # bod_list = []
-            # for producto in productos:
-            #     try:
-            #         # Convertir mcnproduct y mcnbodega a enteros
-            #         sku_list.append(int(producto.sku))
-            #         bod_list.append(int(producto.bod))
-            #     except (ValueError, TypeError):
-            #         # Si no se puede convertir, continuar sin agregar el producto
-            #         continue
+            #exportar a excel los productos
+            # df = pd.DataFrame(productos.values('sku', 'marca_nom', 'sku_nom'))
+            # df.to_excel('productos.xlsx', index=False)
             
-            # productos_disponibles = Inv06.objects.filter(
-            #     mcnproduct__in=sku_list, 
-            #     mcnbodega__in=bod_list,
-            #     saldo__gt=0
-            # ).order_by('marnombre') # Ordenar por nombre de laboratorio
-            
+            # productos_disponiblesInv = [
+            #     producto for producto in productos 
+            #     if Inventario.objects.filter(sku=producto.sku, bod=producto.bod).exists()
+            # ]
+            sku_list = [producto.sku for producto in productos]
+            bod_list = [producto.bod for producto in productos]
+            productos_disponibles = []
+            productos_disponibles = Inventario.objects.filter(
+                sku__in=sku_list,
+                bod__in=bod_list,
+                inv_saldo__gt=0
+            ).order_by('marca_nom') # Ordenar por nombre de laboratorio
+            print(productos_disponibles)
             # Procesar la cantidad de productos disponibles o asignar tarea según sea necesario
             print(f"Cantidad de productos disponibles: {len(productos_disponibles)}")
             
@@ -211,20 +205,20 @@ def asignar_tareas(request):
                 tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion)
                 
                 # Crear un DataFrame con las tareas
-                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marnombre', 'producto__mcnproduct','producto__pronombre','producto__fecvence', 'producto__saldo', 'conteo', 'diferencia','producto__vrunit', 'consolidado', 'observacion', 'fecha_asignacion')))
+                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'producto__inv_saldo', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion')))
                 
                 # Renombrar las columnas con nombres personalizados
                 df.rename(columns={
                     'usuario__first_name': 'Nombre',
                     'usuario__last_name': 'Apellido',
-                    'producto__marnombre': 'Marca',
-                    'producto__mcnproduct': 'Item',
-                    'producto__pronombre': 'Nombre Producto',
-                    'producto__fecvence': 'Fecha Vencimiento',
-                    'producto__saldo': 'Inventario',
+                    'producto__marca_nom': 'Marca',
+                    'producto__sku': 'Item',
+                    'producto__sku_nom': 'Nombre Producto',
+                    'producto__lpt': 'Fecha Vencimiento',
+                    'producto__inv_saldo': 'Inventario',
                     'conteo': 'Conteo',
                     'diferencia': 'Diferencia',
-                    'producto__vrunit': 'Valor Unitario',
+                    'producto__vlr_unit': 'Valor Unitario',
                     'consolidado': 'Valor total',
                     'observacion': 'Observaciones',
                     'fecha_asignacion': 'Fecha Asignación'
@@ -247,20 +241,20 @@ def asignar_tareas(request):
                 tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion, activo=True).exclude(diferencia=0)
                 
                 # Crear un DataFrame con las tareas
-                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marnombre', 'producto__mcnproduct','producto__pronombre','producto__fecvence', 'producto__saldo', 'conteo', 'diferencia','producto__vrunit', 'consolidado', 'observacion', 'fecha_asignacion')))
+                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'producto__inv_saldo', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion')))
                 
                 # Renombrar las columnas con nombres personalizados
                 df.rename(columns={
                     'usuario__first_name': 'Nombre',
                     'usuario__last_name': 'Apellido',
-                    'producto__marnombre': 'Marca',
-                    'producto__mcnproduct': 'Item',
-                    'producto__pronombre': 'Nombre Producto',
-                    'producto__fecvence': 'Fecha Vencimiento',
-                    'producto__saldo': 'Inventario',
+                    'producto__marca_nom': 'Marca',
+                    'producto__sku': 'Item',
+                    'producto__sku_nom': 'Nombre Producto',
+                    'producto__lpt': 'Fecha Vencimiento',
+                    'producto__inv_saldo': 'Inventario',
                     'conteo': 'Conteo',
                     'diferencia': 'Diferencia',
-                    'producto__vrunit': 'Valor Unitario',
+                    'producto__vlr_unit': 'Valor Unitario',
                     'consolidado': 'Valor total',
                     'observacion': 'Observaciones',
                     'fecha_asignacion': 'Fecha Asignación'
@@ -297,24 +291,14 @@ def asignar_tareas(request):
     
     total_tareas_usuarios = Tarea.objects.filter(fecha_asignacion=datetime.date.today()).count()
     productos = list(Venta.objects.filter(sku__regex=r'^\d+$',bod = '0101',fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
-    # sku_list = []
-    # bod_list = []
-    # for producto in productos:
-    #     try:
-    #         sku_list.append(int(producto.sku))
-    #         bod_list.append(int(producto.bod))
-    #     except (ValueError, TypeError):
-    #         continue
-    # if sku_list and bod_list:
-    #     total_tareas_hoy = Inv06.objects.filter(
-    #         mcnproduct__in=sku_list,
-    #         mcnbodega__in=bod_list,
-    #         saldo__gt=0
-    #     )
-    total_tareas_hoy = [
-        producto for producto in productos 
-        if Inventario.objects.filter(sku=producto.sku, bod=producto.bod).exists()
-    ]
+    
+    sku_list = [producto.sku for producto in productos]
+    bod_list = [producto.bod for producto in productos]
+    total_tareas_hoy = Inventario.objects.filter(
+        sku__in=sku_list,
+        bod__in=bod_list,
+        inv_saldo__gt=0
+    ).order_by('marca_nom')
     total_tareas_hoy = len(total_tareas_hoy)
     return render(request, 'conteoApp/asignar_tareas.html', {
         # 'form': form,
@@ -413,10 +397,12 @@ def lista_tareas(request):
                 sku__regex=r'^\d+$', 
                 bod = '0101', 
                 fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
-            productos_disponibles = [
-                producto for producto in productos_filtrados 
-                if Inventario.objects.filter(sku=producto.sku, bod=producto.bod).exists()
-            ]
+            sku_list = [producto.sku for producto in productos_filtrados]
+            bod_list = [producto.bod for producto in productos_filtrados]
+            productos_disponibles = Inventario.objects.filter(
+                sku__in=sku_list,
+                bod__in=bod_list
+            ).values('sku', 'marca_nom', 'sku_nom').annotate(total_saldo=Sum('inv_saldo'))
             # Convertir a listas y validar
             # sku_list = []
             # bod_list = []
@@ -528,6 +514,8 @@ import os
 #     return HttpResponse("Inserción y actualización completadas.")
 
 
+from django.db.models import Q
+
 def actualizar_saldo_desde_excel(request):
     import os
     import pandas as pd
@@ -544,7 +532,6 @@ def actualizar_saldo_desde_excel(request):
     )
 
     # Consultar en bloque las llaves existentes en la base de datos
-    # Se utiliza __in para cada campo basado en las llaves únicas del DataFrame
     registros_existentes = Inv06.objects.filter(
         marnombre__in=[clave[0] for clave in claves_df],
         mcnproduct__in=[clave[1] for clave in claves_df],
@@ -554,7 +541,6 @@ def actualizar_saldo_desde_excel(request):
     claves_existentes = set(registros_existentes)
 
     nuevos_registros = []
-    # Diccionario para almacenar el saldo que se usará en la actualización
     saldo_mapping = {}
 
     # Recorrer cada fila del DataFrame una sola vez
@@ -577,11 +563,11 @@ def actualizar_saldo_desde_excel(request):
             ))
 
     with transaction.atomic():
-        # Inserción en bloque de los registros nuevos
+        # 1. Crear en bloque los nuevos registros
         if nuevos_registros:
             Inv06.objects.bulk_create(nuevos_registros)
 
-        # Actualización en bloque de los saldos en los registros existentes
+        # 2. Actualizar saldo en los que sí están en el DataFrame
         qs = Inv06.objects.filter(
             marnombre__in=[clave[0] for clave in claves_df],
             mcnproduct__in=[clave[1] for clave in claves_df],
@@ -598,6 +584,34 @@ def actualizar_saldo_desde_excel(request):
 
         if registros_a_actualizar:
             Inv06.objects.bulk_update(registros_a_actualizar, ['saldo'])
+
+        # 3. Poner en saldo=0 todo registro NO presente en las combinaciones de df
+        if claves_df:
+            # Construimos un Q "grande" que incluya todas las combinaciones que SÍ están en df
+            q_in_df = Q()
+            for marnombre, mcnproduct, pronombre, fecvence in claves_df:
+                q_in_df |= Q(
+                    marnombre=marnombre,
+                    mcnproduct=mcnproduct,
+                    pronombre=pronombre,
+                    fecvence=fecvence
+                )
+            # Excluimos todos los que sí están en df, para quedarnos con los que NO aparecen
+            no_en_df = Inv06.objects.exclude(q_in_df)
+        else:
+            # Si df está vacío, todos van a saldo 0
+            no_en_df = Inv06.objects.all()
+
+        # Actualizamos en memoria
+        registros_cero = []
+        for registro in no_en_df:
+            if registro.saldo != 0:
+                registro.saldo = 0
+                registros_cero.append(registro)
+
+        # Bulk update para poner saldo=0
+        if registros_cero:
+            Inv06.objects.bulk_update(registros_cero, ['saldo'])
 
     print("Inserción y actualización completadas.")
     return HttpResponse("Inserción y actualización completadas.")
