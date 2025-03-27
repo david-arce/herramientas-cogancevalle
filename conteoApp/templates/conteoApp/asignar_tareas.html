@@ -132,13 +132,13 @@
         <tbody>
             {% for tarea in tareas %}
                 <tr>
-                    <td>{{ tarea.producto.marnombre }}</td>
-                    <td>{{ tarea.producto.mcnproduct }}</td>
-                    <td>{{ tarea.producto.pronombre }}</td>
-                    <td>{{ tarea.producto.fecvence }}</td>
-                    <td>{{ tarea.producto.saldo }}</td>
+                    <td>{{ tarea.producto.marca_nom }}</td>
+                    <td>{{ tarea.producto.sku }}</td>
+                    <td>{{ tarea.producto.sku_nom }}</td>
+                    <td>{{ tarea.producto.lpt }}</td>
+                    <td>{{ tarea.producto.inv_saldo }}</td>
                     <td>{{ tarea.conteo }}</td>
-                    <td>{{ tarea.producto.vrunit }}</td>
+                    <td>{{ tarea.producto.vlr_unit }}</td>
                     <td>{{ tarea.diferencia }}</td>
                     <td>{{ tarea.consolidado }}</td>
                     <td>{{ tarea.observacion }}</td>

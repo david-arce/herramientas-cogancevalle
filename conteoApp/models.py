@@ -85,9 +85,29 @@ class Inv06(models.Model):
         managed = False
         db_table = 'inv06'
 
+class Inventario(models.Model):
+    cta = models.CharField(max_length=50)
+    marca = models.CharField(max_length=50)
+    marca_nom = models.CharField(max_length=100)
+    sku = models.CharField(max_length=50)
+    sku_nom = models.CharField(max_length=200)
+    lpt = models.CharField(max_length=8)  
+    bod = models.CharField(max_length=10)
+    bod_nom = models.CharField(max_length=100)
+    inv_saldo = models.IntegerField(null=True, blank=True)
+    inv_trsto = models.IntegerField(null=True, blank=True)
+    vlr_unit = models.DecimalField(max_digits=20, decimal_places=2)
+    vlr_total = models.DecimalField(max_digits=20, decimal_places=2)
+
+    class Meta:
+        db_table = "inventario"
+
+    def __str__(self):
+        return f"{self.sku} - {self.sku_nom}"
+
 class Tarea(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
-    producto = models.ForeignKey(Inv06, on_delete=models.CASCADE)
+    producto = models.ForeignKey(Inventario, on_delete=models.CASCADE)
     conteo = models.IntegerField(null=True, blank=True)
     fecha_asignacion = models.DateField(auto_now_add=True)
     observacion = models.TextField(null=True, blank=True)
@@ -105,3 +125,4 @@ class Tarea(models.Model):
         marnombre = self.producto.marnombre if self.producto and self.producto.marnombre else "Unknown Product"
         observacion = self.observacion if self.observacion else "No Observations"
         return f"{username} - {marnombre} - {self.conteo} - {observacion}"
+    

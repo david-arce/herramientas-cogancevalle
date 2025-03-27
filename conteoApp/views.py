@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin, LoginRequiredMix
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import permission_required, login_required
 from django.core.exceptions import PermissionDenied
-from .models import Venta, Tarea, Inv06, User
+from .models import Venta, Tarea, Inv06, User, Inventario
 from pronosticosWebApp.models import Demanda
 from django.contrib import messages
 from django.db.models import Count
@@ -40,32 +40,29 @@ def asignar_tareas(request):
             selected_users = User.objects.filter(id__in=selected_user_ids)
 
             # Filtrar productos disponibles con un valor numérico en 'mcnproduct' y 'mcnbodega' = 101
-            productos = list(Venta.objects.filter(
+            productos = (Venta.objects.filter(
                 sku__regex=r'^\d+$', 
                 bod = '0101', 
                 fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
-            # Convertir a listas y validar
-            sku_list = []
-            bod_list = []
             print(len(productos))
-            for producto in productos:
-                try:
-                    # Convertir mcnproduct y mcnbodega a enteros
-                    sku_list.append(int(producto.sku))
-                    bod_list.append(int(producto.bod))
-                except (ValueError, TypeError):
-                    # Si no se puede convertir, continuar sin agregar el producto
-                    continue
 
-            productos_disponibles = [] # Inicializar la lista de productos disponibles
-            # Buscar en la tabla Inv06 los productos que cumplen con las condiciones y tienen saldo mayor a 0
-            if sku_list and bod_list:
-                productos_disponibles = Inv06.objects.filter(
-                    mcnproduct__in=sku_list,
-                    mcnbodega__in=bod_list,
-                    saldo__gt=0
-                ).order_by('marnombre') # Ordenar por nombre de laboratorio
+            #exportar a excel los productos
+            # df = pd.DataFrame(productos.values('sku', 'marca_nom', 'sku_nom'))
+            # df.to_excel('productos.xlsx', index=False)
             
+            # productos_disponiblesInv = [
+            #     producto for producto in productos 
+            #     if Inventario.objects.filter(sku=producto.sku, bod=producto.bod).exists()
+            # ]
+            sku_list = [producto.sku for producto in productos]
+            bod_list = [producto.bod for producto in productos]
+            productos_disponibles = []
+            productos_disponibles = Inventario.objects.filter(
+                sku__in=sku_list,
+                bod__in=bod_list,
+                inv_saldo__gt=0
+            ).order_by('marca_nom') # Ordenar por nombre de laboratorio
+            print(productos_disponibles)
             # Procesar la cantidad de productos disponibles o asignar tarea según sea necesario
             print(f"Cantidad de productos disponibles: {len(productos_disponibles)}")
             
@@ -101,13 +98,13 @@ def asignar_tareas(request):
                     
                     # bloque de codigo para verificar si el ultimo producto asignado al usuario es igual al siguiente, de ser asi, aumentar la cantidad a asignar
                     sum_item_last += cantidad_a_asignar
-                    item_last = productos_disponibles[sum_item_last-1].mcnproduct
+                    item_last = productos_disponibles[sum_item_last-1].sku
                     bandera = True
                     sum_item_next = sum_item_last
                     while bandera:
                         # obtener el proximo item de los productos disponibles, si no hay o se desborda, no asignar
                         try:
-                            item_next = productos_disponibles[sum_item_next].mcnproduct
+                            item_next = productos_disponibles[sum_item_next].sku
                         except IndexError:
                             item_next = None
                             
@@ -208,20 +205,20 @@ def asignar_tareas(request):
                 tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion)
                 
                 # Crear un DataFrame con las tareas
-                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marnombre', 'producto__mcnproduct','producto__pronombre','producto__fecvence', 'producto__saldo', 'conteo', 'diferencia','producto__vrunit', 'consolidado', 'observacion', 'fecha_asignacion')))
+                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'producto__inv_saldo', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion')))
                 
                 # Renombrar las columnas con nombres personalizados
                 df.rename(columns={
                     'usuario__first_name': 'Nombre',
                     'usuario__last_name': 'Apellido',
-                    'producto__marnombre': 'Marca',
-                    'producto__mcnproduct': 'Item',
-                    'producto__pronombre': 'Nombre Producto',
-                    'producto__fecvence': 'Fecha Vencimiento',
-                    'producto__saldo': 'Inventario',
+                    'producto__marca_nom': 'Marca',
+                    'producto__sku': 'Item',
+                    'producto__sku_nom': 'Nombre Producto',
+                    'producto__lpt': 'Fecha Vencimiento',
+                    'producto__inv_saldo': 'Inventario',
                     'conteo': 'Conteo',
                     'diferencia': 'Diferencia',
-                    'producto__vrunit': 'Valor Unitario',
+                    'producto__vlr_unit': 'Valor Unitario',
                     'consolidado': 'Valor total',
                     'observacion': 'Observaciones',
                     'fecha_asignacion': 'Fecha Asignación'
@@ -244,20 +241,20 @@ def asignar_tareas(request):
                 tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion, activo=True).exclude(diferencia=0)
                 
                 # Crear un DataFrame con las tareas
-                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marnombre', 'producto__mcnproduct','producto__pronombre','producto__fecvence', 'producto__saldo', 'conteo', 'diferencia','producto__vrunit', 'consolidado', 'observacion', 'fecha_asignacion')))
+                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'producto__inv_saldo', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion')))
                 
                 # Renombrar las columnas con nombres personalizados
                 df.rename(columns={
                     'usuario__first_name': 'Nombre',
                     'usuario__last_name': 'Apellido',
-                    'producto__marnombre': 'Marca',
-                    'producto__mcnproduct': 'Item',
-                    'producto__pronombre': 'Nombre Producto',
-                    'producto__fecvence': 'Fecha Vencimiento',
-                    'producto__saldo': 'Inventario',
+                    'producto__marca_nom': 'Marca',
+                    'producto__sku': 'Item',
+                    'producto__sku_nom': 'Nombre Producto',
+                    'producto__lpt': 'Fecha Vencimiento',
+                    'producto__inv_saldo': 'Inventario',
                     'conteo': 'Conteo',
                     'diferencia': 'Diferencia',
-                    'producto__vrunit': 'Valor Unitario',
+                    'producto__vlr_unit': 'Valor Unitario',
                     'consolidado': 'Valor total',
                     'observacion': 'Observaciones',
                     'fecha_asignacion': 'Fecha Asignación'
@@ -294,21 +291,14 @@ def asignar_tareas(request):
     
     total_tareas_usuarios = Tarea.objects.filter(fecha_asignacion=datetime.date.today()).count()
     productos = list(Venta.objects.filter(sku__regex=r'^\d+$',bod = '0101',fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
-    sku_list = []
-    bod_list = []
-    for producto in productos:
-        try:
-            sku_list.append(int(producto.sku))
-            bod_list.append(int(producto.bod))
-        except (ValueError, TypeError):
-            continue
-    total_tareas_hoy = []
-    if sku_list and bod_list:
-        total_tareas_hoy = Inv06.objects.filter(
-            mcnproduct__in=sku_list,
-            mcnbodega__in=bod_list,
-            saldo__gt=0
-        )
+    
+    sku_list = [producto.sku for producto in productos]
+    bod_list = [producto.bod for producto in productos]
+    total_tareas_hoy = Inventario.objects.filter(
+        sku__in=sku_list,
+        bod__in=bod_list,
+        inv_saldo__gt=0
+    ).order_by('marca_nom')
     total_tareas_hoy = len(total_tareas_hoy)
     return render(request, 'conteoApp/asignar_tareas.html', {
         # 'form': form,
@@ -370,25 +360,25 @@ def lista_tareas(request):
                             
                 # Obtener productos y sus registros de Inv06 en una sola consulta
                 productos_ids = {tareas_dict[tid].producto.id for tid in tarea_ids}
-                inv06_records = Inv06.objects.filter(
-                    mcnproduct__in=[tareas_dict[tid].producto.mcnproduct for tid in tarea_ids],
-                    mcnbodega__in=[tareas_dict[tid].producto.mcnbodega for tid in tarea_ids],
-                    fecvence__in=[tareas_dict[tid].producto.fecvence for tid in tarea_ids]
-                ).values('mcnproduct', 'mcnbodega', 'fecvence', 'saldo', 'vrunit')
+                inv_records = Inventario.objects.filter(
+                    sku__in=[tareas_dict[tid].producto.sku for tid in tarea_ids],
+                    bod__in=[tareas_dict[tid].producto.bod for tid in tarea_ids],
+                    lpt__in=[tareas_dict[tid].producto.lpt for tid in tarea_ids]
+                ).values('sku', 'bod', 'lpt', 'inv_saldo', 'vlr_unit')
                 
                 # Convertir resultados en un diccionario para acceso rápido
-                for record in inv06_records:
-                    key = (record['mcnproduct'], record['mcnbodega'], record['fecvence'])
-                    inv06_data[key] = {'saldo': record['saldo'], 'vrunit': record['vrunit']}
+                for record in inv_records:
+                    key = (record['sku'], record['bod'], record['lpt'])
+                    inv06_data[key] = {'inv_saldo': record['inv_saldo'], 'vlr_unit': record['vlr_unit']}
                     
                 # Procesar las tareas para consolidar valores y aplicar cálculos
                 for tarea_id in tarea_ids:
                     tarea = tareas_dict[tarea_id]
                     producto = tarea.producto
 
-                    key = (producto.mcnproduct, producto.mcnbodega, producto.fecvence)
-                    saldo = inv06_data.get(key, {}).get('saldo', 0)
-                    vrunit = inv06_data.get(key, {}).get('vrunit', 0)
+                    key = (producto.sku, producto.bod, producto.lpt)
+                    saldo = inv06_data.get(key, {}).get('inv_saldo', 0)
+                    vrunit = inv06_data.get(key, {}).get('vlr_unit', 0)
 
                     tarea.diferencia = tarea.conteo - saldo
                     tarea.consolidado = round(vrunit * tarea.diferencia, 2)
@@ -407,33 +397,37 @@ def lista_tareas(request):
                 sku__regex=r'^\d+$', 
                 bod = '0101', 
                 fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
+            sku_list = [producto.sku for producto in productos_filtrados]
+            bod_list = [producto.bod for producto in productos_filtrados]
+            productos_disponibles = Inventario.objects.filter(
+                sku__in=sku_list,
+                bod__in=bod_list
+            ).values('sku', 'marca_nom', 'sku_nom').annotate(total_saldo=Sum('inv_saldo'))
             # Convertir a listas y validar
-            sku_list = []
-            bod_list = []
-            for producto in productos_filtrados:
-                try:
-                    # Convertir mcnproduct y mcnbodega a enteros
-                    sku_list.append(int(producto.sku))
-                    bod_list.append(int(producto.bod))
-                except (ValueError, TypeError):
-                    # Si no se puede convertir, continuar sin agregar el producto
-                    continue
+            # sku_list = []
+            # bod_list = []
+            # for producto in productos_filtrados:
+            #     try:
+            #         # Convertir mcnproduct y mcnbodega a enteros
+            #         sku_list.append(int(producto.sku))
+            #         bod_list.append(int(producto.bod))
+            #     except (ValueError, TypeError):
+            #         # Si no se puede convertir, continuar sin agregar el producto
+            #         continue
 
-            # productos_disponibles = [] # Inicializar la lista de productos disponibles
-            # Buscar en la tabla Inv06 los productos que cumplen con las condiciones y tienen saldo mayor a 0
-            if sku_list and bod_list:
-                productos_disponibles = Inv06.objects.filter(
-                    mcnproduct__in=sku_list,
-                    mcnbodega__in=bod_list,
-                    saldo__gt=0
-                ).values('mcnproduct', 'marnombre', 'pronombre').annotate(total_saldo=Sum('saldo'))
-            # print(list(productos_disponibles))
+            # # Buscar en la tabla Inv06 los productos que cumplen con las condiciones y tienen saldo mayor a 0
+            # if sku_list and bod_list:
+            #     productos_disponibles = Inv06.objects.filter(
+            #         mcnproduct__in=sku_list,
+            #         mcnbodega__in=bod_list,
+            #         saldo__gt=0
+            #     ).values('mcnproduct', 'marnombre', 'pronombre').annotate(total_saldo=Sum('saldo'))
             
             # obtener el total del conteo de la tarea agrupando por marnombre, pronombre y mcnproduct 
             conteo = (
                 Tarea.objects
                 .filter(usuario=request.user, fecha_asignacion=datetime.date.today())
-                .values('producto__mcnproduct', 'producto__marnombre', 'producto__pronombre')
+                .values('producto__sku', 'producto__marca_nom', 'producto__sku_nom')
                 .annotate(total_conteo=Sum('conteo'))
             )
             # Convertir los querysets a listas de diccionarios
@@ -442,11 +436,11 @@ def lista_tareas(request):
             # print(productos_list)
             # Crear diccionarios indexados por la clave compuesta
             productos_dict = {
-                (p['mcnproduct'], p['marnombre'], p['pronombre']): p['total_saldo']
+                (p['sku'], p['marca_nom'], p['sku_nom']): p['total_saldo']
                 for p in productos_list
             }
             conteo_dict = {
-                (c['producto__mcnproduct'], c['producto__marnombre'], c['producto__pronombre']): c['total_conteo']
+                (c['producto__sku'], c['producto__marca_nom'], c['producto__sku_nom']): c['total_conteo']
                 for c in conteo_list
             }
             for key, total_saldo in productos_dict.items():
@@ -457,9 +451,9 @@ def lista_tareas(request):
                 else:
                     # print(f"Para el producto {key}, el saldo y el conteo son iguales ({total_saldo}).")
                     Tarea.objects.filter(
-                        producto__mcnproduct=key[0],
-                        producto__marnombre=key[1],
-                        producto__pronombre=key[2],
+                        producto__sku=key[0],
+                        producto__marca_nom=key[1],
+                        producto__sku_nom=key[2],
                         fecha_asignacion=datetime.date.today()
                     ).update(activo=False)
             #----------------------------------------------------------------------------
@@ -520,6 +514,8 @@ import os
 #     return HttpResponse("Inserción y actualización completadas.")
 
 
+from django.db.models import Q
+
 def actualizar_saldo_desde_excel(request):
     import os
     import pandas as pd
@@ -536,7 +532,6 @@ def actualizar_saldo_desde_excel(request):
     )
 
     # Consultar en bloque las llaves existentes en la base de datos
-    # Se utiliza __in para cada campo basado en las llaves únicas del DataFrame
     registros_existentes = Inv06.objects.filter(
         marnombre__in=[clave[0] for clave in claves_df],
         mcnproduct__in=[clave[1] for clave in claves_df],
@@ -546,7 +541,6 @@ def actualizar_saldo_desde_excel(request):
     claves_existentes = set(registros_existentes)
 
     nuevos_registros = []
-    # Diccionario para almacenar el saldo que se usará en la actualización
     saldo_mapping = {}
 
     # Recorrer cada fila del DataFrame una sola vez
@@ -569,11 +563,11 @@ def actualizar_saldo_desde_excel(request):
             ))
 
     with transaction.atomic():
-        # Inserción en bloque de los registros nuevos
+        # 1. Crear en bloque los nuevos registros
         if nuevos_registros:
             Inv06.objects.bulk_create(nuevos_registros)
 
-        # Actualización en bloque de los saldos en los registros existentes
+        # 2. Actualizar saldo en los que sí están en el DataFrame
         qs = Inv06.objects.filter(
             marnombre__in=[clave[0] for clave in claves_df],
             mcnproduct__in=[clave[1] for clave in claves_df],
@@ -590,6 +584,34 @@ def actualizar_saldo_desde_excel(request):
 
         if registros_a_actualizar:
             Inv06.objects.bulk_update(registros_a_actualizar, ['saldo'])
+
+        # 3. Poner en saldo=0 todo registro NO presente en las combinaciones de df
+        if claves_df:
+            # Construimos un Q "grande" que incluya todas las combinaciones que SÍ están en df
+            q_in_df = Q()
+            for marnombre, mcnproduct, pronombre, fecvence in claves_df:
+                q_in_df |= Q(
+                    marnombre=marnombre,
+                    mcnproduct=mcnproduct,
+                    pronombre=pronombre,
+                    fecvence=fecvence
+                )
+            # Excluimos todos los que sí están en df, para quedarnos con los que NO aparecen
+            no_en_df = Inv06.objects.exclude(q_in_df)
+        else:
+            # Si df está vacío, todos van a saldo 0
+            no_en_df = Inv06.objects.all()
+
+        # Actualizamos en memoria
+        registros_cero = []
+        for registro in no_en_df:
+            if registro.saldo != 0:
+                registro.saldo = 0
+                registros_cero.append(registro)
+
+        # Bulk update para poner saldo=0
+        if registros_cero:
+            Inv06.objects.bulk_update(registros_cero, ['saldo'])
 
     print("Inserción y actualización completadas.")
     return HttpResponse("Inserción y actualización completadas.")
