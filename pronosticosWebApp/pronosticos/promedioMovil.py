@@ -214,13 +214,102 @@ class PronosticoMovil:
         
         final = resultado_tulua + resultado_buga + resultado_cartago + resultado_cali
         df_demanda = pd.DataFrame(final)
-        # df.to_excel('ventas_ultimos_12_meses.xlsx', index=False)
+        df_demanda = df_demanda[df_demanda['sku'].astype(str).str.isdigit()]
+
+        # Asegurar orden temporal antes de aplicar el cálculo
+        # df_demanda = df_demanda.sort_values(by=['sku', 'sede', 'mm'])
+        MAD = []
+        # Función para calcular el pronóstico y errores por grupo
+        def calcular_pronostico(df):
+            df = df.sort_values(by=['mm'])  # Asegurar orden temporal dentro del grupo
+            
+            # Obtener el último año y mes
+            ultimo_anio = df.iloc[-1]['yyyy']
+            ultimo_mes = df.iloc[-1]['mm']
+
+            # Crear una nueva fila con el mes 13
+            nueva_fila = {
+                'yyyy': ultimo_anio,
+                'mm': 13,  # Identificar el pronóstico con mes 13
+                'sku': df.iloc[-1]['sku'],
+                'sku_nom': df.iloc[-1]['sku_nom'],
+                'sede': df.iloc[-1]['sede'],
+                'total': np.nan,
+            }
+
+            # Agregar la fila al DataFrame
+            df = pd.concat([df, pd.DataFrame([nueva_fila])], ignore_index=True)
+            
+            # Calcular promedio móvil de 3 meses con desplazamiento (para no usar el mes actual en el cálculo)
+            df['promedio_movil'] = df['total'].rolling(window=3).mean().shift(1)
+            
+            # Calcular error absoluto
+            df['error'] = abs(df['total'] - df['promedio_movil'])
+            
+            # Calcular errores para MAPE y MAPE prima
+            df['errorMAPE'] = np.where(
+            np.isnan(df['error']),  # Si el error es NaN
+            np.nan,  
+            np.where(df['total'] == 0,  # Si el total es 0
+                    1, 
+                    df['error'] / df['total'])  # Si no, hacer la división normal
+            )
+            # calcular errores para calcular el MAPE prima dividiendo el error entre el promedio movil y condicionarlo si el el resultado da cero poner un uno
+            df['errorMAPEPrima'] = np.where(
+                np.isnan(df['error']),  # Si el error es NaN
+                np.nan,
+                np.where(df['promedio_movil'] == 0,  # Si el total es 0
+                        1, 
+                        df['error'] / df['promedio_movil'])
+            )
+            # Calcular ECM (Error Cuadrático Medio)
+            df['errorECM'] = df['error'] ** 2
+            
+            # calcular MAD con el promedio del error
+            
+            return df
+        # Aplicar la función a cada combinación de SKU y sede
+        df_resultado = df_demanda.groupby(['sku', 'sede'], group_keys=False).apply(calcular_pronostico)
+        # Reiniciar el índice después del groupby
+        df_resultado = df_resultado.reset_index(drop=True)
+        print(MAD)
+        # df_resultado.to_excel('ventas.xlsx', index=False)
         
-        # 1. Creamos una columna tipo fecha con el primer día de cada mes:
-        df_demanda['period_date'] = pd.to_datetime(df_demanda['yyyy'].astype(str) + '-' + df_demanda['mm'].astype(str) + '-01')
-        # 2. Ordenamos
-       
-        df_demanda.to_excel('ventas.xlsx', index=False)
+        # obtener un item y una sede especifica
+        # df_demand = df_demanda[(df_demanda['sku'] == '10000') & (df_demanda['sede'] == 'Cali')]
+        # df_demand = df_demand.sort_values(by=['mm'])  # Asegurar orden temporal
+        
+        # nueva_fila = {
+        #     'mm': '13',
+        #     'sku': df_demand.iloc[-1]['sku'],  # Tomamos el SKU del último registro
+        #     'sku_nom': df_demand.iloc[-1]['sku_nom'],
+        #     'sede': df_demand.iloc[-1]['sede'],
+        #     # 'promedio_movil': pronostico_siguiente_mes
+        # }
+        # # agregar fila al dataframe
+        # df_demand = pd.concat([df_demand, pd.DataFrame([nueva_fila])], ignore_index=True)
+        # df_demand['promedio_movil'] = df_demand['total'].rolling(window=3).mean().shift(1)  # Promedio móvil de 3 meses
+        # # calcular error en valor absoluto restando el total menos el promedio movil
+        # df_demand['error'] = abs(df_demand['total'] - df_demand['promedio_movil'])
+        # # calcular errores para calcular el MAPE dividiendo el error entre el total y condicionarlo si el el resultado da cero poner un uno
+        # df_demand['errorMAPE'] = np.where(
+        #     np.isnan(df_demand['error']),  # Si el error es NaN
+        #     np.nan,  
+        #     np.where(df_demand['total'] == 0,  # Si el total es 0
+        #             1, 
+        #             df_demand['error'] / df_demand['total'])  # Si no, hacer la división normal
+        # )
+        # # calcular errores para calcular el MAPE prima dividiendo el error entre el promedio movil y condicionarlo si el el resultado da cero poner un uno
+        # df_demand['errorMAPEPrima'] = np.where(
+        #     np.isnan(df_demand['error']),  # Si el error es NaN
+        #     np.nan,
+        #     np.where(df_demand['total'] == 0,  # Si el total es 0
+        #             1, 
+        #             df_demand['error'] / df_demand['promedio_movil'])
+        # )
+        # # calcular errores para calcular el ECM elevando al cuadrado el error
+        # df_demand['errorECM'] = df_demand['error'] ** 2
+        
         #-----------------------------------------------------------------------------------------------------------------
         '''
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
