@@ -81,16 +81,16 @@
         </form>
         {% endfor %}
     </ul>
-    {% for usuario in usuarios_con_tareas %}
+    {% comment %} {% for usuario in usuarios_con_tareas %} {% endcomment %}
     <form method="post">
         {%csrf_token%}
-        <input type="hidden" name="usuario_id" value="{{ usuario.usuario__id }}">
+        {% comment %} <input type="hidden" name="usuario_id" value="{{ usuario.usuario__id }}"> {% endcomment %}
         <p>Total tareas: {{ total_tareas_usuarios }}
             <button class="button-view-task" name="view_all_tasks" title="ver todas las tareas">ver todo</button>
             <button class="button-view-task" name="view_all_user_tasks" title="ver todas las diferencias de los contadores">ver todas las diferencias</button>
         </p>
     </form>
-    {% endfor %}
+    {% comment %} {% endfor %} {% endcomment %}
 </div>
 
 {% if tareas %}

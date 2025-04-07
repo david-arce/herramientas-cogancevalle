@@ -21,7 +21,7 @@ if hoy.weekday() == 0:
     fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
 else:
     fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-# fecha_asignar = '20250322'
+fecha_asignar = '20250322'
 
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
@@ -172,10 +172,10 @@ def asignar_tareas(request):
             request.session['fecha_asignacion'] = str(datetime.date.today())
             # return redirect('asignar_tareas')
         if 'view_all_user_tasks' in request.POST:
-            usuario_id = request.POST.get('usuario_id')  # Obtener el ID del usuario
-            tareas = Tarea.objects.filter(usuario__id=usuario_id, fecha_asignacion=datetime.date.today(), activo=True).exclude(diferencia=0)
+            # usuario_id = request.POST.get('usuario_id')  # Obtener el ID del usuario
+            tareas = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), activo=True).exclude(diferencia=0)
             # guardar tareas en la session
-            request.session['selected_user_ids'] = usuario_id
+            request.session['selected_user_ids'] = list(tareas.values_list('usuario__id', flat=True).distinct())
             request.session['fecha_asignacion'] = str(datetime.date.today())
 
         if 'view_all_tasks' in request.POST:
@@ -445,11 +445,7 @@ def lista_tareas(request):
             }
             for key, total_saldo in productos_dict.items():
                 total_conteo = conteo_dict.get(key, 0)  # Si no existe, se considera 0
-                if total_saldo != total_conteo:
-                    # print(f"Para el producto {key}, el saldo ({total_saldo}) difiere del conteo ({total_conteo}).")
-                    print()
-                else:
-                    # print(f"Para el producto {key}, el saldo y el conteo son iguales ({total_saldo}).")
+                if total_saldo == total_conteo:
                     Tarea.objects.filter(
                         producto__sku=key[0],
                         producto__marca_nom=key[1],
