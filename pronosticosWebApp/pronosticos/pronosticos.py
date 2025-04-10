@@ -17,7 +17,7 @@ class Pronosticos:
 
     def datos():
         df_demanda = pd.DataFrame(pm.getDataBD())  # Se convierten los productos en un DataFrame de pandas para su manipulación
-        id = df_demanda["id"].tolist()
+        # id = df_demanda["id"].tolist()
         item = df_demanda["producto_c15"].tolist()
         proveedor = df_demanda["proveedor"].tolist()
         producto = df_demanda["nombre_c100"].tolist()
@@ -27,9 +27,10 @@ class Pronosticos:
         precio = df_demanda["precio_unitario_n20"].tolist()
         sede = df_demanda["sede"].tolist()
         del df_demanda
-        return id, item, proveedor, producto, bodega, codigo, unimed, precio, sede
+        return  item, proveedor, producto, bodega, codigo, unimed, precio, sede
 
     def pronosticos():
+        
         (
             MAD_p3,
             MAPE_p3,
@@ -56,7 +57,7 @@ class Pronosticos:
             lista_pronosticos_p5,
         ) = pm.promedioMovil_5(5)
 
-        # id, items, proveedor, productos, sede = pm.productos()
+        id, items, proveedor, productos, sede = pm.productos()
         (
             MAD1,
             MAPE1,

@@ -12,11 +12,6 @@ class PronosticoMovil:
         pass
     
     def getDataBD():
-        return list(Producto.objects.order_by('id').values()[:100]) # Se obtienen los productos de la base de datos en forma de lista
-        
-    def promedioMovil_3(n):
-        print('Calculando pronóstico de promedio móvil...')
-        # df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
         
         # 1. Obtener la fecha más reciente en la base de datos
         ultima_fecha_str = Producto.objects.order_by('-fecha').values_list('fecha', flat=True).first()
@@ -116,21 +111,23 @@ class PronosticoMovil:
             m = venta['mm']
             sku = venta['sku']
             sku_nom = venta['sku_nom']
+            marca_nom = venta['marca_nom']
             total = venta['total'] or 0
-            dict_tulua[(y, m, sku, sku_nom)] = total
+            dict_tulua[(y, m, sku, sku_nom, marca_nom)] = total
         
         # Supongamos que tienes un set con todos los SKUs (o podrías iterar por cada queryset y hacer un union)
-        skus_tulua = set((item['sku'], item['sku_nom']) for item in ventas_ultimos_12_meses_tulua)
+        skus_tulua = set((item['sku'], item['sku_nom'], item['marca_nom']) for item in ventas_ultimos_12_meses_tulua)
         # Lista final de datos rellenados
         resultado_tulua = []
-        for (sku, sku_nom) in skus_tulua:
+        for (sku, sku_nom, marca_nom) in skus_tulua:
             for (anio, mes) in lista_meses:
-                total = dict_tulua.get((anio, mes, sku, sku_nom), 0)
+                total = dict_tulua.get((anio, mes, sku, sku_nom, marca_nom), 0)
                 resultado_tulua.append({
                     'yyyy': anio,
                     'mm': mes,
                     'sku': sku,
                     'sku_nom': sku_nom,
+                    'marca_nom': marca_nom,
                     'total': total,
                     'sede': 'Tuluá'
                 })   
@@ -141,21 +138,23 @@ class PronosticoMovil:
             m = venta['mm']
             sku = venta['sku']
             sku_nom = venta['sku_nom']
+            marca_nom = venta['marca_nom']
             total = venta['total'] or 0
-            dict_buga[(y, m, sku, sku_nom)] = total
+            dict_buga[(y, m, sku, sku_nom, marca_nom)] = total
         
         # Supongamos que tienes un set con todos los SKUs (o podrías iterar por cada queryset y hacer un union)
-        skus_buga = set((item['sku'], item['sku_nom']) for item in ventas_ultimos_12_meses_buga)
+        skus_buga = set((item['sku'], item['sku_nom'], item['marca_nom']) for item in ventas_ultimos_12_meses_buga)
         # Lista final de datos rellenados
         resultado_buga = []
-        for (sku, sku_nom) in skus_buga:
+        for (sku, sku_nom, marca_nom) in skus_buga:
             for (anio, mes) in lista_meses:
-                total = dict_buga.get((anio, mes, sku, sku_nom), 0)
+                total = dict_buga.get((anio, mes, sku, sku_nom, marca_nom), 0)
                 resultado_buga.append({
                     'yyyy': anio,
                     'mm': mes,
                     'sku': sku,
                     'sku_nom': sku_nom,
+                    'marca_nom': marca_nom,
                     'total': total,
                     'sede': 'Buga'
                 })    
@@ -167,21 +166,23 @@ class PronosticoMovil:
             m = venta['mm']
             sku = venta['sku']
             sku_nom = venta['sku_nom']
+            marca_nom = venta['marca_nom']
             total = venta['total'] or 0
-            dict_cartago[(y, m, sku, sku_nom)] = total
+            dict_cartago[(y, m, sku, sku_nom, marca_nom)] = total
         
         # Supongamos que tienes un set con todos los SKUs (o podrías iterar por cada queryset y hacer un union)
-        skus_cartago = set((item['sku'], item['sku_nom']) for item in ventas_ultimos_12_meses_cartago)
+        skus_cartago = set((item['sku'], item['sku_nom'], item['marca_nom']) for item in ventas_ultimos_12_meses_cartago)
         # Lista final de datos rellenados
         resultado_cartago = []
-        for (sku, sku_nom) in skus_cartago:
+        for (sku, sku_nom, marca_nom) in skus_cartago:
             for (anio, mes) in lista_meses:
-                total = dict_cartago.get((anio, mes, sku, sku_nom), 0)
+                total = dict_cartago.get((anio, mes, sku, sku_nom, marca_nom), 0)
                 resultado_cartago.append({
                     'yyyy': anio,
                     'mm': mes,
                     'sku': sku,
                     'sku_nom': sku_nom,
+                    'marca_nom': marca_nom,
                     'total': total,
                     'sede': 'Cartago'
                 })    
@@ -193,21 +194,23 @@ class PronosticoMovil:
             m = venta['mm']
             sku = venta['sku']
             sku_nom = venta['sku_nom']
+            marca_nom = venta['marca_nom']
             total = venta['total'] or 0
-            dict_cali[(y, m, sku)] = total
+            dict_cali[(y, m, sku, sku_nom, marca_nom)] = total
         
         # Supongamos que tienes un set con todos los SKUs (o podrías iterar por cada queryset y hacer un union)
-        skus_cali = set((item['sku'], item['sku_nom']) for item in ventas_ultimos_12_meses_cali)
+        skus_cali = set((item['sku'], item['sku_nom'], item['marca_nom']) for item in ventas_ultimos_12_meses_cali)
         # Lista final de datos rellenados
         resultado_cali = []
-        for (sku, sku_nom) in skus_cali:
+        for (sku, sku_nom, marca_nom) in skus_cali:
             for (anio, mes) in lista_meses:
-                total = dict_cali.get((anio, mes, sku, sku_nom), 0)
+                total = dict_cali.get((anio, mes, sku, sku_nom, marca_nom), 0)
                 resultado_cali.append({
                     'yyyy': anio,
                     'mm': mes,
                     'sku': sku,
                     'sku_nom': sku_nom,
+                    'marca_nom': marca_nom,
                     'total': total,
                     'sede': 'Cali'
                 })    
@@ -215,10 +218,16 @@ class PronosticoMovil:
         final = resultado_tulua + resultado_buga + resultado_cartago + resultado_cali
         df_demanda = pd.DataFrame(final)
         df_demanda = df_demanda[df_demanda['sku'].astype(str).str.isdigit()]
-
-        # Asegurar orden temporal antes de aplicar el cálculo
-        # df_demanda = df_demanda.sort_values(by=['sku', 'sede', 'mm'])
-        MAD = []
+        # obtener registros por sku
+        df_demanda = df_demanda[df_demanda['sku'] == '100']
+        
+        return df_demanda
+        
+    def promedioMovil_3(n):
+        print('Calculando pronóstico de promedio móvil n=3...')
+                
+        df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
+        print(df_demanda)
         # Función para calcular el pronóstico y errores por grupo
         def calcular_pronostico(df):
             df = df.sort_values(by=['mm'])  # Asegurar orden temporal dentro del grupo
@@ -241,7 +250,7 @@ class PronosticoMovil:
             df = pd.concat([df, pd.DataFrame([nueva_fila])], ignore_index=True)
             
             # Calcular promedio móvil de 3 meses con desplazamiento (para no usar el mes actual en el cálculo)
-            df['promedio_movil'] = df['total'].rolling(window=3).mean().shift(1)
+            df['promedio_movil'] = df['total'].rolling(window=n).mean().shift(1)
             
             # Calcular error absoluto
             df['error'] = abs(df['total'] - df['promedio_movil'])
@@ -266,49 +275,39 @@ class PronosticoMovil:
             df['errorECM'] = df['error'] ** 2
             
             # calcular MAD con el promedio del error
+            mad = df['error'].mean()
+            df['MAD'] = np.nan  # Inicializar columna con NaN
+            df.loc[df['mm'] == 13, 'MAD'] = mad  # Solo colocar MAD en el mes 13 (última fila)
+            
+            # Calcular MAPE y MAPE prima
+            mape = df['errorMAPE'].mean() * 100
+            df['MAPE'] = np.nan  # Inicializar columna con NaN
+            df.loc[df['mm'] == 13, 'MAPE'] = mape  # Solo colocar MAPE en el mes 13 (última fila)
+            
+            mape_prima = df['errorMAPEPrima'].mean() * 100
+            df['MAPE_Prima'] = np.nan
+            df.loc[df['mm'] == 13, 'MAPE_Prima'] = mape_prima
+            
+            # Calcular ECM
+            ecm = df['errorECM'].mean()
+            df['ECM'] = np.nan
+            df.loc[df['mm'] == 13, 'ECM'] = ecm
             
             return df
         # Aplicar la función a cada combinación de SKU y sede
         df_resultado = df_demanda.groupby(['sku', 'sede'], group_keys=False).apply(calcular_pronostico)
         # Reiniciar el índice después del groupby
         df_resultado = df_resultado.reset_index(drop=True)
-        print(MAD)
-        # df_resultado.to_excel('ventas.xlsx', index=False)
+        # df_resultado.to_excel('ventasMAD.xlsx', index=False)
         
-        # obtener un item y una sede especifica
-        # df_demand = df_demanda[(df_demanda['sku'] == '10000') & (df_demanda['sede'] == 'Cali')]
-        # df_demand = df_demand.sort_values(by=['mm'])  # Asegurar orden temporal
-        
-        # nueva_fila = {
-        #     'mm': '13',
-        #     'sku': df_demand.iloc[-1]['sku'],  # Tomamos el SKU del último registro
-        #     'sku_nom': df_demand.iloc[-1]['sku_nom'],
-        #     'sede': df_demand.iloc[-1]['sede'],
-        #     # 'promedio_movil': pronostico_siguiente_mes
-        # }
-        # # agregar fila al dataframe
-        # df_demand = pd.concat([df_demand, pd.DataFrame([nueva_fila])], ignore_index=True)
-        # df_demand['promedio_movil'] = df_demand['total'].rolling(window=3).mean().shift(1)  # Promedio móvil de 3 meses
-        # # calcular error en valor absoluto restando el total menos el promedio movil
-        # df_demand['error'] = abs(df_demand['total'] - df_demand['promedio_movil'])
-        # # calcular errores para calcular el MAPE dividiendo el error entre el total y condicionarlo si el el resultado da cero poner un uno
-        # df_demand['errorMAPE'] = np.where(
-        #     np.isnan(df_demand['error']),  # Si el error es NaN
-        #     np.nan,  
-        #     np.where(df_demand['total'] == 0,  # Si el total es 0
-        #             1, 
-        #             df_demand['error'] / df_demand['total'])  # Si no, hacer la división normal
-        # )
-        # # calcular errores para calcular el MAPE prima dividiendo el error entre el promedio movil y condicionarlo si el el resultado da cero poner un uno
-        # df_demand['errorMAPEPrima'] = np.where(
-        #     np.isnan(df_demand['error']),  # Si el error es NaN
-        #     np.nan,
-        #     np.where(df_demand['total'] == 0,  # Si el total es 0
-        #             1, 
-        #             df_demand['error'] / df_demand['promedio_movil'])
-        # )
-        # # calcular errores para calcular el ECM elevando al cuadrado el error
-        # df_demand['errorECM'] = df_demand['error'] ** 2
+        # crea una lista con la columna MAD del dataframe omitiendo los nulos
+        MAD = df_resultado['MAD'].dropna().tolist()
+        # crea una lista con la columna MAPE del dataframe omitiendo los nulos
+        MAPE = df_resultado['MAPE'].dropna().tolist()
+        # crea una lista con la columna MAPE prima del dataframe omitiendo los nulos
+        MAPE_prima = df_resultado['MAPE_Prima'].dropna().tolist()
+        # crea una lista con la columna ECM del dataframe omitiendo los nulos
+        ECM = df_resultado['ECM'].dropna().tolist()
         
         #-----------------------------------------------------------------------------------------------------------------
         '''
@@ -372,131 +371,189 @@ class PronosticoMovil:
         ECM = [np.mean(erroresCuadraticoMedio[i:i+total_meses_pronostico]) for i in range(0, len(erroresCuadraticoMedio), total_meses_pronostico)]
         # print(ECM[:5])
         '''
-        return MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronosticos
+        return MAD, MAPE, MAPE_prima, ECM, #demanda, promedio_movil, lista_pronosticos
     
     def promedioMovil_4(n):
+        print('Calculando pronóstico de promedio móvil n=4...')
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
-        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-    
-        # Filtrar columnas que contienen meses (sin importar mayúsculas o minúsculas)
-        columnas_meses = [col for col in df_demanda.columns if any(mes in col.lower() for mes in meses)]
-        cantidadMeses = len(columnas_meses)
-        
-        # Seleccionar solo las columnas de meses
-        demanda = df_demanda[columnas_meses].copy()
-
-        demanda['pronostico'] = 0 # Se agrega una columna para el siguiente mes
-        promedio_movil = demanda.T.rolling(window=n).mean().shift(1).T # Se calcula el promedio móvil de las ventas 
-        print('\n')
-    
-        errores, erroresMape, erroresMapePrima, erroresCuadraticoMedio = [], [], [], []
-        MAD=[] #mean absolute deviation
-        MAPE=[] #mean absolute percentage error
-        MAPE_prima=[] #mean absolute percentage error prima
-        ECM=[] #error cuadratico medio
-        
-        # Optimización del cálculo de errores utilizando operaciones vectorizadas
-        errores = (demanda.iloc[:, n:cantidadMeses].values - promedio_movil.iloc[:, n:cantidadMeses].values).flatten()
-        # print(errores[:10])
-        erroresAbs = np.abs(errores)
-        # print(erroresAbs[:10])
-        
-        #lista de pronosticos para el siguiente mes
-        lista_pronosticos = [promedio_movil.iloc[i, cantidadMeses] for i in promedio_movil.index]
-        
-        total_meses_pronostico = (demanda.shape[1] - 1) - n #total de meses a pronosticar menos el siguiente
-        
-        #CALCULO DEL MAD(MEAN ABSOLUTE DEVIATION) 
-        for i in range(0, len(erroresAbs), total_meses_pronostico):
-            grupo = erroresAbs[i:i+(total_meses_pronostico)]
-            MAD.append(sum(grupo)/len(grupo))
-        # print(MAD[:5])
+        # Función para calcular el pronóstico y errores por grupo
+        def calcular_pronostico(df):
+            df = df.sort_values(by=['mm'])  # Asegurar orden temporal dentro del grupo
             
-        # CALCULO DEL MAPE (MEAN ABSOLUTE PERCENTAGE ERROR)
-        valores_demanda = demanda.iloc[:, n:cantidadMeses].values.flatten()
-        erroresMape = [(ea / vd if vd != 0 else 1) for ea, vd in zip(erroresAbs, valores_demanda)]
-        MAPE = [np.mean(erroresMape[i:i+total_meses_pronostico]) * 100 for i in range(0, len(erroresMape), total_meses_pronostico)]
-        # print(MAPE[:5])    
+            # Obtener el último año y mes
+            ultimo_anio = df.iloc[-1]['yyyy']
+            ultimo_mes = df.iloc[-1]['mm']
+
+            # Crear una nueva fila con el mes 13
+            nueva_fila = {
+                'yyyy': ultimo_anio,
+                'mm': 13,  # Identificar el pronóstico con mes 13
+                'sku': df.iloc[-1]['sku'],
+                'sku_nom': df.iloc[-1]['sku_nom'],
+                'sede': df.iloc[-1]['sede'],
+                'total': np.nan,
+            }
+
+            # Agregar la fila al DataFrame
+            df = pd.concat([df, pd.DataFrame([nueva_fila])], ignore_index=True)
+            
+            # Calcular promedio móvil de 3 meses con desplazamiento (para no usar el mes actual en el cálculo)
+            df['promedio_movil'] = df['total'].rolling(window=n).mean().shift(1)
+            
+            # Calcular error absoluto
+            df['error'] = abs(df['total'] - df['promedio_movil'])
+            
+            # Calcular errores para MAPE y MAPE prima
+            df['errorMAPE'] = np.where(
+            np.isnan(df['error']),  # Si el error es NaN
+            np.nan,  
+            np.where(df['total'] == 0,  # Si el total es 0
+                    1, 
+                    df['error'] / df['total'])  # Si no, hacer la división normal
+            )
+            # calcular errores para calcular el MAPE prima dividiendo el error entre el promedio movil y condicionarlo si el el resultado da cero poner un uno
+            df['errorMAPEPrima'] = np.where(
+                np.isnan(df['error']),  # Si el error es NaN
+                np.nan,
+                np.where(df['promedio_movil'] == 0,  # Si el total es 0
+                        1, 
+                        df['error'] / df['promedio_movil'])
+            )
+            # Calcular ECM (Error Cuadrático Medio)
+            df['errorECM'] = df['error'] ** 2
+            
+            # calcular MAD con el promedio del error
+            mad = df['error'].mean()
+            df['MAD'] = np.nan  # Inicializar columna con NaN
+            df.loc[df['mm'] == 13, 'MAD'] = mad  # Solo colocar MAD en el mes 13 (última fila)
+            
+            # Calcular MAPE y MAPE prima
+            mape = df['errorMAPE'].mean() * 100
+            df['MAPE'] = np.nan  # Inicializar columna con NaN
+            df.loc[df['mm'] == 13, 'MAPE'] = mape  # Solo colocar MAPE en el mes 13 (última fila)
+            
+            mape_prima = df['errorMAPEPrima'].mean() * 100
+            df['MAPE_Prima'] = np.nan
+            df.loc[df['mm'] == 13, 'MAPE_Prima'] = mape_prima
+            
+            # Calcular ECM
+            ecm = df['errorECM'].mean()
+            df['ECM'] = np.nan
+            df.loc[df['mm'] == 13, 'ECM'] = ecm
+            
+            return df
+        # Aplicar la función a cada combinación de SKU y sede
+        df_resultado = df_demanda.groupby(['sku', 'sede'], group_keys=False).apply(calcular_pronostico)
+        # Reiniciar el índice después del groupby
+        df_resultado = df_resultado.reset_index(drop=True)
+        # df_resultado.to_excel('ventasMAD.xlsx', index=False)
         
-        # CALCULO DEL MAPE' (MEAN ABSOLUTE PERCENTAGE ERROR PRIMA)
-        valores_pronosticoMovil = promedio_movil.iloc[:, n:cantidadMeses].values.flatten()
-        erroresMapePrima = [(ea / vp if vp != 0 else 1) for ea, vp in zip(erroresAbs, valores_pronosticoMovil)]
-        MAPE_prima = [np.mean(erroresMapePrima[i:i+total_meses_pronostico]) * 100 for i in range(0, len(erroresMapePrima), total_meses_pronostico)]
-        # print(MAPE_prima[:5])
+        # crea una lista con la columna MAD del dataframe omitiendo los nulos
+        MAD = df_resultado['MAD'].dropna().tolist()
+        # crea una lista con la columna MAPE del dataframe omitiendo los nulos
+        MAPE = df_resultado['MAPE'].dropna().tolist()
+        # crea una lista con la columna MAPE prima del dataframe omitiendo los nulos
+        MAPE_prima = df_resultado['MAPE_Prima'].dropna().tolist()
+        # crea una lista con la columna ECM del dataframe omitiendo los nulos
+        ECM = df_resultado['ECM'].dropna().tolist()
         
-        # CALCULO DEL ECM (ERROR CUADRATICO MEDIO)
-        erroresCuadraticoMedio = erroresAbs ** 2
-        ECM = [np.mean(erroresCuadraticoMedio[i:i+total_meses_pronostico]) for i in range(0, len(erroresCuadraticoMedio), total_meses_pronostico)]
-        # print(ECM[:5])
-        
-        return MAD, MAPE, MAPE_prima, ECM, promedio_movil, lista_pronosticos
+        return MAD, MAPE, MAPE_prima, ECM, #promedio_movil, lista_pronosticos
     
     def promedioMovil_5(n):
+        print('Calculando pronóstico de promedio móvil n=5...')
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
-        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-    
-        # Filtrar columnas que contienen meses (sin importar mayúsculas o minúsculas)
-        columnas_meses = [col for col in df_demanda.columns if any(mes in col.lower() for mes in meses)]
-        cantidadMeses = len(columnas_meses)
-        
-        # Seleccionar solo las columnas de meses
-        demanda = df_demanda[columnas_meses].copy()
-
-        demanda['pronostico'] = 0 # Se agrega una columna para el siguiente mes
-        promedio_movil = demanda.T.rolling(window=n).mean().shift(1).T # Se calcula el promedio móvil de las ventas 
-        print('\n')
-    
-        errores, erroresMape, erroresMapePrima, erroresCuadraticoMedio = [], [], [], []
-        MAD=[] #mean absolute deviation
-        MAPE=[] #mean absolute percentage error
-        MAPE_prima=[] #mean absolute percentage error prima
-        ECM=[] #error cuadratico medio
-        
-        # Optimización del cálculo de errores utilizando operaciones vectorizadas
-        errores = (demanda.iloc[:, n:cantidadMeses].values - promedio_movil.iloc[:, n:cantidadMeses].values).flatten()
-        # print(errores[:10])
-        erroresAbs = np.abs(errores)
-        # print(erroresAbs[:10])
-        
-        #lista de pronosticos para el siguiente mes
-        lista_pronosticos = [promedio_movil.iloc[i, cantidadMeses] for i in promedio_movil.index]
-        
-        total_meses_pronostico = (demanda.shape[1] - 1) - n #total de meses a pronosticar menos el siguiente
-        
-        #CALCULO DEL MAD(MEAN ABSOLUTE DEVIATION) 
-        for i in range(0, len(erroresAbs), total_meses_pronostico):
-            grupo = erroresAbs[i:i+(total_meses_pronostico)]
-            MAD.append(sum(grupo)/len(grupo))
-        # print(MAD[:5])
+        # Función para calcular el pronóstico y errores por grupo
+        def calcular_pronostico(df):
+            df = df.sort_values(by=['mm'])  # Asegurar orden temporal dentro del grupo
             
-        # CALCULO DEL MAPE (MEAN ABSOLUTE PERCENTAGE ERROR)
-        valores_demanda = demanda.iloc[:, n:cantidadMeses].values.flatten()
-        erroresMape = [(ea / vd if vd != 0 else 1) for ea, vd in zip(erroresAbs, valores_demanda)]
-        MAPE = [np.mean(erroresMape[i:i+total_meses_pronostico]) * 100 for i in range(0, len(erroresMape), total_meses_pronostico)]
-        # print(MAPE[:5])    
+            # Obtener el último año y mes
+            ultimo_anio = df.iloc[-1]['yyyy']
+            ultimo_mes = df.iloc[-1]['mm']
+
+            # Crear una nueva fila con el mes 13
+            nueva_fila = {
+                'yyyy': ultimo_anio,
+                'mm': 13,  # Identificar el pronóstico con mes 13
+                'sku': df.iloc[-1]['sku'],
+                'sku_nom': df.iloc[-1]['sku_nom'],
+                'sede': df.iloc[-1]['sede'],
+                'total': np.nan,
+            }
+
+            # Agregar la fila al DataFrame
+            df = pd.concat([df, pd.DataFrame([nueva_fila])], ignore_index=True)
+            
+            # Calcular promedio móvil de 3 meses con desplazamiento (para no usar el mes actual en el cálculo)
+            df['promedio_movil'] = df['total'].rolling(window=n).mean().shift(1)
+            
+            # Calcular error absoluto
+            df['error'] = abs(df['total'] - df['promedio_movil'])
+            
+            # Calcular errores para MAPE y MAPE prima
+            df['errorMAPE'] = np.where(
+            np.isnan(df['error']),  # Si el error es NaN
+            np.nan,  
+            np.where(df['total'] == 0,  # Si el total es 0
+                    1, 
+                    df['error'] / df['total'])  # Si no, hacer la división normal
+            )
+            # calcular errores para calcular el MAPE prima dividiendo el error entre el promedio movil y condicionarlo si el el resultado da cero poner un uno
+            df['errorMAPEPrima'] = np.where(
+                np.isnan(df['error']),  # Si el error es NaN
+                np.nan,
+                np.where(df['promedio_movil'] == 0,  # Si el total es 0
+                        1, 
+                        df['error'] / df['promedio_movil'])
+            )
+            # Calcular ECM (Error Cuadrático Medio)
+            df['errorECM'] = df['error'] ** 2
+            
+            # calcular MAD con el promedio del error
+            mad = df['error'].mean()
+            df['MAD'] = np.nan  # Inicializar columna con NaN
+            df.loc[df['mm'] == 13, 'MAD'] = mad  # Solo colocar MAD en el mes 13 (última fila)
+            
+            # Calcular MAPE y MAPE prima
+            mape = df['errorMAPE'].mean() * 100
+            df['MAPE'] = np.nan  # Inicializar columna con NaN
+            df.loc[df['mm'] == 13, 'MAPE'] = mape  # Solo colocar MAPE en el mes 13 (última fila)
+            
+            mape_prima = df['errorMAPEPrima'].mean() * 100
+            df['MAPE_Prima'] = np.nan
+            df.loc[df['mm'] == 13, 'MAPE_Prima'] = mape_prima
+            
+            # Calcular ECM
+            ecm = df['errorECM'].mean()
+            df['ECM'] = np.nan
+            df.loc[df['mm'] == 13, 'ECM'] = ecm
+            
+            return df
+        # Aplicar la función a cada combinación de SKU y sede
+        df_resultado = df_demanda.groupby(['sku', 'sede'], group_keys=False).apply(calcular_pronostico)
+        # Reiniciar el índice después del groupby
+        df_resultado = df_resultado.reset_index(drop=True)
+        # df_resultado.to_excel('ventasMAD.xlsx', index=False)
         
-        # CALCULO DEL MAPE' (MEAN ABSOLUTE PERCENTAGE ERROR PRIMA)
-        valores_pronosticoMovil = promedio_movil.iloc[:, n:cantidadMeses].values.flatten()
-        erroresMapePrima = [(ea / vp if vp != 0 else 1) for ea, vp in zip(erroresAbs, valores_pronosticoMovil)]
-        MAPE_prima = [np.mean(erroresMapePrima[i:i+total_meses_pronostico]) * 100 for i in range(0, len(erroresMapePrima), total_meses_pronostico)]
-        # print(MAPE_prima[:5])
+        # crea una lista con la columna MAD del dataframe omitiendo los nulos
+        MAD = df_resultado['MAD'].dropna().tolist()
+        # crea una lista con la columna MAPE del dataframe omitiendo los nulos
+        MAPE = df_resultado['MAPE'].dropna().tolist()
+        # crea una lista con la columna MAPE prima del dataframe omitiendo los nulos
+        MAPE_prima = df_resultado['MAPE_Prima'].dropna().tolist()
+        # crea una lista con la columna ECM del dataframe omitiendo los nulos
+        ECM = df_resultado['ECM'].dropna().tolist()
         
-        # CALCULO DEL ECM (ERROR CUADRATICO MEDIO)
-        erroresCuadraticoMedio = erroresAbs ** 2
-        ECM = [np.mean(erroresCuadraticoMedio[i:i+total_meses_pronostico]) for i in range(0, len(erroresCuadraticoMedio), total_meses_pronostico)]
-        # print(ECM[:5])
-        
-        return MAD, MAPE, MAPE_prima, ECM, promedio_movil, lista_pronosticos
+        return MAD, MAPE, MAPE_prima, ECM, #promedio_movil, lista_pronosticos
     
     def productos():
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
-        id = df_demanda['id'].tolist()
-        items = df_demanda['producto_c15'].tolist()
-        proveedor = df_demanda['proveedor'].tolist()
-        productos = df_demanda['nombre_c100'].tolist()
+        # id = df_demanda['id'].tolist()
+        items = df_demanda['sku'].tolist()
+        proveedor = df_demanda['marca_nom'].tolist()
+        productos = df_demanda['sku_nom'].tolist()
         sede = df_demanda['sede'].tolist()
         del df_demanda
-        return id, items, proveedor, productos, sede
+        return items, proveedor, productos, sede
         
     #funcion para probar el pronostico
     def prueba():

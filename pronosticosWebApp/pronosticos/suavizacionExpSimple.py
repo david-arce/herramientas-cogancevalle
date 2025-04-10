@@ -9,10 +9,78 @@ class PronosticoExpSimple:
         pass
     
     def pronosticoExpSimple(alpha):
-        df_demanda = pd.DataFrame(pm.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
         print('Calculando suavización exponencial simple...')
+        
+        df_demanda = pd.DataFrame(pm.getDataBD())  # Cargar datos
+        df_demanda = df_demanda.sort_values(by=['yyyy', 'mm'])  # Asegurar orden temporal
+        
+        def calcular_pronostico(df):
+            df = df.sort_values(by=['mm'])
+
+            ultimo_anio = df.iloc[-1]['yyyy']
+            ultimo_mes = df.iloc[-1]['mm']
+
+            nueva_fila = {
+                'yyyy': ultimo_anio,
+                'mm': 13,
+                'sku': df.iloc[-1]['sku'],
+                'sku_nom': df.iloc[-1]['sku_nom'],
+                'sede': df.iloc[-1]['sede'],
+                'total': np.nan,
+            }
+
+            df = pd.concat([df, pd.DataFrame([nueva_fila])], ignore_index=True)
+
+            # Inicializar pronóstico con el primer valor real
+            pronosticos = [df.loc[0, 'total']]
+            for i in range(1, len(df)):
+                if pd.isna(df.loc[i - 1, 'total']):
+                    pronosticos.append(pronosticos[-1])
+                else:
+                    nuevo_f = pronosticos[-1] + alpha * (df.loc[i - 1, 'total'] - pronosticos[-1])
+                    pronosticos.append(nuevo_f)
+
+            df['pronostico_ses'] = pronosticos
+
+            # Calcular errores
+            df['error'] = abs(df['total'] - df['pronostico_ses'])
+
+            df['errorMAPE'] = np.where(
+                np.isnan(df['error']),
+                np.nan,
+                np.where(df['total'] == 0, 1, df['error'] / df['total'])
+            )
+
+            df['errorMAPEPrima'] = np.where(
+                np.isnan(df['error']),
+                np.nan,
+                np.where(df['pronostico_ses'] == 0, 1, df['error'] / df['pronostico_ses'])
+            )
+
+            df['errorECM'] = df['error'] ** 2
+
+            # Asignar métricas solo a la fila de mes 13
+            df.loc[df['mm'] == 13, 'MAD'] = df['error'].iloc[1:].mean()
+            df.loc[df['mm'] == 13, 'MAPE'] = df['errorMAPE'].iloc[1:].mean() * 100
+            df.loc[df['mm'] == 13, 'MAPE_Prima'] = df['errorMAPEPrima'].iloc[1:].mean() * 100
+            df.loc[df['mm'] == 13, 'ECM'] = df['errorECM'].iloc[1:].mean()
+
+
+            return df
+
+        # Aplicar SES por grupo
+        df_resultado = df_demanda.groupby(['sku', 'sede'], group_keys=False).apply(calcular_pronostico)
+        df_resultado = df_resultado.reset_index(drop=True)
+        # Extraer métricas finales
+        MAD = df_resultado['MAD'].dropna().tolist()
+        MAPE = df_resultado['MAPE'].dropna().tolist()
+        MAPE_prima = df_resultado['MAPE_Prima'].dropna().tolist()
+        ECM = df_resultado['ECM'].dropna().tolist()
+        # df_resultado.to_excel('suavizacion_exp_simple.xlsx', index=False)  # Guardar resultados en Excel
+        
+        '''
+        df_demanda = pd.DataFrame(pm.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-    
         # Filtrar columnas que contienen meses (sin importar mayúsculas o minúsculas)
         columnas_meses = [col for col in df_demanda.columns if any(mes in col.lower() for mes in meses)]
         cantidadMeses = len(columnas_meses)
@@ -98,7 +166,8 @@ class PronosticoExpSimple:
         # print(df_pronostico_ses.iloc[:,-1]) #retorna los valores del última columna
         # print(df_pronostico_ses.iloc[:, :-1]) #retorna todos los valores menos la última columna
         del df_demanda
-        return MAD, MAPE, MAPE_prima, ECM, df_pronostico_ses, lista_pronosticos
+        '''
+        return MAD, MAPE, MAPE_prima, ECM, #df_pronostico_ses, lista_pronosticos
 
     def prueba():
         start_time = time.perf_counter()
