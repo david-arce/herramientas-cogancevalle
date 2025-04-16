@@ -1,5 +1,5 @@
 from datetime import date, datetime, timedelta
-from django.db.models import Sum, Case, When, IntegerField, Value, CharField
+from django.db.models import Sum, Case, When, IntegerField, Value, CharField, ExpressionWrapper, DecimalField, F
 import pandas as pd
 import numpy as np
 import time
@@ -13,20 +13,11 @@ class PronosticoMovil:
     
     def getDataBD():
         
-        # 1. Obtener la fecha más reciente en la base de datos
-        ultima_fecha_str = Producto.objects.order_by('-fecha').values_list('fecha', flat=True).first()
-        if not ultima_fecha_str:
-            print("No hay datos disponibles.")
-            exit()
-
-        # Convertir la fecha de string a objeto date (asumiendo formato 'YYYYMMDD')
-        ultima_fecha = datetime.strptime(ultima_fecha_str, "%Y%m%d").date()
-
-        # 2. Obtener el último día del mes anterior
-        primer_dia_mes_actual = date(ultima_fecha.year, ultima_fecha.month, 1)
+        # 1. Obtener el último día del mes anterior al actual
+        hoy = date.today()
+        primer_dia_mes_actual = date(hoy.year, hoy.month, 1)
         ultimo_dia_mes_anterior = primer_dia_mes_actual - timedelta(days=1)
-        
-        # 3. Obtener la fecha de inicio (primer día del mes hace 11 meses)
+
         meses_atras = 11
         anio_inicio = ultimo_dia_mes_anterior.year
         mes_inicio = ultimo_dia_mes_anterior.month
@@ -65,21 +56,36 @@ class PronosticoMovil:
             .filter(
                 fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
                 fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
-                bod__in=['0101', '0102', '0105']  # Solo las bodegas de Tuluá
+                bod__in=['0101', '0102', '0105','0180']  # Solo las bodegas de Tuluá
             )
-            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
-            .annotate(total=Sum('cantidad'), sede=Value("Tuluá", output_field=CharField()))
-            .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
+            .annotate(
+                bod_agrupada=Value("0105", output_field=CharField()),  # Nueva columna para reemplazar la bodega
+                sede=Value("Tuluá", output_field=CharField()),
+                # precio=Case(
+                #     When(cantidad__gt=0, then=ExpressionWrapper(
+                #         F('costo_ult') / F('cantidad'),
+                #         output_field=DecimalField(max_digits=20, decimal_places=2)
+                #     )),
+                #     default=F('costo_ult'),
+                #     output_field=DecimalField(max_digits=20, decimal_places=2)
+                # )
+            )
+            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom', 'bod_agrupada', 'umd', 'sede')  # usamos bod_agrupada
+            .annotate(total=Sum('cantidad'))
+            .order_by('yyyy', 'mm') 
         )
         ventas_ultimos_12_meses_buga = list(
             Producto.objects
             .filter(
                 fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
                 fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
-                bod__in=['0201','0202','0205']  # Solo las bodegas de Tuluá
+                bod__in=['0201','0202','0205','0212','0280','0240']  # Solo las bodegas de Tuluá
+            ).annotate(
+                bod_agrupada=Value("0205", output_field=CharField()),  # Nueva columna para reemplazar la bodega
+                sede=Value("Buga", output_field=CharField())
             )
-            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
-            .annotate(total=Sum('cantidad'), sede=Value("Buga", output_field=CharField()))
+            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom', 'bod_agrupada', 'umd', 'sede')
+            .annotate(total=Sum('cantidad'))
             .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
         )
         ventas_ultimos_12_meses_cartago = list(
@@ -87,10 +93,13 @@ class PronosticoMovil:
             .filter(
                 fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
                 fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
-                bod__in=['0301','0302','0305']  # Solo las bodegas de Tuluá
+                bod__in=['0301','0302','0305','0380','0333']  # Solo las bodegas de Tuluá
+            ).annotate(
+                bod_agrupada=Value("0305", output_field=CharField()),  # Nueva columna para reemplazar la bodega
+                sede=Value("Cartago", output_field=CharField())
             )
-            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
-            .annotate(total=Sum('cantidad'), sede=Value("cartago", output_field=CharField()))
+            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom', 'bod_agrupada', 'umd', 'sede')
+            .annotate(total=Sum('cantidad'))
             .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
         )
         ventas_ultimos_12_meses_cali = list(
@@ -98,10 +107,13 @@ class PronosticoMovil:
             .filter(
                 fecha__gte=fecha_inicio.strftime("%Y%m%d"),  # Filtrar desde la fecha inicial
                 fecha__lte=ultimo_dia_mes_anterior.strftime("%Y%m%d"),  # Hasta la fecha máxima
-                bod__in=['0401','0402','0405']  # Solo las bodegas de Tuluá
+                bod__in=['0401','0402','0405','0480']  # Solo las bodegas de Tuluá
+            ).annotate(
+                bod_agrupada=Value("0405", output_field=CharField()),  # Nueva columna para reemplazar la bodega
+                sede=Value("Cali", output_field=CharField())
             )
-            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom')
-            .annotate(total=Sum('cantidad'), sede=Value("cali", output_field=CharField()))
+            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom', 'bod_agrupada', 'umd', 'sede')
+            .annotate(total=Sum('cantidad'))
             .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
         )
         #tulua
@@ -112,24 +124,28 @@ class PronosticoMovil:
             sku = venta['sku']
             sku_nom = venta['sku_nom']
             marca_nom = venta['marca_nom']
+            bod = venta['bod_agrupada']
+            umd = venta['umd']
             total = venta['total'] or 0
-            dict_tulua[(y, m, sku, sku_nom, marca_nom)] = total
+            dict_tulua[(y, m, sku, sku_nom, marca_nom, bod, umd)] = total
         
         # Supongamos que tienes un set con todos los SKUs (o podrías iterar por cada queryset y hacer un union)
-        skus_tulua = set((item['sku'], item['sku_nom'], item['marca_nom']) for item in ventas_ultimos_12_meses_tulua)
+        skus_tulua = set((item['sku'], item['sku_nom'], item['marca_nom'], item['bod_agrupada'], item['umd'], item['sede']) for item in ventas_ultimos_12_meses_tulua)
         # Lista final de datos rellenados
         resultado_tulua = []
-        for (sku, sku_nom, marca_nom) in skus_tulua:
+        for (sku, sku_nom, marca_nom, bod, umd, sede) in skus_tulua:
             for (anio, mes) in lista_meses:
-                total = dict_tulua.get((anio, mes, sku, sku_nom, marca_nom), 0)
+                total = dict_tulua.get((anio, mes, sku, sku_nom, marca_nom, bod, umd), 0)
                 resultado_tulua.append({
                     'yyyy': anio,
                     'mm': mes,
                     'sku': sku,
                     'sku_nom': sku_nom,
                     'marca_nom': marca_nom,
+                    'bod': bod,
+                    'umd': umd,
                     'total': total,
-                    'sede': 'Tuluá'
+                    'sede': sede,
                 })   
         # buga
         dict_buga = {}
@@ -139,24 +155,28 @@ class PronosticoMovil:
             sku = venta['sku']
             sku_nom = venta['sku_nom']
             marca_nom = venta['marca_nom']
+            bod = venta['bod_agrupada']
+            umd = venta['umd']
             total = venta['total'] or 0
-            dict_buga[(y, m, sku, sku_nom, marca_nom)] = total
+            dict_buga[(y, m, sku, sku_nom, marca_nom, bod, umd)] = total
         
         # Supongamos que tienes un set con todos los SKUs (o podrías iterar por cada queryset y hacer un union)
-        skus_buga = set((item['sku'], item['sku_nom'], item['marca_nom']) for item in ventas_ultimos_12_meses_buga)
+        skus_buga = set((item['sku'], item['sku_nom'], item['marca_nom'], item['bod_agrupada'], item['umd'], item['sede']) for item in ventas_ultimos_12_meses_buga)
         # Lista final de datos rellenados
         resultado_buga = []
-        for (sku, sku_nom, marca_nom) in skus_buga:
+        for (sku, sku_nom, marca_nom, bod, umd, sede) in skus_buga:
             for (anio, mes) in lista_meses:
-                total = dict_buga.get((anio, mes, sku, sku_nom, marca_nom), 0)
+                total = dict_buga.get((anio, mes, sku, sku_nom, marca_nom, bod, umd), 0)
                 resultado_buga.append({
                     'yyyy': anio,
                     'mm': mes,
                     'sku': sku,
                     'sku_nom': sku_nom,
                     'marca_nom': marca_nom,
+                    'bod': bod,
+                    'umd': umd,
                     'total': total,
-                    'sede': 'Buga'
+                    'sede': sede,
                 })    
         
         # cartago
@@ -167,24 +187,28 @@ class PronosticoMovil:
             sku = venta['sku']
             sku_nom = venta['sku_nom']
             marca_nom = venta['marca_nom']
+            bod = venta['bod_agrupada']
+            umd = venta['umd']
             total = venta['total'] or 0
-            dict_cartago[(y, m, sku, sku_nom, marca_nom)] = total
+            dict_cartago[(y, m, sku, sku_nom, marca_nom, bod, umd)] = total
         
         # Supongamos que tienes un set con todos los SKUs (o podrías iterar por cada queryset y hacer un union)
-        skus_cartago = set((item['sku'], item['sku_nom'], item['marca_nom']) for item in ventas_ultimos_12_meses_cartago)
+        skus_cartago = set((item['sku'], item['sku_nom'], item['marca_nom'], item['bod_agrupada'], item['umd'], item['sede']) for item in ventas_ultimos_12_meses_cartago)
         # Lista final de datos rellenados
         resultado_cartago = []
-        for (sku, sku_nom, marca_nom) in skus_cartago:
+        for (sku, sku_nom, marca_nom, bod, umd, sede) in skus_cartago:
             for (anio, mes) in lista_meses:
-                total = dict_cartago.get((anio, mes, sku, sku_nom, marca_nom), 0)
+                total = dict_cartago.get((anio, mes, sku, sku_nom, marca_nom, bod, umd), 0)
                 resultado_cartago.append({
                     'yyyy': anio,
                     'mm': mes,
                     'sku': sku,
                     'sku_nom': sku_nom,
                     'marca_nom': marca_nom,
+                    'bod': bod,
+                    'umd': umd,
                     'total': total,
-                    'sede': 'Cartago'
+                    'sede': sede,
                 })    
         
         # cali
@@ -195,31 +219,35 @@ class PronosticoMovil:
             sku = venta['sku']
             sku_nom = venta['sku_nom']
             marca_nom = venta['marca_nom']
+            bod = venta['bod_agrupada']
+            umd = venta['umd']
             total = venta['total'] or 0
-            dict_cali[(y, m, sku, sku_nom, marca_nom)] = total
+            dict_cali[(y, m, sku, sku_nom, marca_nom, bod, umd)] = total
         
         # Supongamos que tienes un set con todos los SKUs (o podrías iterar por cada queryset y hacer un union)
-        skus_cali = set((item['sku'], item['sku_nom'], item['marca_nom']) for item in ventas_ultimos_12_meses_cali)
+        skus_cali = set((item['sku'], item['sku_nom'], item['marca_nom'], item['bod_agrupada'], item['umd'], item['sede']) for item in ventas_ultimos_12_meses_cali)
         # Lista final de datos rellenados
         resultado_cali = []
-        for (sku, sku_nom, marca_nom) in skus_cali:
+        for (sku, sku_nom, marca_nom, bod, umd, sede) in skus_cali:
             for (anio, mes) in lista_meses:
-                total = dict_cali.get((anio, mes, sku, sku_nom, marca_nom), 0)
+                total = dict_cali.get((anio, mes, sku, sku_nom, marca_nom, bod, umd), 0)
                 resultado_cali.append({
                     'yyyy': anio,
                     'mm': mes,
                     'sku': sku,
                     'sku_nom': sku_nom,
                     'marca_nom': marca_nom,
+                    'bod': bod,
+                    'umd': umd,
                     'total': total,
-                    'sede': 'Cali'
+                    'sede': sede,
                 })    
         
         final = resultado_tulua + resultado_buga + resultado_cartago + resultado_cali
         df_demanda = pd.DataFrame(final)
         df_demanda = df_demanda[df_demanda['sku'].astype(str).str.isdigit()]
         # obtener registros por sku
-        df_demanda = df_demanda[df_demanda['sku'] == '100']
+        # df_demanda = df_demanda.head(100)
         
         return df_demanda
         
@@ -227,7 +255,18 @@ class PronosticoMovil:
         print('Calculando pronóstico de promedio móvil n=3...')
                 
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
-        print(df_demanda)
+        # agrupar por sku y sede y ordenar por mes
+        df_demanda = df_demanda.groupby(['sku', 'sede']).apply(lambda x: x.sort_values('mm')).reset_index(drop=True)
+        
+        # print(df_demanda)
+        df_demanda.to_excel('ventas.xlsx', index=False)
+        sku = []
+        marca_nom = []
+        sku_nom = []
+        bod = []
+        umd = []
+        sede = []
+        
         # Función para calcular el pronóstico y errores por grupo
         def calcular_pronostico(df):
             df = df.sort_values(by=['mm'])  # Asegurar orden temporal dentro del grupo
@@ -293,12 +332,21 @@ class PronosticoMovil:
             df['ECM'] = np.nan
             df.loc[df['mm'] == 13, 'ECM'] = ecm
             
+            sku.append(df.iloc[0]['sku'])
+            marca_nom.append(df.iloc[0]['marca_nom'])
+            sku_nom.append(df.iloc[0]['sku_nom'])
+            bod.append(df.iloc[0]['bod'])
+            umd.append(df.iloc[0]['umd'])
+            sede.append(df.iloc[0]['sede'])
+            
             return df
         # Aplicar la función a cada combinación de SKU y sede
         df_resultado = df_demanda.groupby(['sku', 'sede'], group_keys=False).apply(calcular_pronostico)
+        
         # Reiniciar el índice después del groupby
         df_resultado = df_resultado.reset_index(drop=True)
         # df_resultado.to_excel('ventasMAD.xlsx', index=False)
+        
         
         # crea una lista con la columna MAD del dataframe omitiendo los nulos
         MAD = df_resultado['MAD'].dropna().tolist()
@@ -308,6 +356,7 @@ class PronosticoMovil:
         MAPE_prima = df_resultado['MAPE_Prima'].dropna().tolist()
         # crea una lista con la columna ECM del dataframe omitiendo los nulos
         ECM = df_resultado['ECM'].dropna().tolist()
+        
         
         #-----------------------------------------------------------------------------------------------------------------
         '''
@@ -371,7 +420,7 @@ class PronosticoMovil:
         ECM = [np.mean(erroresCuadraticoMedio[i:i+total_meses_pronostico]) for i in range(0, len(erroresCuadraticoMedio), total_meses_pronostico)]
         # print(ECM[:5])
         '''
-        return MAD, MAPE, MAPE_prima, ECM, #demanda, promedio_movil, lista_pronosticos
+        return MAD, MAPE, MAPE_prima, ECM, sku, marca_nom, sku_nom, bod, sku, umd, sede, df_resultado, df_demanda  #demanda, promedio_movil, lista_pronosticos
     
     def promedioMovil_4(n):
         print('Calculando pronóstico de promedio móvil n=4...')
@@ -457,7 +506,7 @@ class PronosticoMovil:
         # crea una lista con la columna ECM del dataframe omitiendo los nulos
         ECM = df_resultado['ECM'].dropna().tolist()
         
-        return MAD, MAPE, MAPE_prima, ECM, #promedio_movil, lista_pronosticos
+        return MAD, MAPE, MAPE_prima, ECM, df_resultado #promedio_movil, lista_pronosticos
     
     def promedioMovil_5(n):
         print('Calculando pronóstico de promedio móvil n=5...')
@@ -543,7 +592,7 @@ class PronosticoMovil:
         # crea una lista con la columna ECM del dataframe omitiendo los nulos
         ECM = df_resultado['ECM'].dropna().tolist()
         
-        return MAD, MAPE, MAPE_prima, ECM, #promedio_movil, lista_pronosticos
+        return MAD, MAPE, MAPE_prima, ECM, df_resultado #promedio_movil, lista_pronosticos
     
     def productos():
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación

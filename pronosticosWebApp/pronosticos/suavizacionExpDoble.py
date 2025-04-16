@@ -46,10 +46,10 @@ class PronosticoExpDoble:
 
             pronostico_shifted = [np.nan] + pronostico[0:-1]  # Desplaza hacia abajo
             pronostico_shifted.append(atenuado[-1] + p * tendencia[-1])  # mes 13
-            df['pronostico'] = pronostico_shifted
+            df['pronostico_sed'] = pronostico_shifted
 
             # Calcular errores
-            df['abs_error'] = abs(df['total'] - df['pronostico'])
+            df['abs_error'] = abs(df['total'] - df['pronostico_sed'])
 
             df['errorMAPE'] = np.where(
                 df['total'] == 0,
@@ -58,9 +58,9 @@ class PronosticoExpDoble:
             )
 
             df['errorMAPEPrima'] = np.where(
-                df['pronostico'] == 0,
+                df['pronostico_sed'] == 0,
                 1,
-                df['abs_error'] / df['pronostico']
+                df['abs_error'] / df['pronostico_sed']
             )
 
             df['errorECM'] = df['abs_error'] ** 2
@@ -185,7 +185,7 @@ class PronosticoExpDoble:
         # print('EMC: ', EMC[:5])
         del df_demanda
         '''
-        return MAD, MAPE, MAPE_prima, ECM,# df_pronostico_sed, lista_pronosticos
+        return MAD, MAPE, MAPE_prima, ECM, df_resultado # df_pronostico_sed, lista_pronosticos
     
     
     def prueba():

@@ -18,16 +18,16 @@ class Pronosticos:
     def datos():
         df_demanda = pd.DataFrame(pm.getDataBD())  # Se convierten los productos en un DataFrame de pandas para su manipulación
         # id = df_demanda["id"].tolist()
-        item = df_demanda["producto_c15"].tolist()
-        proveedor = df_demanda["proveedor"].tolist()
-        producto = df_demanda["nombre_c100"].tolist()
-        bodega = df_demanda["bodega_c5"].tolist()
-        codigo = df_demanda["codcmc_c50"].tolist()
-        unimed = df_demanda["unimed_c4"].tolist()
-        precio = df_demanda["precio_unitario_n20"].tolist()
+        item = df_demanda["sku"].tolist()
+        proveedor = df_demanda["marca_nom"].tolist()
+        producto = df_demanda["sku_nom"].tolist()
+        bodega = df_demanda["bod"].tolist()
+        codigo = df_demanda["sku"].tolist()
+        unimed = df_demanda["umd"].tolist()
+        # precio = df_demanda["precio_unitario_n20"].tolist()
         sede = df_demanda["sede"].tolist()
         del df_demanda
-        return  item, proveedor, producto, bodega, codigo, unimed, precio, sede
+        return  item, proveedor, producto, bodega, codigo, unimed, sede
 
     def pronosticos():
         
@@ -36,43 +36,48 @@ class Pronosticos:
             MAPE_p3,
             MAPE_prima_p3,
             ECM_p3,
-            demanda,
-            df_promedio_movil_p3,
-            lista_pronostico_p3,
+            item,
+            proveedor,
+            producto,
+            bodega,
+            codigo,
+            unimed,
+            sede,
+            df_pronostico_p3,
+            df_demanda
         ) = pm.promedioMovil_3(3)
+        
+        # df_resultado_p3.to_excel("df_resultado_p3.xlsx", index=False)
+        
         (
             MAD_p4,
             MAPE_p4,
             MAPE_prima_p4,
             ECM_p4,
-            df_promedio_movil_p4,
-            lista_pronosticos_p4,
+            df_pronostico_p4
         ) = pm.promedioMovil_4(4)
         (
             MAD_p5,
             MAPE_p5,
             MAPE_prima_p5,
             ECM_p5,
-            df_promedio_movil_p5,
-            lista_pronosticos_p5,
+            df_pronostico_p5
         ) = pm.promedioMovil_5(5)
 
-        id, items, proveedor, productos, sede = pm.productos()
+        # id, items, proveedor, productos, sede = pm.productos()
         (
             MAD1,
             MAPE1,
             MAPE_prima1,
             ECM1,
-            df_pronostico_ses,
-            lista_pronostico_ses,
+            df_pronostico_ses
         ) = ses.pronosticoExpSimple(0.5)
         (
             MAD2,
             MAPE2,
             MAPE_prima2,
             ECM2,
-            df_pronostico_sed,
-            lista_pronostico_sed,
+            df_pronostico_sed
         ) = sed.pronosticoExpDoble(0.5, 0.5, 1)
 
         mejor_ECM = []
@@ -97,6 +102,14 @@ class Pronosticos:
             else:
                 pronostico_seleccionado.append("SED")
 
+        # obtener una lista de los pronosticos por cada dataframe
+        # retorna una lista de pronosticos del promedio movil que está en la columna llamanda 'promedio_movil'
+        lista_pronostico_p3 = df_pronostico_p3[df_pronostico_p3['mm'] == 13]["promedio_movil"].dropna().tolist()
+        lista_pronosticos_p4 = df_pronostico_p4[df_pronostico_p4['mm'] == 13]["promedio_movil"].dropna().tolist()
+        lista_pronosticos_p5 = df_pronostico_p5[df_pronostico_p5['mm'] == 13]["promedio_movil"].dropna().tolist()
+        lista_pronostico_ses = df_pronostico_ses[df_pronostico_ses['mm'] == 13]["pronostico_ses"].dropna().tolist()
+        lista_pronostico_sed = df_pronostico_sed[df_pronostico_sed['mm'] == 13]["pronostico_sed"].dropna().tolist()
+        
         i = 0
         pronostico_final = []
         for valores in zip(
@@ -108,17 +121,36 @@ class Pronosticos:
         ):    
             pronostico_final.append(math.ceil(valores[origen_ECM[i]]))
             i += 1
-        # quitar ultima columna a la demanda_p3
-        demanda = demanda.iloc[:, :-1]
         
-        # extraer los ultimos 4 meses de la demanda
-        df_ultimos_4meses = demanda.iloc[:,8:]
-        # Iterar por el DataFrame para verificar filas con todos ceros
-        # Iterar sobre el DataFrame y la lista de pronósticos al mismo tiempo
-        for index, (row, pronostico) in enumerate(zip(df_ultimos_4meses.iterrows(), pronostico_final)):
-            _, row_data = row  # Extrae la fila actual de row
-            if (row_data[:-1] == 0).all():  # Verifica si todas las columnas de meses tienen cero
-                pronostico_final[index] = 0  # Cambia el pronóstico a 0 si la fila tiene todos ceros
+        # Claves únicas para agrupar (puedes agregar más si es necesario)
+        claves = ['sku', 'sede']
+
+        # Crear un índice para llevar la cuenta del pronóstico
+        index_pronostico = 0
+
+        # Agrupar el DataFrame como está, sin reordenar
+        for _, grupo in df_demanda.groupby(claves):
+            # Tomar los últimos 4 registros (ya está ordenado)
+            ultimos_4 = grupo.tail(4)
+            # Verificar si el total es cero en todos los últimos 4
+            if (ultimos_4['total'] == 0).all():
+                # Asignar 0 a la posición correspondiente del pronóstico
+                pronostico_final[index_pronostico] = 0
+            
+            # Aumentar el índice (1 pronóstico por grupo)
+            index_pronostico += 1
+        
+        # quitar ultima columna a la demanda_p3
+        # demanda = demanda.iloc[:, :-1]
+        
+        # # extraer los ultimos 4 meses de la demanda
+        # df_ultimos_4meses = demanda.iloc[:,8:]
+        # # Iterar por el DataFrame para verificar filas con todos ceros
+        # # Iterar sobre el DataFrame y la lista de pronósticos al mismo tiempo
+        # for index, (row, pronostico) in enumerate(zip(df_ultimos_4meses.iterrows(), pronostico_final)):
+        #     _, row_data = row  # Extrae la fila actual de row
+        #     if (row_data[:-1] == 0).all():  # Verifica si todas las columnas de meses tienen cero
+        #         pronostico_final[index] = 0  # Cambia el pronóstico a 0 si la fila tiene todos ceros
         
         i = 0
         MAD_final = []
@@ -143,9 +175,9 @@ class Pronosticos:
             ECM_final.append(round((valores[origen_ECM[i]]), 2))
             i += 1
 
-        id, item, proveedor, producto, bodega, codigo, unimed, precio, sede = (
-            Pronosticos.datos()
-        )
+        # id, item, proveedor, producto, bodega, codigo, unimed, precio, sede = (
+        #     Pronosticos.datos()
+        # )
         
         df_demanda = pd.DataFrame(pm.getDataBD())
         # extraer inventario

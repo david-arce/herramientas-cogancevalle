@@ -167,7 +167,7 @@ class PronosticoExpSimple:
         # print(df_pronostico_ses.iloc[:, :-1]) #retorna todos los valores menos la última columna
         del df_demanda
         '''
-        return MAD, MAPE, MAPE_prima, ECM, #df_pronostico_ses, lista_pronosticos
+        return MAD, MAPE, MAPE_prima, ECM, df_resultado #df_pronostico_ses, lista_pronosticos
 
     def prueba():
         start_time = time.perf_counter()
