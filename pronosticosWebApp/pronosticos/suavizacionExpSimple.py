@@ -10,7 +10,7 @@ class PronosticoExpSimple:
     
     def pronosticoExpSimple(alpha):
         df_demanda = pd.DataFrame(pm.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
-        print('Calculando suavización exponencial simple...')
+        print('espere un momento...')
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
         # Filtrar columnas que contienen meses (sin importar mayúsculas o minúsculas)
@@ -50,6 +50,8 @@ class PronosticoExpSimple:
         
         #guardar los pronosticos del siguiente mes en una lista
         lista_pronosticos=[demanda.iloc[i,cantidadMeses] for i in demanda.index]
+        #lista de pronosticos redondeado
+        lista_pronosticos_redondeo = [(i*2) for i in lista_pronosticos]
         
         errores, erroresMape, erroresMapePrima, erroresCuadraticoMedio = [], [], [], []
         MAD=[] #mean absolute deviation
@@ -98,7 +100,7 @@ class PronosticoExpSimple:
         # print(df_pronostico_ses.iloc[:,-1]) #retorna los valores del última columna
         # print(df_pronostico_ses.iloc[:, :-1]) #retorna todos los valores menos la última columna
         del df_demanda
-        return MAD, MAPE, MAPE_prima, ECM, df_pronostico_ses, lista_pronosticos
+        return MAD, MAPE, MAPE_prima, ECM, df_pronostico_ses, lista_pronosticos, lista_pronosticos_redondeo
 
     def prueba():
         start_time = time.perf_counter()

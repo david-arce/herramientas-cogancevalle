@@ -42,23 +42,22 @@ document.getElementById('export-visible').addEventListener('click', function () 
 
     // Obtener todos los datos actualmente filtrados y visibles en el DataTable
     const filteredData = dataTable.rows({ filter: 'applied' }).data().toArray();
-    console.log("Datos antes:", filteredData);
 
-    // Recorrer los datos filtrados y cambiar los valores en los índices 11 y 12 a enteros
+    // Recorrer los datos filtrados y cambiar los valores en los índices 10, 11 y 12 a enteros
     const updatedData = filteredData.map(row => {
-        row[10] = parseInt(row[10], 10);  // Convertir a entero el índice 11
+        row[10] = parseInt(row[10], 10);  // Convertir a entero el índice 10
         row[11] = parseInt(row[11], 10);  // Convertir a entero el índice 11
         row[12] = parseInt(row[12], 10);  // Convertir a entero el índice 12
+        row[13] = parseInt(row[13], 10);  // Convertir a entero el índice 12
         return row;
     });
-    console.log("Datos cambiados:", updatedData);
 
     // Índices de las columnas que deseas exportar (empezando desde 0)
-    const columnsToExport = [0, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13]; // columnas a exportar
+    const columnsToExport = [0, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14]; // columnas a exportar
     // const columnsToExport2 = [0, 1, 2, 3, 4, 5]; // nombre columnas 
 
     // Recolectar encabezados de las columnas seleccionadas
-    const headers = ['REG.N12', 'BODEGA.C5', 'PRODUCTO.C15', 'CODCMC.C50', 'NOMBRE.C100', 'UNIMED.C4', 'LOTEPRO.C12', 'CANTIDAD.N20', 'CANTIDAD.N20', 'PRECIO_UNITARIO.N20', 'FECHAENTREGA.C10'];
+    const headers = ['REG.N12', 'BODEGA.C5', 'PRODUCTO.C15', 'CODCMC.C50', 'NOMBRE.C100', 'UNIMED.C4', 'LOTEPRO.C12', 'CANTIDAD.N20', 'CANTIDAD.N20', 'CANTIDAD.N20', 'PRECIO_UNITARIO.N20', 'FECHAENTREGA.C10'];
     // $('#datatable-productos thead th').each(function (index) {
     //     if (columnsToExport2.includes(index)) {
     //         headers.push($(this).text());
@@ -93,13 +92,73 @@ document.getElementById('export-visible').addEventListener('click', function () 
     XLSX.writeFile(wb, nombreArchivo);
 });
 
+// Función para exportar todos los datos del DataTable
+// document.getElementById('export-all').addEventListener('click', function () {
+//     // Índices de las columnas que deseas exportar (empezando desde 0)
+//     const columnsToExport = [0, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13];
+    
+//     // Obtener todos los datos del json productosData
+//     const data = productosData.productos.map(producto => { 
+//         return [
+//             producto.id,
+//             producto.bodega,
+//             producto.item,
+//             producto.codigo,
+//             producto.producto,
+//             producto.unimed,
+//             producto.lotepro,
+//             producto.cantidad,
+//             producto.cantidad_2_meses,
+//             producto.precio,
+//             producto.fechaentrega,
+//         ];
+//     });
+
+//     // Recolectar encabezados de las columnas seleccionadas
+//     const headers = ['REG.N12', 'BODEGA.C5', 'PRODUCTO.C15', 'CODCMC.C50', 'NOMBRE.C100', 'UNIMED.C4', 'LOTEPRO.C12', 'CANTIDAD.N20', 'CANTIDAD.N20', 'PRECIO_UNITARIO.N20', 'FECHAENTREGA.C10'];
+
+//     // Recolectar todos los datos en formato Array of Arrays
+//     const exportData = [headers];
+//     data.forEach(row => {
+//         const rowData = [];
+//         columnsToExport.forEach(colIndex => {
+//             rowData.push(row[colIndex]);
+//         });
+//         exportData.push(rowData);
+//     });
+
+//     // Crear hoja de cálculo
+//     const wb = XLSX.utils.book_new();
+//     const ws = XLSX.utils.aoa_to_sheet(exportData);
+//     XLSX.utils.book_append_sheet(wb, ws, 'Datos_Productos');
+//     XLSX.writeFile(wb, 'Datos_Productos.xlsx');
+// });
+
+// Añadir el evento para actualizar los datos
+// async function updateData(){
+//     const myElement = document.getElementById('chart');
+//     myElement.style.display = 'none';
+//     productosData = null; // Limpiar los datos almacenados
+//     if (!productosData) {
+//         const loader = document.querySelector('.spinner-border');
+//         try {
+//             loader.style.display = 'block';
+//             const response = await fetch('/lista/');
+//             productosData = await response.json();
+//         } catch (error) {
+//             console.error('Error al obtener los datos:', error);
+//         } finally {
+//             loader.style.display = 'none';
+//         }
+//     }
+// };
+
 // Actualizar cada 10 segundos
 // setInterval(updateData, 2000);
 
 // función para cargar los datos
 async function uploadData() {
     productosData = null; // Limpiar los datos almacenados
-
     if (!productosData) {
         const loader = document.querySelector('.spinner-border');
         try {
@@ -160,7 +219,7 @@ const dataTableOptions = {
     },
     columnDefs: [
         { className: 'centered', targets: '_all' },
-        { targets: [0, 1, 2, 4, 6, 7, 12, 13], visible: false, searchable: false },
+        { targets: [0, 1, 2, 4, 6, 7, 13, 14], visible: false, searchable: false },
     ],
 };
 
@@ -233,7 +292,8 @@ const listProductos = async (datos) => {
                     <td>${producto.proveedor}</td>
                     <td>${producto.sede}</td>
                     <td>${producto.cantidad}</td>
-                    <td>${producto.stock_de_seguridad}</td>
+                    <td>${producto.stock}</td>
+                    <td>${producto.cantidadx3}</td>
                     <td>${producto.precio}</td>
                     <td>${fechaFormateada}</td>
                 </tr>
@@ -269,15 +329,16 @@ const initChart = async () => {
 };
 
 document.getElementById('search').addEventListener('click', async () => {
-
+    
     const selectedItems = getSelectedValues('select-options-items', 'select-all-items');
     const selectedProveedores = getSelectedValues('select-options-proveedores', 'select-all-proveedores');
     const selectedProductos = getSelectedValues('select-options-productos', 'select-all-productos');
     const selectedSedes = getSelectedValues('select-options-sedes', 'select-all-sedes');
-
+    
     function filter(data, items, proveedores, productos, sedes) {
         // Convertir arrays de selección a números (para el filtro de Items)
         items = items.map(Number);
+
         // Filtrar los productos que coincidan con todos los criterios seleccionados
         return data.productos.filter(producto => {
             // Verificar que el producto cumpla con todos los criterios seleccionados
@@ -308,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function getSelectedValues(selectId, selectAll) {
     const checkboxes = document.querySelectorAll('.' + selectId + ' input[type="checkbox"]:not(#' + selectAll + ')');
     const selectedValues = [];
-
+    
     checkboxes.forEach(function (checkbox) {
         if (checkbox.checked) {
             selectedValues.push(checkbox.value);
@@ -344,7 +405,7 @@ function setupFilter(searchInputId, selectAllId) {
     const selectAllCheckbox = document.getElementById(selectAllId);
     const checkboxes = selectAllCheckbox.parentNode.parentNode.querySelectorAll('input[type="checkbox"]:not(#' + selectAllId + ')');
     // const checkboxes = document.querySelectorAll('.select-options input[type="checkbox"]:not(#' + selectAllId + ')');
-
+    
     // Función para seleccionar/deseleccionar todas las opciones
     selectAllCheckbox.addEventListener('change', (e) => {
         checkboxes.forEach(checkbox => {
@@ -359,14 +420,14 @@ function setupFilter(searchInputId, selectAllId) {
             selectAllCheckbox.checked = allChecked;
         });
     });
-
+    
     // Filtrar las opciones de acuerdo a la búsqueda
     searchInput.addEventListener('keyup', () => {
         const filter = searchInput.value.toLowerCase();
         checkboxes.forEach(checkbox => {
             const label = checkbox.parentNode;
             const text = label.textContent.toLowerCase();
-
+            
             if (text.includes(filter)) {
                 label.style.display = "";
             } else {
