@@ -1,3 +1,4 @@
+import statistics
 import numpy as np
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 from pronosticosWebApp.pronosticos.suavizacionExpSimple import (
@@ -7,7 +8,6 @@ from pronosticosWebApp.pronosticos.suavizacionExpDoble import PronosticoExpDoble
 import pandas as pd
 import math
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
-import statistics
 
 
 class Pronosticos:
@@ -35,25 +35,33 @@ class Pronosticos:
             MAPE_p3,
             MAPE_prima_p3,
             ECM_p3,
-            demanda,
+            demanda_p3,
             df_promedio_movil_p3,
             lista_pronostico_p3,
+            lista_pronosticos_redondeo_movil_p3,
+            datos_excel_p3,
         ) = pm.promedioMovil_3(3)
         (
             MAD_p4,
             MAPE_p4,
             MAPE_prima_p4,
             ECM_p4,
+            demanda_p4,
             df_promedio_movil_p4,
             lista_pronosticos_p4,
+            lista_pronosticos_redondeo_p4,
+            datos_excel_p4,
         ) = pm.promedioMovil_4(4)
         (
             MAD_p5,
             MAPE_p5,
             MAPE_prima_p5,
             ECM_p5,
+            demanda_p5,
             df_promedio_movil_p5,
             lista_pronosticos_p5,
+            lista_pronosticos_redondeo_p5,
+            datos_excel_p5,
         ) = pm.promedioMovil_5(5)
 
         # id, items, proveedor, productos, sede = pm.productos()
@@ -64,6 +72,7 @@ class Pronosticos:
             ECM1,
             df_pronostico_ses,
             lista_pronostico_ses,
+            lista_pronosticos_redondeo_ses,
         ) = ses.pronosticoExpSimple(0.5)
         (
             MAD2,
@@ -72,6 +81,7 @@ class Pronosticos:
             ECM2,
             df_pronostico_sed,
             lista_pronostico_sed,
+            lista_pronosticos_redondeo_sed,
         ) = sed.pronosticoExpDoble(0.5, 0.5, 1)
 
         mejor_ECM = []
@@ -104,21 +114,22 @@ class Pronosticos:
             lista_pronosticos_p5,
             lista_pronostico_ses,
             lista_pronostico_sed,
-        ):    
+        ):
             pronostico_final.append(math.ceil(valores[origen_ECM[i]]))
             i += 1
-        # quitar ultima columna a la demanda_p3
-        demanda = demanda.iloc[:, :-1]
+        i = 0
         
+        # quitar ultima columna a la demanda_p3
+        demanda = demanda_p3.iloc[:, :-1]
         # extraer los ultimos 4 meses de la demanda
-        df_ultimos_4meses = demanda.iloc[:,8:]
+        df_ultimos_4meses = demanda_p3.iloc[:,8:]
         # Iterar por el DataFrame para verificar filas con todos ceros
         # Iterar sobre el DataFrame y la lista de pronósticos al mismo tiempo
         for index, (row, pronostico) in enumerate(zip(df_ultimos_4meses.iterrows(), pronostico_final)):
             _, row_data = row  # Extrae la fila actual de row
             if (row_data[:-1] == 0).all():  # Verifica si todas las columnas de meses tienen cero
                 pronostico_final[index] = 0  # Cambia el pronóstico a 0 si la fila tiene todos ceros
-        
+
         i = 0
         MAD_final = []
         for valores in zip(MAD_p3, MAD_p4, MAD_p5, MAD1, MAD2):
@@ -150,27 +161,18 @@ class Pronosticos:
         # extraer inventario
         inventario = df_demanda['inventario'].tolist()
         
-        # Cantidad a comprar para cada producto por 1 mes
         cantidad = []
         for i in range(len(inventario)):
             cantidad.append(pronostico_final[i] - inventario[i])
 
-        # nueva lista con la cantidad multiplicada por 2
-        cantidadx2 = []
-        for i in range(len(cantidad)):
-            prox2 = pronostico_final[i] * 2
-            cantidadx2.append(prox2 - inventario[i])
-
-        '''
         # extraer tiempo de entrega
         tiempo_entrega = df_demanda['tiempo_entrega'].tolist()
-        # extraer desviación estándar del tiempo de reposición
-        desviacion_tiempo_reposicion = df_demanda['desviación_te'].tolist()
        
-        z = 1.959
+        z = 1.959 #97.5% de confianza
+        dias_inv = 60
         dias_inventario = []
         dias_inventario_final = []
-        cantidadx2 = []
+        stock_seguridad = []
         lis_stock = []
         # calculo del stock de seguridad
         for index, pronostico in enumerate(pronostico_seleccionado):
@@ -182,9 +184,10 @@ class Pronosticos:
                 list_moda_demanda = (demanda.iloc[index, 3:12].values.tolist())
                 moda_demanda = statistics.mode(list_moda_demanda)
                 if pronostico_final[index] == 0 or moda_demanda == 0:
-                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                    stock = 0
+                    stock_seguridad.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
                 else:
-                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                    stock_seguridad.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
                 promedio_demanda=(demanda.iloc[index, 3:12].mean())
                 promedio_demanda = round(promedio_demanda)
                 if promedio_demanda != 0:
@@ -192,10 +195,10 @@ class Pronosticos:
                     # extraer el valor que se acaba de añadir a la lista dias_inventario
                 else:
                     dias_inventario.append(0)
-                if dias_inventario[-1] > 30:
-                    cantidadx2[-1] = math.ceil(promedio_demanda + pronostico_final[index] - inventario[index])
+                if dias_inventario[-1] > dias_inv:
+                    stock_seguridad[-1] = math.ceil(promedio_demanda + pronostico_final[index] - inventario[index])
                 if promedio_demanda != 0:
-                    dias_inventario_final.append(round((cantidadx2[-1] / promedio_demanda) * 30))
+                    dias_inventario_final.append(round((stock_seguridad[-1] / promedio_demanda) * 30))
                 else:
                     dias_inventario_final.append(0)
                 lis_stock.append(stock)
@@ -206,9 +209,10 @@ class Pronosticos:
                 list_moda_demanda = (demanda.iloc[index, 4:12].values.tolist())
                 moda_demanda = statistics.mode(list_moda_demanda)
                 if pronostico_final[index] == 0 or moda_demanda == 0:
-                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                    stock = 0
+                    stock_seguridad.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
                 else:
-                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                    stock_seguridad.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
                 promedio_demanda=(demanda.iloc[index, 4:12].mean())
                 promedio_demanda = round(promedio_demanda)
                 if promedio_demanda != 0:
@@ -216,10 +220,10 @@ class Pronosticos:
                     dias_inventario.append(round((stock / promedio_demanda) * 30))
                 else:
                     dias_inventario.append(0)
-                if dias_inventario[-1] > 30:
-                    cantidadx2[-1] = math.ceil(promedio_demanda + pronostico_final[index] - inventario[index])
+                if dias_inventario[-1] > dias_inv:
+                    stock_seguridad[-1] = math.ceil(promedio_demanda + pronostico_final[index] - inventario[index])
                 if promedio_demanda != 0:
-                    dias_inventario_final.append(round((cantidadx2[-1] / promedio_demanda) * 30))
+                    dias_inventario_final.append(round((stock_seguridad[-1] / promedio_demanda) * 30))
                 else:
                     dias_inventario_final.append(0)
                 lis_stock.append(stock) 
@@ -230,10 +234,10 @@ class Pronosticos:
                 list_moda_demanda = (demanda.iloc[index, 5:12].values.tolist())
                 moda_demanda = statistics.mode(list_moda_demanda)
                 if pronostico_final[index] == 0 or moda_demanda == 0:
-                    # stock = 0
-                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                    stock = 0
+                    stock_seguridad.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
                 else:
-                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                    stock_seguridad.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
                 promedio_demanda=(demanda.iloc[index, 5:12].mean())
                 promedio_demanda = round(promedio_demanda)
                 if promedio_demanda != 0:
@@ -241,10 +245,10 @@ class Pronosticos:
                     dias_inventario.append(round((stock / promedio_demanda) * 30))
                 else:
                     dias_inventario.append(0)
-                if dias_inventario[-1] > 30:
-                    cantidadx2[-1] = math.ceil(promedio_demanda + pronostico_final[index] - inventario[index])
+                if dias_inventario[-1] > dias_inv:
+                    stock_seguridad[-1] = math.ceil(promedio_demanda + pronostico_final[index] - inventario[index])
                 if promedio_demanda != 0:
-                    dias_inventario_final.append(round((cantidadx2[-1] / promedio_demanda) * 30))
+                    dias_inventario_final.append(round((stock_seguridad[-1] / promedio_demanda) * 30))
                 else:
                     dias_inventario_final.append(0)
                 lis_stock.append(stock)
@@ -255,9 +259,10 @@ class Pronosticos:
                 list_moda_demanda = (demanda.iloc[index, 3:12].values.tolist())
                 moda_demanda = statistics.mode(list_moda_demanda)
                 if pronostico_final[index] == 0 or moda_demanda == 0:
-                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                    stock = 0
+                    stock_seguridad.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
                 else:
-                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                    stock_seguridad.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
                 promedio_demanda=(demanda.iloc[index, 3:12].mean())
                 promedio_demanda = round(promedio_demanda)
                 if promedio_demanda != 0:
@@ -265,10 +270,10 @@ class Pronosticos:
                     dias_inventario.append(round((stock / promedio_demanda) * 30))
                 else:
                     dias_inventario.append(0)
-                if dias_inventario[-1] > 30:
-                    cantidadx2[-1] = math.ceil(promedio_demanda + pronostico_final[index] - inventario[index])
+                if dias_inventario[-1] > dias_inv:
+                    stock_seguridad[-1] = math.ceil(promedio_demanda + pronostico_final[index] - inventario[index])
                 if promedio_demanda != 0:
-                    dias_inventario_final.append(round((cantidadx2[-1] / promedio_demanda) * 30))
+                    dias_inventario_final.append(round((stock_seguridad[-1] / promedio_demanda) * 30))
                 else:
                     dias_inventario_final.append(0)
                 lis_stock.append(stock)
@@ -279,9 +284,10 @@ class Pronosticos:
                 list_moda_demanda = (demanda.iloc[index, 3:12].values.tolist())
                 moda_demanda = statistics.mode(list_moda_demanda)
                 if pronostico_final[index] == 0 or moda_demanda == 0:
-                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                    stock = 0
+                    stock_seguridad.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
                 else:
-                    cantidadx2.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
+                    stock_seguridad.append(math.ceil(stock + pronostico_final[index] - inventario[index]))
                 promedio_demanda=(demanda.iloc[index, 3:12].mean())
                 promedio_demanda = round(promedio_demanda)
                 if promedio_demanda != 0:
@@ -289,14 +295,20 @@ class Pronosticos:
                     dias_inventario.append(round((stock / promedio_demanda) * 30))
                 else:
                     dias_inventario.append(0)
-                if dias_inventario[-1] > 30:
-                    cantidadx2[-1] = math.ceil(promedio_demanda + pronostico_final[index] - inventario[index])
+                if dias_inventario[-1] > dias_inv:
+                    stock_seguridad[-1] = math.ceil(promedio_demanda + pronostico_final[index] - inventario[index])
                 if promedio_demanda != 0:
-                    dias_inventario_final.append(round((cantidadx2[-1] / promedio_demanda) * 30))
+                    dias_inventario_final.append(round((stock_seguridad[-1] / promedio_demanda) * 30)) # estos son los días de inventario en función del stock de seguridad seleccionado 
                 else:
                     dias_inventario_final.append(0)
                 lis_stock.append(stock)
-        '''
+
+        # nueva lista con la cantidad multiplicada por 3
+        cantidadx3 = []
+        for i in range(len(cantidad)):
+            prox3 = pronostico_final[i] * 3
+            cantidadx3.append(prox3 - inventario[i])
+            
         df_pronosticos = pd.DataFrame(
             {   
                 "id": id, #1
@@ -306,22 +318,19 @@ class Pronosticos:
                 "producto": producto, #5
                 "unimed": unimed, #6
                 "lotepro": ".", #7
-                "proveedor": proveedor, #7
-                "sede": sede, #8
-                "cantidad": cantidad, #9
-                "stock_de_seguridad": cantidadx2, #10
-                "precio": precio, #11
+                "proveedor": proveedor, #8
+                "sede": sede, #9
+                "cantidad": cantidad, #10
+                "stock": stock_seguridad, #11
+                "cantidadx3": cantidadx3, #12
+                "precio": precio, #13
             }
         )
         
         # Agregar un cero a la izquierda a todos los datos de la columna 'bodega'
         df_pronosticos['bodega'] = df_pronosticos['bodega'].apply(lambda x: str(x).zfill(len(str(x)) + 1))
         
-        # Especifica la ruta del archivo Excel donde deseas guardar el DataFrame
-        # ruta_archivo_excel = "Pronosticos.xlsx"
-
-        # # Usa el método to_excel() para guardar el DataFrame en el archivo Excel
-        # df_pronosticos.to_excel(ruta_archivo_excel, index=False)
+        # df_pronosticos = pd.DataFrame({"id": id, "Items": item, "Proveedor": proveedor, "Productos": productos, "Sede": sede, "MAD": MAD_final, "MAPE": MAPE_final, "MAPE_PRIMA": MAPE_PRIMA_final,"ECM":ECM_final, "Pronostico": pronostico_final, "Pronostico_2_meses": pronostico_final_redondeado, "Pronostico_seleccionado": pronostico_seleccionado})
         
         return (
             demanda,
@@ -333,29 +342,4 @@ class Pronosticos:
             df_pronosticos,
         )
 
-    def prueba():
-        (
-            pronostico_seleccionado,
-            pronostico_final_redondeado,
-        ) = Pronosticos.pronosticos()
-        items, proveedor, productos, sede = pm.productos()
-
-        df = pd.DataFrame(
-            {
-                "Items": items,
-                "Proveedor": proveedor,
-                "Productos": productos,
-                "Sede": sede,
-                "Pronostico_redondeo": pronostico_final_redondeado,
-                "Pronostico Seleccionado": pronostico_seleccionado,
-            }
-        )
-
-        # Especifica la ruta del archivo Excel donde deseas guardar el DataFrame
-        ruta_archivo_excel = "Pronosticos.xlsx"
-
-        # Usa el método to_excel() para guardar el DataFrame en el archivo Excel
-        df.to_excel(ruta_archivo_excel, index=False)  # Si no deseas incluir el índice en el archivo Excel, puedes establecer index=False
-
-
-# Pronosticos.pronosticos()
+    
