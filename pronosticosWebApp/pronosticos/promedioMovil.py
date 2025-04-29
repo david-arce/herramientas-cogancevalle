@@ -61,16 +61,44 @@ class PronosticoMovil:
             .annotate(
                 bod_agrupada=Value("0105", output_field=CharField()),  # Nueva columna para reemplazar la bodega
                 sede=Value("Tuluá", output_field=CharField()),
-                # precio=Case(
-                #     When(cantidad__gt=0, then=ExpressionWrapper(
-                #         F('costo_ult') / F('cantidad'),
-                #         output_field=DecimalField(max_digits=20, decimal_places=2)
-                #     )),
-                #     default=F('costo_ult'),
-                #     output_field=DecimalField(max_digits=20, decimal_places=2)
-                # )
+                precio=Case(
+                    When(
+                        yyyy=datetime.now().year,  # Solo si el año es el actual
+                        then=Case(
+                            When(
+                                cantidad=0,
+                                then=ExpressionWrapper(
+                                    F('costo_ult'),
+                                    output_field=IntegerField()
+                                )
+                            ),
+                            default=ExpressionWrapper(
+                                F('costo_ult') / F('cantidad'),
+                                output_field=IntegerField()
+                            )
+                        )
+                    ),
+                    When(
+                        yyyy=datetime.now().year - 1,
+                        then=Case(
+                            When(
+                                cantidad=0,
+                                then=ExpressionWrapper(
+                                    F('costo_ult'),
+                                    output_field=IntegerField()
+                                )
+                            ),
+                            default=ExpressionWrapper(
+                                F('costo_ult') / F('cantidad'),
+                                output_field=IntegerField()
+                            )
+                        )
+                    ),
+                    default=Value(None),  # Precio nulo si no es del año actual
+                    output_field=IntegerField()
+                )
             )
-            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom', 'bod_agrupada', 'umd', 'sede')  # usamos bod_agrupada
+            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom', 'bod_agrupada', 'umd', 'sede', 'precio')  # usamos bod_agrupada
             .annotate(total=Sum('cantidad'))
             .order_by('yyyy', 'mm') 
         )
@@ -82,9 +110,45 @@ class PronosticoMovil:
                 bod__in=['0201','0202','0205','0212','0280','0240']  # Solo las bodegas de Tuluá
             ).annotate(
                 bod_agrupada=Value("0205", output_field=CharField()),  # Nueva columna para reemplazar la bodega
-                sede=Value("Buga", output_field=CharField())
+                sede=Value("Buga", output_field=CharField()),
+                precio=Case(
+                    When(
+                        yyyy=datetime.now().year,  # Solo si el año es el actual
+                        then=Case(
+                            When(
+                                cantidad=0,
+                                then=ExpressionWrapper(
+                                    F('costo_ult'),
+                                    output_field=IntegerField()
+                                )
+                            ),
+                            default=ExpressionWrapper(
+                                F('costo_ult') / F('cantidad'),
+                                output_field=IntegerField()
+                            )
+                        )
+                    ),
+                    When(
+                        yyyy=datetime.now().year - 1,
+                        then=Case(
+                            When(
+                                cantidad=0,
+                                then=ExpressionWrapper(
+                                    F('costo_ult'),
+                                    output_field=IntegerField()
+                                )
+                            ),
+                            default=ExpressionWrapper(
+                                F('costo_ult') / F('cantidad'),
+                                output_field=IntegerField()
+                            )
+                        )
+                    ),
+                    default=Value(None),  # Precio nulo si no es del año actual
+                    output_field=IntegerField()
+                )
             )
-            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom', 'bod_agrupada', 'umd', 'sede')
+            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom', 'bod_agrupada', 'umd', 'sede', 'precio')
             .annotate(total=Sum('cantidad'))
             .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
         )
@@ -96,9 +160,45 @@ class PronosticoMovil:
                 bod__in=['0301','0302','0305','0380','0333']  # Solo las bodegas de Tuluá
             ).annotate(
                 bod_agrupada=Value("0305", output_field=CharField()),  # Nueva columna para reemplazar la bodega
-                sede=Value("Cartago", output_field=CharField())
+                sede=Value("Cartago", output_field=CharField()),
+                precio=Case(
+                    When(
+                        yyyy=datetime.now().year,  # Solo si el año es el actual
+                        then=Case(
+                            When(
+                                cantidad=0,
+                                then=ExpressionWrapper(
+                                    F('costo_ult'),
+                                    output_field=IntegerField()
+                                )
+                            ),
+                            default=ExpressionWrapper(
+                                F('costo_ult') / F('cantidad'),
+                                output_field=IntegerField()
+                            )
+                        )
+                    ),
+                    When(
+                        yyyy=datetime.now().year - 1,
+                        then=Case(
+                            When(
+                                cantidad=0,
+                                then=ExpressionWrapper(
+                                    F('costo_ult'),
+                                    output_field=IntegerField()
+                                )
+                            ),
+                            default=ExpressionWrapper(
+                                F('costo_ult') / F('cantidad'),
+                                output_field=IntegerField()
+                            )
+                        )
+                    ),
+                    default=Value(None),  # Precio nulo si no es del año actual
+                    output_field=IntegerField()
+                )
             )
-            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom', 'bod_agrupada', 'umd', 'sede')
+            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom', 'bod_agrupada', 'umd', 'sede', 'precio')
             .annotate(total=Sum('cantidad'))
             .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
         )
@@ -110,9 +210,45 @@ class PronosticoMovil:
                 bod__in=['0401','0402','0405','0480']  # Solo las bodegas de Tuluá
             ).annotate(
                 bod_agrupada=Value("0405", output_field=CharField()),  # Nueva columna para reemplazar la bodega
-                sede=Value("Cali", output_field=CharField())
+                sede=Value("Cali", output_field=CharField()),
+                precio=Case(
+                    When(
+                        yyyy=datetime.now().year,  # Solo si el año es el actual
+                        then=Case(
+                            When(
+                                cantidad=0,
+                                then=ExpressionWrapper(
+                                    F('costo_ult'),
+                                    output_field=IntegerField()
+                                )
+                            ),
+                            default=ExpressionWrapper(
+                                F('costo_ult') / F('cantidad'),
+                                output_field=IntegerField()
+                            )
+                        )
+                    ),
+                    When(
+                        yyyy=datetime.now().year - 1,
+                        then=Case(
+                            When(
+                                cantidad=0,
+                                then=ExpressionWrapper(
+                                    F('costo_ult'),
+                                    output_field=IntegerField()
+                                )
+                            ),
+                            default=ExpressionWrapper(
+                                F('costo_ult') / F('cantidad'),
+                                output_field=IntegerField()
+                            )
+                        )
+                    ),
+                    default=Value(None),  # Precio nulo si no es del año actual
+                    output_field=IntegerField()
+                )
             )
-            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom', 'bod_agrupada', 'umd', 'sede')
+            .values('yyyy', 'mm', 'sku', 'sku_nom', 'marca_nom', 'bod_agrupada', 'umd', 'sede', 'precio')
             .annotate(total=Sum('cantidad'))
             .order_by('yyyy', 'mm')  # Orden descendente (más reciente primero)
         )
@@ -130,10 +266,10 @@ class PronosticoMovil:
             dict_tulua[(y, m, sku, sku_nom, marca_nom, bod, umd)] = total
         
         # Supongamos que tienes un set con todos los SKUs (o podrías iterar por cada queryset y hacer un union)
-        skus_tulua = set((item['sku'], item['sku_nom'], item['marca_nom'], item['bod_agrupada'], item['umd'], item['sede']) for item in ventas_ultimos_12_meses_tulua)
+        skus_tulua = set((item['sku'], item['sku_nom'], item['marca_nom'], item['bod_agrupada'], item['umd'], item['sede'], item['precio']) for item in ventas_ultimos_12_meses_tulua)
         # Lista final de datos rellenados
         resultado_tulua = []
-        for (sku, sku_nom, marca_nom, bod, umd, sede) in skus_tulua:
+        for (sku, sku_nom, marca_nom, bod, umd, sede, precio) in skus_tulua:
             for (anio, mes) in lista_meses:
                 total = dict_tulua.get((anio, mes, sku, sku_nom, marca_nom, bod, umd), 0)
                 resultado_tulua.append({
@@ -146,6 +282,7 @@ class PronosticoMovil:
                     'umd': umd,
                     'total': total,
                     'sede': sede,
+                    'precio': precio,
                 })   
         # buga
         dict_buga = {}
@@ -161,10 +298,10 @@ class PronosticoMovil:
             dict_buga[(y, m, sku, sku_nom, marca_nom, bod, umd)] = total
         
         # Supongamos que tienes un set con todos los SKUs (o podrías iterar por cada queryset y hacer un union)
-        skus_buga = set((item['sku'], item['sku_nom'], item['marca_nom'], item['bod_agrupada'], item['umd'], item['sede']) for item in ventas_ultimos_12_meses_buga)
+        skus_buga = set((item['sku'], item['sku_nom'], item['marca_nom'], item['bod_agrupada'], item['umd'], item['sede'], item['precio']) for item in ventas_ultimos_12_meses_buga)
         # Lista final de datos rellenados
         resultado_buga = []
-        for (sku, sku_nom, marca_nom, bod, umd, sede) in skus_buga:
+        for (sku, sku_nom, marca_nom, bod, umd, sede, precio) in skus_buga:
             for (anio, mes) in lista_meses:
                 total = dict_buga.get((anio, mes, sku, sku_nom, marca_nom, bod, umd), 0)
                 resultado_buga.append({
@@ -177,6 +314,7 @@ class PronosticoMovil:
                     'umd': umd,
                     'total': total,
                     'sede': sede,
+                    'precio': precio,
                 })    
         
         # cartago
@@ -193,10 +331,10 @@ class PronosticoMovil:
             dict_cartago[(y, m, sku, sku_nom, marca_nom, bod, umd)] = total
         
         # Supongamos que tienes un set con todos los SKUs (o podrías iterar por cada queryset y hacer un union)
-        skus_cartago = set((item['sku'], item['sku_nom'], item['marca_nom'], item['bod_agrupada'], item['umd'], item['sede']) for item in ventas_ultimos_12_meses_cartago)
+        skus_cartago = set((item['sku'], item['sku_nom'], item['marca_nom'], item['bod_agrupada'], item['umd'], item['sede'], item['precio']) for item in ventas_ultimos_12_meses_cartago)
         # Lista final de datos rellenados
         resultado_cartago = []
-        for (sku, sku_nom, marca_nom, bod, umd, sede) in skus_cartago:
+        for (sku, sku_nom, marca_nom, bod, umd, sede, precio) in skus_cartago:
             for (anio, mes) in lista_meses:
                 total = dict_cartago.get((anio, mes, sku, sku_nom, marca_nom, bod, umd), 0)
                 resultado_cartago.append({
@@ -209,6 +347,7 @@ class PronosticoMovil:
                     'umd': umd,
                     'total': total,
                     'sede': sede,
+                    'precio': precio,
                 })    
         
         # cali
@@ -225,10 +364,10 @@ class PronosticoMovil:
             dict_cali[(y, m, sku, sku_nom, marca_nom, bod, umd)] = total
         
         # Supongamos que tienes un set con todos los SKUs (o podrías iterar por cada queryset y hacer un union)
-        skus_cali = set((item['sku'], item['sku_nom'], item['marca_nom'], item['bod_agrupada'], item['umd'], item['sede']) for item in ventas_ultimos_12_meses_cali)
+        skus_cali = set((item['sku'], item['sku_nom'], item['marca_nom'], item['bod_agrupada'], item['umd'], item['sede'], item['precio']) for item in ventas_ultimos_12_meses_cali)
         # Lista final de datos rellenados
         resultado_cali = []
-        for (sku, sku_nom, marca_nom, bod, umd, sede) in skus_cali:
+        for (sku, sku_nom, marca_nom, bod, umd, sede, precio) in skus_cali:
             for (anio, mes) in lista_meses:
                 total = dict_cali.get((anio, mes, sku, sku_nom, marca_nom, bod, umd), 0)
                 resultado_cali.append({
@@ -241,13 +380,16 @@ class PronosticoMovil:
                     'umd': umd,
                     'total': total,
                     'sede': sede,
+                    'precio': precio,
                 })    
         
         final = resultado_tulua + resultado_buga + resultado_cartago + resultado_cali
         df_demanda = pd.DataFrame(final)
         df_demanda = df_demanda[df_demanda['sku'].astype(str).str.isdigit()]
         # obtener registros por sku
-        # df_demanda = df_demanda.head(100)
+        # df_demanda = df_demanda.head(10000)
+        # retornar el sku = 100
+        # df_demanda = df_demanda[df_demanda['sku'] == 100]
         
         return df_demanda
         
