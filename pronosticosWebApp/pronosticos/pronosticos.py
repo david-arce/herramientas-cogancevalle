@@ -47,7 +47,7 @@ class Pronosticos:
             df_demanda
         ) = pm.promedioMovil_3(3)
         
-        # df_resultado_p3.to_excel("df_resultado_p3.xlsx", index=False)
+        # df_pronostico_p3.to_excel("df_pronostico_p3.xlsx", index=False)
         
         (
             MAD_p4,
