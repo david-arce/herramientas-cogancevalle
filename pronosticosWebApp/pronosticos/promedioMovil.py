@@ -416,7 +416,7 @@ class PronosticoMovil:
         df_demanda = pd.DataFrame(final)
         df_demanda = df_demanda[df_demanda['sku'].astype(str).str.isdigit()]
         # obtener registros por sku
-        df_demanda = df_demanda.head(100)
+        # df_demanda = df_demanda.head(100000)
         # retornar el sku = 100
         # df_demanda = df_demanda[df_demanda['sku'] == 100]
         
@@ -430,7 +430,7 @@ class PronosticoMovil:
         df_demanda = df_demanda.groupby(['sku', 'sede']).apply(lambda x: x.sort_values('mm')).reset_index(drop=True)
         
         # print(df_demanda)
-        # df_demanda.to_excel('ventas2.xlsx', index=False)
+        df_demanda.to_excel('demanda.xlsx', index=False)
         sku = []
         marca_nom = []
         sku_nom = []

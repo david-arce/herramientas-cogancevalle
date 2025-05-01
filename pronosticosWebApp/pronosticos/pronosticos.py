@@ -8,6 +8,7 @@ import pandas as pd
 import math
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 import statistics
+from pronosticosWebApp.models import Inventario
 
 
 class Pronosticos:
@@ -47,7 +48,23 @@ class Pronosticos:
             df_demanda
         ) = pm.promedioMovil_3(3)
         
-        # df_pronostico_p3.to_excel("df_pronostico_p3.xlsx", index=False)
+        # obtener los datos del Inventario
+        inv = Inventario.objects.all()
+        # convertir a un DataFrame de pandas
+        df_inventario = pd.DataFrame(list(inv.values()))
+        
+        # Diccionario de reemplazo
+        reemplazos_bod = {
+            '0105': '0101',
+            '0205': '0201',
+            '0305': '0301',
+            '0405': '0401'
+        }
+        # Reemplazar los valores en la columna 'bod' del DataFrame df_demanda
+        df_demanda_bod = df_demanda.copy()
+        df_demanda_bod['bod'] = df_demanda_bod['bod'].replace(reemplazos_bod)
+        
+        # df_demanda_bod.to_excel("demanda.xlsx", index=False)
         
         (
             MAD_p4,
@@ -178,6 +195,8 @@ class Pronosticos:
         # id, item, proveedor, producto, bodega, codigo, unimed, precio, sede = (
         #     Pronosticos.datos()
         # )
+        
+        
         
         df_demanda = pd.DataFrame(pm.getDataBD())
         # extraer inventario
