@@ -9,6 +9,7 @@ import math
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 import statistics
 from pronosticosWebApp.models import Inventario
+from django.db.models import Sum
 
 
 class Pronosticos:
@@ -50,8 +51,9 @@ class Pronosticos:
         
         # obtener los datos del Inventario
         inv = Inventario.objects.all()
-        # convertir a un DataFrame de pandas
-        df_inventario = pd.DataFrame(list(inv.values()))
+        # agrupar inv por sku, sku_nom, marca_nom y bod y sumar inv_saldo
+        inv = inv.values('sku', 'sku_nom', 'marca_nom', 'bod').annotate(inv_saldo=Sum('inv_saldo'))
+        df_inventario = pd.DataFrame(list(inv))
         
         # Diccionario de reemplazo
         reemplazos_bod = {
@@ -60,11 +62,29 @@ class Pronosticos:
             '0305': '0301',
             '0405': '0401'
         }
+        
+        # Asegúrate de que las columnas relevantes sean tipo string
+        df_demanda['bod'] = df_demanda['bod'].astype(str)
+        df_inventario['bod'] = df_inventario['bod'].astype(str)
+        df_demanda['sku'] = df_demanda['sku'].astype(str)
+        df_inventario['sku'] = df_inventario['sku'].astype(str)
+        
         # Reemplazar los valores en la columna 'bod' del DataFrame df_demanda
         df_demanda_bod = df_demanda.copy()
         df_demanda_bod['bod'] = df_demanda_bod['bod'].replace(reemplazos_bod)
         
         # df_demanda_bod.to_excel("demanda.xlsx", index=False)
+        df_demanda_final = pd.merge(
+            df_demanda_bod,
+            df_inventario[['sku', 'sku_nom', 'marca_nom', 'bod', 'inv_saldo']],
+            on=['sku', 'sku_nom', 'marca_nom', 'bod'],
+            how='left'
+        )
+        # Rellenar con 0 si no hay coincidencia
+        df_demanda_final['inv_saldo'] = df_demanda_final['inv_saldo'].fillna(0)
+
+        # Convertir inv_saldo a entero si quieres evitar decimales
+        # merged_df['inv_saldo'] = merged_df['inv_saldo'].astype(int)
         
         (
             MAD_p4,

@@ -3,7 +3,7 @@ from django.db.models import Sum, Case, When, IntegerField, Value, CharField, Ex
 import pandas as pd
 import numpy as np
 import time
-from pronosticosWebApp.models import Producto
+from pronosticosWebApp.models import Inventario, Producto
 
 class PronosticoMovil:
     
@@ -11,7 +11,6 @@ class PronosticoMovil:
         pass
     
     def getDataBD():
-        
         # 1. Obtener el último día del mes anterior al actual
         hoy = date.today()
         primer_dia_mes_actual = date(hoy.year, hoy.month, 1)
@@ -416,7 +415,7 @@ class PronosticoMovil:
         df_demanda = pd.DataFrame(final)
         df_demanda = df_demanda[df_demanda['sku'].astype(str).str.isdigit()]
         # obtener registros por sku
-        # df_demanda = df_demanda.head(100000)
+        df_demanda = df_demanda.head(10000)
         # retornar el sku = 100
         # df_demanda = df_demanda[df_demanda['sku'] == 100]
         
@@ -430,7 +429,7 @@ class PronosticoMovil:
         df_demanda = df_demanda.groupby(['sku', 'sede']).apply(lambda x: x.sort_values('mm')).reset_index(drop=True)
         
         # print(df_demanda)
-        df_demanda.to_excel('demanda.xlsx', index=False)
+        # df_demanda.to_excel('demanda.xlsx', index=False)
         sku = []
         marca_nom = []
         sku_nom = []
