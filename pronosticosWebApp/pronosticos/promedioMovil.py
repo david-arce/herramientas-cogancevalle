@@ -414,8 +414,11 @@ class PronosticoMovil:
         final = resultado_tulua + resultado_buga + resultado_cartago + resultado_cali
         df_demanda = pd.DataFrame(final)
         df_demanda = df_demanda[df_demanda['sku'].astype(str).str.isdigit()]
+        # rellenar con cero la columna de precio si es nulo
+        df_demanda['precio'] = df_demanda['precio'].fillna(0)
+        
         # obtener registros por sku
-        df_demanda = df_demanda.head(10000)
+        # df_demanda = df_demanda.head(10000)
         # retornar el sku = 100
         # df_demanda = df_demanda[df_demanda['sku'] == 100]
         
@@ -425,11 +428,9 @@ class PronosticoMovil:
         print('Calculando pronóstico de promedio móvil n=3...')
                 
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
-        # agrupar por sku y sede y ordenar por mes
-        df_demanda = df_demanda.groupby(['sku', 'sede']).apply(lambda x: x.sort_values('mm')).reset_index(drop=True)
-        
-        # print(df_demanda)
-        # df_demanda.to_excel('demanda.xlsx', index=False)
+        # Ordenar directamente por 'sku', 'sede' y 'mm' sin agrupar
+        df_demanda = df_demanda.sort_values(by=['sku', 'sede', 'mm']).reset_index(drop=True)
+      
         sku = []
         marca_nom = []
         sku_nom = []

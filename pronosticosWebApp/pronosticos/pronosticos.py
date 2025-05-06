@@ -63,6 +63,9 @@ class Pronosticos:
             '0405': '0401'
         }
         
+        # filtrar de df_demanda solo los datos del mes 1
+        df_demanda = df_demanda[df_demanda['mm'] == 1]
+        
         # Asegúrate de que las columnas relevantes sean tipo string
         df_demanda['bod'] = df_demanda['bod'].astype(str)
         df_inventario['bod'] = df_inventario['bod'].astype(str)
@@ -83,6 +86,7 @@ class Pronosticos:
         # Rellenar con 0 si no hay coincidencia
         df_demanda_final['inv_saldo'] = df_demanda_final['inv_saldo'].fillna(0)
 
+        # df_demanda_final.to_excel("demanda_final.xlsx", index=False)
         # Convertir inv_saldo a entero si quieres evitar decimales
         # merged_df['inv_saldo'] = merged_df['inv_saldo'].astype(int)
         
@@ -142,6 +146,7 @@ class Pronosticos:
         # obtener una lista de los pronosticos por cada dataframe
         # retorna una lista de pronosticos del promedio movil que está en la columna llamanda 'promedio_movil'
         lista_pronostico_p3 = df_pronostico_p3[df_pronostico_p3['mm'] == 13]["promedio_movil"].dropna().tolist()
+        
         lista_pronosticos_p4 = df_pronostico_p4[df_pronostico_p4['mm'] == 13]["promedio_movil"].dropna().tolist()
         lista_pronosticos_p5 = df_pronostico_p5[df_pronostico_p5['mm'] == 13]["promedio_movil"].dropna().tolist()
         lista_pronostico_ses = df_pronostico_ses[df_pronostico_ses['mm'] == 13]["pronostico_ses"].dropna().tolist()
@@ -216,17 +221,19 @@ class Pronosticos:
         #     Pronosticos.datos()
         # )
         
-        
-        
-        df_demanda = pd.DataFrame(pm.getDataBD())
+        # df_demanda = pd.DataFrame(pm.getDataBD())
         # extraer inventario
-        inventario = df_demanda['inventario'].tolist()
+        # inventario = df_demanda['inventario'].tolist()
         
+        inventario = df_demanda_final['inv_saldo'].tolist()
+        print(len(pronostico_final)) #12579
+        print(len(inventario)) #12717
         # Cantidad a comprar para cada producto por 1 mes
         cantidad = []
         for i in range(len(inventario)):
             cantidad.append(pronostico_final[i] - inventario[i])
 
+        print(cantidad[:100])
         # nueva lista con la cantidad multiplicada por 2
         cantidadx2 = []
         for i in range(len(cantidad)):
