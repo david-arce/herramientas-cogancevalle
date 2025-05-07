@@ -126,3 +126,20 @@ class Tarea(models.Model):
         observacion = self.observacion if self.observacion else "No Observations"
         return f"{username} - {marnombre} - {self.conteo} - {observacion}"
     
+class UserCity(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    # campo adicional para el perfil de usuario con una lista de selección con las ciudades de Tulua, Buga, Cartago y Cali
+    ciudad = models.CharField(max_length=50, choices=[
+        ('Tulua', 'Tulua'),
+        ('Buga', 'Buga'),
+        ('Cartago', 'Cartago'),
+        ('Cali', 'Cali'),
+    ], default='Tulua')
+    
+    class Meta:
+        db_table = 'user_city'
+        verbose_name = 'User City'
+        verbose_name_plural = 'User Cities'
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.ciudad}"

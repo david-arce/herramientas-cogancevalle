@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin, LoginRequiredMix
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import permission_required, login_required
 from django.core.exceptions import PermissionDenied
-from .models import Venta, Tarea, Inv06, User, Inventario
+from .models import UserCity, Venta, Tarea, Inv06, User, Inventario
 from pronosticosWebApp.models import Demanda
 from django.contrib import messages
 from django.db.models import Count
@@ -21,28 +21,44 @@ if hoy.weekday() == 0:
     fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
 else:
     fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-# fecha_asignar = '20250430'
+# fecha_asignar = '20250215'
 
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
 def asignar_tareas(request):
-    if request.user.username != "JPRADO" and request.user.username != "admin":
+    if request.user.username != "JPRADO" and request.user.username != "CHINCAPI" and request.user.username != "admin":
         raise PermissionDenied("No tienes permiso para acceder a esta vista.")
+    
     tareas = None  # Inicializamos la variable de las tareas
     selected_users = None
     fecha_asignacion = None
     cant_tareas_por_usuario = []  # Lista para almacenar los usuarios y la cantidad de tareas asignadas
     usuarios_con_tareas = [] 
+    try:
+        ciudad = request.user.usercity.ciudad
+    except UserCity.DoesNotExist:
+        ciudad = "No asignada"
     if request.method == 'POST':
         if 'assign_task' in request.POST:
             print(fecha_asignar)
             selected_user_ids = request.POST.getlist('usuarios')  # Obtiene una lista de IDs de los usuarios seleccionados
             selected_users = User.objects.filter(id__in=selected_user_ids)
 
+            bodega = ''
+           
+            if ciudad == 'Tulua':
+                bodega = '0101'
+            elif ciudad == 'Buga':
+                bodega = '0201'
+            elif ciudad == 'Cartago':
+                bodega = '0301'
+            elif ciudad == 'Cali':
+                bodega = '0401'
+            
             # Filtrar productos disponibles con un valor numérico en 'mcnproduct' y 'mcnbodega' = 101
             productos = (Venta.objects.filter(
                 sku__regex=r'^\d+$', 
-                bod = '0101', 
+                bod = bodega, 
                 fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
             print(len(productos))
 
@@ -62,7 +78,7 @@ def asignar_tareas(request):
                 bod__in=bod_list,
                 inv_saldo__gt=0
             ).order_by('marca_nom') # Ordenar por nombre de laboratorio
-            print(productos_disponibles)
+            
             # Procesar la cantidad de productos disponibles o asignar tarea según sea necesario
             print(f"Cantidad de productos disponibles: {len(productos_disponibles)}")
             
@@ -166,21 +182,21 @@ def asignar_tareas(request):
         if 'view_user_tasks' in request.POST:
             # Mostrar las tareas de un usuario específico
             usuario_id = request.POST.get('usuario_id')  # Obtener el ID del usuario
-            tareas = Tarea.objects.filter(usuario__id=usuario_id, fecha_asignacion=datetime.date.today()).exclude(diferencia=0)
+            tareas = Tarea.objects.filter(usuario__id=usuario_id, fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad).exclude(diferencia=0)
             # guardar tareas en la session
             request.session['selected_user_ids'] = usuario_id
             request.session['fecha_asignacion'] = str(datetime.date.today())
             # return redirect('asignar_tareas')
         if 'view_all_user_tasks' in request.POST:
             # usuario_id = request.POST.get('usuario_id')  # Obtener el ID del usuario
-            tareas = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), activo=True).exclude(diferencia=0)
+            tareas = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), activo=True, usuario__usercity__ciudad=ciudad).exclude(diferencia=0)
             # guardar tareas en la session
             request.session['selected_user_ids'] = list(tareas.values_list('usuario__id', flat=True).distinct())
             request.session['fecha_asignacion'] = str(datetime.date.today())
 
         if 'view_all_tasks' in request.POST:
             # Mostrar todas las tareas asignadas para hoy
-            tareas = Tarea.objects.filter(fecha_asignacion=datetime.date.today())
+            tareas = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad)
             # guardar un solo id de los usuarios que están en tareas obteniendo el numero, quitando el queryset
             usuario_id = list(tareas.values_list('usuario__id', flat=True).distinct())
             request.session['selected_user_ids'] = usuario_id
@@ -284,13 +300,26 @@ def asignar_tareas(request):
         tareas = Tarea.objects.filter(usuario__in=selected_users) if selected_users else None
         selected_users = None  # Limpiar seleccionados para evitar reasignación
 
-    usuarios = User.objects.exclude(username="admin") # retornar todos los usuarios
-    usuarios_con_tareas = (Tarea.objects.filter(fecha_asignacion = datetime.date.today())
+    usuarios_con_tareas = (Tarea.objects.filter(fecha_asignacion = datetime.date.today(), usuario__usercity__ciudad=ciudad)
                            .values('usuario__id', 'usuario__username', 'usuario__first_name', 'usuario__last_name')
                            .annotate(total_tareas=Count('id'))) # retornar los usuarios que tienen tareas asignadas
     
-    total_tareas_usuarios = Tarea.objects.filter(fecha_asignacion=datetime.date.today()).count()
-    productos = list(Venta.objects.filter(sku__regex=r'^\d+$',bod = '0101',fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
+    total_tareas_usuarios = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad).count()
+    
+    bodega = ''
+    if ciudad == 'Tulua':
+        bodega = '0101'
+    elif ciudad == 'Buga':
+        bodega = '0201'
+    elif ciudad == 'Cartago':
+        bodega = '0301'
+    elif ciudad == 'Cali':
+        bodega = '0401'
+
+    # usuarios que se mostraran en el select de la vista
+    usuarios = User.objects.exclude(username="admin").filter(usercity__ciudad=ciudad) # retornar todos los usuarios
+    
+    productos = list(Venta.objects.filter(sku__regex=r'^\d+$',bod = bodega,fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
     
     sku_list = [producto.sku for producto in productos]
     bod_list = [producto.bod for producto in productos]
