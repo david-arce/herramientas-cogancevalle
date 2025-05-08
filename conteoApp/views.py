@@ -349,7 +349,20 @@ def lista_tareas(request):
     # filtrar las tareas por fecha de asignación y usuario. La fecha de asignación se debe comparar con una fecha específica
     # fecha_especifica = datetime.date(2024, 12, 31)  # Reemplaza con la fecha específica deseada
     fecha_especifica = datetime.date.today() #- datetime.timedelta(days=1) # Reemplaza con la fecha específica deseada (ayer). Se resta un día a la fecha actual
-    
+    try:
+        ciudad = request.user.usercity.ciudad
+    except UserCity.DoesNotExist:
+        ciudad = "No asignada"
+    bodega = ''
+           
+    if ciudad == 'Tulua':
+        bodega = '0101'
+    elif ciudad == 'Buga':
+        bodega = '0201'
+    elif ciudad == 'Cartago':
+        bodega = '0301'
+    elif ciudad == 'Cali':
+        bodega = '0401'
     tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica)
     if request.method == 'POST':
         if 'update_tarea' in request.POST: 
@@ -424,7 +437,7 @@ def lista_tareas(request):
             #-------------------------------------------------------------------------------
             productos_filtrados = list(Venta.objects.filter(
                 sku__regex=r'^\d+$', 
-                bod = '0101', 
+                bod = bodega, 
                 fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
             sku_list = [producto.sku for producto in productos_filtrados]
             bod_list = [producto.bod for producto in productos_filtrados]
