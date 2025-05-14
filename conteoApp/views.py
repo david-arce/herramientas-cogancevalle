@@ -16,7 +16,7 @@ from django.db.models import Sum
 logger = logging.getLogger(__name__)
 # Obtener la fecha actual
 hoy = datetime.datetime.now()
-# Verificar si es lunes (0 = Lunes, 6 = Domingo)
+# Verificar si es lunes (0 = Lunes, 6 = Domingo))
 if hoy.weekday() == 0:
     fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
 else:
