@@ -363,7 +363,7 @@ def lista_tareas(request):
         bodega = '0301'
     elif ciudad == 'Cali':
         bodega = '0401'
-    tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica)
+    tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica).order_by('producto__marca_nom')
     if request.method == 'POST':
         if 'update_tarea' in request.POST: 
             with transaction.atomic():
@@ -492,10 +492,11 @@ def lista_tareas(request):
                         producto__sku=key[0],
                         producto__marca_nom=key[1],
                         producto__sku_nom=key[2],
-                        fecha_asignacion=datetime.date.today()
+                        fecha_asignacion=datetime.date.today(),
+                        usuario=request.user
                     ).update(activo=False)
             #----------------------------------------------------------------------------
-            tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica, activo=True).exclude(diferencia=0)
+            tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica, activo=True).exclude(diferencia=0).order_by('producto__marca_nom')
             # return redirect('lista_tareas')
     return render(request, 'conteoApp/tareas_contador.html', {
         # 'form': form, 
