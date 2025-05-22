@@ -122,7 +122,7 @@ class Tarea(models.Model):
 
     def __str__(self):
         username = self.usuario.username if self.usuario and self.usuario.username else "Unknown User"
-        marnombre = self.producto.marnombre if self.producto and self.producto.marnombre else "Unknown Product"
+        marnombre = self.producto.marca_nom if self.producto and self.producto.marca_nom else "Unknown Product"
         observacion = self.observacion if self.observacion else "No Observations"
         return f"{username} - {marnombre} - {self.conteo} - {observacion}"
     
