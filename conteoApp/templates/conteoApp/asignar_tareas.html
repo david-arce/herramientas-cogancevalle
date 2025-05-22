@@ -105,7 +105,9 @@
 
 <form method="post">
     {% csrf_token %} 
-    <button type="submit" name="export_excel" class="button-generic">Exportar todo</button>
+    {% if mostrar_exportar_todo %}
+        <button type="submit" name="export_excel" class="button-generic">Exportar todo</button>
+    {% endif %}
     <button type="submit" name="export_excel_diferencias" class="button-generic">Exportar diferencias</button>
 </form>
 

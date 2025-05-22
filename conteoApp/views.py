@@ -190,9 +190,13 @@ def asignar_tareas(request):
         if 'view_all_user_tasks' in request.POST:
             # usuario_id = request.POST.get('usuario_id')  # Obtener el ID del usuario
             tareas = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), activo=True, usuario__usercity__ciudad=ciudad).exclude(diferencia=0)
+            print(tareas)
             # guardar tareas en la session
             request.session['selected_user_ids'] = list(tareas.values_list('usuario__id', flat=True).distinct())
             request.session['fecha_asignacion'] = str(datetime.date.today())
+            mostrar_exportar_todo = False
+        else:
+            mostrar_exportar_todo = True
 
         if 'view_all_tasks' in request.POST:
             # Mostrar todas las tareas asignadas para hoy
@@ -202,7 +206,7 @@ def asignar_tareas(request):
             request.session['selected_user_ids'] = usuario_id
             request.session['fecha_asignacion'] = str(datetime.date.today())
             # return redirect('asignar_tareas')
-        
+            
         # if 'activate_task' in request.POST:
         #     selected_user_ids = request.POST.getlist('usuarios')
         #     fecha = datetime.date.today()
@@ -337,7 +341,8 @@ def asignar_tareas(request):
         'usuarios_con_tareas': usuarios_con_tareas,
         'total_tareas_usuarios': total_tareas_usuarios,
         'total_tareas_hoy': total_tareas_hoy,
-        'usuarios': usuarios
+        'usuarios': usuarios,
+        'mostrar_exportar_todo': mostrar_exportar_todo,
     })
     
 @login_required
