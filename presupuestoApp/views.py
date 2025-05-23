@@ -12,17 +12,40 @@ def presupuesto(request):
     bd2 = BdPresupuesto2.objects.values('nombre_linea_n1', 'lapso').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'suma')
     bd3 = BdPresupuesto3.objects.values('nombre_linea_n1', 'lapso').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'suma')
     
-    bd_centro_operacion1 = BdPresupuesto1.objects.filter(centro_de_operacion=1).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd_centro_operacion2 = BdPresupuesto2.objects.values('centro_de_operacion').distinct()
-    bd_centro_operacion3 = BdPresupuesto3.objects.values('centro_de_operacion').distinct()
     
     df1 = pd.DataFrame(list(bd1))
     df2 = pd.DataFrame(list(bd2))
     df3 = pd.DataFrame(list(bd3))
     
-    df_centro_operacion1 = pd.DataFrame(list(bd_centro_operacion1))
+    bd1_centro_operacion1 = BdPresupuesto1.objects.filter(centro_de_operacion=1).values('lapso').annotate(suma=Sum('valor_neto'))
+    bd1_centro_operacion2 = BdPresupuesto1.objects.filter(centro_de_operacion=2).values('lapso').annotate(suma=Sum('valor_neto'))
+    bd1_centro_operacion3 = BdPresupuesto1.objects.filter(centro_de_operacion=3).values('lapso').annotate(suma=Sum('valor_neto'))
+    bd1_centro_operacion4 = BdPresupuesto1.objects.filter(centro_de_operacion=4).values('lapso').annotate(suma=Sum('valor_neto'))
+    bd2_centro_operacion1 = BdPresupuesto2.objects.filter(centro_de_operacion=1).values('lapso').annotate(suma=Sum('valor_neto'))
+    bd2_centro_operacion2 = BdPresupuesto2.objects.filter(centro_de_operacion=2).values('lapso').annotate(suma=Sum('valor_neto'))
+    bd2_centro_operacion3 = BdPresupuesto2.objects.filter(centro_de_operacion=3).values('lapso').annotate(suma=Sum('valor_neto'))
+    bd2_centro_operacion4 = BdPresupuesto2.objects.filter(centro_de_operacion=4).values('lapso').annotate(suma=Sum('valor_neto'))
+    bd3_centro_operacion1 = BdPresupuesto3.objects.filter(centro_de_operacion=1).values('lapso').annotate(suma=Sum('valor_neto'))
+    bd3_centro_operacion2 = BdPresupuesto3.objects.filter(centro_de_operacion=2).values('lapso').annotate(suma=Sum('valor_neto'))
+    bd3_centro_operacion3 = BdPresupuesto3.objects.filter(centro_de_operacion=3).values('lapso').annotate(suma=Sum('valor_neto'))
+    bd3_centro_operacion4 = BdPresupuesto3.objects.filter(centro_de_operacion=4).values('lapso').annotate(suma=Sum('valor_neto'))
     
-    print(df_centro_operacion1) 
+    bd1_clase_cliente1 = BdPresupuesto1.objects.filter(nombre_clase_cliente='CLIENTES', centro_de_operacion=1).values('lapso').annotate(suma=Sum('valor_neto'))
+    bd1_clase_distribuidor1 = BdPresupuesto1.objects.filter(nombre_clase_cliente='DISTRIBUIDOR', centro_de_operacion=1).values('lapso').annotate(suma=Sum('valor_neto'))
+    bd2_clase_cliente2 = BdPresupuesto1.objects.filter(nombre_clase_cliente='CLIENTES', centro_de_operacion=2).values('lapso').annotate(suma=Sum('valor_neto'))
+    bd2_clase_distribuidor2 = BdPresupuesto1.objects.filter(nombre_clase_cliente='DISTRIBUIDOR', centro_de_operacion=2).values('lapso').annotate(suma=Sum('valor_neto'))
+    bd3_clase_cliente3 = BdPresupuesto1.objects.filter(nombre_clase_cliente='CLIENTES', centro_de_operacion=3).values('lapso').annotate(suma=Sum('valor_neto'))
+    bd3_clase_distribuidor3 = BdPresupuesto1.objects.filter(nombre_clase_cliente='DISTRIBUIDOR', centro_de_operacion=3).values('lapso').annotate(suma=Sum('valor_neto'))
+    
+    
+   
+    
+    
+    df_centro_operacion1 = pd.DataFrame(list(bd1_clase_distribuidor1))
+    
+    
+    print(df_centro_operacion1)
+   
     # Concatenar los dataframes
     df = pd.concat([df1, df3, df2], ignore_index=True)
     # concatenar yyyy y mm en una sola columna llamada lapso
