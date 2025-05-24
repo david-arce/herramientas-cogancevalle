@@ -34,6 +34,7 @@ def asignar_tareas(request):
     fecha_asignacion = None
     cant_tareas_por_usuario = []  # Lista para almacenar los usuarios y la cantidad de tareas asignadas
     usuarios_con_tareas = [] 
+    mostrar_exportar_todo = True
     try:
         ciudad = request.user.usercity.ciudad
     except UserCity.DoesNotExist:
