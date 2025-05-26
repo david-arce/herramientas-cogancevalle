@@ -191,7 +191,6 @@ def asignar_tareas(request):
         if 'view_all_user_tasks' in request.POST:
             # usuario_id = request.POST.get('usuario_id')  # Obtener el ID del usuario
             tareas = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), activo=True, usuario__usercity__ciudad=ciudad).exclude(diferencia=0)
-            print(tareas)
             # guardar tareas en la session
             request.session['selected_user_ids'] = list(tareas.values_list('usuario__id', flat=True).distinct())
             request.session['fecha_asignacion'] = str(datetime.date.today())
