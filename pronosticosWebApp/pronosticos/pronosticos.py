@@ -226,6 +226,7 @@ class Pronosticos:
         # inventario = df_demanda['inventario'].tolist()
         
         inventario = df_demanda_final['inv_saldo'].tolist()
+        pronostico_final.to_excel("pronostico_final.xlsx", index=False)
         print(len(pronostico_final)) #12579
         print(len(inventario)) #12717
         # Cantidad a comprar para cada producto por 1 mes
