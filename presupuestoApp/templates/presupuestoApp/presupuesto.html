@@ -33,7 +33,7 @@
         <thead>
             <tr>
                 <th>Línea N1</th>
-                <th>Lapso</th>
+                <th>Año</th>
                 <th>Suma</th>
             </tr>
         </thead>
@@ -41,7 +41,7 @@
             {% for row in data %}
             <tr>
                 <td>{{ row.nombre_linea_n1 }}</td>
-                <td>{{ row.lapso }}</td>
+                <td>{{ row.year }}</td>
                 <td>{{ row.suma|floatformat:2 }}</td>
             </tr>
             {% endfor %}
