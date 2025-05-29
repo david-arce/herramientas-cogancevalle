@@ -26,7 +26,7 @@ else:
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
 def asignar_tareas(request):
-    if request.user.username != "JPRADO" and request.user.username != "CHINCAPI" and request.user.username != "FDUQUE" and request.user.username != "LAMAYA"  and request.user.username != "admin":
+    if request.user.username != "JPRADO" and request.user.username != "CHINCAPI" and request.user.username != "FDUQUE" and request.user.username != "LAMAYA" and request.user.username != "AGRAJALE"  and request.user.username != "admin":
         raise PermissionDenied("No tienes permiso para acceder a esta vista.")
     
     tareas = None  # Inicializamos la variable de las tareas
