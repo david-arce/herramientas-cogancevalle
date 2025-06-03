@@ -418,7 +418,7 @@ class PronosticoMovil:
         df_demanda['precio'] = df_demanda['precio'].fillna(0)
         
         # obtener registros por sku
-        # df_demanda = df_demanda.head(10000)
+        # df_demanda = df_demanda.head(100)
         # retornar el sku = 100
         # df_demanda = df_demanda[df_demanda['sku'] == 100]
         
@@ -430,7 +430,6 @@ class PronosticoMovil:
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
         # Ordenar directamente por 'sku', 'sede' y 'mm' sin agrupar
         df_demanda = df_demanda.sort_values(by=['sku', 'sede', 'mm']).reset_index(drop=True)
-      
         sku = []
         marca_nom = []
         sku_nom = []
