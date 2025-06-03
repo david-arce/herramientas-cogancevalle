@@ -418,7 +418,7 @@ class PronosticoMovil:
         df_demanda['precio'] = df_demanda['precio'].fillna(0)
         
         # obtener registros por sku
-        # df_demanda = df_demanda.head(100)
+        # df_demanda = df_demanda.head(10000)
         # retornar el sku = 100
         # df_demanda = df_demanda[df_demanda['sku'] == 100]
         

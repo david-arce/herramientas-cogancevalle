@@ -78,3 +78,13 @@ class Inventario(models.Model):
 
     class Meta:
         db_table = "inventario"
+
+class LeadTime(models.Model):
+    sku = models.IntegerField(null=True, blank=True)
+    sku_nom = models.CharField(max_length=200)
+    marca_nom = models.CharField(max_length=100)
+    bod = models.IntegerField(null=True, blank=True)
+    tiempo_entrega = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        db_table = "leadtime"

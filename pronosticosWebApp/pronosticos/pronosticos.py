@@ -8,7 +8,7 @@ import pandas as pd
 import math
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 import statistics
-from pronosticosWebApp.models import Inventario
+from pronosticosWebApp.models import Inventario, LeadTime
 from django.db.models import Sum
 
 
@@ -216,14 +216,7 @@ class Pronosticos:
         for valores in zip(ECM_p3, ECM_p4, ECM_p5, ECM1, ECM2):
             ECM_final.append(round((valores[origen_ECM[i]]), 2))
             i += 1
-
-        # id, item, proveedor, producto, bodega, codigo, unimed, precio, sede = (
-        #     Pronosticos.datos()
-        # )
         
-        # df_demanda = pd.DataFrame(pm.getDataBD())
-        # extraer inventario
-        # inventario = df_demanda['inventario'].tolist()
         # df_demanda_final.to_excel("demanda_final.xlsx", index=False)
         inventario = df_demanda_final['inv_saldo'].tolist()
 
@@ -238,9 +231,26 @@ class Pronosticos:
         #     prox2 = pronostico_final[i] * 2
         #     cantidadx2.append(prox2 - inventario[i])
 
+        tiempo_entrega = LeadTime.objects.all()
+        tiempo_entrega = tiempo_entrega.values('sku', 'sku_nom', 'tiempo_entrega')
+        df_tiempo_entrega = pd.DataFrame(list(tiempo_entrega))
+        print(df_tiempo_entrega)
+        cols_merge = ['sku', 'sku_nom']
+        for col in cols_merge:
+            # df_demanda_final[col] = df_demanda_final[col].astype(str).str.strip()
+            df_tiempo_entrega[col] = df_tiempo_entrega[col].astype(str).str.strip()
+
+        df_demanda_final_leadtime = pd.merge(
+            df_demanda_final,
+            df_tiempo_entrega[['sku', 'sku_nom', 'tiempo_entrega']],
+            on=['sku', 'sku_nom'],
+            how='left'
+        )
+        # Rellenar con 0 si no hay coincidencia
+        df_demanda_final_leadtime['tiempo_entrega'] = df_demanda_final_leadtime['tiempo_entrega'].fillna(0)
         # extraer tiempo de entrega
-        tiempo_entrega = df_demanda['tiempo_entrega'].tolist()
- 
+        tiempo_entrega = df_demanda_final_leadtime['tiempo_entrega'].tolist()
+        df_demanda_final_leadtime.to_excel("demanda_final_leadtime.xlsx", index=False)
         '''
         z = 1.959 #97.5% de confianza
         dias_inv = 60
