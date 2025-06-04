@@ -49,6 +49,13 @@ class Pronosticos:
             df_demanda
         ) = pm.promedioMovil_3(3)
         
+        std_by_sku_bod = (df_pronostico_p3.groupby(['sku', 'bod'])['error'].std().reset_index(name='desviacion_estandar'))
+        print(std_by_sku_bod)
+        # grupos = df_pronostico_p3.groupby(['sku', 'bod'])
+        # for (sku, bod), grupo in grupos:
+        #     error = grupo['error'].tolist()
+        #     print(f"SKU: {sku}, Bodega: {bod}, Error: {error}")
+        
         # obtener los datos del Inventario
         inv = Inventario.objects.all()
         # agrupar inv por sku, sku_nom, marca_nom y bod y sumar inv_saldo
@@ -234,7 +241,6 @@ class Pronosticos:
         tiempo_entrega = LeadTime.objects.all()
         tiempo_entrega = tiempo_entrega.values('marca_nom', 'tiempo_entrega')
         df_tiempo_entrega = pd.DataFrame(list(tiempo_entrega))
-        print(df_tiempo_entrega)
         cols_merge = ['marca_nom']
         for col in cols_merge:
             # df_demanda_final[col] = df_demanda_final[col].astype(str).str.strip()
@@ -257,6 +263,8 @@ class Pronosticos:
         dias_inventario_final = []
         stock_seguridad = []
         lis_stock = []
+        
+        
         
         '''
         z = 1.959 #97.5% de confianza
