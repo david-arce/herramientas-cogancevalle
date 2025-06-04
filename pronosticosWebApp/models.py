@@ -17,7 +17,6 @@ class Demanda(models.Model):
     precio_unitario_n20 = models.FloatField(db_column='PRECIO_UNITARIO.N20', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     bodega_c5 = models.IntegerField(db_column='BODEGA.C5', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     sede = models.CharField(db_column='SEDE', blank=True, null=True)  # Field name made lowercase.
-    mayo = models.IntegerField(db_column='MAYO', blank=True, null=True)  # Field name made lowercase.
     junio = models.IntegerField(db_column='JUNIO', blank=True, null=True)  # Field name made lowercase.
     julio = models.IntegerField(db_column='JULIO', blank=True, null=True)  # Field name made lowercase.
     agosto = models.IntegerField(db_column='AGOSTO', blank=True, null=True)  # Field name made lowercase.
@@ -29,6 +28,7 @@ class Demanda(models.Model):
     febrero = models.IntegerField(db_column='FEBRERO', blank=True, null=True)  # Field name made lowercase.
     marzo = models.IntegerField(db_column='MARZO', blank=True, null=True)  # Field name made lowercase.
     abril = models.IntegerField(db_column='ABRIL', blank=True, null=True)  # Field name made lowercase.
+    mayo = models.IntegerField(db_column='MAYO', blank=True, null=True)  # Field name made lowercase.
     inventario = models.IntegerField(db_column='INVENTARIO', blank=True, null=True)  # Field name made lowercase.
     tiempo_entrega = models.IntegerField(db_column='TIEMPO_ENTREGA', blank=True, null=True)  # Field name made lowercase.
 
