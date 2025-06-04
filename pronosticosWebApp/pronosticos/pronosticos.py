@@ -250,6 +250,17 @@ class Pronosticos:
         df_demanda_final_leadtime['tiempo_entrega'] = df_demanda_final_leadtime['tiempo_entrega'].fillna(0)
         # extraer tiempo de entrega
         tiempo_entrega = df_demanda_final_leadtime['tiempo_entrega'].tolist()
+        
+        z = 1.959 #97.5% de confianza
+        dias_inv = 60
+        dias_inventario = []
+        dias_inventario_final = []
+        stock_seguridad = []
+        lis_stock = []
+        
+        for index, pronostico in enumerate(pronostico_seleccionado):
+           return
+        
         '''
         z = 1.959 #97.5% de confianza
         dias_inv = 60
