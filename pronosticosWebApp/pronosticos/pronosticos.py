@@ -258,9 +258,6 @@ class Pronosticos:
         stock_seguridad = []
         lis_stock = []
         
-        for index, pronostico in enumerate(pronostico_seleccionado):
-           return
-        
         '''
         z = 1.959 #97.5% de confianza
         dias_inv = 60
