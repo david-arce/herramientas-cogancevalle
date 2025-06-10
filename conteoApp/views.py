@@ -21,7 +21,7 @@ if hoy.weekday() == 0:
     fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
 else:
     fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-fecha_asignar =  '20250215'
+# fecha_asignar =  '20250215'
 
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
