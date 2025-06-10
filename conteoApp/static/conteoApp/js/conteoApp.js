@@ -259,3 +259,34 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 });
 
+// Función para manejar el cambio de estado de verificado
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".verificado-check").forEach(function (checkbox) {
+        checkbox.addEventListener("change", function () {
+            const tareaId = this.dataset.id;
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
+
+            fetch(toggleVerificadoURL, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": csrfToken,
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: new URLSearchParams({
+                    "tarea_id": tareaId,
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== "ok") {
+                    alert("Error al actualizar el estado");
+                    checkbox.checked = !checkbox.checked;
+                }
+            })
+            .catch(error => {
+                alert("Error en la petición");
+                checkbox.checked = !checkbox.checked;
+            });
+        });
+    });
+});

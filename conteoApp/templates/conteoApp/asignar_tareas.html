@@ -76,7 +76,6 @@
                 {%csrf_token%}
                 <input type="hidden" name="usuario_id" value="{{ usuario.usuario__id }}">
                 <button class="button-view-task" name="view_user_tasks">Diferencias</button>
-                {% comment %} <button class="button-reconteo" name="reconteo">Reconteo</button> {% endcomment %}
             </li> 
         </form>
         {% endfor %}
@@ -103,13 +102,24 @@
         </ul>
     {% endif %}
 
-<form method="post">
-    {% csrf_token %} 
-    {% if mostrar_exportar_todo %}
-        <button type="submit" name="export_excel" class="button-generic">Exportar todo</button>
-    {% endif %}
-    <button type="submit" name="export_excel_diferencias" class="button-generic">Exportar diferencias</button>
-</form>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+    <div>
+        <form method="post">
+            {% csrf_token %} 
+            {% if mostrar_exportar_todo %}
+                <button type="submit" name="export_excel" class="button-generic">Exportar todo</button>
+            {% endif %}
+            <button type="submit" name="export_excel_diferencias" class="button-generic">Exportar diferencias</button>
+        </form>
+    </div>
+    <div>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" name="ver_no_verificados" class="button-generic">Ver productos no verificados</button>
+        </form>
+    </div>
+</div>
+
 
 <!-- Tabla de Tareas -->
 <form method="post">
@@ -129,6 +139,7 @@
                 <th onclick="sortTable(7)">DIFERENCIAS</th>
                 <th onclick="sortTable(8)">CONSOLIDADO</th>
                 <th onclick="sortTable(9)">OBSERVACION</th>
+                <th onclick="sortTable(10)">VERIFICADO</th>
             </tr>
         </thead>
         <tbody>
@@ -144,6 +155,9 @@
                     <td>{{ tarea.diferencia }}</td>
                     <td>{{ tarea.consolidado }}</td>
                     <td>{{ tarea.observacion }}</td>
+                    <td class="checkbox-cell">
+                        <input type="checkbox" class="verificado-check" data-id="{{ tarea.id }}" {% if tarea.verificado %}checked{% endif %}>
+                    </td>
                 </tr>
             {% endfor %}
         </tbody>
@@ -157,5 +171,8 @@
 {% endblock %}
 
 {% block js %}
+<script>
+    const toggleVerificadoURL = "{% url 'toggle_verificado' %}";
+</script>
 <script src="{% static 'conteoApp/js/conteoApp.js' %}"></script>
 {% endblock %}

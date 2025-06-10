@@ -32,7 +32,7 @@
                     <td>{{ tarea.producto.sku}}</td>
                     <td>{{ tarea.producto.sku_nom}}</td>
                     <td>{{ tarea.producto.lpt }}</td>
-                    <td><input id="input-conteo" class="input-conteo" type="number" name="conteo_{{ tarea.id }}" value="{{ tarea.conteo }}" min="0"></td>
+                    <td><input id="input-conteo" class="input-conteo" type="number" name="conteo_{{ tarea.id }}" min="0"></td>
                     <td><textarea id="textarea-observacion" class="input-observacion" type="text" name="observacion_{{ tarea.id }}">{{ tarea.observacion }}</textarea></td>
                 </tr>
             {% endfor %}

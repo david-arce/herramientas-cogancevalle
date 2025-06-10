@@ -114,6 +114,7 @@ class Tarea(models.Model):
     diferencia = models.IntegerField(null=True, blank=True) 
     consolidado = models.FloatField(null=True, blank=True, default=0)
     activo = models.BooleanField(default=True)
+    verificado = models.BooleanField(default=False)
 
     class Meta:
         db_table = 'tarea'

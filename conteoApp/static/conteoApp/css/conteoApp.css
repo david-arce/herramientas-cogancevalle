@@ -252,4 +252,8 @@ tbody tr:nth-child(even) {
     background-color: #f9f9f9;
 }
 
-
+/* centrar td verificado */
+td.checkbox-cell {
+    text-align: center;
+    vertical-align: middle;
+}

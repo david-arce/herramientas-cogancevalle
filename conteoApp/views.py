@@ -1,7 +1,7 @@
 import datetime
-from django.contrib.auth.mixins import PermissionRequiredMixin, LoginRequiredMixin
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import permission_required, login_required
+from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import PermissionDenied
 from .models import UserCity, Venta, Tarea, Inv06, User, Inventario
 from pronosticosWebApp.models import Demanda
@@ -21,7 +21,7 @@ if hoy.weekday() == 0:
     fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
 else:
     fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-# fecha_asignar =  '20250215'
+fecha_asignar =  '20250215'
 
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
@@ -63,14 +63,6 @@ def asignar_tareas(request):
                 fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
             print(len(productos))
 
-            #exportar a excel los productos
-            # df = pd.DataFrame(productos.values('sku', 'marca_nom', 'sku_nom'))
-            # df.to_excel('productos.xlsx', index=False)
-            
-            # productos_disponiblesInv = [
-            #     producto for producto in productos 
-            #     if Inventario.objects.filter(sku=producto.sku, bod=producto.bod).exists()
-            # ]
             sku_list = [producto.sku for producto in productos]
             bod_list = [producto.bod for producto in productos]
             productos_disponibles = []
@@ -206,15 +198,9 @@ def asignar_tareas(request):
             request.session['selected_user_ids'] = usuario_id
             request.session['fecha_asignacion'] = str(datetime.date.today())
             # return redirect('asignar_tareas')
-            
-        # if 'activate_task' in request.POST:
-        #     selected_user_ids = request.POST.getlist('usuarios')
-        #     fecha = datetime.date.today()
-        #     tareas = Tarea.objects.filter(usuario__in=selected_user_ids, fecha_asignacion=fecha)
-        #     for tarea in tareas:
-        #         tarea.activo = True
-        #         tarea.save()
-        #     return redirect('asignar_tareas')
+        
+        if 'ver_no_verificados' in request.POST:
+            tareas = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad, verificado=False)
             
         if 'export_excel' in request.POST:
             # Recuperar los datos de la sesión
@@ -287,15 +273,7 @@ def asignar_tareas(request):
                 fecha_asignacion = request.session.pop('fecha_asignacion', None)
                 return response
             # return redirect('asignar_tareas')
-        
-        
-        if 'reconteo' in request.POST:
-            usuario_id = request.POST.get('usuario_id')
-            tareas = Tarea.objects.filter(usuario__id=usuario_id, fecha_asignacion=datetime.date.today()).exclude(diferencia=0)
-            for tarea in tareas:
-                tarea.activo = True
-                tarea.save()
-            return redirect('asignar_tareas')
+            
     # else:
     #     form = AsignarTareaForm()
     
@@ -344,7 +322,7 @@ def asignar_tareas(request):
         'usuarios': usuarios,
         'mostrar_exportar_todo': mostrar_exportar_todo,
     })
-    
+
 @login_required
 @permission_required('conteoApp.view_tarea', raise_exception=True)
 def lista_tareas(request):
@@ -507,6 +485,20 @@ def lista_tareas(request):
         # 'form': form, 
         'tareas': tareas, 
         'usuarios_con_tareas': usuarios_con_tareas})
+
+from django.http import JsonResponse
+@csrf_exempt
+def toggle_verificado(request):
+    if request.method == "POST":
+        tarea_id = request.POST.get("tarea_id")
+        try:
+            tarea = Tarea.objects.get(id=tarea_id)
+            tarea.verificado = not tarea.verificado
+            tarea.save()
+            return JsonResponse({"status": "ok", "verificado": tarea.verificado})
+        except Tarea.DoesNotExist:
+           return JsonResponse({"status": "error", "message": "Tarea no encontrada"}, status=404)
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
 @permission_required('conteoApp.view_conteo', raise_exception=True)
 def conteo(request):
