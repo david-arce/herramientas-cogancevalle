@@ -21,7 +21,7 @@ if hoy.weekday() == 0:
     fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
 else:
     fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-# fecha_asignar =  '20250215'
+fecha_asignar =  '20250215'
 
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
@@ -142,11 +142,9 @@ def asignar_tareas(request):
             return redirect('asignar_tareas')
     
         if 'delete_task' in request.POST:
-            selected_user_ids = request.POST.getlist('usuarios')  # Obtiene una lista de IDs de los usuarios seleccionados
-            selected_users = User.objects.filter(id__in=selected_user_ids)
+            usuarios_sede = User.objects.filter(usercity__ciudad=ciudad)
             fecha = datetime.date.today()
-            tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha)
-            tareas.delete()
+            Tarea.objects.filter(usuario__in=usuarios_sede, fecha_asignacion=fecha).delete()
             return redirect('asignar_tareas')
         if 'filter_users' in request.POST:
             selected_user_ids = request.POST.getlist('usuarios')  # Obtiene una lista de IDs de los usuarios seleccionados
@@ -211,8 +209,11 @@ def asignar_tareas(request):
                 tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion)
                 
                 # Crear un DataFrame con las tareas
-                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'producto__inv_saldo', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion')))
+                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'producto__inv_saldo', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion','verificado')))
                 
+                # Cambiar True/False a 'OK' o ''
+                df['verificado'] = df['verificado'].apply(lambda x: 'OK' if x else '')
+
                 # Renombrar las columnas con nombres personalizados
                 df.rename(columns={
                     'usuario__first_name': 'Nombre',
@@ -227,7 +228,8 @@ def asignar_tareas(request):
                     'producto__vlr_unit': 'Valor Unitario',
                     'consolidado': 'Valor total',
                     'observacion': 'Observaciones',
-                    'fecha_asignacion': 'Fecha Asignación'
+                    'fecha_asignacion': 'Fecha Asignación',
+                    'verificado': 'Verificado'
                 }, inplace=True)
                 response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 response['Content-Disposition'] = 'attachment; filename=tareas.xlsx'
@@ -247,7 +249,10 @@ def asignar_tareas(request):
                 tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion, activo=True).exclude(diferencia=0)
                 
                 # Crear un DataFrame con las tareas
-                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'producto__inv_saldo', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion')))
+                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'producto__inv_saldo', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion', 'verificado')))
+                
+                # Cambiar True/False a 'OK' o ''
+                df['verificado'] = df['verificado'].apply(lambda x: 'OK' if x else '')
                 
                 # Renombrar las columnas con nombres personalizados
                 df.rename(columns={
@@ -263,7 +268,8 @@ def asignar_tareas(request):
                     'producto__vlr_unit': 'Valor Unitario',
                     'consolidado': 'Valor total',
                     'observacion': 'Observaciones',
-                    'fecha_asignacion': 'Fecha Asignación'
+                    'fecha_asignacion': 'Fecha Asignación',
+                    'verificado': 'Verificado'
                 }, inplace=True)
                 response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 response['Content-Disposition'] = 'attachment; filename=diferencias.xlsx'
