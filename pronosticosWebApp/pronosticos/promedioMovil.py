@@ -511,7 +511,7 @@ class PronosticoMovil:
             
             return df
         # Aplicar la función a cada combinación de SKU y sede
-        df_resultado = df_demanda.groupby(['sku', 'sede'], group_keys=False).apply(calcular_pronostico)
+        df_resultado = df_demanda.groupby(['sku', 'sku_nom', 'sede'], group_keys=False).apply(calcular_pronostico)
         
         # Reiniciar el índice después del groupby
         df_resultado = df_resultado.reset_index(drop=True)
@@ -527,69 +527,6 @@ class PronosticoMovil:
         # crea una lista con la columna ECM del dataframe omitiendo los nulos
         ECM = df_resultado['ECM'].dropna().tolist()
         
-        
-        #-----------------------------------------------------------------------------------------------------------------
-        '''
-        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-        
-        # Filtrar columnas que contienen meses (sin importar mayúsculas o minúsculas)
-        columnas_meses = [col for col in df_demanda.columns if any(mes in col.lower() for mes in meses)]
-        cantidadMeses = len(columnas_meses)
-        
-        # Seleccionar solo las columnas de meses
-        demanda = df_demanda[columnas_meses].copy()
-        demanda['pronostico'] = 0 # Se agrega una columna para el siguiente mes
-        promedio_movil = demanda.T.rolling(window=n).mean().shift(1).T # Se calcula el promedio móvil de las ventas 
-        print('\n')
-        
-        # calculo del stock de seguridad
-        # error_pronostico = np.abs((promedio_movil.iloc[:, n:cantidadMeses].values - demanda.iloc[:, n:cantidadMeses].values)).tolist()
-    
-        # desviación estandar de una muestra
-        # desviacion_estandar = [np.std(error_pronostico, ddof=1) for error_pronostico in error_pronostico]
-        # print(desviacion_estandar)
-        
-        errores, erroresMape, erroresMapePrima, erroresCuadraticoMedio = [], [], [], []
-        MAD=[] #mean absolute deviation
-        MAPE=[] #mean absolute percentage error
-        MAPE_prima=[] #mean absolute percentage error prima
-        ECM=[] #error cuadratico medio
-        
-        # Optimización del cálculo de errores utilizando operaciones vectorizadas
-        errores = (demanda.iloc[:, n:cantidadMeses].values - promedio_movil.iloc[:, n:cantidadMeses].values).flatten()
-        # errores = (demanda.iloc[:, n:cantidadMeses].values - promedio_movil.values).flatten()
-        # print(errores[:10])
-        erroresAbs = np.abs(errores)
-        # print(erroresAbs[:10])
-        
-        #lista de pronosticos para el siguiente mes
-        lista_pronosticos = [promedio_movil.iloc[i, cantidadMeses] for i in promedio_movil.index]
-        
-        total_meses_pronostico = (demanda.shape[1] - 1) - n #total de meses a pronosticar menos el siguiente
-    
-        #CALCULO DEL MAD(MEAN ABSOLUTE DEVIATION) 
-        for i in range(0, len(erroresAbs), total_meses_pronostico):
-            grupo = erroresAbs[i:i+(total_meses_pronostico)]
-            MAD.append(sum(grupo)/len(grupo))
-        # print(MAD[:5])
-            
-        # CALCULO DEL MAPE (MEAN ABSOLUTE PERCENTAGE ERROR)
-        valores_demanda = demanda.iloc[:, n:cantidadMeses].values.flatten()
-        erroresMape = [(ea / vd if vd != 0 else 1) for ea, vd in zip(erroresAbs, valores_demanda)]
-        MAPE = [np.mean(erroresMape[i:i+total_meses_pronostico]) * 100 for i in range(0, len(erroresMape), total_meses_pronostico)]
-        # print(MAPE[:5])    
-        
-        # CALCULO DEL MAPE' (MEAN ABSOLUTE PERCENTAGE ERROR PRIMA)
-        valores_pronosticoMovil = promedio_movil.iloc[:, n:cantidadMeses].values.flatten()
-        erroresMapePrima = [(ea / vp if vp != 0 else 1) for ea, vp in zip(erroresAbs, valores_pronosticoMovil)]
-        MAPE_prima = [np.mean(erroresMapePrima[i:i+total_meses_pronostico]) * 100 for i in range(0, len(erroresMapePrima), total_meses_pronostico)]
-        # print(MAPE_prima[:5])
-        
-        # CALCULO DEL ECM (ERROR CUADRATICO MEDIO)
-        erroresCuadraticoMedio = erroresAbs ** 2
-        ECM = [np.mean(erroresCuadraticoMedio[i:i+total_meses_pronostico]) for i in range(0, len(erroresCuadraticoMedio), total_meses_pronostico)]
-        # print(ECM[:5])
-        '''
         return MAD, MAPE, MAPE_prima, ECM, sku, marca_nom, sku_nom, bod, sku, umd, sede, df_resultado, df_demanda  #demanda, promedio_movil, lista_pronosticos
     
     def promedioMovil_4(n):
@@ -662,7 +599,7 @@ class PronosticoMovil:
             
             return df
         # Aplicar la función a cada combinación de SKU y sede
-        df_resultado = df_demanda.groupby(['sku', 'sede'], group_keys=False).apply(calcular_pronostico)
+        df_resultado = df_demanda.groupby(['sku', 'sku_nom', 'sede'], group_keys=False).apply(calcular_pronostico)
         # Reiniciar el índice después del groupby
         df_resultado = df_resultado.reset_index(drop=True)
         # df_resultado.to_excel('ventasMAD.xlsx', index=False)
@@ -748,7 +685,7 @@ class PronosticoMovil:
             
             return df
         # Aplicar la función a cada combinación de SKU y sede
-        df_resultado = df_demanda.groupby(['sku', 'sede'], group_keys=False).apply(calcular_pronostico)
+        df_resultado = df_demanda.groupby(['sku', 'sku_nom', 'sede'], group_keys=False).apply(calcular_pronostico)
         # Reiniciar el índice después del groupby
         df_resultado = df_resultado.reset_index(drop=True)
         # df_resultado.to_excel('ventasMAD.xlsx', index=False)

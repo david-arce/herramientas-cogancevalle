@@ -49,8 +49,10 @@ class Pronosticos:
             df_demanda
         ) = pm.promedioMovil_3(3)
         
-        std_by_sku_bod = (df_pronostico_p3.groupby(['sku', 'bod'])['error'].std().reset_index(name='desviacion_estandar'))
-        print(std_by_sku_bod)
+        
+        desviacion_estandar_p3 = (df_pronostico_p3.groupby(['sku', 'sku_nom', 'bod'])['error'].std().reset_index(name='desviacion_estandar'))
+        desviacion_estandar_p3['desviacion_estandar'].tolist()
+        
         # grupos = df_pronostico_p3.groupby(['sku', 'bod'])
         # for (sku, bod), grupo in grupos:
         #     error = grupo['error'].tolist()
@@ -105,6 +107,7 @@ class Pronosticos:
             ECM_p4,
             df_pronostico_p4
         ) = pm.promedioMovil_4(4)
+        desviacion_estandar_p4 = (df_pronostico_p4.groupby(['sku', 'bod'])['error'].std().reset_index(name='desviacion_estandar'))
         (
             MAD_p5,
             MAPE_p5,
@@ -136,7 +139,7 @@ class Pronosticos:
             mejor_ECM.append(min_valor)
             indice_origen = valores.index(min_valor)
             origen_ECM.append(indice_origen)
-
+        print("Mejor ECM:", mejor_ECM[:10])
         # asigna a la lista de pronostico seleccionado el mejor pronostico segun la lista orgien_ECM
         pronostico_seleccionado = []
         for item in origen_ECM:
@@ -158,7 +161,7 @@ class Pronosticos:
         lista_pronosticos_p5 = df_pronostico_p5[df_pronostico_p5['mm'] == 13]["promedio_movil"].dropna().tolist()
         lista_pronostico_ses = df_pronostico_ses[df_pronostico_ses['mm'] == 13]["pronostico_ses"].dropna().tolist()
         lista_pronostico_sed = df_pronostico_sed[df_pronostico_sed['mm'] == 13]["pronostico_sed"].dropna().tolist()
-      
+        print(len(lista_pronostico_p3))
         i = 0
         pronostico_final = []
         for valores in zip(
