@@ -76,3 +76,10 @@
 .login-btn:hover {
     background-color: #45a049;
 }
+
+.navbar-left a.active {
+    background-color: #636262;  /* Fondo distinto para marcar la pestaña activa */
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Sombra suave */
+}
