@@ -141,3 +141,6 @@ def presupuesto(request):
     # Convertir a lista de diccionarios para pasar al template
     data = df_final_pronostico.to_dict(orient='records')
     return render(request, 'presupuestoApp/presupuesto.html', {'data': data})
+
+def dashboard(request):
+    return render(request, 'presupuestoApp/dashboard.html')

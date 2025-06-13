@@ -1,0 +1,573 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard Admin - Aplicación de Notas</title>
+  
+  <!-- Google Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  
+  <style>
+    /* Reset & base */
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+        Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+      margin: 0;
+      background: #f5f7fa;
+      color: #202124;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+    button {
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: inherit;
+    }
+
+    /* Layout grid */
+    .app-container {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      grid-template-rows: 1fr;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      background: white;
+      box-shadow: 2px 0 5px rgb(0 0 0 / 0.05);
+      display: flex;
+      flex-direction: column;
+      padding: 24px 16px;
+      user-select: none;
+      position: relative;
+    }
+    .sidebar .logo {
+      font-weight: 900;
+      font-size: 1.6rem;
+      margin-bottom: 32px;
+      letter-spacing: 0.1em;
+      color: #3f51b5;
+      user-select: text;
+    }
+
+    /* Sidebar nav */
+    nav.sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-grow: 1;
+      overflow-y: auto;
+      padding-right: 8px;
+    }
+    nav.sidebar-nav a {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-weight: 600;
+      color: #5f6368;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+    nav.sidebar-nav a:hover,
+    nav.sidebar-nav a:focus {
+      background-color: #e8eaf6;
+      color: #3f51b5;
+      outline: none;
+    }
+    nav.sidebar-nav a.active {
+      background-color: #3f51b5;
+      color: white;
+    }
+    nav.sidebar-nav a .material-icons {
+      font-size: 20px;
+    }
+
+    /* Collapse Sidebar Button */
+    .sidebar-toggle {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: transparent;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #3f51b5;
+      border: 1.5px solid #3f51b5;
+      transition: background-color 0.25s ease;
+    }
+    .sidebar-toggle:hover,
+    .sidebar-toggle:focus {
+      background-color: #3f51b5;
+      color: white;
+      outline: none;
+    }
+
+    /* Main content */
+    .main-content {
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 24px 32px;
+    }
+
+    /* Header */
+    header.app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #e0e0e0;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      background: #fff;
+      z-index: 10;
+    }
+    .app-header .breadcrumb {
+      font-size: 0.9rem;
+      color: #5f6368;
+      user-select: none;
+    }
+
+    /* Search input */
+    .search-container {
+      position: relative;
+      max-width: 320px;
+      flex-grow: 1;
+      margin: 0 32px;
+    }
+    .search-container input[type="search"] {
+      width: 100%;
+      padding: 10px 40px 10px 16px;
+      border-radius: 24px;
+      border: 1.5px solid #cccccc;
+      font-size: 1rem;
+      font-weight: 500;
+      color: #202124;
+      transition: border-color 0.25s ease;
+    }
+    .search-container input[type="search"]:focus {
+      border-color: #3f51b5;
+      outline: none;
+    }
+    .search-container .material-icons.search-icon {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #888;
+      pointer-events: none;
+    }
+
+    /* User profile */
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+    }
+    .user-profile img {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #3f51b5;
+    }
+    .user-profile .user-name {
+      font-weight: 600;
+      color: #3f51b5;
+      white-space: nowrap;
+    }
+
+    /* Dashboard summary cards */
+    .dashboard-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+    .card {
+      background: #3f51b5;
+      color: white;
+      padding: 24px 32px;
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgb(63 81 181 / 0.2);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .card:hover,
+    .card:focus-within {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 28px rgb(63 81 181 / 0.35);
+      outline: none;
+    }
+    .card .material-icons.card-icon {
+      font-size: 40px;
+      opacity: 0.9;
+    }
+    .card .card-title {
+      font-weight: 700;
+      font-size: 1.25rem;
+      line-height: 1.2;
+    }
+    .card .card-number {
+      font-size: 1.5rem;
+      font-weight: 300;
+      line-height: 1.1;
+      letter-spacing: 0.02em;
+    }
+
+    /* Recent notes table */
+    .recent-notes {
+      flex-grow: 1;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      overflow-x: auto;
+    }
+    .recent-notes h2 {
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #3f51b5;
+    }
+    table.notes-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      color: #202124;
+    }
+    table.notes-table thead tr {
+      background: #e3e6fb;
+      color: #3f51b5;
+    }
+    table.notes-table th,
+    table.notes-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    table.notes-table tbody tr:hover {
+      background-color: #f1f3ff;
+    }
+
+    /* Responsive Breakpoints */
+    @media (max-width: 1023px) {
+      .app-container {
+        grid-template-columns: 64px 1fr;
+      }
+      .sidebar {
+        padding: 16px 8px;
+      }
+      .sidebar .logo {
+        font-size: 1.25rem;
+        margin-bottom: 18px;
+        display: none; /* Hide text logo, use only icons */
+      }
+      nav.sidebar-nav a {
+        justify-content: center;
+        padding: 12px 8px;
+      }
+      nav.sidebar-nav a span.text {
+        display: none;
+      }
+      .user-profile .user-name {
+        display: none;
+      }
+      .search-container {
+        margin: 0 16px;
+        max-width: 200px;
+      }
+      .dashboard-summary {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+      .card {
+        padding: 16px 20px;
+      }
+      table.notes-table th, table.notes-table td {
+        padding: 10px 12px;
+      }
+    }
+    @media (max-width: 639px) {
+      .app-container {
+        grid-template-columns: 0 1fr;
+      }
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        background: white;
+        z-index: 1000;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        width: 240px;
+        box-shadow: 2px 0 16px rgb(0 0 0 / 0.15);
+      }
+      .sidebar.visible {
+        transform: translateX(0);
+      }
+      .sidebar-toggle {
+        position: fixed;
+        left: 16px;
+        top: 16px;
+        z-index: 1100;
+        background: #3f51b5;
+        color: white;
+        border: none;
+        width: 44px;
+        height: 44px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 50%;
+        box-shadow: 0 8px 20px rgba(63, 81, 181, 0.4);
+      }
+      header.app-header {
+        padding-left: 60px;
+      }
+      .search-container {
+        max-width: none;
+        margin: 0;
+      }
+    }
+    
+    /* Scrollbar Styling for sidebar nav */
+    nav.sidebar-nav::-webkit-scrollbar {
+      width: 8px;
+    }
+    nav.sidebar-nav::-webkit-scrollbar-thumb {
+      background-color: #c5cae9;
+      border-radius: 8px;
+    }
+    nav.sidebar-nav::-webkit-scrollbar-track {
+      background: transparent;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
+      <div class="logo" tabindex="0">PRESUPUESTO</div>
+      <nav class="sidebar-nav" role="navigation" aria-label="Menú principal">
+        <a href="#" class="active" tabindex="0"><span class="material-icons" aria-hidden="true">note_alt</span><span class="text">Notas</span></a>
+        <a href="#" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Carpetas</span></a>
+        <a href="#" tabindex="0"><span class="material-icons" aria-hidden="true">search</span><span class="text">Buscar</span></a>
+        <a href="#" tabindex="0"><span class="material-icons" aria-hidden="true">settings</span><span class="text">Configuración</span></a>
+      </nav>
+      <button aria-label="Colapsar barra lateral" class="sidebar-toggle" id="sidebarToggle">
+        <span class="material-icons" aria-hidden="true">chevron_left</span>
+      </button>
+    </aside>
+
+    <main class="main-content" id="main" tabindex="-1">
+      <header class="app-header">
+        <div class="breadcrumb" aria-label="Ruta actual de navegación">Dashboard / Notas</div>
+        <div class="search-container">
+          <input type="search" placeholder="Buscar usuarios..." aria-label="Buscar notas" id="searchInput" />
+          <span class="material-icons search-icon" aria-hidden="true">search</span>
+        </div>
+        <div class="user-profile" tabindex="0" aria-label="Perfil de usuario">
+          <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/a5df9cd9-ddcf-4863-9290-dff3ca408c6b.png" alt="Avatar del usuario" />
+          <span class="user-name">Juan Pérez</span>
+        </div>
+      </header>
+
+      <section aria-label="Resumen de datos" class="dashboard-summary">
+        <article class="card" tabindex="0" aria-labelledby="totalNotesLabel" role="region">
+          <span class="material-icons card-icon" aria-hidden="true">note</span>
+          <h3 id="totalNotesLabel" class="card-title">Usuario 1</h3>
+          <p class="card-number">Haz clic para ver el presupuesto</p>
+        </article>
+        <article class="card" tabindex="0" aria-labelledby="foldersLabel" role="region" style="background:#009688;">
+          <span class="material-icons card-icon" aria-hidden="true">folder_open</span>
+          <h3 id="foldersLabel" class="card-title">Usuario 2</h3>
+          <p class="card-number">Haz clic para ver el presupuesto</p>
+        </article>
+        <article class="card" tabindex="0" aria-labelledby="tagsLabel" role="region" style="background:#f57c00;">
+          <span class="material-icons card-icon" aria-hidden="true">label_outline</span>
+          <h3 id="tagsLabel" class="card-title">Usuario 3</h3>
+          <p class="card-number">Haz clic para ver el presupuesto</p>
+        </article>
+        <article class="card" tabindex="0" aria-labelledby="recentActivityLabel" role="region" style="background:#673ab7;">
+          <span class="material-icons card-icon" aria-hidden="true">update</span>
+          <h3 id="recentActivityLabel" class="card-title">Usuario 4</h3>
+          <p class="card-number">Haz clic para ver el presupuesto</p>
+        </article>
+      </section>
+
+      {% comment %} <section aria-label="Notas recientes" class="recent-notes">
+        <h2>Notas recientes</h2>
+        <table class="notes-table" role="grid" aria-describedby="recentNotesDesc">
+          <caption id="recentNotesDesc" class="sr-only">Lista de las notas recientes con título, carpeta, etiquetas y fecha de última edición</caption>
+          <thead>
+            <tr>
+              <th scope="col">Título</th>
+              <th scope="col">Carpeta</th>
+              <th scope="col">Etiquetas</th>
+              <th scope="col">Última Edición</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr tabindex="0">
+              <td>Planificación de Proyecto</td>
+              <td>Trabajo</td>
+              <td>plan, proyecto, prioridad</td>
+              <td>2024-06-10</td>
+            </tr>
+            <tr tabindex="0">
+              <td>Recetas Favoritas</td>
+              <td>Personal</td>
+              <td>cocina, salud</td>
+              <td>2024-06-09</td>
+            </tr>
+            <tr tabindex="0">
+              <td>Ideas para Blog</td>
+              <td>Borradores</td>
+              <td>escritura, creatividad</td>
+              <td>2024-06-08</td>
+            </tr>
+            <tr tabindex="0">
+              <td>Meeting Notes</td>
+              <td>Trabajo</td>
+              <td>reunión, cliente</td>
+              <td>2024-06-07</td>
+            </tr>
+            <tr tabindex="0">
+              <td>Lista de Libros</td>
+              <td>Personal</td>
+              <td>lectura</td>
+              <td>2024-06-05</td>
+            </tr>
+          </tbody>
+        </table>
+      </section> {% endcomment %}
+    </main>
+  </div>
+
+  <button aria-label="Abrir menu lateral" class="sidebar-toggle" id="sidebarToggleMobile" style="display:none; position: fixed; top:16px; left:16px; z-index:1100; background:#3f51b5; color:#fff; border:none; width:44px; height:44px; border-radius: 50%; box-shadow: 0 8px 20px rgba(63,81,181,0.4);">
+    <span class="material-icons" aria-hidden="true">menu</span>
+  </button>
+
+  <script>
+    (function () {
+      const sidebar = document.getElementById('sidebar');
+      const sidebarToggle = document.getElementById('sidebarToggle');
+      const sidebarToggleMobile = document.getElementById('sidebarToggleMobile');
+      const mqMobile = window.matchMedia("(max-width: 639px)");
+
+      // Toggle sidebar collapse on desktop/tablet
+      sidebarToggle.addEventListener('click', () => {
+        if (window.innerWidth > 639) {
+          if(sidebar.style.gridTemplateColumns === '64px' || sidebar.classList.contains('collapsed')){
+            sidebar.classList.remove('collapsed');
+            sidebar.style.width = '280px';
+            sidebar.querySelector('.logo').style.display = 'block';
+            sidebar.querySelectorAll('nav.sidebar-nav a span.text').forEach(el => el.style.display = 'inline');
+            sidebarToggle.querySelector('.material-icons').textContent = 'chevron_left';
+            sidebar.classList.remove('collapsed');
+          } else {
+            sidebar.style.width = '64px';
+            sidebar.querySelector('.logo').style.display = 'none';
+            sidebar.querySelectorAll('nav.sidebar-nav a span.text').forEach(el => el.style.display = 'none');
+            sidebarToggle.querySelector('.material-icons').textContent = 'chevron_right';
+            sidebar.classList.add('collapsed');
+          }
+        }
+      });
+
+      // Mobile sidebar toggle
+      function toggleMobileSidebar() {
+        if(sidebar.classList.contains('visible')){
+          sidebar.classList.remove('visible');
+          sidebarToggleMobile.style.display = 'block';
+        } else {
+          sidebar.classList.add('visible');
+          sidebarToggleMobile.style.display = 'none';
+        }
+      }
+      sidebarToggleMobile.addEventListener('click', toggleMobileSidebar);
+
+      // Show/hide mobile toggle button
+      function handleResponsive() {
+        if (mqMobile.matches) {
+          sidebar.classList.remove('collapsed');
+          sidebar.style.width = '240px';
+          sidebarToggleMobile.style.display = 'block';
+          sidebarToggle.style.display = 'none';
+          sidebar.querySelector('.logo').style.display = 'block';
+          sidebar.querySelectorAll('nav.sidebar-nav a span.text').forEach(el => el.style.display = 'inline');
+        } else {
+          sidebar.classList.remove('visible');
+          sidebarToggleMobile.style.display = 'none';
+          sidebarToggle.style.display = 'flex';
+          sidebar.style.width = '280px';
+          sidebar.querySelector('.logo').style.display = 'block';
+          sidebar.querySelectorAll('nav.sidebar-nav a span.text').forEach(el => el.style.display = 'inline');
+        }
+      }
+
+      window.addEventListener('resize', handleResponsive);
+      handleResponsive();
+
+      // Keyboard accessibility for sidebar nav links
+      const navLinks = document.querySelectorAll('nav.sidebar-nav a');
+      navLinks.forEach(link => {
+        link.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            link.click();
+          }
+        });
+      });
+
+      // Focus main content when navigating
+      const mainContent = document.getElementById('main');
+      document.querySelectorAll('nav.sidebar-nav a').forEach(link => {
+        link.addEventListener('click', () => {
+          setTimeout(() => mainContent.focus(), 100);
+        });
+      });
+
+      // Search input debounce and accessible label
+      const searchInput = document.getElementById('searchInput');
+      let searchTimeout;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          // Placeholder for search logic
+          console.log('Buscar:', searchInput.value);
+        }, 300);
+      });
+    })();
+  </script>
+</body>
+</html>
+
