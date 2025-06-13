@@ -418,7 +418,7 @@ class PronosticoMovil:
         df_demanda['precio'] = df_demanda['precio'].fillna(0)
         
         # obtener registros por sku
-        # df_demanda = df_demanda.head(10000)
+        df_demanda = df_demanda.head(100)
         # retornar el sku = 100
         # df_demanda = df_demanda[df_demanda['sku'] == 100]
         
@@ -436,6 +436,7 @@ class PronosticoMovil:
         bod = []
         umd = []
         sede = []
+        precio = []
         
         # Función para calcular el pronóstico y errores por grupo
         def calcular_pronostico(df):
@@ -451,6 +452,8 @@ class PronosticoMovil:
                 'mm': 13,  # Identificar el pronóstico con mes 13
                 'sku': df.iloc[-1]['sku'],
                 'sku_nom': df.iloc[-1]['sku_nom'],
+                'marca_nom': df.iloc[-1]['marca_nom'],
+                'bod': df.iloc[-1]['bod'],
                 'sede': df.iloc[-1]['sede'],
                 'total': np.nan,
             }
@@ -508,6 +511,7 @@ class PronosticoMovil:
             bod.append(df.iloc[0]['bod'])
             umd.append(df.iloc[0]['umd'])
             sede.append(df.iloc[0]['sede'])
+            precio.append(df.iloc[0]['precio'])
             
             return df
         # Aplicar la función a cada combinación de SKU y sede
@@ -515,19 +519,11 @@ class PronosticoMovil:
         
         # Reiniciar el índice después del groupby
         df_resultado = df_resultado.reset_index(drop=True)
-        # df_resultado.to_excel('ventasMAD.xlsx', index=False)
-        
         
         # crea una lista con la columna MAD del dataframe omitiendo los nulos
-        MAD = df_resultado['MAD'].dropna().tolist()
-        # crea una lista con la columna MAPE del dataframe omitiendo los nulos
-        MAPE = df_resultado['MAPE'].dropna().tolist()
-        # crea una lista con la columna MAPE prima del dataframe omitiendo los nulos
-        MAPE_prima = df_resultado['MAPE_Prima'].dropna().tolist()
-        # crea una lista con la columna ECM del dataframe omitiendo los nulos
-        ECM = df_resultado['ECM'].dropna().tolist()
+        # MAD = df_resultado['MAD'].dropna().tolist()
         
-        return MAD, MAPE, MAPE_prima, ECM, sku, marca_nom, sku_nom, bod, sku, umd, sede, df_resultado, df_demanda  #demanda, promedio_movil, lista_pronosticos
+        return sku, marca_nom, sku_nom, bod, sku, umd, sede, precio, df_resultado, df_demanda  #demanda, promedio_movil, lista_pronosticos
     
     def promedioMovil_4(n):
         print('Calculando pronóstico de promedio móvil n=4...')
@@ -546,6 +542,8 @@ class PronosticoMovil:
                 'mm': 13,  # Identificar el pronóstico con mes 13
                 'sku': df.iloc[-1]['sku'],
                 'sku_nom': df.iloc[-1]['sku_nom'],
+                'marca_nom': df.iloc[-1]['marca_nom'],
+                'bod': df.iloc[-1]['bod'],
                 'sede': df.iloc[-1]['sede'],
                 'total': np.nan,
             }
@@ -604,16 +602,7 @@ class PronosticoMovil:
         df_resultado = df_resultado.reset_index(drop=True)
         # df_resultado.to_excel('ventasMAD.xlsx', index=False)
         
-        # crea una lista con la columna MAD del dataframe omitiendo los nulos
-        MAD = df_resultado['MAD'].dropna().tolist()
-        # crea una lista con la columna MAPE del dataframe omitiendo los nulos
-        MAPE = df_resultado['MAPE'].dropna().tolist()
-        # crea una lista con la columna MAPE prima del dataframe omitiendo los nulos
-        MAPE_prima = df_resultado['MAPE_Prima'].dropna().tolist()
-        # crea una lista con la columna ECM del dataframe omitiendo los nulos
-        ECM = df_resultado['ECM'].dropna().tolist()
-        
-        return MAD, MAPE, MAPE_prima, ECM, df_resultado #promedio_movil, lista_pronosticos
+        return df_resultado #promedio_movil, lista_pronosticos
     
     def promedioMovil_5(n):
         print('Calculando pronóstico de promedio móvil n=5...')
@@ -632,6 +621,8 @@ class PronosticoMovil:
                 'mm': 13,  # Identificar el pronóstico con mes 13
                 'sku': df.iloc[-1]['sku'],
                 'sku_nom': df.iloc[-1]['sku_nom'],
+                'marca_nom': df.iloc[-1]['marca_nom'],
+                'bod': df.iloc[-1]['bod'],
                 'sede': df.iloc[-1]['sede'],
                 'total': np.nan,
             }
@@ -690,43 +681,4 @@ class PronosticoMovil:
         df_resultado = df_resultado.reset_index(drop=True)
         # df_resultado.to_excel('ventasMAD.xlsx', index=False)
         
-        # crea una lista con la columna MAD del dataframe omitiendo los nulos
-        MAD = df_resultado['MAD'].dropna().tolist()
-        # crea una lista con la columna MAPE del dataframe omitiendo los nulos
-        MAPE = df_resultado['MAPE'].dropna().tolist()
-        # crea una lista con la columna MAPE prima del dataframe omitiendo los nulos
-        MAPE_prima = df_resultado['MAPE_Prima'].dropna().tolist()
-        # crea una lista con la columna ECM del dataframe omitiendo los nulos
-        ECM = df_resultado['ECM'].dropna().tolist()
-        
-        return MAD, MAPE, MAPE_prima, ECM, df_resultado #promedio_movil, lista_pronosticos
-    
-    def productos():
-        df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
-        # id = df_demanda['id'].tolist()
-        items = df_demanda['sku'].tolist()
-        proveedor = df_demanda['marca_nom'].tolist()
-        productos = df_demanda['sku_nom'].tolist()
-        sede = df_demanda['sede'].tolist()
-        del df_demanda
-        return items, proveedor, productos, sede
-        
-    #funcion para probar el pronostico
-    def prueba():
-        start_time = time.perf_counter()
-        # MAD, MAPE, MAPE_prima, ECM, demanda, promedio_movil, lista_pronosticos, lista_pronosticos_redondeo, df_demanda = PronosticoMovil.promedioMovil(5)
-        id, items, proveedor, productos, sede = PronosticoMovil.productos()
-        
-        # serie = pd.concat([pd.Series(productos), pd.Series(MAD), pd.Series(MAPE)], axis=1)
-        # serie.columns = ["Productos", "MAD", "Mejor pronostico"]
-        # df = pd.DataFrame({"Items": items, "Proveedor": proveedor, "Productos": productos, "Sede":sede, "MAD": MAD, "MAPE": MAPE, "MAPE_Prima": MAPE_prima, "ECM": ECM, "Pronostico": lista_pronosticos, "Pronostico redondeado": lista_pronosticos_redondeo})
-    
-        # # Especifica la ruta del archivo Excel donde deseas guardar el DataFrame
-        # ruta_archivo_excel = 'pronosticos_movil.xlsx'
-
-        # # Usa el método to_excel() para guardar el DataFrame en el archivo Excel
-        # df.to_excel(ruta_archivo_excel, index=False)  # Si no deseas incluir el índice en el archivo Excel, puedes establecer index=False
-        end_time = time.perf_counter()
-        print(f"Tiempo de ejecución: {end_time - start_time} segundos")
-
-# PronosticoMovil.prueba()
+        return df_resultado #promedio_movil, lista_pronosticos

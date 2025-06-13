@@ -1,6 +1,7 @@
 from django.shortcuts import render, HttpResponse
 from django.http.response import JsonResponse
 from django.views.decorators.http import require_GET
+import pandas as pd
 from .models import Producto
 from django.views.decorators.csrf import csrf_exempt
 import json
@@ -11,26 +12,25 @@ from pronosticosWebApp.pronosticos.pronosticos import Pronosticos
 from django.contrib.auth.decorators import permission_required
 from django.core.exceptions import PermissionDenied
 
-
-
 list_demanda, list_promedio_movil, list_ses, list_sed = [], [], [], []
 # Create your views here.
 @login_required
 @permission_required('pronosticosWebApp.view_demanda', raise_exception=True)
 def dashboard(request):
-    # items = Demanda.objects.values_list('producto_c15', flat=True).distinct()
-    # proveedores = Demanda.objects.values_list('proveedor', flat=True).distinct()
-    # productos = Demanda.objects.values_list('nombre_c100', flat=True).distinct()
-    # sedes = Demanda.objects.values_list('sede', flat=True).distinct()
-
-    # context = {
-    #     'items': items,
-    #     'proveedores': proveedores,
-    #     'productos': productos,
-    #     'sedes': sedes,
-    # }
-    # return render(request, "pronosticosWebApp/pronosticos.html", context)
-    return
+    df_demanda = pd.DataFrame(pm.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
+    # Ordenar directamente por 'sku', 'sede' y 'mm' sin agrupar
+    df_demanda = df_demanda.sort_values(by=['sku', 'sede', 'mm']).reset_index(drop=True)
+    sku = df_demanda['sku'].unique().tolist()  # Obtener los valores únicos de 'sku'
+    sku_nom = df_demanda['sku_nom'].unique().tolist()  # Obtener los valores únicos de 'sku_nom'
+    marca_nom = df_demanda['marca_nom'].unique().tolist()  # Obtener los valores únicos de 'marca_nom'
+    sede = df_demanda['sede'].unique().tolist()  # Obtener los valores únicos de 'sede'
+    context = {
+        'items': sku,
+        'proveedores': marca_nom,
+        'productos': sku_nom,
+        'sedes': sede,
+    }
+    return render(request, "pronosticosWebApp/pronosticos.html", context)
 
 @csrf_exempt
 def send_data(request):
@@ -55,8 +55,8 @@ def lista_productos():
     global df_demanda, df_promedio_movil_p3, df_promedio_movil_p4, df_promedio_movil_p5, df_pronostico_ses, df_pronostico_sed, df_pronosticos
     global items, proveedor, productos, sede
     
-    df_demanda, df_promedio_movil_p3, df_promedio_movil_p4, df_promedio_movil_p5, df_pronostico_ses, df_pronostico_sed, df_pronosticos = Pronosticos.pronosticos()
-    id, items, proveedor, productos, sede = pm.productos()
+    df_total, df_demanda = Pronosticos.pronosticos()
+    # id, items, proveedor, productos, sede = pm.productos()
     
     # Convertir el DataFrame a JSON
     df_pronosticos_json = df_pronosticos.to_dict(orient='records')

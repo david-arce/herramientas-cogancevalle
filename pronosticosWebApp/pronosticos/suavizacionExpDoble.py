@@ -39,6 +39,8 @@ class PronosticoExpDoble:
                 'mm': 13,
                 'sku': ultima_fila['sku'],
                 'sku_nom': ultima_fila['sku_nom'],
+                'marca_nom': df.iloc[-1]['marca_nom'],
+                'bod': df.iloc[-1]['bod'],
                 'sede': ultima_fila['sede'],
                 'total': np.nan,
             }
@@ -49,21 +51,21 @@ class PronosticoExpDoble:
             df['pronostico_sed'] = pronostico_shifted
 
             # Calcular errores
-            df['abs_error'] = abs(df['total'] - df['pronostico_sed'])
+            df['error'] = abs(df['total'] - df['pronostico_sed'])
 
             df['errorMAPE'] = np.where(
                 df['total'] == 0,
                 1,
-                df['abs_error'] / df['total']
+                df['error'] / df['total']
             )
 
             df['errorMAPEPrima'] = np.where(
                 df['pronostico_sed'] == 0,
                 1,
-                df['abs_error'] / df['pronostico_sed']
+                df['error'] / df['pronostico_sed']
             )
 
-            df['errorECM'] = df['abs_error'] ** 2
+            df['errorECM'] = df['error'] ** 2
 
             # Excluir el primer mes del cálculo de métricas (asumiendo orden por año/mes ya hecho)
             errores_validos = df.iloc[1:-1]  # Excluye primer mes y fila del mes 13
@@ -74,7 +76,7 @@ class PronosticoExpDoble:
             df['MAPE_Prima'] = np.nan
             df['ECM'] = np.nan
 
-            df.loc[df['mm'] == 13, 'MAD'] = errores_validos['abs_error'].mean()
+            df.loc[df['mm'] == 13, 'MAD'] = errores_validos['error'].mean()
             df.loc[df['mm'] == 13, 'MAPE'] = errores_validos['errorMAPE'].mean() * 100
             df.loc[df['mm'] == 13, 'MAPE_Prima'] = errores_validos['errorMAPEPrima'].mean() * 100
             df.loc[df['mm'] == 13, 'ECM'] = errores_validos['errorECM'].mean()
@@ -85,38 +87,5 @@ class PronosticoExpDoble:
         df_resultado = df_demanda.groupby(['sku', 'sku_nom', 'sede'], group_keys=False).apply(calcular_pronostico)
         df_resultado = df_resultado.reset_index(drop=True)
 
-        # df_resultado.to_excel('suavizacion_exp_doble.xlsx', index=False)  # Guardar resultados en Excel
-        # Extraer métricas finales (solo fila mes 13)
-        MAD = df_resultado['MAD'].dropna().tolist()
-        MAPE = df_resultado['MAPE'].dropna().tolist()
-        MAPE_prima = df_resultado['MAPE_Prima'].dropna().tolist()
-        ECM = df_resultado['ECM'].dropna().tolist()
-        
-        return MAD, MAPE, MAPE_prima, ECM, df_resultado # df_pronostico_sed, lista_pronosticos
+        return df_resultado # df_pronostico_sed, lista_pronosticos
     
-    
-    def prueba():
-        start_time = time.perf_counter()
-        MAD, MAPE, MAPE_prima, ECM, df_pronostico_sed, lista_pronosticos, lista_pronosticos_redondeo = PronosticoExpDoble.pronosticoExpDoble(0.5, 0.5, 1)
-        
-        # print("MAD: ", MAD[:5])
-        # print("MAPE: ", MAPE[:5])
-        # print("MAPE_PRIMA: ", MAPE_prima[:5])
-        # print("ECM: ", ECM[:5])
-        # print("Pronostico: ", lista_pronosticos[:5])
-        # print("Pronostico redondeo: ", lista_pronosticos_redondeo[:5])
-        
-        # serie = pd.concat([pd.Series(productos), pd.Series(MAD), pd.Series(MAPE)], axis=1)
-        # serie.columns = ["Productos", "MAD", "Mejor pronostico"]
-        # df = pd.DataFrame({"Items": items, "Proveedor": proveedor, "Productos": productos, "Sede": sede,"MAD": MAD, "MAPE": MAPE, "MAPE_Prima": MAPE_prima, "ECM": ECM, "Pronostico": lista_pronosticos, "Pronostico_redondeo": lista_pronosticos_redondeo})
-    
-        # # Especifica la ruta del archivo Excel donde deseas guardar el DataFrame
-        # ruta_archivo_excel = 'suavizacion_exp_doble.xlsx'
-
-        # # Usa el método to_excel() para guardar el DataFrame en el archivo Excel
-        # df.to_excel(ruta_archivo_excel, index=False)  # Si no deseas incluir el índice en el archivo Excel, puedes establecer index=False
-        end_time = time.perf_counter()
-        print(f"Tiempo de ejecución: {end_time - start_time} segundos")
-
-# PronosticoExpDoble.prueba()        
-
