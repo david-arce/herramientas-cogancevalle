@@ -12,13 +12,14 @@ from pronosticosWebApp.pronosticos.pronosticos import Pronosticos
 from django.contrib.auth.decorators import permission_required
 from django.core.exceptions import PermissionDenied
 
-list_demanda, list_promedio_movil, list_ses, list_sed = [], [], [], []
+# list_demanda, list_promedio_movil, list_ses, list_sed = [], [], [], []
 # Create your views here.
 @login_required
 @permission_required('pronosticosWebApp.view_demanda', raise_exception=True)
 def dashboard(request):
     df_demanda = pd.DataFrame(pm.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
     # Ordenar directamente por 'sku', 'sede' y 'mm' sin agrupar
+    # global sku, sku_nom, marca_nom, sede
     df_demanda = df_demanda.sort_values(by=['sku', 'sede', 'mm']).reset_index(drop=True)
     sku = df_demanda['sku'].unique().tolist()  # Obtener los valores únicos de 'sku'
     sku_nom = df_demanda['sku_nom'].unique().tolist()  # Obtener los valores únicos de 'sku_nom'
@@ -34,30 +35,70 @@ def dashboard(request):
 
 @csrf_exempt
 def send_data(request):
-    
     if request.method == 'POST':
         data = json.loads(request.body)
-        global selected_rows
+        global selected_rows, list_demanda, list_promedio_movil_3, list_promedio_movil_4, list_promedio_movil_5, list_ses, list_sed, sku_nom, sede, marca_nom
         selected_rows = data.get('selectedRows', [])
-        #retornar el indice de la tabla menos 1
-        global selected_index
-        selected_index = int(selected_rows[1]) - 1
+        sku = selected_rows[2]
+        sku_nom = selected_rows[4]
+        bod = selected_rows[1]
+        sede = selected_rows[8]
+        marca_nom = selected_rows[7]
+        list_demanda = df_demanda[
+            (df_demanda['sku'] == sku) & 
+            (df_demanda['sku_nom'] == sku_nom) & 
+            (df_demanda['bod'] == bod)
+        ]['total'].tolist()
+        df_pronosticos_p3['promedio_movil'] = df_pronosticos_p3['promedio_movil'].fillna(0)
+        df_pronostico_p4['promedio_movil'] = df_pronostico_p4['promedio_movil'].fillna(0)
+        df_pronostico_p5['promedio_movil'] = df_pronostico_p5['promedio_movil'].fillna(0)
+        df_pronostico_ses['pronostico_ses'] = df_pronostico_ses['pronostico_ses'].fillna(0)
+        df_pronostico_sed['pronostico_sed'] = df_pronostico_sed['pronostico_sed'].fillna(0)
+        # Obtener los promedios móviles y pronósticos
+        def obtener_lista(df, columna, sku, sku_nom, bod):
+            return df[
+                (df['sku'] == sku) &
+                (df['sku_nom'] == sku_nom) &
+                (df['bod'] == bod)
+            ][columna].tolist()
+        list_promedio_movil_3 = obtener_lista(df_pronosticos_p3, 'promedio_movil', sku, sku_nom, bod)
+        list_promedio_movil_4 = obtener_lista(df_pronostico_p4, 'promedio_movil', sku, sku_nom, bod)
+        list_promedio_movil_5 = obtener_lista(df_pronostico_p5, 'promedio_movil', sku, sku_nom, bod)
+        list_ses = obtener_lista(df_pronostico_ses, 'pronostico_ses', sku, sku_nom, bod)
+        list_sed = obtener_lista(df_pronostico_sed, 'pronostico_sed', sku, sku_nom, bod)
+
+        # convertir los valores a enteros
+        list_promedio_movil_3 = [int(x) for x in list_promedio_movil_3]
+        list_promedio_movil_4 = [int(x) for x in list_promedio_movil_4]
+        list_promedio_movil_5 = [int(x) for x in list_promedio_movil_5]
+        list_ses = [int(x) for x in list_ses]
+        list_sed = [int(x) for x in list_sed]
+        
         return JsonResponse({"status": "success", "message": "Datos recibidos correctamente"}) 
     else:
         return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-# def lista(request):
-#     productos = Productos.objects.values('item', 'proveedor', 'descripción', 'sede', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre', 'enero', 'febrero', 'marzo', 'abril', 'total', 'promedio')
-#     return render(request, 'template.html', {'productos': productos})
-
 
 # @require_GET
 def lista_productos():
-    global df_demanda, df_promedio_movil_p3, df_promedio_movil_p4, df_promedio_movil_p5, df_pronostico_ses, df_pronostico_sed, df_pronosticos
-    global items, proveedor, productos, sede
-    
-    df_total, df_demanda = Pronosticos.pronosticos()
-    # id, items, proveedor, productos, sede = pm.productos()
-    
+    global df_demanda, df_total, df_pronosticos, list_meses, df_pronosticos_p3, df_pronostico_p4, df_pronostico_p5, df_pronostico_ses, df_pronostico_sed
+    df_demanda, df_total, df_pronosticos, df_pronosticos_p3, df_pronostico_p4, df_pronostico_p5, df_pronostico_ses, df_pronostico_sed = Pronosticos.pronosticos()
+    # obtener los datos de la demanda-------------------------------
+    # Filtrar el primer grupo completo (mes 1 a 12)
+    primer_grupo = df_demanda[
+        (df_demanda['sku'] == df_demanda.iloc[0]['sku']) &
+        (df_demanda['sku_nom'] == df_demanda.iloc[0]['sku_nom']) &
+        (df_demanda['bod'] == df_demanda.iloc[0]['bod'])
+    ].sort_values(by=['yyyy','mm'])
+    list_meses = primer_grupo['mm'].tolist()
+    # obtener los meses por nombre
+    meses = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ]
+    # Reemplazar los números de mes por sus nombres de la list_meses
+    list_meses = [meses[mes - 1] for mes in list_meses]
+    list_meses.append('Pronóstico')  # Agregar 'Pronóstico' al final de la lista
+   
     # Convertir el DataFrame a JSON
     df_pronosticos_json = df_pronosticos.to_dict(orient='records')
     global data
@@ -69,40 +110,14 @@ def lista_productos():
 def demanda(request):
     return JsonResponse(data, safe=False)
 
-def meses():
-  # productos = list(Productos.objects.values_list('descripción', flat=True))
-  # data = {"productos": productos}
-#   nombres_columnas = [field.name for field in Demanda._meta.get_fields()]
-  # Definir los campos a eliminar
-  meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-  
-  # Filtrar los nombres de las columnas
-  nombres_columnas = [col for col in nombres_columnas if col in meses]
-  #agregar un valor mas a la lista
-  nombres_columnas.append('Pronóstico')
-  return nombres_columnas
-
 def get_chart(request):
+    # if selected_index is None:
+    #     return JsonResponse({"status": "error", "message": "Por favor selecciona una fila de la tabla para generar la gráfica"}, status=400)
     
-    if selected_index is None:
-        return JsonResponse({"status": "error", "message": "Por favor selecciona una fila de la tabla para generar la gráfica"}, status=400)
-    # list_demanda, list_promedio_movil, list_ses, list_sed = grafica(selected_index)
-    global list_demanda, list_promedio_movil_3, list_promedio_movil_4, list_promedio_movil_5, list_ses, list_sed
-    list_demanda = df_demanda.iloc[selected_index].fillna(0).astype(int).tolist()
-    list_promedio_movil_3 = df_promedio_movil_p3.iloc[selected_index].fillna(0).astype(int).tolist()
-    list_promedio_movil_4 = df_promedio_movil_p4.iloc[selected_index].fillna(0).astype(int).tolist()
-    list_promedio_movil_5 = df_promedio_movil_p5.iloc[selected_index].fillna(0).astype(int).tolist()
-    list_ses = df_pronostico_ses.iloc[selected_index].fillna(0).astype(int).tolist()
-    list_sed = df_pronostico_sed.iloc[selected_index].fillna(0).astype(int).tolist()
-    list_sed.insert(0, '')
-    # list_demanda = [1,2,3,4]
-    # list_promedio_movil = [2,3,4,5]
-    # list_ses = [3,4,5,6]
-    # list_sed = [4,5,6,7]
-    xAxis = meses()
+    xAxis = list_meses  # Asignar los meses a xAxis
     chart = {
         "title": {"text": "Pronósticos", 
-                  "subtext": "Pronóstico del producto: {} \nde la sede: {}, del proveedor: {}".format(productos[selected_index], sede[selected_index], proveedor[selected_index])},
+                  "subtext": "Pronóstico del producto: {} \nde la sede: {}, del proveedor: {}".format(sku_nom, sede, marca_nom)},
         "tooltip": {"trigger": "axis"},
         "legend": {
             "data": ["Demanda", "Promedio móvil n=3","Promedio móvil n=4","Promedio móvil n=5", "Suavización simple", "Suaización doble"]
@@ -201,11 +216,16 @@ def guardar_productos(request):
             productos = response.json()
             data = response.json().get("data", [])
             productos_guardados = []
+            sku_existentes = set(Producto.objects.values_list('sku', flat=True))  # Obtener los SKUs existentes en la base de datos
+            numeros_existentes = set(Producto.objects.values_list('numero', flat=True))  # Obtener los números existentes en la base de datos
+            fechas_existentes = set(Producto.objects.values_list('fecha', flat=True))  # Obtener las fechas existentes en la base de datos
             
             # Itera sobre los datos y guarda cada producto en la base de datos
             for item in data:
+                # Verificar si el SKU, número y fecha ya existen en la base de datos
+                if item['fecha'] in fechas_existentes and item['sku'] in sku_existentes and item['numero'] in numeros_existentes:
+                    continue  # Si ya existe, no lo guarda
                 # Crear instancia del modelo a partir del diccionario
-                
                 producto = Producto(
                     yyyy=item["yyyy"],
                     mm=item["mm"],

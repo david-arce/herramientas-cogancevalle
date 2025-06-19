@@ -9,7 +9,7 @@ from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 from statistics import multimode 
 from pronosticosWebApp.models import Inventario, LeadTime
 from django.db.models import Sum
-
+from datetime import date
 class Pronosticos:
 
     def __init__(self):
@@ -29,7 +29,6 @@ class Pronosticos:
             df_pronostico_p3,
             df_demanda
         ) = pm.promedioMovil_3(3)
-        
         # obtener los datos del Inventario
         inv = Inventario.objects.all()
         # agrupar inv por sku, sku_nom, y bod y sumar inv_saldo
@@ -263,7 +262,6 @@ class Pronosticos:
                 moda = row['moda_p3']
                 promedio = row['promedio_p3']
                 stock = z * desviacion_estandar * math.sqrt(row['tiempo_entrega'])
-                print(stock)
                 if mejor_pronostico == 0 or moda == 0:
                     stock = 0
                     stock_seguridad.append(math.ceil(stock + mejor_pronostico - inventario))
@@ -382,25 +380,40 @@ class Pronosticos:
         
         cantidad = df_total['cantidad'].tolist()
         cantidadx3 = df_total['cantidadx3'].tolist()
+        # resetear el index del DataFrame df_total
+        df_total.reset_index(drop=True, inplace=True)
+        
+        # obtener el index del DataFrame df_demanda
+        id = list(df_total.index + 1)
+        fecha_actual = date.today()
+        fecha_formateada = fecha_actual.strftime("%Y/%m/%d")
+        print(fecha_formateada)
         df_pronosticos = pd.DataFrame(
             {   
-                "id": id, #1
-                "bodega": bodega, #2
-                "item": item, #3
-                "codigo": codigo, #4
-                "producto": producto, #5
-                "unimed": unimed, #6
-                "lotepro": ".", #7
-                "proveedor": proveedor, #8
-                "sede": sede, #9
-                "cantidad": cantidad, #10
-                "stock_de_seguridad": stock_seguridad, #11
-                "cantidadx3": cantidadx3, #12
-                "precio": precio, #13
+                "id": id, #0
+                "bodega": bodega, #1
+                "item": item, #2
+                "codigo": codigo, #3
+                "producto": producto, #4
+                "unimed": unimed, #5
+                "lotepro": ".", #6
+                "proveedor": proveedor, #7
+                "sede": sede, #8
+                "cantidad": cantidad, #9
+                "stock": stock_seguridad, #10
+                "cantidadx3": cantidadx3, #11
+                "precio": precio, #12
+                "fecha": fecha_formateada, #13
             }
         )
         
         return (
             df_demanda,
-            df_total
+            df_total,
+            df_pronosticos,
+            df_pronostico_p3,
+            df_pronostico_p4,
+            df_pronostico_p5,
+            df_pronostico_ses,
+            df_pronostico_sed
         )
