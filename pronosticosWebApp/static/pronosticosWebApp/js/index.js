@@ -45,6 +45,7 @@ document.getElementById('export-visible').addEventListener('click', function () 
 
     // Recorrer los datos filtrados y cambiar los valores en los índices 10, 11 y 12 a enteros
     const updatedData = filteredData.map(row => {
+        row[9] = parseInt(row[9], 10);  // Convertir a entero el índice 9
         row[10] = parseInt(row[10], 10);  // Convertir a entero el índice 10
         row[11] = parseInt(row[11], 10);  // Convertir a entero el índice 11
         row[12] = parseInt(row[12], 10);  // Convertir a entero el índice 12
@@ -53,7 +54,7 @@ document.getElementById('export-visible').addEventListener('click', function () 
     });
 
     // Índices de las columnas que deseas exportar (empezando desde 0)
-    const columnsToExport = [0, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14]; // columnas a exportar
+    const columnsToExport = [0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13]; // columnas a exportar
     // const columnsToExport2 = [0, 1, 2, 3, 4, 5]; // nombre columnas 
 
     // Recolectar encabezados de las columnas seleccionadas
@@ -92,71 +93,6 @@ document.getElementById('export-visible').addEventListener('click', function () 
     XLSX.writeFile(wb, nombreArchivo);
 });
 
-// Función para exportar todos los datos del DataTable
-// document.getElementById('export-all').addEventListener('click', function () {
-//     // Índices de las columnas que deseas exportar (empezando desde 0)
-//     const columnsToExport = [0, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13];
-    
-//     // Obtener todos los datos del json productosData
-//     const data = productosData.productos.map(producto => { 
-//         return [
-//             producto.id,
-//             producto.bodega,
-//             producto.item,
-//             producto.codigo,
-//             producto.producto,
-//             producto.unimed,
-//             producto.lotepro,
-//             producto.cantidad,
-//             producto.cantidad_2_meses,
-//             producto.precio,
-//             producto.fechaentrega,
-//         ];
-//     });
-
-//     // Recolectar encabezados de las columnas seleccionadas
-//     const headers = ['REG.N12', 'BODEGA.C5', 'PRODUCTO.C15', 'CODCMC.C50', 'NOMBRE.C100', 'UNIMED.C4', 'LOTEPRO.C12', 'CANTIDAD.N20', 'CANTIDAD.N20', 'PRECIO_UNITARIO.N20', 'FECHAENTREGA.C10'];
-
-//     // Recolectar todos los datos en formato Array of Arrays
-//     const exportData = [headers];
-//     data.forEach(row => {
-//         const rowData = [];
-//         columnsToExport.forEach(colIndex => {
-//             rowData.push(row[colIndex]);
-//         });
-//         exportData.push(rowData);
-//     });
-
-//     // Crear hoja de cálculo
-//     const wb = XLSX.utils.book_new();
-//     const ws = XLSX.utils.aoa_to_sheet(exportData);
-//     XLSX.utils.book_append_sheet(wb, ws, 'Datos_Productos');
-//     XLSX.writeFile(wb, 'Datos_Productos.xlsx');
-// });
-
-// Añadir el evento para actualizar los datos
-// async function updateData(){
-//     const myElement = document.getElementById('chart');
-//     myElement.style.display = 'none';
-//     productosData = null; // Limpiar los datos almacenados
-//     if (!productosData) {
-//         const loader = document.querySelector('.spinner-border');
-//         try {
-//             loader.style.display = 'block';
-//             const response = await fetch('/lista/');
-//             productosData = await response.json();
-//         } catch (error) {
-//             console.error('Error al obtener los datos:', error);
-//         } finally {
-//             loader.style.display = 'none';
-//         }
-//     }
-// };
-
-// Actualizar cada 10 segundos
-// setInterval(updateData, 2000);
-
-// función para cargar los datos
 async function uploadData() {
     productosData = null; // Limpiar los datos almacenados
     if (!productosData) {
@@ -219,7 +155,7 @@ const dataTableOptions = {
     },
     columnDefs: [
         { className: 'centered', targets: '_all' },
-        { targets: [0, 1, 2, 4, 6, 7, 13, 14], visible: false, searchable: false },
+        { targets: [0, 1, 3, 5, 6, 12, 13], visible: false, searchable: false },
     ],
 };
 
@@ -270,18 +206,17 @@ const listProductos = async (datos) => {
         // document.getElementById('loader').style.display = 'block';
 
         //obtener fecha actual en formato yyyy-mm-dd
-        const fechaActual = new Date();
-        const year = fechaActual.getFullYear();
-        const mes = String(fechaActual.getMonth() + 1).padStart(2, '0'); // Los meses empiezan en 0
-        const dia = String(fechaActual.getDate()).padStart(2, '0');
+        // const fechaActual = new Date();
+        // const year = fechaActual.getFullYear();
+        // const mes = String(fechaActual.getMonth() + 1).padStart(2, '0'); // Los meses empiezan en 0
+        // const dia = String(fechaActual.getDate()).padStart(2, '0');
 
-        const fechaFormateada = `${year}/${mes}/${dia}`;
-
+        // const fechaFormateada = `${year}/${mes}/${dia}`;
+        
         let content = ``;
         datos.productos.forEach((producto, index) => {
             content += `
                 <tr>
-                    <td>${index + 1}</td>
                     <td>${producto.id}</td>
                     <td>${producto.bodega}</td>
                     <td>${producto.item}</td>
@@ -295,7 +230,7 @@ const listProductos = async (datos) => {
                     <td>${producto.stock}</td>
                     <td>${producto.cantidadx3}</td>
                     <td>${producto.precio}</td>
-                    <td>${fechaFormateada}</td>
+                    <td>${producto.fecha}</td>
                 </tr>
             `;
         });
@@ -445,7 +380,6 @@ function setupFilter(searchInputId, selectAllId) {
     });
 };
 
-
 document.getElementById('clean-filter-item').addEventListener('click', function () {
     const input = document.getElementById('item-search');
     input.value = ''; // Borra el texto del input
@@ -490,26 +424,3 @@ document.getElementById('clean-filter-sede').addEventListener('click', function 
         label.style.display = ""; // Mostrar todas las opciones
     });
 });
-
-
-//configurar modo oscuro
-// document.getElementById('mode-toggle').addEventListener('click', function () {
-//     document.body.classList.toggle('dark-mode');
-//     document.body.classList.toggle('light-mode');
-//     const tables = document.querySelectorAll('.table');
-//     tables.forEach(table => {
-//         table.classList.toggle('dark-mode');
-//         table.classList.toggle('light-mode');
-//     });
-//     const charts = document.querySelectorAll('.chart');
-//     charts.forEach(chart => {
-//         chart.classList.toggle('dark-mode');
-//         chart.classList.toggle('light-mode');
-//     });
-//     // Cambiar el texto del botón
-//     if (document.body.classList.contains('dark-mode')) {
-//         this.textContent = 'Modo Claro';
-//     } else {
-//         this.textContent = 'Modo Oscuro';
-//     }
-// });

@@ -1,37 +1,90 @@
-# This is an auto-generated Django model module.
-# You'll have to do the following manually to clean this up:
-#   * Rearrange models' order
-#   * Make sure each model has one field with primary_key=True
-#   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
-#   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
-# Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
 
-
-class Demanda(models.Model):
-    producto_c15 = models.IntegerField(db_column='PRODUCTO.C15', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    codcmc_c50 = models.IntegerField(db_column='CODCMC.C50', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    proveedor = models.CharField(db_column='PROVEEDOR', blank=True, null=True)  # Field name made lowercase.
-    nombre_c100 = models.CharField(db_column='NOMBRE.C100', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    unimed_c4 = models.CharField(db_column='UNIMED.C4', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    precio_unitario_n20 = models.FloatField(db_column='PRECIO_UNITARIO.N20', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    bodega_c5 = models.IntegerField(db_column='BODEGA.C5', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    sede = models.CharField(db_column='SEDE', blank=True, null=True)  # Field name made lowercase.
-    junio = models.IntegerField(db_column='JUNIO', blank=True, null=True)  # Field name made lowercase.
-    julio = models.IntegerField(db_column='JULIO', blank=True, null=True)  # Field name made lowercase.
-    agosto = models.IntegerField(db_column='AGOSTO', blank=True, null=True)  # Field name made lowercase.
-    septiembre = models.IntegerField(db_column='SEPTIEMBRE', blank=True, null=True)  # Field name made lowercase.
-    octubre = models.IntegerField(db_column='OCTUBRE', blank=True, null=True)  # Field name made lowercase.
-    noviembre = models.IntegerField(db_column='NOVIEMBRE', blank=True, null=True)  # Field name made lowercase.
-    diciembre = models.IntegerField(db_column='DICIEMBRE', blank=True, null=True)  # Field name made lowercase.
-    enero = models.IntegerField(db_column='ENERO', blank=True, null=True)  # Field name made lowercase.
-    febrero = models.IntegerField(db_column='FEBRERO', blank=True, null=True)  # Field name made lowercase.
-    marzo = models.IntegerField(db_column='MARZO', blank=True, null=True)  # Field name made lowercase.
-    abril = models.IntegerField(db_column='ABRIL', blank=True, null=True)  # Field name made lowercase.
-    mayo = models.IntegerField(db_column='MAYO', blank=True, null=True)  # Field name made lowercase.
-    inventario = models.IntegerField(db_column='INVENTARIO', blank=True, null=True)  # Field name made lowercase.
-    tiempo_entrega = models.IntegerField(db_column='TIEMPO_ENTREGA', blank=True, null=True)  # Field name made lowercase.
+class Producto(models.Model):
+    yyyy = models.IntegerField()
+    mm = models.IntegerField()
+    dd = models.IntegerField()
+    fecha = models.CharField(max_length=50, null=True, blank=True)
+    hora = models.CharField(max_length=20, null=True, blank=True)
+    clase = models.CharField(max_length=50, null=True, blank=True)
+    tipo = models.CharField(max_length=10, null=True, blank=True)
+    numero = models.IntegerField(null=True, blank=True)
+    ven_cob = models.CharField(max_length=50, null=True, blank=True)
+    ven_cc = models.CharField(max_length=50, null=True, blank=True)
+    ven_nom = models.CharField(max_length=255, null=True, blank=True)
+    ccnit = models.CharField(max_length=50, null=True, blank=True)
+    cliente_nom = models.CharField(max_length=255, null=True, blank=True)
+    telef = models.CharField(max_length=50, null=True, blank=True)
+    ciudad = models.CharField(max_length=50, null=True, blank=True)
+    direccion = models.TextField(null=True, blank=True)
+    cliente_grp = models.CharField(max_length=50, null=True, blank=True)
+    cliente_grp_nom = models.CharField(max_length=255, null=True, blank=True)
+    ciudad_nom = models.CharField(max_length=255, null=True, blank=True)
+    cliente_creado = models.CharField(max_length=50, null=True, blank=True)
+    zona = models.CharField(max_length=50, null=True, blank=True)
+    zona_nom = models.CharField(max_length=255, null=True, blank=True)
+    bod = models.CharField(max_length=50, null=True, blank=True)
+    bod_nom = models.CharField(max_length=255, null=True, blank=True)
+    indinv = models.CharField(max_length=10, null=True, blank=True)
+    sku = models.CharField(max_length=50, null=True, blank=True)
+    umd = models.CharField(max_length=50, null=True, blank=True)
+    sku_nom = models.CharField(max_length=255, null=True, blank=True)
+    marca = models.CharField(max_length=50, null=True, blank=True)
+    marca_nom = models.CharField(max_length=255, null=True, blank=True)
+    linea = models.CharField(max_length=50, null=True, blank=True)
+    linea_nom = models.CharField(max_length=255, null=True, blank=True)
+    categ1 = models.CharField(max_length=50, null=True, blank=True)
+    categ1_nom = models.CharField(max_length=255, null=True, blank=True)
+    categ2 = models.CharField(max_length=50, null=True, blank=True)
+    categ2_nom = models.CharField(max_length=255, null=True, blank=True)
+    proveedor = models.CharField(max_length=50, null=True, blank=True)
+    proveedor_nom = models.CharField(max_length=255, null=True, blank=True)
+    detalle = models.TextField(null=True, blank=True)
+    listap = models.TextField(null=True, blank=True)
+    metodo_pago = models.CharField(max_length=50, null=True, blank=True)
+    iva_porc = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    cantidad = models.IntegerField(null=True, blank=True)
+    precio_b = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    precio_d = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    dcto1 = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    descuento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    subtotal = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    iva = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    venta = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    costo_ult = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    costo_pro = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    costo_vta = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
 
     class Meta:
-        managed = False
-        db_table = 'demanda'
+        db_table = "productos"
+
+    def __str__(self):
+        return f"Producto {self.numero} - {self.sku_nom}"
+
+
+class Inventario(models.Model):
+    cta = models.CharField(max_length=50)
+    marca = models.CharField(max_length=50)
+    marca_nom = models.CharField(max_length=100)
+    sku = models.CharField(max_length=50)
+    sku_nom = models.CharField(max_length=200)
+    lpt = models.CharField(max_length=8)  
+    bod = models.CharField(max_length=10)
+    bod_nom = models.CharField(max_length=100)
+    inv_saldo = models.IntegerField(null=True, blank=True)
+    inv_trsto = models.IntegerField(null=True, blank=True)
+    vlr_unit = models.DecimalField(max_digits=20, decimal_places=2)
+    vlr_total = models.DecimalField(max_digits=20, decimal_places=2)
+
+    class Meta:
+        db_table = "inventario"
+
+class LeadTime(models.Model):
+    sku = models.IntegerField(null=True, blank=True)
+    sku_nom = models.CharField(max_length=200)
+    marca_nom = models.CharField(max_length=100)
+    bod = models.IntegerField(null=True, blank=True)
+    tiempo_entrega = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        db_table = "leadtime"
