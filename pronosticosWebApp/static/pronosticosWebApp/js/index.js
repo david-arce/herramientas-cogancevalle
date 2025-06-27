@@ -49,7 +49,6 @@ document.getElementById('export-visible').addEventListener('click', function () 
         row[10] = parseInt(row[10], 10);  // Convertir a entero el índice 10
         row[11] = parseInt(row[11], 10);  // Convertir a entero el índice 11
         row[12] = parseInt(row[12], 10);  // Convertir a entero el índice 12
-        row[13] = parseInt(row[13], 10);  // Convertir a entero el índice 12
         return row;
     });
 
@@ -272,7 +271,7 @@ document.getElementById('search').addEventListener('click', async () => {
     
     function filter(data, items, proveedores, productos, sedes) {
         // Convertir arrays de selección a números (para el filtro de Items)
-        items = items.map(Number);
+        // items = items.map(Number);
 
         // Filtrar los productos que coincidan con todos los criterios seleccionados
         return data.productos.filter(producto => {

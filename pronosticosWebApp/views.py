@@ -1,3 +1,4 @@
+import logging
 from django.shortcuts import render, HttpResponse
 from django.http.response import JsonResponse
 from django.views.decorators.http import require_GET
@@ -11,6 +12,8 @@ from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 from pronosticosWebApp.pronosticos.pronosticos import Pronosticos
 from django.contrib.auth.decorators import permission_required
 from django.core.exceptions import PermissionDenied
+
+logger = logging.getLogger(__name__)
 
 # list_demanda, list_promedio_movil, list_ses, list_sed = [], [], [], []
 # Create your views here.
@@ -44,14 +47,15 @@ def send_data(request):
         bod = selected_rows[1]
         sede = selected_rows[8]
         marca_nom = selected_rows[7]
-        list_demanda = df_demanda[
+        list_df_demanda = df_demanda[
             (df_demanda['sku'] == sku) & 
             (df_demanda['sku_nom'] == sku_nom) & 
             (df_demanda['bod'] == bod)
-        ]['total'].tolist()
+        ].sort_values(by=['yyyy','mm'])
+        list_demanda = list_df_demanda['total'].tolist()  # Obtener la lista de demanda
         df_pronosticos_p3['promedio_movil'] = df_pronosticos_p3['promedio_movil'].fillna(0)
-        df_pronostico_p4['promedio_movil'] = df_pronostico_p4['promedio_movil'].fillna(0)
-        df_pronostico_p5['promedio_movil'] = df_pronostico_p5['promedio_movil'].fillna(0)
+        df_pronostico_p4['promedio_movil_p4'] = df_pronostico_p4['promedio_movil_p4'].fillna(0)
+        df_pronostico_p5['promedio_movil_p5'] = df_pronostico_p5['promedio_movil_p5'].fillna(0)
         df_pronostico_ses['pronostico_ses'] = df_pronostico_ses['pronostico_ses'].fillna(0)
         df_pronostico_sed['pronostico_sed'] = df_pronostico_sed['pronostico_sed'].fillna(0)
         # Obtener los promedios móviles y pronósticos
@@ -61,9 +65,10 @@ def send_data(request):
                 (df['sku_nom'] == sku_nom) &
                 (df['bod'] == bod)
             ][columna].tolist()
+            
         list_promedio_movil_3 = obtener_lista(df_pronosticos_p3, 'promedio_movil', sku, sku_nom, bod)
-        list_promedio_movil_4 = obtener_lista(df_pronostico_p4, 'promedio_movil', sku, sku_nom, bod)
-        list_promedio_movil_5 = obtener_lista(df_pronostico_p5, 'promedio_movil', sku, sku_nom, bod)
+        list_promedio_movil_4 = obtener_lista(df_pronostico_p4, 'promedio_movil_p4', sku, sku_nom, bod)
+        list_promedio_movil_5 = obtener_lista(df_pronostico_p5, 'promedio_movil_p5', sku, sku_nom, bod)
         list_ses = obtener_lista(df_pronostico_ses, 'pronostico_ses', sku, sku_nom, bod)
         list_sed = obtener_lista(df_pronostico_sed, 'pronostico_sed', sku, sku_nom, bod)
 
@@ -206,7 +211,7 @@ def guardar_productos(request):
             "mnguser":"mngapi",
             "service":"MSVT01T6DHD",
             "entity":"HK1A010G1J34",
-            "data":{"fechaini":"20250501","fechafin":"20250531"}
+            "data":{"fechaini":"20241201","fechafin":"20241231"}
         }
         
         # Intenta realizar la solicitud GET a la API
@@ -215,6 +220,11 @@ def guardar_productos(request):
             # se utiliza el método json() para extraer los datos en formato JSON de la respuesta y se almacenan en la variable productos
             productos = response.json()
             data = response.json().get("data", [])
+            logger.info(f"Datos obtenidos: {len(data)}")
+            df = pd.DataFrame(data)  # Convertir los datos a un DataFrame de pandas
+            # print(df)
+            # df.to_excel("ventas_marzo_2025.xlsx", index=False)  # Guardar el DataFrame en un archivo Excel
+            print(f"Datos obtenidos: {len(data)}")
             productos_guardados = []
             sku_existentes = set(Producto.objects.values_list('sku', flat=True))  # Obtener los SKUs existentes en la base de datos
             numeros_existentes = set(Producto.objects.values_list('numero', flat=True))  # Obtener los números existentes en la base de datos
@@ -283,6 +293,8 @@ def guardar_productos(request):
                 )
                 productos_guardados.append(producto)
             Producto.objects.bulk_create(productos_guardados)  # Guarda el objeto en la base de datos
+            logger.info(f"Productos guardados: {len(productos_guardados)}")
+            print(f"Productos guardados: {len(productos_guardados)}")
             #vaciar la lista de productos guardados
             productos_guardados = []
         else:

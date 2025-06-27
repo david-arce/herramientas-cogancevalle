@@ -8,7 +8,8 @@ import pandas as pd
 import math
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 from statistics import multimode 
-from pronosticosWebApp.models import Inventario, LeadTime
+from pronosticosWebApp.models import LeadTime
+from conteoApp.models import Inventario
 from django.db.models import Sum
 from datetime import date
 class Pronosticos:
@@ -19,14 +20,6 @@ class Pronosticos:
     def pronosticos():
         
         (
-            item,
-            proveedor,
-            producto,
-            bodega,
-            codigo,
-            unimed,
-            sede,
-            precio,
             df_pronostico_p3,
             df_demanda
         ) = pm.promedioMovil_3(3)
@@ -35,6 +28,21 @@ class Pronosticos:
         # agrupar inv por sku, sku_nom, y bod y sumar inv_saldo
         inv = inv.values('sku', 'sku_nom', 'bod').annotate(inv_saldo=Sum('inv_saldo'))
         df_inventario = pd.DataFrame(list(inv))
+        reemplazo = {
+            '0105': '0101',
+            '0102': '0101',
+            '0105': '0101',
+            '0202': '0201',
+            '0205': '0201',
+            '0305': '0301',
+            '0402': '0401',
+            '0405': '0401'
+        }
+        # Reemplazar los valores en la columna 'bod' del DataFrame df_inventario
+        df_inventario['bod'] = df_inventario['bod'].replace(reemplazo)
+        # sumar los valores de inv_saldo por sku, sku_nom y bod
+        df_inventario = df_inventario.groupby(['sku', 'sku_nom', 'bod'], as_index=False).agg({'inv_saldo': 'sum'})
+        
         # Diccionario de reemplazo
         reemplazos_bod = {
             '0105': '0101',
@@ -69,10 +77,20 @@ class Pronosticos:
             on=['sku', 'sku_nom', 'bod'],
             how='left'
         )
+        df_demanda_final.rename(columns={'inv_saldo': 'inventario'}, inplace=True)
         # Rellenar con 0 si no hay coincidencia
-        df_demanda_final['inv_saldo'] = df_demanda_final['inv_saldo'].fillna(0)
+        df_demanda_final['inventario'] = df_demanda_final['inventario'].fillna(0)
         # Convertir inv_saldo a entero si quieres evitar decimales
         # merged_df['inv_saldo'] = merged_df['inv_saldo'].astype(int)
+        
+        # Diccionario de reemplazo
+        reverse_reemplazos_bod = {
+            '0101': '0105',
+            '0201': '0205',
+            '0301': '0305',
+            '0401': '0405'
+        }
+        df_demanda_final['bod'] = df_demanda_final['bod'].replace(reverse_reemplazos_bod)
         
         (
             df_pronostico_p4
@@ -89,34 +107,74 @@ class Pronosticos:
         ) = sed.pronosticoExpDoble(0.5, 0.5, 1)
 
         # extraer los datos de df_pronostico_p3 del mes 13
-        df_total = df_pronostico_p3[df_pronostico_p3['mm'] == 13].copy()
-        # eliminar columnas umd, total, precio, promedio_movil, error, errorMAPE, errorMAPEPrima, errorECM, MAD, MAPE, MAPE_Prima
-        df_total = df_total.drop(
-            columns=[
-                'umd',
-                'total',
-                'precio',
-                'promedio_movil',
-                'error',
-                'errorMAPE',
-                'errorMAPEPrima',
-                'errorECM',
-                'MAD',
-                'MAPE',
-                'MAPE_Prima'
-            ]
+        # df_total = df_pronostico_p3[df_pronostico_p3['mm'] == 13].copy()
+        
+        # cambiar el nombre de las columnas de df_pronostico_p4 a ECM_P4 y promedio_movil_p4
+        df_pronostico_p4.rename(columns={'ECM': 'ECM_P4', 'promedio_movil': 'promedio_movil_p4'}, inplace=True)
+        # cambiar el nombre de las columnas de df_pronostico_p5 a ECM_P5
+        df_pronostico_p5.rename(columns={'ECM': 'ECM_P5', 'promedio_movil': 'promedio_movil_p5'}, inplace=True)
+        # cambiar el nombre de las columnas de df_pronostico_ses a ECM_SES
+        df_pronostico_ses.rename(columns={'ECM': 'ECM_SES'}, inplace=True)
+        # cambiar el nombre de las columnas de df_pronostico_sed a ECM_SED
+        df_pronostico_sed.rename(columns={'ECM': 'ECM_SED'}, inplace=True)
+        
+        df_total = pd.merge(
+            df_demanda_final,
+            df_pronostico_p3[df_pronostico_p3['mm'] == 13][['sku', 'sku_nom', 'bod', 'ECM', 'promedio_movil']],
+            on=['sku', 'sku_nom', 'bod'],
+            how='left'
         )
-        df_total.loc[:,'ECM_P4'] = df_pronostico_p4[df_pronostico_p4['mm'] == 13]['ECM'].values
-        df_total.loc[:,'ECM_P5'] = df_pronostico_p5[df_pronostico_p5['mm'] == 13]['ECM'].values
-        df_total.loc[:,'ECM_SES'] = df_pronostico_ses[df_pronostico_ses['mm'] == 13]['ECM'].values
-        df_total.loc[:,'ECM_SED'] = df_pronostico_sed[df_pronostico_sed['mm'] == 13]['ECM'].values
+        df_total = pd.merge(
+            df_total,
+            df_pronostico_p4[df_pronostico_p4['mm'] == 13][['sku', 'sku_nom', 'bod', 'ECM_P4', 'promedio_movil_p4']],
+            on=['sku', 'sku_nom', 'bod'],
+            how='left'
+        )
+        df_total = pd.merge(
+            df_total,
+            df_pronostico_p5[df_pronostico_p5['mm'] == 13][['sku', 'sku_nom', 'bod', 'ECM_P5', 'promedio_movil_p5']],
+            on=['sku', 'sku_nom', 'bod'],
+            how='left'
+        )
+        df_total = pd.merge(
+            df_total,
+            df_pronostico_ses[df_pronostico_ses['mm'] == 13][['sku', 'sku_nom', 'bod', 'ECM_SES', 'pronostico_ses']],
+            on=['sku', 'sku_nom', 'bod'],
+            how='left'
+        )
+        df_total = pd.merge(
+            df_total,
+            df_pronostico_sed[df_pronostico_sed['mm'] == 13][['sku', 'sku_nom', 'bod', 'ECM_SED', 'pronostico_sed']],
+            on=['sku', 'sku_nom', 'bod'],
+            how='left'
+        )
+        
+        # eliminar columnas umd, total, precio, promedio_movil, error, errorMAPE, errorMAPEPrima, errorECM, MAD, MAPE, MAPE_Prima
+        # df_total = df_total.drop(
+        #     columns=[
+        #         'total',
+        #         'promedio_movil',
+        #         'error',
+        #         'errorMAPE',
+        #         'errorMAPEPrima',
+        #         'errorECM',
+        #         'MAD',
+        #         'MAPE',
+        #         'MAPE_Prima'
+        #     ]
+        # )
+        
+        # df_total.loc[:,'ECM_P4'] = df_pronostico_p4[df_pronostico_p4['mm'] == 13]['ECM'].values
+        # df_total.loc[:,'ECM_P5'] = df_pronostico_p5[df_pronostico_p5['mm'] == 13]['ECM'].values
+        # df_total.loc[:,'ECM_SES'] = df_pronostico_ses[df_pronostico_ses['mm'] == 13]['ECM'].values
+        # df_total.loc[:,'ECM_SED'] = df_pronostico_sed[df_pronostico_sed['mm'] == 13]['ECM'].values
         
         # añadir columnas para los pronosticos de cada metodo
-        df_total.loc[:,'promedio_movil'] = df_pronostico_p3[df_pronostico_p3['mm'] == 13]['promedio_movil'].values
-        df_total.loc[:,'promedio_movil_p4'] = df_pronostico_p4[df_pronostico_p4['mm'] == 13]['promedio_movil'].values
-        df_total.loc[:,'promedio_movil_p5'] = df_pronostico_p5[df_pronostico_p5['mm'] == 13]['promedio_movil'].values
-        df_total.loc[:,'pronostico_ses'] = df_pronostico_ses[df_pronostico_ses['mm'] == 13]['pronostico_ses'].values
-        df_total.loc[:,'pronostico_sed'] = df_pronostico_sed[df_pronostico_sed['mm'] == 13]['pronostico_sed'].values
+        # df_total.loc[:,'promedio_movil'] = df_pronostico_p3[df_pronostico_p3['mm'] == 13]['promedio_movil'].values
+        # df_total.loc[:,'promedio_movil_p4'] = df_pronostico_p4[df_pronostico_p4['mm'] == 13]['promedio_movil'].values
+        # df_total.loc[:,'promedio_movil_p5'] = df_pronostico_p5[df_pronostico_p5['mm'] == 13]['promedio_movil'].values
+        # df_total.loc[:,'pronostico_ses'] = df_pronostico_ses[df_pronostico_ses['mm'] == 13]['pronostico_ses'].values
+        # df_total.loc[:,'pronostico_sed'] = df_pronostico_sed[df_pronostico_sed['mm'] == 13]['pronostico_sed'].values
         
         # Asegúrate de que todas las columnas estén en formato numérico
         cols_ecm = ['ECM', 'ECM_P4', 'ECM_P5', 'ECM_SES', 'ECM_SED']
@@ -195,23 +253,52 @@ class Pronosticos:
         "NOTA: LA MODA Y EL PROMEDIO EN P3 SON LOS MISMOS VALORES QUE EN SES Y SED. POR ESO NO SE CALCULAN"
         
         # df_demanda_final.to_excel("demanda_final.xlsx", index=False)
-        inventario = df_demanda_final['inv_saldo'].tolist()
+        # inventario = df_demanda_final['inv_saldo'].tolist()
 
-        list_pronostico_final = df_total['MEJOR_PRONOSTICO'].tolist()
-        # Cantidad a comprar para cada producto por 1 mes
+        # list_pronostico_final = df_total['MEJOR_PRONOSTICO'].tolist()
+        # # Cantidad a comprar para cada producto por 1 mes
     
-        cantidad = []
-        for i in range(len(inventario)):
-            cantidad.append(list_pronostico_final[i] - inventario[i])
+        # cantidad = []
+        # for i in range(len(inventario)):
+        #     cantidad.append(list_pronostico_final[i] - inventario[i])
         
-        df_total['inventario'] = df_demanda_final['inv_saldo'].values
-        df_total['moda_p3'] = df_demanda_mod_pro_p3['MODA_TOTAL'].values
-        df_total['moda_p4'] = df_demanda_mod_pro_p4['MODA_TOTAL'].values
-        df_total['moda_p5'] = df_demanda_mod_pro_p5['MODA_TOTAL'].values
-        df_total['promedio_p3'] = df_demanda_mod_pro_p3['PROM_TOTAL'].values
-        df_total['promedio_p4'] = df_demanda_mod_pro_p4['PROM_TOTAL'].values
-        df_total['promedio_p5'] = df_demanda_mod_pro_p5['PROM_TOTAL'].values
+        # df_total['bod'] = df_total['bod'].replace(reemplazos_bod)
+        
+        # # Merge por las columnas clave: sku, sku_nom y bod
+        # df_total = pd.merge(
+        #     df_total,
+        #     df_demanda_final[['sku', 'sku_nom', 'bod', 'inv_saldo']],
+        #     on=['sku', 'sku_nom', 'bod'],
+        #     how='left'  # o 'inner' si estás seguro que todos existen en ambos
+        # )
+        
+        # Resta de la cantidad a comprar
         df_total['cantidad'] = df_total['MEJOR_PRONOSTICO'] - df_total['inventario']
+
+        # cambiar el nombre de las columnas de moda y promedio a moda_p3 y promedio_p3
+        df_demanda_mod_pro_p3.rename(columns={'MODA_TOTAL': 'moda_p3', 'PROM_TOTAL': 'promedio_p3'}, inplace=True)
+        df_demanda_mod_pro_p4.rename(columns={'MODA_TOTAL': 'moda_p4', 'PROM_TOTAL': 'promedio_p4'}, inplace=True)
+        df_demanda_mod_pro_p5.rename(columns={'MODA_TOTAL': 'moda_p5', 'PROM_TOTAL': 'promedio_p5'}, inplace=True)
+        
+        df_total = pd.merge(
+            df_total,
+            df_demanda_mod_pro_p3[['sku', 'sku_nom', 'bod', 'moda_p3', 'promedio_p3']],
+            on=['sku', 'sku_nom', 'bod'],
+            how='left'
+        )
+        df_total = pd.merge(
+            df_total,
+            df_demanda_mod_pro_p4[['sku', 'sku_nom', 'bod', 'moda_p4', 'promedio_p4']],
+            on=['sku', 'sku_nom', 'bod'],
+            how='left'
+        )
+        df_total = pd.merge(
+            df_total,
+            df_demanda_mod_pro_p5[['sku', 'sku_nom', 'bod', 'moda_p5', 'promedio_p5']],
+            on=['sku', 'sku_nom', 'bod'],
+            how='left'
+        )
+        
         df_total['cantidadx3'] = (df_total['MEJOR_PRONOSTICO'] * 3) - df_total['inventario']
 
         tiempo_entrega = LeadTime.objects.all()
@@ -222,23 +309,25 @@ class Pronosticos:
             # df_demanda_final[col] = df_demanda_final[col].astype(str).str.strip()
             df_tiempo_entrega[col] = df_tiempo_entrega[col].astype(str).str.strip()
 
-        df_demanda_final_leadtime = pd.merge(
-            df_demanda_final,
+        df_total = pd.merge(
+            df_total,
             df_tiempo_entrega[['marca_nom', 'tiempo_entrega']],
             on=['marca_nom'],
             how='left'
         )
+        # poner en cero los valores de tiempo_entrega que son nulos
+        df_total['tiempo_entrega'] = df_total['tiempo_entrega'].fillna(0)
+        
         # Rellenar con 0 si no hay coincidencia
-        df_demanda_final_leadtime['tiempo_entrega'] = df_demanda_final_leadtime['tiempo_entrega'].fillna(0)
-        # extraer tiempo de entrega
-        tiempo_entrega = df_demanda_final_leadtime['tiempo_entrega'].tolist()
-        df_total['tiempo_entrega'] = df_demanda_final_leadtime['tiempo_entrega'].values
+        # df_demanda_final_leadtime['tiempo_entrega'] = df_demanda_final_leadtime['tiempo_entrega'].fillna(0)
+        # # extraer tiempo de entrega
+        # tiempo_entrega = df_demanda_final_leadtime['tiempo_entrega'].tolist()
+        # df_total['tiempo_entrega'] = df_demanda_final_leadtime['tiempo_entrega'].values
         
         z = 1.959 #97.5% de confianza
         dias_inv = 60
         dias_inventario = []
         dias_inventario_final = []
-        stock_seguridad = []
         list_stock = []
         
         desviacion_estandar_p3 = (df_pronostico_p3.groupby(['sku', 'sku_nom', 'bod'])['error'].std().reset_index(name='desviacion_estandar'))
@@ -246,13 +335,46 @@ class Pronosticos:
         desviacion_estandar_p5 = (df_pronostico_p5.groupby(['sku', 'sku_nom', 'bod'])['error'].std().reset_index(name='desviacion_estandar'))
         desviacion_estandar_ses = (df_pronostico_ses.groupby(['sku', 'sku_nom', 'bod'])['error'].std().reset_index(name='desviacion_estandar'))
         desviacion_estandar_sed = (df_pronostico_sed.groupby(['sku', 'sku_nom', 'bod'])['error'].std().reset_index(name='desviacion_estandar'))
-      
-        df_total['desviacion_estandar_p3'] = desviacion_estandar_p3['desviacion_estandar'].values
-        df_total['desviacion_estandar_p4'] = desviacion_estandar_p4['desviacion_estandar'].values
-        df_total['desviacion_estandar_p5'] = desviacion_estandar_p5['desviacion_estandar'].values
-        df_total['desviacion_estandar_ses'] = desviacion_estandar_ses['desviacion_estandar'].values
-        df_total['desviacion_estandar_sed'] = desviacion_estandar_sed['desviacion_estandar'].values
+
+        # cambiar el nombre de las columnas de desviacion_estandar a desviacion_estandar_p3, desviacion_estandar_p4, desviacion_estandar_p5, desviacion_estandar_ses, desviacion_estandar_sed
+        desviacion_estandar_p3.rename(columns={'desviacion_estandar': 'desviacion_estandar_p3'}, inplace=True)
+        desviacion_estandar_p4.rename(columns={'desviacion_estandar': 'desviacion_estandar_p4'}, inplace=True)
+        desviacion_estandar_p5.rename(columns={'desviacion_estandar': 'desviacion_estandar_p5'}, inplace=True)
+        desviacion_estandar_ses.rename(columns={'desviacion_estandar': 'desviacion_estandar_ses'}, inplace=True)
+        desviacion_estandar_sed.rename(columns={'desviacion_estandar': 'desviacion_estandar_sed'}, inplace=True)
         
+        # Unir los DataFrames de desviación estándar al DataFrame df_total
+        df_total = pd.merge(
+            df_total,
+            desviacion_estandar_p3[['sku', 'sku_nom', 'bod', 'desviacion_estandar_p3']],
+            on=['sku', 'sku_nom', 'bod'],
+            how='left'
+        )
+        df_total = pd.merge(
+            df_total,
+            desviacion_estandar_p4[['sku', 'sku_nom', 'bod', 'desviacion_estandar_p4']],
+            on=['sku', 'sku_nom', 'bod'],
+            how='left'
+        )
+        df_total = pd.merge(
+            df_total,
+            desviacion_estandar_p5[['sku', 'sku_nom', 'bod', 'desviacion_estandar_p5']],
+            on=['sku', 'sku_nom', 'bod'],
+            how='left'
+        )
+        df_total = pd.merge(
+            df_total,
+            desviacion_estandar_ses[['sku', 'sku_nom', 'bod', 'desviacion_estandar_ses']],
+            on=['sku', 'sku_nom', 'bod'],
+            how='left'
+        )
+        df_total = pd.merge(
+            df_total,
+            desviacion_estandar_sed[['sku', 'sku_nom', 'bod', 'desviacion_estandar_sed']],
+            on=['sku', 'sku_nom', 'bod'],
+            how='left'
+        )
+        # df_total.to_excel("Pronosticos.xlsx", index=False)
         # Calcular el stock de seguridad
         def calcularStockSeguridad(row):
             if row['ECM_MIN_COL'] == 'ECM':
@@ -265,17 +387,17 @@ class Pronosticos:
                 stock = z * desviacion_estandar * math.sqrt(row['tiempo_entrega'])
                 if mejor_pronostico == 0 or moda == 0:
                     stock = 0
-                    stock_seguridad.append(math.ceil(stock + mejor_pronostico - inventario))
+                    stock_seguridad = math.ceil(stock + mejor_pronostico - inventario)
                 else:
-                    stock_seguridad.append(math.ceil(stock + mejor_pronostico - inventario))
+                    stock_seguridad = math.ceil(stock + mejor_pronostico - inventario)
                 if promedio != 0:
                     dias_inventario.append(round((stock / promedio) * 30))
                 else:
                     dias_inventario.append(0)
                 if dias_inventario[-1] > dias_inv:
-                    stock_seguridad[-1] = math.ceil(promedio + mejor_pronostico - inventario)
+                    stock_seguridad = math.ceil(promedio + mejor_pronostico - inventario)
                 if promedio != 0:
-                    dias_inventario_final.append(round((stock_seguridad[-1] / promedio) * 30))
+                    dias_inventario_final.append(round((stock_seguridad / promedio) * 30))
                 else:
                     dias_inventario_final.append(0)
                 list_stock.append(stock)
@@ -289,17 +411,17 @@ class Pronosticos:
                 promedio = row['promedio_p4']
                 if mejor_pronostico == 0 or moda == 0:
                     stock = 0
-                    stock_seguridad.append(math.ceil(stock + mejor_pronostico - inventario))
+                    stock_seguridad=math.ceil(stock + mejor_pronostico - inventario)
                 else:
-                    stock_seguridad.append(math.ceil(stock + mejor_pronostico - inventario))
+                    stock_seguridad=math.ceil(stock + mejor_pronostico - inventario)
                 if promedio != 0:
                     dias_inventario.append(round((stock / promedio) * 30))
                 else:
                     dias_inventario.append(0)
                 if dias_inventario[-1] > dias_inv:
-                    stock_seguridad[-1] = math.ceil(promedio + mejor_pronostico - inventario)
+                    stock_seguridad = math.ceil(promedio + mejor_pronostico - inventario)
                 if promedio != 0:
-                    dias_inventario_final.append(round((stock_seguridad[-1] / promedio) * 30))
+                    dias_inventario_final.append(round((stock_seguridad / promedio) * 30))
                 else:
                     dias_inventario_final.append(0)
                 list_stock.append(stock)
@@ -313,17 +435,17 @@ class Pronosticos:
                 promedio = row['promedio_p5']
                 if mejor_pronostico == 0 or moda == 0:
                     stock = 0
-                    stock_seguridad.append(math.ceil(stock + mejor_pronostico - inventario))
+                    stock_seguridad=math.ceil(stock + mejor_pronostico - inventario)
                 else:
-                    stock_seguridad.append(math.ceil(stock + mejor_pronostico - inventario))
+                    stock_seguridad=math.ceil(stock + mejor_pronostico - inventario)
                 if promedio != 0:
                     dias_inventario.append(round((stock / promedio) * 30))
                 else:
                     dias_inventario.append(0)
                 if dias_inventario[-1] > dias_inv:
-                    stock_seguridad[-1] = math.ceil(promedio + mejor_pronostico - inventario)
+                    stock_seguridad = math.ceil(promedio + mejor_pronostico - inventario)
                 if promedio != 0:
-                    dias_inventario_final.append(round((stock_seguridad[-1] / promedio) * 30))
+                    dias_inventario_final.append(round((stock_seguridad / promedio) * 30))
                 else:
                     dias_inventario_final.append(0)
                 list_stock.append(stock)
@@ -337,17 +459,17 @@ class Pronosticos:
                 promedio = row['promedio_p3']
                 if mejor_pronostico == 0 or moda == 0:
                     stock = 0
-                    stock_seguridad.append(math.ceil(stock + mejor_pronostico - inventario))
+                    stock_seguridad=math.ceil(stock + mejor_pronostico - inventario)
                 else:
-                    stock_seguridad.append(math.ceil(stock + mejor_pronostico - inventario))
+                    stock_seguridad=math.ceil(stock + mejor_pronostico - inventario)
                 if promedio != 0:
                     dias_inventario.append(round((stock / promedio) * 30))
                 else:
                     dias_inventario.append(0)
                 if dias_inventario[-1] > dias_inv:
-                    stock_seguridad[-1] = math.ceil(promedio + mejor_pronostico - inventario)
+                    stock_seguridad = math.ceil(promedio + mejor_pronostico - inventario)
                 if promedio != 0:
-                    dias_inventario_final.append(round((stock_seguridad[-1] / promedio) * 30))
+                    dias_inventario_final.append(round((stock_seguridad / promedio) * 30))
                 else:
                     dias_inventario_final.append(0)
                 list_stock.append(stock)
@@ -361,34 +483,47 @@ class Pronosticos:
                 promedio = row['promedio_p3']
                 if mejor_pronostico == 0 or moda == 0:
                     stock = 0
-                    stock_seguridad.append(math.ceil(stock + mejor_pronostico - inventario))
+                    stock_seguridad=math.ceil(stock + mejor_pronostico - inventario)
                 else:
-                    stock_seguridad.append(math.ceil(stock + mejor_pronostico - inventario))
+                    stock_seguridad=math.ceil(stock + mejor_pronostico - inventario)
                 if promedio != 0:
                     dias_inventario.append(round((stock / promedio) * 30))
                 else:
                     dias_inventario.append(0)
                 if dias_inventario[-1] > dias_inv:
-                    stock_seguridad[-1] = math.ceil(promedio + mejor_pronostico - inventario)
+                    stock_seguridad = math.ceil(promedio + mejor_pronostico - inventario)
                 if promedio != 0:
-                    dias_inventario_final.append(round((stock_seguridad[-1] / promedio) * 30))
+                    dias_inventario_final.append(round((stock_seguridad / promedio) * 30))
                 else:
                     dias_inventario_final.append(0)
                 list_stock.append(stock)
-            return stock
+            return stock_seguridad
         df_total['stock_seguridad'] = df_total.apply(calcularStockSeguridad, axis=1)
         # df_total.to_excel("Pronosticos.xlsx", index=False)
         
-        cantidad = df_total['cantidad'].tolist()
-        cantidadx3 = df_total['cantidadx3'].tolist()
+        # cantidad = df_total['cantidad'].tolist()
+        # cantidadx3 = df_total['cantidadx3'].tolist()
         # resetear el index del DataFrame df_total
+        
         df_total.reset_index(drop=True, inplace=True)
+        
+        bodega = df_total['bod'].tolist()
+        item = df_total['sku'].tolist()
+        codigo = df_total['sku'].tolist()
+        producto = df_total['sku_nom'].tolist()
+        unimed = df_total['umd'].tolist()
+        proveedor = df_total['marca_nom'].tolist()
+        sede = df_total['sede'].tolist()
+        cantidad = df_total['cantidad'].tolist()
+        stock_seguridad = df_total['stock_seguridad'].tolist()
+        cantidadx3 = df_total['cantidadx3'].tolist()
+        precio = df_total['precio'].tolist()
         
         # obtener el index del DataFrame df_demanda
         id = list(df_total.index + 1)
         fecha_actual = date.today()
         fecha_formateada = fecha_actual.strftime("%Y/%m/%d")
-        print(fecha_formateada)
+        
         df_pronosticos = pd.DataFrame(
             {   
                 "id": id, #0
@@ -407,7 +542,12 @@ class Pronosticos:
                 "fecha": fecha_formateada, #13
             }
         )
-        
+        # df_pronostico_p3.to_excel("pronostico_p3.xlsx", index=False)
+        # df_pronostico_p4.to_excel("pronostico_p4.xlsx", index=False)
+        # df_pronostico_p5.to_excel("pronostico_p5.xlsx", index=False)
+        # df_pronostico_ses.to_excel("pronostico_ses.xlsx", index=False)
+        # df_pronostico_sed.to_excel("pronostico_sed.xlsx", index=False)
+        # df_total.to_excel("total.xlsx", index=False)
         return (
             df_demanda,
             df_total,

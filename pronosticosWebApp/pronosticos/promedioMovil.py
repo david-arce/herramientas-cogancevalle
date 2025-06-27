@@ -3,7 +3,7 @@ from django.db.models import Sum, Case, When, IntegerField, Value, CharField, Ex
 import pandas as pd
 import numpy as np
 import time
-from pronosticosWebApp.models import Inventario, Producto
+from pronosticosWebApp.models import Producto
 
 class PronosticoMovil:
     
@@ -11,6 +11,17 @@ class PronosticoMovil:
         pass
     
     def getDataBD():
+        #obtener todos los productos flitrando por año y mes
+        # print('Obteniendo datos de la base de datos...')
+        # Obtener todos los productos
+        # productos = Producto.objects.all().values()
+        # Filtrar productos por año y mes
+        # productos = Producto.objects.filter(yyyy=2025, mm=3).values()
+        
+        # # convertir productos a dataframe
+        # df_productos = pd.DataFrame(productos)
+        # df_productos.to_excel('productos.xlsx', index=False)
+        # print('Datos obtenidos y guardados en productos.xlsx')
         # 1. Obtener el último día del mes anterior al actual
         hoy = date.today()
         primer_dia_mes_actual = date(hoy.year, hoy.month, 1)
@@ -418,7 +429,7 @@ class PronosticoMovil:
         df_demanda['precio'] = df_demanda['precio'].fillna(0)
         
         # obtener registros por sku
-        # df_demanda = df_demanda.head(1000)
+        # df_demanda = df_demanda.head(100)
         return df_demanda
         
     def promedioMovil_3(n):
@@ -426,7 +437,7 @@ class PronosticoMovil:
                 
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
         # Ordenar directamente por 'sku', 'sede' y 'mm' sin agrupar
-        df_demanda = df_demanda.sort_values(by=['sku', 'sede', 'mm']).reset_index(drop=True)
+        # df_demanda = df_demanda.sort_values(by=['sku', 'sede', 'mm']).reset_index(drop=True)
         sku = []
         marca_nom = []
         sku_nom = []
@@ -437,7 +448,7 @@ class PronosticoMovil:
         
         # Función para calcular el pronóstico y errores por grupo
         def calcular_pronostico(df):
-            df = df.sort_values(by=['mm'])  # Asegurar orden temporal dentro del grupo
+            # df = df.sort_values(by=['mm'])  # Asegurar orden temporal dentro del grupo
             
             # Obtener el último año y mes
             ultimo_anio = df.iloc[-1]['yyyy']
@@ -520,14 +531,14 @@ class PronosticoMovil:
         # crea una lista con la columna MAD del dataframe omitiendo los nulos
         # MAD = df_resultado['MAD'].dropna().tolist()
         
-        return sku, marca_nom, sku_nom, bod, sku, umd, sede, precio, df_resultado, df_demanda  #demanda, promedio_movil, lista_pronosticos
+        return df_resultado, df_demanda  #demanda, promedio_movil, lista_pronosticos
     
     def promedioMovil_4(n):
         print('Calculando pronóstico de promedio móvil n=4...')
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
         # Función para calcular el pronóstico y errores por grupo
         def calcular_pronostico(df):
-            df = df.sort_values(by=['mm'])  # Asegurar orden temporal dentro del grupo
+            # df = df.sort_values(by=['mm'])  # Asegurar orden temporal dentro del grupo
             
             # Obtener el último año y mes
             ultimo_anio = df.iloc[-1]['yyyy']
@@ -606,7 +617,7 @@ class PronosticoMovil:
         df_demanda = pd.DataFrame(PronosticoMovil.getDataBD()) # Se convierten los productos en un DataFrame de pandas para su manipulación
         # Función para calcular el pronóstico y errores por grupo
         def calcular_pronostico(df):
-            df = df.sort_values(by=['mm'])  # Asegurar orden temporal dentro del grupo
+            # df = df.sort_values(by=['mm'])  # Asegurar orden temporal dentro del grupo
             
             # Obtener el último año y mes
             ultimo_anio = df.iloc[-1]['yyyy']

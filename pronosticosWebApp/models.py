@@ -56,28 +56,28 @@ class Producto(models.Model):
     costo_vta = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
 
     class Meta:
-        db_table = "productos"
+        db_table = "productos_venta"
 
     def __str__(self):
         return f"Producto {self.numero} - {self.sku_nom}"
 
 
-class Inventario(models.Model):
-    cta = models.CharField(max_length=50)
-    marca = models.CharField(max_length=50)
-    marca_nom = models.CharField(max_length=100)
-    sku = models.CharField(max_length=50)
-    sku_nom = models.CharField(max_length=200)
-    lpt = models.CharField(max_length=8)  
-    bod = models.CharField(max_length=10)
-    bod_nom = models.CharField(max_length=100)
-    inv_saldo = models.IntegerField(null=True, blank=True)
-    inv_trsto = models.IntegerField(null=True, blank=True)
-    vlr_unit = models.DecimalField(max_digits=20, decimal_places=2)
-    vlr_total = models.DecimalField(max_digits=20, decimal_places=2)
+# class Inventario(models.Model):
+#     cta = models.CharField(max_length=50)
+#     marca = models.CharField(max_length=50)
+#     marca_nom = models.CharField(max_length=100)
+#     sku = models.CharField(max_length=50)
+#     sku_nom = models.CharField(max_length=200)
+#     lpt = models.CharField(max_length=8)  
+#     bod = models.CharField(max_length=10)
+#     bod_nom = models.CharField(max_length=100)
+#     inv_saldo = models.IntegerField(null=True, blank=True)
+#     inv_trsto = models.IntegerField(null=True, blank=True)
+#     vlr_unit = models.DecimalField(max_digits=20, decimal_places=2)
+#     vlr_total = models.DecimalField(max_digits=20, decimal_places=2)
 
-    class Meta:
-        db_table = "inventario"
+#     class Meta:
+#         db_table = "inventario"
 
 class LeadTime(models.Model):
     sku = models.IntegerField(null=True, blank=True)

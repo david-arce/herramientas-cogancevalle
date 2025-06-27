@@ -12,10 +12,10 @@ class PronosticoExpSimple:
         print('Calculando suavización exponencial simple...')
         
         df_demanda = pd.DataFrame(pm.getDataBD())  # Cargar datos
-        df_demanda = df_demanda.sort_values(by=['yyyy', 'mm'])  # Asegurar orden temporal
+        # df_demanda = df_demanda.sort_values(by=['yyyy', 'mm'])  # Asegurar orden temporal
         
         def calcular_pronostico(df):
-            df = df.sort_values(by=['mm'])
+            # df = df.sort_values(by=['mm'])
 
             ultimo_anio = df.iloc[-1]['yyyy']
             ultimo_mes = df.iloc[-1]['mm']

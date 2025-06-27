@@ -12,27 +12,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Inventario',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('cta', models.CharField(max_length=50)),
-                ('marca', models.CharField(max_length=50)),
-                ('marca_nom', models.CharField(max_length=100)),
-                ('sku', models.CharField(max_length=50)),
-                ('sku_nom', models.CharField(max_length=200)),
-                ('lpt', models.CharField(max_length=8)),
-                ('bod', models.CharField(max_length=10)),
-                ('bod_nom', models.CharField(max_length=100)),
-                ('inv_saldo', models.IntegerField(blank=True, null=True)),
-                ('inv_trsto', models.IntegerField(blank=True, null=True)),
-                ('vlr_unit', models.DecimalField(decimal_places=2, max_digits=20)),
-                ('vlr_total', models.DecimalField(decimal_places=2, max_digits=20)),
-            ],
-            options={
-                'db_table': 'inventario',
-            },
-        ),
-        migrations.CreateModel(
             name='LeadTime',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -105,7 +84,7 @@ class Migration(migrations.Migration):
                 ('costo_vta', models.DecimalField(blank=True, decimal_places=2, max_digits=20, null=True)),
             ],
             options={
-                'db_table': 'productos',
+                'db_table': 'productos_venta',
             },
         ),
     ]

@@ -4,7 +4,6 @@ from django.contrib.auth.decorators import permission_required, login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import PermissionDenied
 from .models import UserCity, Venta, Tarea, Inv06, User, Inventario
-from pronosticosWebApp.models import Demanda
 from django.contrib import messages
 from django.db.models import Count
 import pandas as pd

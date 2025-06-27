@@ -107,10 +107,10 @@ def cargar_excel_a_postgresql_delete(file_path, sheet_name, db_url, table_name):
 
 # Parámetros
 ruta_carpeta = os.path.join('..', 'bd')
-file_path = os.path.join(ruta_carpeta, 'BD.xlsx')
+file_path = os.path.join(ruta_carpeta, 'BD_tiempo_entrega.xlsx')
 sheet_name = 'ROTACIÓN'
 db_url = os.getenv('DATABASE_URL')
-table_name = 'demanda'
+table_name = 'leadtime'
 
 # Llamada a la función
 cargar_excel_a_postgresql(file_path, sheet_name, db_url, table_name)

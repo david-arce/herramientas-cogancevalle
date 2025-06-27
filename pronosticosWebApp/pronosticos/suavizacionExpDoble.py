@@ -12,10 +12,10 @@ class PronosticoExpDoble:
         print('Calculando suavización exponencial doble...')
         
         df_demanda = pd.DataFrame(pm.getDataBD())  # Asumimos que tiene columnas: sku, sede, yyyy, mm, total
-        df_demanda = df_demanda.sort_values(by=['yyyy', 'mm'])  # Asegurar orden temporal
+        # df_demanda = df_demanda.sort_values(by=['yyyy', 'mm'])  # Asegurar orden temporal
         def calcular_pronostico(df):
             
-            df = df.sort_values(by=['mm'])  # Orden temporal
+            # df = df.sort_values(by=['mm'])  # Orden temporal
             valores = df['total'].values
             n = len(valores)
             
