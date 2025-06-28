@@ -6,7 +6,7 @@ import pandas as pd
 from .models import Producto
 from django.views.decorators.csrf import csrf_exempt
 import json
-import requests
+# import requests
 from django.contrib.auth.decorators import login_required
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 from pronosticosWebApp.pronosticos.pronosticos import Pronosticos
