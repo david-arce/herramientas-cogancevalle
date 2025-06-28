@@ -1,1 +1,1 @@
-web: python manage.py collectstatic --no-input && gunicorn herramientas_cg.wsgi:application --workers 2 --timeout 600
+web: python manage.py cargar_productos && python manage.py collectstatic --no-input && gunicorn herramientas_cg.wsgi:application --workers 2 --timeout 600
