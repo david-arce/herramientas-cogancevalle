@@ -22,9 +22,9 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'herramientas_cg.settings')
 application = get_wsgi_application()
 
 # Carga tus pronósticos una sola vez al levantar cada worker
-# try:
-#     from pronosticosWebApp.views import lista_productos
-#     lista_productos()
-#     # tal vez pongas un print o logging aquí
-# except Exception:
-#     pass
+try:
+    from pronosticosWebApp.views import lista_productos
+    lista_productos()
+    # tal vez pongas un print o logging aquí
+except Exception:
+    pass
