@@ -150,9 +150,9 @@
                     <td>{{ tarea.producto.sku_nom }}</td>
                     <td>{{ tarea.producto.lpt }}</td>
                     <td>{{ tarea.producto.inv_saldo }}</td>
-                    <td>{{ tarea.conteo }}</td>
+                    <td>{{ tarea.conteo|default_if_none:'' }}</td>
                     <td>{{ tarea.producto.vlr_unit }}</td>
-                    <td>{{ tarea.diferencia }}</td>
+                    <td>{{ tarea.diferencia|default_if_none:'' }}</td>
                     <td>{{ tarea.consolidado }}</td>
                     <td>{{ tarea.observacion }}</td>
                     <td class="checkbox-cell">

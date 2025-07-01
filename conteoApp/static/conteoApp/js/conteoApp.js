@@ -51,25 +51,25 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // borrar el cero por defecto del input de conteo al hacer clic en el input
-document.addEventListener("DOMContentLoaded", function () {
-    const inputs = document.querySelectorAll(".input-conteo"); // Seleccionar todos los campos de conteo
+// document.addEventListener("DOMContentLoaded", function () {
+//     const inputs = document.querySelectorAll(".input-conteo"); // Seleccionar todos los campos de conteo
 
-    inputs.forEach(input => {
-        // Eliminar el cero inicial al enfocar el input
-        input.addEventListener("focus", () => {
-            if (input.value === "0") {
-                input.value = ""; // Borra el cero
-            }
-        });
+//     inputs.forEach(input => {
+//         // Eliminar el cero inicial al enfocar el input
+//         input.addEventListener("focus", () => {
+//             if (input.value === "0") {
+//                 input.value = ""; // Borra el cero
+//             }
+//         });
 
-        // Si el usuario deja el input vacío, volver a poner el cero
-        input.addEventListener("blur", () => {
-            if (input.value === "") {
-                input.value = "0"; // Restaura el cero si está vacío
-            }
-        });
-    });
-});
+//         // Si el usuario deja el input vacío, volver a poner el cero
+//         input.addEventListener("blur", () => {
+//             if (input.value === "") {
+//                 input.value = "0"; // Restaura el cero si está vacío
+//             }
+//         });
+//     });
+// });
 
 
 // Función para ordenar la tabla

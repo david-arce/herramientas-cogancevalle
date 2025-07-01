@@ -20,7 +20,7 @@ if hoy.weekday() == 0:
     fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
 else:
     fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-fecha_asignar =  '20250628'
+# fecha_asignar =  '20250628'
 
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
@@ -132,9 +132,7 @@ def asignar_tareas(request):
                                 tareas_a_crear.append(Tarea(
                                     usuario=usuario,
                                     producto=producto,
-                                    conteo=0,
                                     observacion='',
-                                    diferencia=0
                                 ))
                             producto_index += 1 
                 Tarea.objects.bulk_create(tareas_a_crear)
@@ -351,7 +349,7 @@ def lista_tareas(request):
         bodega = '0301'
     elif ciudad == 'Cali':
         bodega = '0401'
-    tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica).order_by('producto__marca_nom')
+    tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica, activo=True).order_by('producto__marca_nom')
     if request.method == 'POST':
         if 'update_tarea' in request.POST: 
             with transaction.atomic():
@@ -368,11 +366,13 @@ def lista_tareas(request):
                         tarea_id = int(key.split('_')[1]) # Obtener el ID de la tarea a partir del nombre del campo (tarea_1, tarea_2, etc.)
                         if tarea_id in tareas_dict:
                             tarea = tareas_dict[tarea_id]
-                            # si el valor no es un entero o es null o vacío, se asigna 0
-                            if not value or not value.isdigit():
-                                value = 0 
-                            tarea.conteo = int(value)
-                            tarea_ids.add(tarea_id)
+                            # Solo actualizar si el valor no está vacío y es un número entero válido
+                            if value.strip().isdigit():
+                                tarea.conteo = int(value)
+                                tarea_ids.add(tarea_id)
+                            else:
+                                # No asignar nada (omite el cambio)
+                                continue
                     
                     elif key.startswith('observacion_'):
                         tarea_id = int(key.split('_')[1])
@@ -410,11 +410,10 @@ def lista_tareas(request):
                     saldo = inv06_data.get(key, {}).get('inv_saldo', 0)
                     vrunit = inv06_data.get(key, {}).get('vlr_unit', 0)
 
-                    tarea.diferencia = tarea.conteo - saldo
-                    tarea.consolidado = round(vrunit * tarea.diferencia, 2)
-                    # tarea.activo = False  # Se desactiva la tarea tras ser procesada
-
-                    tareas_a_actualizar.append(tarea)
+                    if tarea.conteo is not None:
+                        tarea.diferencia = tarea.conteo - saldo
+                        tarea.consolidado = round(vrunit * tarea.diferencia, 2)
+                        tareas_a_actualizar.append(tarea)
                 
                 # Guardar todos los cambios en una sola operación
                 if tareas_a_actualizar:
