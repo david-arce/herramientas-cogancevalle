@@ -66,10 +66,16 @@ document.getElementById('export-visible').addEventListener('click', function () 
 
     // Convertir los datos filtrados en un formato adecuado para la exportación
     const exportData = [headers]; // Incluir encabezados como la primera fila
+    let index = 1; // Iniciar índice desde 1
     updatedData.forEach(row => {
         const rowData = [];
-        columnsToExport.forEach((colIndex) => {
-            rowData.push(row[colIndex]);
+        columnsToExport.forEach((colIndex, i) => {
+            if (i === 0) {
+                // Primera columna: índice reiniciado
+                rowData.push(index++);
+            } else {
+                rowData.push(row[colIndex]);
+            }
         });
         exportData.push(rowData);
     });
