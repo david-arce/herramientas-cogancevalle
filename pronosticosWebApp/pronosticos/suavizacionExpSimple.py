@@ -9,71 +9,92 @@ class PronosticoExpSimple:
         pass
     
     def pronosticoExpSimple(alpha):
-        print('Calculando suavización exponencial simple...')
-        
-        df_demanda = pd.DataFrame(pm.getDataBD())  # Cargar datos
-        # df_demanda = df_demanda.sort_values(by=['yyyy', 'mm'])  # Asegurar orden temporal
-        
-        def calcular_pronostico(df):
-            # df = df.sort_values(by=['mm'])
+        print(f'Calculando suavización exponencial simple α={alpha}...')
 
-            ultimo_anio = df.iloc[-1]['yyyy']
-            ultimo_mes = df.iloc[-1]['mm']
+        # 1) Cargo y ordeno los datos
+        df_demanda = pd.DataFrame(pm.getDataBD())
+        df = (
+            df_demanda
+            .sort_values(['sku', 'sku_nom', 'sede', 'yyyy', 'mm'])
+            .reset_index(drop=True)
+        )
 
-            nueva_fila = {
-                'yyyy': ultimo_anio,
-                'mm': 13,
-                'sku': df.iloc[-1]['sku'],
-                'sku_nom': df.iloc[-1]['sku_nom'],
-                'marca_nom': df.iloc[-1]['marca_nom'],
-                'bod': df.iloc[-1]['bod'],
-                'sede': df.iloc[-1]['sede'],
-                'total': np.nan,
-            }
+        # 2) Cálculo de la media móvil exponencial (ewm) para cada grupo
+        #    m_t = α·y_t + (1−α)·m_{t−1}, con m_0 = y_0
+        df['m'] = df.groupby(['sku','sku_nom','sede'])['total'] \
+                    .transform(lambda x: x.ewm(alpha=alpha, adjust=False).mean())
 
-            df = pd.concat([df, pd.DataFrame([nueva_fila])], ignore_index=True)
+        # 3) Pronóstico SES por desplazamiento de 1 período
+        df['pronostico_ses'] = df.groupby(['sku','sku_nom','sede'])['m'].shift(1)
+        #    y para la primera fila de cada grupo, pron = valor real inicial
+        is_first = df.groupby(['sku','sku_nom','sede']).cumcount() == 0
+        df.loc[is_first, 'pronostico_ses'] = df.loc[is_first, 'total']
 
-            # Inicializar pronóstico con el primer valor real
-            pronosticos = [df.loc[0, 'total']]
-            for i in range(1, len(df)):
-                if pd.isna(df.loc[i - 1, 'total']):
-                    pronosticos.append(pronosticos[-1])
-                else:
-                    nuevo_f = pronosticos[-1] + alpha * (df.loc[i - 1, 'total'] - pronosticos[-1])
-                    pronosticos.append(nuevo_f)
+        # 4) Calculo de errores
+        df['error'] = (df['total'] - df['pronostico_ses']).abs()
+        df['errorMAPE'] = np.where(
+            df['error'].isna(),
+            np.nan,
+            np.where(df['total'] == 0, 1, df['error'] / df['total'])
+        )
+        df['errorMAPEPrima'] = np.where(
+            df['error'].isna(),
+            np.nan,
+            np.where(df['pronostico_ses'] == 0, 1, df['error'] / df['pronostico_ses'])
+        )
+        df['errorECM'] = df['error'] ** 2
 
-            df['pronostico_ses'] = pronosticos
+        # 5) Agrego métricas por grupo usando sumas, conteos y first
+        gb = df.groupby(['sku','sku_nom','sede'])
+        cnt        = gb['error'].count()
+        sum_err    = gb['error'].sum()
+        first_err  = gb['error'].first()
+        sum_mape   = gb['errorMAPE'].sum()
+        first_mape = gb['errorMAPE'].first()
+        sum_mapp   = gb['errorMAPEPrima'].sum()
+        first_mapp = gb['errorMAPEPrima'].first()
+        sum_ecm    = gb['errorECM'].sum()
+        # first_ecm es cero siempre (errorECM inicial = 0), no es necesario restarlo
 
-            # Calcular errores
-            df['error'] = abs(df['total'] - df['pronostico_ses'])
+        agg = pd.DataFrame({
+            'MAD':         (sum_err  - first_err) / (cnt - 1),
+            'MAPE':      ((sum_mape - first_mape) / (cnt - 1)) * 100,
+            'MAPE_Prima': ((sum_mapp - first_mapp) / (cnt - 1)) * 100,
+            'ECM':         sum_ecm  / (cnt - 1)
+        }).reset_index()
 
-            df['errorMAPE'] = np.where(
-                np.isnan(df['error']),
-                np.nan,
-                np.where(df['total'] == 0, 1, df['error'] / df['total'])
-            )
+        # 6) Pronóstico para mes 13: es el último valor de "m" para cada grupo
+        m_last = gb['m'].last().reset_index(name='pronostico_ses')
 
-            df['errorMAPEPrima'] = np.where(
-                np.isnan(df['error']),
-                np.nan,
-                np.where(df['pronostico_ses'] == 0, 1, df['error'] / df['pronostico_ses'])
-            )
+        # 7) Metadatos constantes: última marca, bodega y año
+        meta = gb.agg({
+            'marca_nom': 'last',
+            'bod':       'last',
+            'yyyy':      'last'
+        }).reset_index()
 
-            df['errorECM'] = df['error'] ** 2
+        # 8) Construyo el DataFrame de pronósticos (mes 13)
+        df_f = (
+            meta
+            .merge(m_last, on=['sku','sku_nom','sede'])
+            .merge(agg,    on=['sku','sku_nom','sede'])
+        )
+        df_f['mm']    = 13
+        df_f['total'] = np.nan
+        # pongo NaN en todas las columnas de error
+        for c in ['error','errorMAPE','errorMAPEPrima','errorECM']:
+            df_f[c] = np.nan
 
-            # Asignar métricas solo a la fila de mes 13
-            df.loc[df['mm'] == 13, 'MAD'] = df['error'].iloc[1:].mean()
-            df.loc[df['mm'] == 13, 'MAPE'] = df['errorMAPE'].iloc[1:].mean() * 100
-            df.loc[df['mm'] == 13, 'MAPE_Prima'] = df['errorMAPEPrima'].iloc[1:].mean() * 100
-            df.loc[df['mm'] == 13, 'ECM'] = df['errorECM'].iloc[1:].mean()
-
-
-            return df
-
-        # Aplicar SES por grupo
-        df_resultado = df_demanda.groupby(['sku', 'sku_nom', 'sede'], group_keys=False).apply(calcular_pronostico)
-        df_resultado = df_resultado.reset_index(drop=True)
-        
-        return df_resultado #df_pronostico_ses, lista_pronosticos
+        # 9) Limpio columna auxiliar y concateno todo
+        df = df.drop(columns=['m'])
+        cols = [
+            'yyyy','mm','sku','sku_nom','marca_nom','bod','umd',
+            'total','sede','precio','pronostico_ses','error','errorMAPE','errorMAPEPrima','errorECM',
+            'MAD','MAPE','MAPE_Prima','ECM'
+        ]
+        df_result = pd.concat([df, df_f], ignore_index=True) \
+                    .sort_values(['sku','sku_nom','sede','yyyy','mm']) \
+                    .reset_index(drop=True)[cols]
+        return df_result
 
    
