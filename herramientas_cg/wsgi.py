@@ -20,7 +20,6 @@ if path_home not in sys.path:
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'herramientas_cg.settings')
 
 application = get_wsgi_application()
-
 # Carga tus pronósticos una sola vez al levantar cada worker
 # try:
 #     from pronosticosWebApp.views import lista_productos
