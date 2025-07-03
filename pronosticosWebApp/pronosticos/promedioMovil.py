@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import time
 from pronosticosWebApp.models import Producto
-
+import pyarrow as pa
 class PronosticoMovil:
     
     def __init__(self):
@@ -432,101 +432,8 @@ class PronosticoMovil:
         # df_demanda = df_demanda.head(100)
         return df_demanda
         
-    def promedioMovil_3(n):
+    def promedioMovil_3(df_demanda, n):
         print(f'Calculando pronóstico de promedio móvil n={n}...')
-        # 1. Cargo datos y ordeno
-        df_demanda = pd.DataFrame(PronosticoMovil.getDataBD())
-        df = (
-            df_demanda
-            .sort_values(['sku','sku_nom','sede','yyyy','mm'])
-            .reset_index(drop=True)
-        )
-        # 2. Promedio móvil (window=n, desplazado 1 mes)
-        df['promedio_movil'] = (
-            df
-            .groupby(['sku','sku_nom','sede'])['total']
-            .transform(lambda x: x.rolling(window=n).mean().shift(1))
-        )
-        # 3. Errores y versiones para MAPE, ECM, etc.
-        df['error'] = (df['total'] - df['promedio_movil']).abs()
-        df['errorMAPE'] = np.where(
-            df['error'].isna(), 
-            np.nan,
-            np.where(df['total']==0, 1, df['error']/df['total'])
-        )
-        df['errorMAPEPrima'] = np.where(
-            df['error'].isna(),
-            np.nan,
-            np.where(df['promedio_movil']==0, 1, df['error']/df['promedio_movil'])
-        )
-        df['errorECM'] = df['error']**2
-
-        # 4. Agrego todas las métricas de grupo en un solo agg()
-        agg = (
-            df
-            .groupby(['sku','sku_nom','sede'])
-            .agg(
-                mad=('error','mean'),
-                mape=('errorMAPE','mean'),
-                mape_prima=('errorMAPEPrima','mean'),
-                ecm=('errorECM','mean')
-            )
-            .reset_index()
-        )
-        # 5. Calculo el pronóstico (sin shift) para el mes “13”:
-        #    rolling(window=n).mean().iloc[-1] == promedio de los últimos n totales
-        forecast = (
-            df
-            .groupby(['sku','sku_nom','sede'])['total']
-            .apply(lambda x: x.rolling(window=n).mean().iloc[-1])
-            .reset_index(name='promedio_movil')
-        )
-        # 6. Cojo los datos “constantes” de cada grupo en su última fila histórica
-        last = (
-            df
-            .groupby(['sku','sku_nom','sede'])
-            .agg(
-                marca_nom=('marca_nom','last'),
-                bod       =('bod','last'),
-                yyyy      =('yyyy','last')
-            )
-            .reset_index()
-        )
-        # 7. Construyo el DataFrame de pronósticos (mes 13) y metadatos
-        df_forecast = (
-            last
-            .merge(forecast, on=['sku','sku_nom','sede'])
-            .merge(agg,      on=['sku','sku_nom','sede'])
-        )
-        df_forecast['mm'] = 13
-        df_forecast['total'] = np.nan
-        # Campos de error todos NaN en mes 13
-        for c in ['error','errorMAPE','errorMAPEPrima','errorECM']:
-            df_forecast[c] = np.nan
-
-        # Renombro y ajusto escalas
-        df_forecast = df_forecast.rename(columns={'mad':'MAD','ecm':'ECM'})
-        df_forecast['MAPE']       = df_forecast['mape'] * 100
-        df_forecast['MAPE_Prima'] = df_forecast['mape_prima'] * 100
-        df_forecast = df_forecast.drop(columns=['mape','mape_prima'])
-
-        # 8. Concateno todo y ordeno igual que antes
-        cols = [
-            'yyyy','mm','sku','sku_nom','marca_nom','bod','umd',
-            'total','sede','promedio_movil','error','errorMAPE','errorMAPEPrima','errorECM',
-            'MAD','MAPE','MAPE_Prima','ECM'
-        ]
-        df_result = (
-            pd.concat([df, df_forecast], ignore_index=True)
-            .sort_values(['sku','sku_nom','sede','yyyy','mm'])
-            .reset_index(drop=True)
-        )[cols]
-        return df_result, df_demanda
-    
-    def promedioMovil_4(n):
-        print(f'Calculando pronóstico de promedio móvil n={n}...')
-        # 1. Cargo datos y ordeno
-        df_demanda = pd.DataFrame(PronosticoMovil.getDataBD())
         df = (
             df_demanda
             .sort_values(['sku','sku_nom','sede','yyyy','mm'])
@@ -614,10 +521,97 @@ class PronosticoMovil:
         )[cols]
         return df_result
     
-    def promedioMovil_5(n):
+    def promedioMovil_4(df_demanda, n):
         print(f'Calculando pronóstico de promedio móvil n={n}...')
-        # 1. Cargo datos y ordeno
-        df_demanda = pd.DataFrame(PronosticoMovil.getDataBD())
+        df = (
+            df_demanda
+            .sort_values(['sku','sku_nom','sede','yyyy','mm'])
+            .reset_index(drop=True)
+        )
+        # 2. Promedio móvil (window=n, desplazado 1 mes)
+        df['promedio_movil'] = (
+            df
+            .groupby(['sku','sku_nom','sede'])['total']
+            .transform(lambda x: x.rolling(window=n).mean().shift(1))
+        )
+        # 3. Errores y versiones para MAPE, ECM, etc.
+        df['error'] = (df['total'] - df['promedio_movil']).abs()
+        df['errorMAPE'] = np.where(
+            df['error'].isna(), 
+            np.nan,
+            np.where(df['total']==0, 1, df['error']/df['total'])
+        )
+        df['errorMAPEPrima'] = np.where(
+            df['error'].isna(),
+            np.nan,
+            np.where(df['promedio_movil']==0, 1, df['error']/df['promedio_movil'])
+        )
+        df['errorECM'] = df['error']**2
+
+        # 4. Agrego todas las métricas de grupo en un solo agg()
+        agg = (
+            df
+            .groupby(['sku','sku_nom','sede'])
+            .agg(
+                mad=('error','mean'),
+                mape=('errorMAPE','mean'),
+                mape_prima=('errorMAPEPrima','mean'),
+                ecm=('errorECM','mean')
+            )
+            .reset_index()
+        )
+        # 5. Calculo el pronóstico (sin shift) para el mes “13”:
+        #    rolling(window=n).mean().iloc[-1] == promedio de los últimos n totales
+        forecast = (
+            df
+            .groupby(['sku','sku_nom','sede'])['total']
+            .apply(lambda x: x.rolling(window=n).mean().iloc[-1])
+            .reset_index(name='promedio_movil')
+        )
+        # 6. Cojo los datos “constantes” de cada grupo en su última fila histórica
+        last = (
+            df
+            .groupby(['sku','sku_nom','sede'])
+            .agg(
+                marca_nom=('marca_nom','last'),
+                bod       =('bod','last'),
+                yyyy      =('yyyy','last')
+            )
+            .reset_index()
+        )
+        # 7. Construyo el DataFrame de pronósticos (mes 13) y metadatos
+        df_forecast = (
+            last
+            .merge(forecast, on=['sku','sku_nom','sede'])
+            .merge(agg,      on=['sku','sku_nom','sede'])
+        )
+        df_forecast['mm'] = 13
+        df_forecast['total'] = np.nan
+        # Campos de error todos NaN en mes 13
+        for c in ['error','errorMAPE','errorMAPEPrima','errorECM']:
+            df_forecast[c] = np.nan
+
+        # Renombro y ajusto escalas
+        df_forecast = df_forecast.rename(columns={'mad':'MAD','ecm':'ECM'})
+        df_forecast['MAPE']       = df_forecast['mape'] * 100
+        df_forecast['MAPE_Prima'] = df_forecast['mape_prima'] * 100
+        df_forecast = df_forecast.drop(columns=['mape','mape_prima'])
+
+        # 8. Concateno todo y ordeno igual que antes
+        cols = [
+            'yyyy','mm','sku','sku_nom','marca_nom','bod','umd',
+            'total','sede','promedio_movil','error','errorMAPE','errorMAPEPrima','errorECM',
+            'MAD','MAPE','MAPE_Prima','ECM'
+        ]
+        df_result = (
+            pd.concat([df, df_forecast], ignore_index=True)
+            .sort_values(['sku','sku_nom','sede','yyyy','mm'])
+            .reset_index(drop=True)
+        )[cols]
+        return df_result
+    
+    def promedioMovil_5(df_demanda, n):
+        print(f'Calculando pronóstico de promedio móvil n={n}...')
         df = (
             df_demanda
             .sort_values(['sku','sku_nom','sede','yyyy','mm'])

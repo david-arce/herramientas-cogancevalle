@@ -8,83 +8,109 @@ class PronosticoExpDoble:
     def __init__(self):
         pass
     
-    def pronosticoExpDoble(alpha, beta, p):
+    def pronosticoExpDoble(df_demanda, alpha, beta, p):
         print('Calculando suavización exponencial doble...')
-        df_demanda = pd.DataFrame(pm.getDataBD())  # Asumimos que tiene columnas: sku, sede, yyyy, mm, total
-        # df_demanda = df_demanda.sort_values(by=['yyyy', 'mm'])  # Asegurar orden temporal
-        def calcular_pronostico(df):
+        inicio = time.time()
+        df_demanda = (
+            df_demanda
+            .sort_values(['sku', 'sku_nom', 'sede', 'yyyy', 'mm'])
+            .reset_index(drop=True)
+        )
+        resultados = []
+        # Iteramos sobre cada combinación única de sku, sku_nom y sede
+        for (sku, sku_nom, sede), grupo in df_demanda.groupby(['sku', 'sku_nom', 'sede'], sort=False):
+            # Aseguramos orden temporal
+            grupo = grupo.sort_values(['yyyy', 'mm'])
             
-            # df = df.sort_values(by=['mm'])  # Orden temporal
-            valores = df['total'].values
-            n = len(valores)
-            
-            atenuado = [valores[0]]
-            tendencia = [0]
-            pronostico = [valores[0]]  # primer pronóstico igual al primer valor
-            
-            # Cálculo de suavización doble
+            # Extraemos arrays base
+            years = grupo['yyyy'].values
+            months = grupo['mm'].values
+            bods = grupo['bod'].values
+            marcas = grupo['marca_nom'].values
+            total = grupo['total'].values
+            precio = grupo['precio'].values
+            n = total.shape[0]
+
+            # Pre-alocación para suavización
+            atenuado   = np.empty(n, dtype=float)
+            tendencia  = np.empty(n, dtype=float)
+            pronostico = np.empty(n, dtype=float)
+
+            # Inicialización
+            atenuado[0]   = total[0]
+            tendencia[0]  = 0.0
+            pronostico[0] = total[0]
+
+            # Cálculo secuencial
             for t in range(1, n):
-                at = alpha * valores[t] + (1 - alpha) * (atenuado[-1] + tendencia[-1])
-                tt = beta * (at - atenuado[-1]) + (1 - beta) * tendencia[-1]
-                atenuado.append(at)
-                tendencia.append(tt)
-                pronostico.append(at + p * tt)
-            
-            # Agregar fila de pronóstico para el siguiente mes (mes 13)
-            ultimo_anio = df.iloc[-1]['yyyy']
-            ultima_fila = df.iloc[-1]
-            nueva_fila = {
-                'yyyy': ultimo_anio,
-                'mm': 13,
-                'sku': ultima_fila['sku'],
-                'sku_nom': ultima_fila['sku_nom'],
-                'marca_nom': df.iloc[-1]['marca_nom'],
-                'bod': df.iloc[-1]['bod'],
-                'sede': ultima_fila['sede'],
-                'total': np.nan,
-            }
-            df = pd.concat([df, pd.DataFrame([nueva_fila])], ignore_index=True)
+                at = alpha * total[t] + (1 - alpha) * (atenuado[t-1] + tendencia[t-1])
+                tt = beta  * (at - atenuado[t-1])   + (1 - beta)  * tendencia[t-1]
+                atenuado[t]   = at
+                tendencia[t]  = tt
+                pronostico[t] = at + p * tt
 
-            pronostico_shifted = [np.nan] + pronostico[0:-1]  # Desplaza hacia abajo
-            pronostico_shifted.append(atenuado[-1] + p * tendencia[-1])  # mes 13
-            df['pronostico_sed'] = pronostico_shifted
+            # Pronóstico desplazado + fila mes 13
+            pron_shift = np.empty(n+1, dtype=float)
+            pron_shift[0]     = np.nan
+            pron_shift[1:n]   = pronostico[:-1]
+            pron_shift[n]     = atenuado[-1] + p * tendencia[-1]
 
-            # Calcular errores
-            df['error'] = abs(df['total'] - df['pronostico_sed'])
+            # Extensión de arrays para métricas
+            total_ext = np.concatenate([total, [np.nan]])
+            error     = np.abs(total_ext - pron_shift)
+            errECM    = error**2
 
-            df['errorMAPE'] = np.where(
-                df['total'] == 0,
-                1,
-                df['error'] / df['total']
-            )
+            errMAPE = np.ones_like(error)
+            np.divide(error, total_ext, out=errMAPE, where=(total_ext != 0))
 
-            df['errorMAPEPrima'] = np.where(
-                df['pronostico_sed'] == 0,
-                1,
-                df['error'] / df['pronostico_sed']
-            )
+            errMAPEP = np.ones_like(error)
+            np.divide(error, pron_shift, out=errMAPEP, where=(pron_shift != 0))
+            # Métricas basadas en todos los meses excepto el primero y el nuevo
+            idx_valid = slice(1, n)
+            mad       = error[idx_valid].mean()
+            mape      = errMAPE[idx_valid].mean()    * 100
+            mape_p    = errMAPEP[idx_valid].mean()   * 100
+            ecm       = errECM[idx_valid].mean()
 
-            df['errorECM'] = df['error'] ** 2
+            # Construcción de DataFrame en bloque
+            yyyy_ext    = np.concatenate([years, [years[-1]]])
+            mm_ext      = np.concatenate([months, [13]])
+            sku_ext     = np.full(n+1, sku,     dtype=object)
+            sku_nom_ext = np.full(n+1, sku_nom, dtype=object)
+            sede_ext    = np.full(n+1, sede,    dtype=object)
+            precio_ext = np.concatenate([precio, [precio[-1]]])
+            bod_ext     = np.concatenate([bods, [bods[-1]]])
+            marca_ext   = np.concatenate([marcas, [marcas[-1]]])
 
-            # Excluir el primer mes del cálculo de métricas (asumiendo orden por año/mes ya hecho)
-            errores_validos = df.iloc[1:-1]  # Excluye primer mes y fila del mes 13
+            dfg = pd.DataFrame({
+                'yyyy':           yyyy_ext,
+                'mm':             mm_ext,
+                'sku':            sku_ext,
+                'sku_nom':        sku_nom_ext,
+                'marca_nom':      marca_ext,
+                'bod':            bod_ext,
+                'sede':           sede_ext,
+                'total':          total_ext,
+                'precio':         precio_ext,
+                'pronostico_sed': pron_shift,
+                'error':          error,
+                'errorMAPE':      errMAPE,
+                'errorMAPEPrima': errMAPEP,
+                'errorECM':       errECM
+            })
 
-            # Calcular métricas para el mes 13
-            df['MAD'] = np.nan
-            df['MAPE'] = np.nan
-            df['MAPE_Prima'] = np.nan
-            df['ECM'] = np.nan
+            # Incluir columnas de métricas solo en el mes 13
+            dfg['MAD']         = np.nan
+            dfg['MAPE']        = np.nan
+            dfg['MAPE_Prima']  = np.nan
+            dfg['ECM']         = np.nan
+            mask13 = dfg['mm'] == 13
+            dfg.loc[mask13, ['MAD','MAPE','MAPE_Prima','ECM']] = mad, mape, mape_p, ecm
 
-            df.loc[df['mm'] == 13, 'MAD'] = errores_validos['error'].mean()
-            df.loc[df['mm'] == 13, 'MAPE'] = errores_validos['errorMAPE'].mean() * 100
-            df.loc[df['mm'] == 13, 'MAPE_Prima'] = errores_validos['errorMAPEPrima'].mean() * 100
-            df.loc[df['mm'] == 13, 'ECM'] = errores_validos['errorECM'].mean()
+            resultados.append(dfg)
 
-            return df
-
-        # Aplicar a cada grupo
-        df_resultado = df_demanda.groupby(['sku', 'sku_nom', 'sede'], group_keys=False).apply(calcular_pronostico)
-        df_resultado = df_resultado.reset_index(drop=True)
-
-        return df_resultado # df_pronostico_sed, lista_pronosticos
-    
+        df_resultado = pd.concat(resultados, ignore_index=True)
+        fin = time.time()
+        print(f'Pronóstico de suavización exponencial doble completado en {fin - inicio:.2f} segundos.')
+        df_resultado.to_excel('pronostico_suavizacion_exponencial_doble.xlsx', index=False)
+        return df_resultado

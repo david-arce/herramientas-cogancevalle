@@ -18,11 +18,10 @@ class Pronosticos:
         pass
 
     def pronosticos():
-        
+        df_demanda = pd.DataFrame(pm.getDataBD())
         (
-            df_pronostico_p3,
-            df_demanda
-        ) = pm.promedioMovil_3(3)
+            df_pronostico_p3
+        ) = pm.promedioMovil_3(df_demanda, 3)
         # obtener los datos del Inventario
         inv = Inventario.objects.all()
         # agrupar inv por sku, sku_nom, y bod y sumar inv_saldo
@@ -94,17 +93,17 @@ class Pronosticos:
         
         (
             df_pronostico_p4
-        ) = pm.promedioMovil_4(4)
+        ) = pm.promedioMovil_4(df_demanda, 4)
         (
             df_pronostico_p5
-        ) = pm.promedioMovil_5(5)
+        ) = pm.promedioMovil_5(df_demanda, 5)
 
         (
             df_pronostico_ses
-        ) = ses.pronosticoExpSimple(0.5)
+        ) = ses.pronosticoExpSimple(df_demanda, 0.5)
         (
             df_pronostico_sed
-        ) = sed.pronosticoExpDoble(0.5, 0.5, 1)
+        ) = sed.pronosticoExpDoble(df_demanda, 0.5, 0.5, 1)
         
         # extraer los datos de df_pronostico_p3 del mes 13
         # df_total = df_pronostico_p3[df_pronostico_p3['mm'] == 13].copy()

@@ -8,11 +8,8 @@ class PronosticoExpSimple:
     def __init__(self):
         pass
     
-    def pronosticoExpSimple(alpha):
+    def pronosticoExpSimple(df_demanda, alpha):
         print(f'Calculando suavización exponencial simple α={alpha}...')
-
-        # 1) Cargo y ordeno los datos
-        df_demanda = pd.DataFrame(pm.getDataBD())
         df = (
             df_demanda
             .sort_values(['sku', 'sku_nom', 'sede', 'yyyy', 'mm'])
