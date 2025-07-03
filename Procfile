@@ -1,1 +1,1 @@
-web: python manage.py collectstatic --no-input && exec gunicorn herramientas_cg.wsgi:application --workers 6 --timeout 400
+web: python manage.py collectstatic --no-input && gunicorn herramientas_cg.wsgi:application --workers 6 --timeout 400
