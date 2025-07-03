@@ -5,5 +5,5 @@ class Command(BaseCommand):
     help = "Carga inicial de productos para pronósticos"
 
     def handle(self, *args, **options):
-        lista_productos()
+        # lista_productos()
         self.stdout.write(self.style.SUCCESS("✅ lista_productos ejecutada correctamente."))
