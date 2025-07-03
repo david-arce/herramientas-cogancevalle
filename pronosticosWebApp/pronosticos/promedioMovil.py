@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 import time
 from pronosticosWebApp.models import Producto
-import pyarrow as pa
 class PronosticoMovil:
     
     def __init__(self):
