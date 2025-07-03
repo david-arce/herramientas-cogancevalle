@@ -129,6 +129,11 @@ def get_chart(request):
             (df_demanda['bod'] == bod)
     ].sort_values(by=['yyyy','mm'])
     list_demanda = list_df_demanda['total'].tolist()  # Obtener la lista de demanda
+    df_pronostico_p3['promedio_movil'] = df_pronostico_p3['promedio_movil'].fillna(0)
+    df_pronostico_p4['promedio_movil_p4'] = df_pronostico_p4['promedio_movil_p4'].fillna(0)
+    df_pronostico_p5['promedio_movil_p5'] = df_pronostico_p5['promedio_movil_p5'].fillna(0)
+    df_pronostico_ses['pronostico_ses'] = df_pronostico_ses['pronostico_ses'].fillna(0)
+    df_pronostico_sed['pronostico_sed'] = df_pronostico_sed['pronostico_sed'].fillna(0)
     
     # Obtener los promedios móviles y pronósticos
     def obtener_lista(df, columna, sku, sku_nom, bod):

@@ -105,12 +105,6 @@ class Pronosticos:
         (
             df_pronostico_sed
         ) = sed.pronosticoExpDoble(0.5, 0.5, 1)
-
-        df_pronostico_p3['promedio_movil'] = df_pronostico_p3['promedio_movil'].fillna(0)
-        df_pronostico_p4['promedio_movil_p4'] = df_pronostico_p4['promedio_movil_p4'].fillna(0)
-        df_pronostico_p5['promedio_movil_p5'] = df_pronostico_p5['promedio_movil_p5'].fillna(0)
-        df_pronostico_ses['pronostico_ses'] = df_pronostico_ses['pronostico_ses'].fillna(0)
-        df_pronostico_sed['pronostico_sed'] = df_pronostico_sed['pronostico_sed'].fillna(0)
         
         # extraer los datos de df_pronostico_p3 del mes 13
         # df_total = df_pronostico_p3[df_pronostico_p3['mm'] == 13].copy()
