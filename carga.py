@@ -113,4 +113,4 @@ db_url = os.getenv('DATABASE_URL')
 table_name = 'leadtime'
 
 # Llamada a la función
-cargar_excel_a_postgresql(file_path, sheet_name, db_url, table_name)
+cargar_excel_a_postgresql_delete(file_path, sheet_name, db_url, table_name)
