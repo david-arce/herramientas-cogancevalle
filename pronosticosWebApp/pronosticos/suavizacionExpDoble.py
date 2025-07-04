@@ -10,7 +10,6 @@ class PronosticoExpDoble:
     
     def pronosticoExpDoble(df_demanda, alpha, beta, p):
         print('Calculando suavización exponencial doble...')
-        inicio = time.time()
         df_demanda = (
             df_demanda
             .sort_values(['sku', 'sku_nom', 'sede', 'yyyy', 'mm'])
@@ -110,7 +109,4 @@ class PronosticoExpDoble:
             resultados.append(dfg)
 
         df_resultado = pd.concat(resultados, ignore_index=True)
-        fin = time.time()
-        print(f'Pronóstico de suavización exponencial doble completado en {fin - inicio:.2f} segundos.')
-        df_resultado.to_excel('pronostico_suavizacion_exponencial_doble.xlsx', index=False)
         return df_resultado
