@@ -6,7 +6,7 @@ import pandas as pd
 from .models import Producto
 from django.views.decorators.csrf import csrf_exempt
 import json
-import requests
+# import requests
 from django.contrib.auth.decorators import login_required
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 from pronosticosWebApp.pronosticos.pronosticos import Pronosticos
@@ -226,6 +226,7 @@ def get_chart(request):
     }
     return JsonResponse(chart)
 
+''' 
 # generar token
 def get_token():
     url_auth = "https://saaserpzn1a.qualitycolombia.com.co:58090/auth/token"
@@ -362,3 +363,4 @@ def guardar_productos(request):
         print(f"Error en la solicitud: {e}")
         productos = []
     return HttpResponse("ok")
+ '''
