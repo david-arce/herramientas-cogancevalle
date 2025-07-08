@@ -1,0 +1,16 @@
+{% for tarea in tareas %}
+    <tr>
+        <td>{{ tarea.producto.marca_nom }}</td>
+        <td>{{ tarea.producto.sku}}</td>
+        <td>{{ tarea.producto.sku_nom}}</td>
+        <td>{{ tarea.producto.lpt }}</td>
+        <td><input 
+            class="input-conteo" 
+            type="text" 
+            inputmode="numeric"
+            pattern="[0-9]*"
+            oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+            name="conteo_{{ tarea.id }}" min="0" value="{{ tarea.conteo|default_if_none:'' }}" ></td>
+        <td><textarea class="input-observacion" type="text" name="observacion_{{ tarea.id }}">{{ tarea.observacion }}</textarea></td>
+    </tr>
+{% endfor %}
