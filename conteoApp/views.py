@@ -11,20 +11,21 @@ from django.http import HttpResponse, HttpResponseForbidden
 import logging
 from django.db import transaction
 from django.db.models import Sum
+from django.template.loader import render_to_string
 
 logger = logging.getLogger(__name__)
-# Obtener la fecha actual
-hoy = datetime.datetime.now()
-# Verificar si es lunes (0 = Lunes, 6 = Domingo))
-if hoy.weekday() == 0:
-    fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
-else:
-    fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-# fecha_asignar =  '20250628'
-
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
 def asignar_tareas(request):
+    # Obtener la fecha actual
+    hoy = datetime.datetime.now()
+    # Verificar si es lunes (0 = Lunes, 6 = Domingo))
+    if hoy.weekday() == 0:
+        fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
+    else:
+        fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
+    # fecha_asignar =  '20250301'
+    
     if request.user.username != "JPRADO" and request.user.username != "CHINCAPI" and request.user.username != "FDUQUE" and request.user.username != "LAMAYA" and request.user.username != "AGRAJALE"  and request.user.username != "admin":
         raise PermissionDenied("No tienes permiso para acceder a esta vista.")
     
@@ -329,12 +330,15 @@ def asignar_tareas(request):
 @login_required
 @permission_required('conteoApp.view_tarea', raise_exception=True)
 def lista_tareas(request):
-    # tareas = Tarea.objects.none()  # Inicializamos la variable de las tareas
-    usuarios_con_tareas = []  # Lista para almacenar los usuarios y la cantidad de tareas asignadas
-    
-    # filtrar las tareas por fecha de asignación y usuario. La fecha de asignación se debe comparar con una fecha específica
-    # fecha_especifica = datetime.date(2024, 12, 31)  # Reemplaza con la fecha específica deseada
-    fecha_especifica = datetime.date.today() #- datetime.timedelta(days=1) # Reemplaza con la fecha específica deseada (ayer). Se resta un día a la fecha actual
+    # Obtener la fecha actual
+    hoy = datetime.datetime.now()
+    # Verificar si es lunes (0 = Lunes, 6 = Domingo))
+    if hoy.weekday() == 0:
+        fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
+    else:
+        fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
+    # fecha_asignar =  '20250301'
+    fecha_especifica = datetime.date.today() 
     try:
         ciudad = request.user.usercity.ciudad
     except UserCity.DoesNotExist:
@@ -432,25 +436,6 @@ def lista_tareas(request):
                 sku__in=sku_list,
                 bod__in=bod_list
             ).values('sku', 'marca_nom', 'sku_nom').annotate(total_saldo=Sum('inv_saldo'))
-            # Convertir a listas y validar
-            # sku_list = []
-            # bod_list = []
-            # for producto in productos_filtrados:
-            #     try:
-            #         # Convertir mcnproduct y mcnbodega a enteros
-            #         sku_list.append(int(producto.sku))
-            #         bod_list.append(int(producto.bod))
-            #     except (ValueError, TypeError):
-            #         # Si no se puede convertir, continuar sin agregar el producto
-            #         continue
-
-            # # Buscar en la tabla Inv06 los productos que cumplen con las condiciones y tienen saldo mayor a 0
-            # if sku_list and bod_list:
-            #     productos_disponibles = Inv06.objects.filter(
-            #         mcnproduct__in=sku_list,
-            #         mcnbodega__in=bod_list,
-            #         saldo__gt=0
-            #     ).values('mcnproduct', 'marnombre', 'pronombre').annotate(total_saldo=Sum('saldo'))
             
             # obtener el total del conteo de la tarea agrupando por marnombre, pronombre y mcnproduct 
             conteo = (
@@ -484,11 +469,17 @@ def lista_tareas(request):
                     ).update(activo=False)
             #----------------------------------------------------------------------------
             tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica, activo=True).exclude(diferencia=0).order_by('producto__marca_nom')
+            
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                # renderizamos sólo las filas
+                html = render_to_string(
+                    'conteoApp/_tareas_rows.html',
+                    {'tareas': tareas},
+                    request=request
+                )
+                return JsonResponse({'status': 'ok', 'html': html})
             # return redirect('lista_tareas')
-    return render(request, 'conteoApp/tareas_contador.html', {
-        # 'form': form, 
-        'tareas': tareas, 
-        'usuarios_con_tareas': usuarios_con_tareas})
+    return render(request, 'conteoApp/tareas_contador.html', {'tareas': tareas})
 
 from django.http import JsonResponse
 @csrf_exempt

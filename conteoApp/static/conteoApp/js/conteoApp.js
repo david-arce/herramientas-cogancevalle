@@ -73,8 +73,30 @@ document.addEventListener("DOMContentLoaded", function() {
 
 
 // Función para ordenar la tabla
+function sortTableById(tableId, columnIndex) {
+  const table = document.getElementById(tableId);
+  const tbody = table.tBodies[0];
+  const rows = Array.from(tbody.rows);
+  const asc = table.dataset.sortOrder === "asc";
+
+  rows.sort((a, b) => {
+    let aText = a.cells[columnIndex].innerText.trim().toLowerCase();
+    let bText = b.cells[columnIndex].innerText.trim().toLowerCase();
+
+    if (!isNaN(aText) && !isNaN(bText)) {
+      return asc ? aText - bText : bText - aText;
+    }
+    return asc ? aText.localeCompare(bText) : bText.localeCompare(aText);
+  });
+
+  table.dataset.sortOrder = asc ? "desc" : "asc";
+  tbody.replaceChildren(...rows);
+}
+
+
+// Función para ordenar la tabla
 function sortTable(columnIndex) {
-    const table = document.getElementById("myTable");
+    const table = document.getElementById("table-asignar");
     let rows = Array.from(table.rows).slice(1); // Ignorar encabezado
     let ascending = table.dataset.sortOrder === "asc";
 
@@ -140,7 +162,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
-
 
 // Validar que al menos un checkbox esté seleccionado en el formulario de filtrar
 document.addEventListener('DOMContentLoaded', function () {
@@ -215,6 +236,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 
+/*
 // funcion para que cambiar el type al botón de 'submit' a 'button' al enviar el conteo
 document.addEventListener("DOMContentLoaded", function () {
     const updateButton = document.getElementById("update-tarea");
@@ -240,7 +262,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 });
-
+*/
 
 // funcion para deshabilitar el botón de asignar tareas y mostrar un mensaje de procesamiento
 document.addEventListener("DOMContentLoaded", function () {
@@ -289,4 +311,53 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
     });
+});
+
+// Función para actualizar las tareas
+document.addEventListener("DOMContentLoaded", function () {
+  const form = document.getElementById("form-tareas");
+  const btn  = document.getElementById("update-tarea");
+
+  if (!form || !btn) return;
+
+  btn.addEventListener("click", function (e) {
+    e.preventDefault();
+
+    const formData = new FormData(form);
+    formData.append("update_tarea", "1");
+
+    const csrfToken = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
+
+    document.getElementById("processingModal").style.display = "block";
+    btn.disabled = true;
+
+    fetch(window.location.href, {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": csrfToken,
+        "X-Requested-With": "XMLHttpRequest"
+      },
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => { 
+      if (data.status === "ok") {
+        // Reemplazamos el contenido del <tbody>
+        const body = document.getElementById("tareas-body")
+        // inyecto nuevo HTML
+        body.innerHTML = data.html;
+        // Ocultamos modal y reactivamos botón
+        document.getElementById("processingModal").style.display = "none";
+        btn.disabled = false;
+      } else {
+        throw new Error("Error al actualizar");
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Hubo un problema, revisa la consola.");
+      document.getElementById("processingModal").style.display = "none";
+      btn.disabled = false;
+    });
+  });
 });

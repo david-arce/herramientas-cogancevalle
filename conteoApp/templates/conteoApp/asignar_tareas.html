@@ -126,20 +126,20 @@
     {% csrf_token %}
     
 <div class="table-container">
-    <table id = "myTable">
+    <table id = "table-tareas">
         <thead>
             <tr>
-                <th onclick="sortTable(0)">PROVEEDOR</th>
-                <th onclick="sortTable(1)">ITEM</th>
-                <th onclick="sortTable(2)">PRODUCTO</th>
-                <th onclick="sortTable(3)">FECHA VENCE</th>
-                <th onclick="sortTable(4)">EXISTENCIA</th>
-                <th onclick="sortTable(5)">CONTEO</th>
-                <th onclick="sortTable(6)">VALOR_UNIT</th>
-                <th onclick="sortTable(7)">DIFERENCIAS</th>
-                <th onclick="sortTable(8)">CONSOLIDADO</th>
-                <th onclick="sortTable(9)">OBSERVACION</th>
-                <th onclick="sortTable(10)">VERIFICADO</th>
+                <th onclick="sortTableById('table-tareas', 0)">PROVEEDOR</th>
+                <th onclick="sortTableById('table-tareas', 1)">ITEM</th>
+                <th onclick="sortTableById('table-tareas', 2)">PRODUCTO</th>
+                <th onclick="sortTableById('table-tareas', 3)">FECHA VENCE</th>
+                <th onclick="sortTableById('table-tareas', 4)">EXISTENCIA</th>
+                <th onclick="sortTableById('table-tareas', 5)">CONTEO</th>
+                <th onclick="sortTableById('table-tareas', 6)">VALOR_UNIT</th>
+                <th onclick="sortTableById('table-tareas', 7)">DIFERENCIAS</th>
+                <th onclick="sortTableById('table-tareas', 8)">CONSOLIDADO</th>
+                <th onclick="sortTableById('table-tareas', 9)">OBSERVACION</th>
+                <th onclick="sortTableById('table-tareas', 10)">VERIFICADO</th>
             </tr>
         </thead>
         <tbody>

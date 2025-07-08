@@ -6,7 +6,7 @@ import pandas as pd
 from .models import Producto
 from django.views.decorators.csrf import csrf_exempt
 import json
-# import requests
+import requests
 from django.contrib.auth.decorators import login_required
 from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 from pronosticosWebApp.pronosticos.pronosticos import Pronosticos
@@ -226,139 +226,139 @@ def get_chart(request):
     }
     return JsonResponse(chart)
 
-# # generar token
-# def get_token():
-#     url_auth = "https://saaserpzn1a.qualitycolombia.com.co:58090/auth/token"
-#     credentials = {
-#         "username": "cogancevalle_01cmc",
-#         "password": "EDGNHSPRSGDKLK59R6412G41HJ5UKSL3RT64E3693A6563LOT4DRJ45RVVMGBAAE"
-#     }
-#     try:
-#         response = requests.post(url_auth, json=credentials)
-#         response.raise_for_status()  # Lanza un error si el código no es 200
-#         token = response.text.strip()  # Obtiene el token directamente como texto
-#         print(f"Token obtenido: {token}")
-#         return token
-#     except requests.exceptions.HTTPError as e:
-#         print(f"Error HTTP: {response.status_code} - {response.text}")
-#         raise Exception("No se pudo obtener el token")
-#     except requests.exceptions.RequestException as e:
-#         print(f"Error al obtener el token: {e}")
-#         raise Exception("No se pudo obtener el token")
+# generar token
+def get_token():
+    url_auth = "https://saaserpzn1a.qualitycolombia.com.co:58090/auth/token"
+    credentials = {
+        "username": "cogancevalle_01cmc",
+        "password": "EDGNHSPRSGDKLK59R6412G41HJ5UKSL3RT64E3693A6563LOT4DRJ45RVVMGBAAE"
+    }
+    try:
+        response = requests.post(url_auth, json=credentials)
+        response.raise_for_status()  # Lanza un error si el código no es 200
+        token = response.text.strip()  # Obtiene el token directamente como texto
+        print(f"Token obtenido: {token}")
+        return token
+    except requests.exceptions.HTTPError as e:
+        print(f"Error HTTP: {response.status_code} - {response.text}")
+        raise Exception("No se pudo obtener el token")
+    except requests.exceptions.RequestException as e:
+        print(f"Error al obtener el token: {e}")
+        raise Exception("No se pudo obtener el token")
 
-# # guardas los productos en la base de datos
-# def guardar_productos(request):
-#     URL_API = "https://saaserpzn1a.qualitycolombia.com.co:58090/6h9VMm3poIkt/saas/api/execute"
+# guardas los productos en la base de datos
+def guardar_productos(request):
+    URL_API = "https://saaserpzn1a.qualitycolombia.com.co:58090/6h9VMm3poIkt/saas/api/execute"
     
-#     try:
-#         TOKEN = get_token()
+    try:
+        TOKEN = get_token()
         
-#         headers = {
-#             "Authorization": f"Bearer {TOKEN}",  # Cambia 'Bearer' si la API usa otro esquema de autorización
-#             "Content-Type": "application/json"  # Indica que el cuerpo será JSON
-#         }
+        headers = {
+            "Authorization": f"Bearer {TOKEN}",  # Cambia 'Bearer' si la API usa otro esquema de autorización
+            "Content-Type": "application/json"  # Indica que el cuerpo será JSON
+        }
         
-#         # Cuerpo (body) en formato JSON requerido por la API
-#         body = {
-#             "token":81,
-#             "company":"6h9VMm3poIkt",
-#             "appuser":"mngapicovalle01",
-#             "pwd":"R45SKFJH361A",
-#             "mnguser":"mngapi",
-#             "service":"MSVT01T6DHD",
-#             "entity":"HK1A010G1J34",
-#             "data":{"fechaini":"20241201","fechafin":"20241231"}
-#         }
+        # Cuerpo (body) en formato JSON requerido por la API
+        body = {
+            "token":81,
+            "company":"6h9VMm3poIkt",
+            "appuser":"mngapicovalle01",
+            "pwd":"R45SKFJH361A",
+            "mnguser":"mngapi",
+            "service":"MSVT01T6DHD",
+            "entity":"HK1A010G1J34",
+            "data":{"fechaini":"20241201","fechafin":"20241231"}
+        }
         
-#         # Intenta realizar la solicitud GET a la API
-#         response = requests.post(URL_API, json=body, headers=headers)
-#         if response.status_code == 201:
-#             # se utiliza el método json() para extraer los datos en formato JSON de la respuesta y se almacenan en la variable productos
-#             productos = response.json()
-#             data = response.json().get("data", [])
-#             logger.info(f"Datos obtenidos: {len(data)}")
-#             df = pd.DataFrame(data)  # Convertir los datos a un DataFrame de pandas
-#             # print(df)
-#             # df.to_excel("ventas_marzo_2025.xlsx", index=False)  # Guardar el DataFrame en un archivo Excel
-#             print(f"Datos obtenidos: {len(data)}")
-#             productos_guardados = []
-#             sku_existentes = set(Producto.objects.values_list('sku', flat=True))  # Obtener los SKUs existentes en la base de datos
-#             numeros_existentes = set(Producto.objects.values_list('numero', flat=True))  # Obtener los números existentes en la base de datos
-#             fechas_existentes = set(Producto.objects.values_list('fecha', flat=True))  # Obtener las fechas existentes en la base de datos
+        # Intenta realizar la solicitud GET a la API
+        response = requests.post(URL_API, json=body, headers=headers)
+        if response.status_code == 201:
+            # se utiliza el método json() para extraer los datos en formato JSON de la respuesta y se almacenan en la variable productos
+            productos = response.json()
+            data = response.json().get("data", [])
+            logger.info(f"Datos obtenidos: {len(data)}")
+            df = pd.DataFrame(data)  # Convertir los datos a un DataFrame de pandas
+            # print(df)
+            # df.to_excel("ventas_marzo_2025.xlsx", index=False)  # Guardar el DataFrame en un archivo Excel
+            print(f"Datos obtenidos: {len(data)}")
+            productos_guardados = []
+            sku_existentes = set(Producto.objects.values_list('sku', flat=True))  # Obtener los SKUs existentes en la base de datos
+            numeros_existentes = set(Producto.objects.values_list('numero', flat=True))  # Obtener los números existentes en la base de datos
+            fechas_existentes = set(Producto.objects.values_list('fecha', flat=True))  # Obtener las fechas existentes en la base de datos
             
-#             # Itera sobre los datos y guarda cada producto en la base de datos
-#             for item in data:
-#                 # Verificar si el SKU, número y fecha ya existen en la base de datos
-#                 if item['fecha'] in fechas_existentes and item['sku'] in sku_existentes and item['numero'] in numeros_existentes:
-#                     continue  # Si ya existe, no lo guarda
-#                 # Crear instancia del modelo a partir del diccionario
-#                 producto = Producto(
-#                     yyyy=item["yyyy"],
-#                     mm=item["mm"],
-#                     dd=item["dd"],
-#                     fecha=item["fecha"],
-#                     hora=item["hora"],
-#                     clase=item["clase"],
-#                     tipo=item["tipo"],
-#                     numero=item["numero"],
-#                     ven_cob=item["ven_cob"],
-#                     ven_cc=item["ven_cc"],
-#                     ven_nom=item["ven_nom"],
-#                     ccnit=item["ccnit"],
-#                     cliente_nom=item["cliente_nom"],
-#                     telef=item["telef"],
-#                     ciudad=item["ciudad"],
-#                     direccion=item["direccion"],
-#                     cliente_grp=item["cliente_grp"],
-#                     cliente_grp_nom=item["cliente_grp_nom"],
-#                     ciudad_nom=item["ciudad_nom"],
-#                     cliente_creado=item["cliente_creado"],
-#                     zona=item["zona"],
-#                     zona_nom=item["zona_nom"],
-#                     bod=item["bod"],
-#                     bod_nom=item["bod_nom"],
-#                     indinv=item["indinv"],
-#                     sku=item["sku"],
-#                     umd=item["umd"],
-#                     sku_nom=item["sku_nom"],
-#                     marca=item["marca"],
-#                     marca_nom=item["marca_nom"],
-#                     linea=item["linea"],
-#                     linea_nom=item["linea_nom"],
-#                     categ1=item["categ1"],
-#                     categ1_nom=item["categ1_nom"],
-#                     categ2=item["categ2"],
-#                     categ2_nom=item["categ2_nom"],
-#                     proveedor=item["proveedor"],
-#                     proveedor_nom=item["proveedor_nom"],
-#                     detalle=item["detalle"],
-#                     listap=item["listap"],
-#                     metodo_pago=item["metodo_pago"],
-#                     iva_porc=item["iva_porc"],
-#                     cantidad=item["cantidad"],
-#                     precio_b=item["precio_b"],
-#                     precio_d=item["precio_d"],
-#                     dcto1=item["dcto1"],
-#                     descuento=item["descuento"],
-#                     subtotal=item["subtotal"],
-#                     iva=item["iva"],
-#                     venta=item["venta"],
-#                     costo_ult=item["costo_ult"],
-#                     costo_pro=item["costo_pro"],
-#                     costo_vta=item["costo_vta"]
-#                 )
-#                 productos_guardados.append(producto)
-#             Producto.objects.bulk_create(productos_guardados)  # Guarda el objeto en la base de datos
-#             logger.info(f"Productos guardados: {len(productos_guardados)}")
-#             print(f"Productos guardados: {len(productos_guardados)}")
-#             #vaciar la lista de productos guardados
-#             productos_guardados = []
-#         else:
-#             # En caso de un código de respuesta no exitoso. Manejo de errores HTTP
-#             print(f"Error en la solicitud: {response.status_code}")
-#             productos = []
-#     except requests.RequestException as e:
-#         # Manejar errores de solicitud, por ejemplo, problemas de red
-#         print(f"Error en la solicitud: {e}")
-#         productos = []
-#     return HttpResponse("ok")
+            # Itera sobre los datos y guarda cada producto en la base de datos
+            for item in data:
+                # Verificar si el SKU, número y fecha ya existen en la base de datos
+                if item['fecha'] in fechas_existentes and item['sku'] in sku_existentes and item['numero'] in numeros_existentes:
+                    continue  # Si ya existe, no lo guarda
+                # Crear instancia del modelo a partir del diccionario
+                producto = Producto(
+                    yyyy=item["yyyy"],
+                    mm=item["mm"],
+                    dd=item["dd"],
+                    fecha=item["fecha"],
+                    hora=item["hora"],
+                    clase=item["clase"],
+                    tipo=item["tipo"],
+                    numero=item["numero"],
+                    ven_cob=item["ven_cob"],
+                    ven_cc=item["ven_cc"],
+                    ven_nom=item["ven_nom"],
+                    ccnit=item["ccnit"],
+                    cliente_nom=item["cliente_nom"],
+                    telef=item["telef"],
+                    ciudad=item["ciudad"],
+                    direccion=item["direccion"],
+                    cliente_grp=item["cliente_grp"],
+                    cliente_grp_nom=item["cliente_grp_nom"],
+                    ciudad_nom=item["ciudad_nom"],
+                    cliente_creado=item["cliente_creado"],
+                    zona=item["zona"],
+                    zona_nom=item["zona_nom"],
+                    bod=item["bod"],
+                    bod_nom=item["bod_nom"],
+                    indinv=item["indinv"],
+                    sku=item["sku"],
+                    umd=item["umd"],
+                    sku_nom=item["sku_nom"],
+                    marca=item["marca"],
+                    marca_nom=item["marca_nom"],
+                    linea=item["linea"],
+                    linea_nom=item["linea_nom"],
+                    categ1=item["categ1"],
+                    categ1_nom=item["categ1_nom"],
+                    categ2=item["categ2"],
+                    categ2_nom=item["categ2_nom"],
+                    proveedor=item["proveedor"],
+                    proveedor_nom=item["proveedor_nom"],
+                    detalle=item["detalle"],
+                    listap=item["listap"],
+                    metodo_pago=item["metodo_pago"],
+                    iva_porc=item["iva_porc"],
+                    cantidad=item["cantidad"],
+                    precio_b=item["precio_b"],
+                    precio_d=item["precio_d"],
+                    dcto1=item["dcto1"],
+                    descuento=item["descuento"],
+                    subtotal=item["subtotal"],
+                    iva=item["iva"],
+                    venta=item["venta"],
+                    costo_ult=item["costo_ult"],
+                    costo_pro=item["costo_pro"],
+                    costo_vta=item["costo_vta"]
+                )
+                productos_guardados.append(producto)
+            Producto.objects.bulk_create(productos_guardados)  # Guarda el objeto en la base de datos
+            logger.info(f"Productos guardados: {len(productos_guardados)}")
+            print(f"Productos guardados: {len(productos_guardados)}")
+            #vaciar la lista de productos guardados
+            productos_guardados = []
+        else:
+            # En caso de un código de respuesta no exitoso. Manejo de errores HTTP
+            print(f"Error en la solicitud: {response.status_code}")
+            productos = []
+    except requests.RequestException as e:
+        # Manejar errores de solicitud, por ejemplo, problemas de red
+        print(f"Error en la solicitud: {e}")
+        productos = []
+    return HttpResponse("ok")
