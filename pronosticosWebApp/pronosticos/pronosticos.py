@@ -550,7 +550,6 @@ class Pronosticos:
         
         return (
             df_demanda,
-            df_total,
             df_pronosticos,
             df_pronostico_p3,
             df_pronostico_p4,

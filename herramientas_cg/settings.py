@@ -48,15 +48,6 @@ INSTALLED_APPS = [
     'django_crontab',  # Para tareas programadas
 ]
 
-# Define tus cron jobs:
-CRONJOBS = [
-    # Ejecución diaria a las 02:00 AM:
-    # ('0 2 * * *', 'django.core.management.call_command', ['lista_productos']),
-
-    # Si en lugar de diario quieres cada 5 minutos, usa:
-    ('*/5 * * * *', 'django.core.management.call_command', ['cargar_productos']), #El primer campo es la expresión cron (minuto hora día_mes mes día_semana).
-]
-
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',

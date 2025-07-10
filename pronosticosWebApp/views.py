@@ -90,33 +90,59 @@ def send_data(request):
         return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
 # @require_GET
-def lista_productos():
-    global df_demanda, df_total, df_pronosticos, df_pronostico_p3, df_pronostico_p4, df_pronostico_p5, df_pronostico_ses, df_pronostico_sed
-    df_demanda, df_total, df_pronosticos, df_pronostico_p3, df_pronostico_p4, df_pronostico_p5, df_pronostico_ses, df_pronostico_sed = Pronosticos.pronosticos()
+# def lista_productos():
+#     global df_demanda, df_pronosticos, df_pronostico_p3, df_pronostico_p4, df_pronostico_p5, df_pronostico_ses, df_pronostico_sed
+#     df_demanda, df_pronosticos, df_pronostico_p3, df_pronostico_p4, df_pronostico_p5, df_pronostico_ses, df_pronostico_sed = Pronosticos.pronosticos()
    
-    # Convertir el DataFrame a JSON
-    df_pronosticos_json = df_pronosticos.to_dict(orient='records')
-    global data
-    data = {
-        "productos": df_pronosticos_json,
-    }
-    return
-
-def demanda(request):
-    return JsonResponse(data, safe=False)
-
-# import json, os
-# from django.conf import settings
-# JSON_PATH = os.path.join(settings.BASE_DIR, "productos.json")
+#     # Convertir el DataFrame a JSON
+#     df_pronosticos_json = df_pronosticos.to_dict(orient='records')
+#     global data
+#     data = {
+#         "productos": df_pronosticos_json,
+#     }
+#     return
 
 # def demanda(request):
-#     try:
-#         with open(JSON_PATH, encoding="utf-8") as f:
-#             data = json.load(f)
-#     except FileNotFoundError:
-#         data = {"productos": []}
 #     return JsonResponse(data, safe=False)
 
+import json, os
+from django.conf import settings
+JSON_PATH = os.path.join(settings.BASE_DIR, "productos.json")
+def load_pronosticos_data():
+    """
+    Lee productos.json y reconstruye cada DataFrame.
+    """
+    with open(JSON_PATH, encoding="utf-8") as f:
+        raw = json.load(f)
+
+    df_demanda         = pd.DataFrame(raw["demanda"])
+    df_pronosticos     = pd.DataFrame(raw["pronosticos"])
+    df_pron_p3         = pd.DataFrame(raw["p3"])
+    df_pron_p4         = pd.DataFrame(raw["p4"])
+    df_pron_p5         = pd.DataFrame(raw["p5"])
+    df_pron_ses        = pd.DataFrame(raw["ses"])
+    df_pron_sed        = pd.DataFrame(raw["sed"])
+
+    return (
+        df_demanda,
+        df_pronosticos,
+        df_pron_p3,
+        df_pron_p4,
+        df_pron_p5,
+        df_pron_ses,
+        df_pron_sed,
+    )
+
+def demanda(request):
+    try:
+        with open(JSON_PATH, encoding="utf-8") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        data = {"productos": []}
+    return JsonResponse(data, safe=False)
+
+@csrf_exempt
+@login_required
 def get_chart(request):
     
     """
@@ -130,6 +156,17 @@ def get_chart(request):
     sede      = request.session.get('sede')
     marca_nom = request.session.get('marca_nom')
 
+    # 2. Carga los DataFrames desde el JSON
+    (
+        df_demanda,
+        df_pronosticos,
+        df_pronostico_p3,
+        df_pronostico_p4,
+        df_pronostico_p5,
+        df_pronostico_ses,
+        df_pronostico_sed,
+    ) = load_pronosticos_data()
+    
     if not all([sku, sku_nom, bod]):
         return JsonResponse({"status": "error",
                              "message": "Selecciona una fila antes de generar la gráfica"}, status=400)
