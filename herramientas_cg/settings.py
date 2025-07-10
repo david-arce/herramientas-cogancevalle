@@ -45,7 +45,6 @@ INSTALLED_APPS = [
     'pronosticosWebApp',
     'conteoApp',
     'presupuestoApp',
-    'django_crontab',  # Para tareas programadas
 ]
 
 MIDDLEWARE = [
