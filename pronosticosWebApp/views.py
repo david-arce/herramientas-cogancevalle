@@ -101,17 +101,21 @@ def lista_productos():
         "productos": df_pronosticos_json,
     }
     return
-import json, os
-from django.conf import settings
-JSON_PATH = os.path.join(settings.BASE_DIR, "productos.json")
 
 def demanda(request):
-    try:
-        with open(JSON_PATH, encoding="utf-8") as f:
-            data = json.load(f)
-    except FileNotFoundError:
-        data = {"productos": []}
     return JsonResponse(data, safe=False)
+
+# import json, os
+# from django.conf import settings
+# JSON_PATH = os.path.join(settings.BASE_DIR, "productos.json")
+
+# def demanda(request):
+#     try:
+#         with open(JSON_PATH, encoding="utf-8") as f:
+#             data = json.load(f)
+#     except FileNotFoundError:
+#         data = {"productos": []}
+#     return JsonResponse(data, safe=False)
 
 def get_chart(request):
     
