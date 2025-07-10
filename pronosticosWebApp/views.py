@@ -101,9 +101,10 @@ def lista_productos():
         "productos": df_pronosticos_json,
     }
     return
-
+from django.core.cache import cache
 def demanda(request):
-    return JsonResponse(data, safe=False)
+    productos = cache.get("productos", [])
+    return JsonResponse({"productos": productos}, safe=False)
 
 def get_chart(request):
     
