@@ -101,10 +101,17 @@ def lista_productos():
         "productos": df_pronosticos_json,
     }
     return
-from django.core.cache import cache
+import json, os
+from django.conf import settings
+JSON_PATH = os.path.join(settings.BASE_DIR, "productos.json")
+
 def demanda(request):
-    productos = cache.get("productos", [])
-    return JsonResponse({"productos": productos}, safe=False)
+    try:
+        with open(JSON_PATH, encoding="utf-8") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        data = {"productos": []}
+    return JsonResponse(data, safe=False)
 
 def get_chart(request):
     
