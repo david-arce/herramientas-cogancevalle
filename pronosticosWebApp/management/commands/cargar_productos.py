@@ -9,5 +9,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         _, _, df_pronosticos, *_ = Pronosticos.pronosticos()
+        print(df_pronosticos)
         cache.set("productos", df_pronosticos.to_dict("records"), None)
         self.stdout.write("Productos cacheados")
