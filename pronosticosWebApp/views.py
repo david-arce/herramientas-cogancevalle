@@ -89,7 +89,7 @@ def send_data(request):
     else:
         return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
-@require_GET
+# @require_GET
 def lista_productos():
     global df_demanda, df_pronosticos, df_pronostico_p3, df_pronostico_p4, df_pronostico_p5, df_pronostico_ses, df_pronostico_sed
     df_demanda, df_pronosticos, df_pronostico_p3, df_pronostico_p4, df_pronostico_p5, df_pronostico_ses, df_pronostico_sed = Pronosticos.pronosticos()
