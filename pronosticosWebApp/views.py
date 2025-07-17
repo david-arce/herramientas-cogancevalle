@@ -199,7 +199,6 @@ def demanda(request):
 @csrf_exempt
 @login_required
 def get_chart(request):
-    inicio = time.time()
     # 1) Parámetros de sesión
     sku       = request.session.get('sku')
     sku_nom   = request.session.get('sku_nom')
@@ -261,9 +260,12 @@ def get_chart(request):
         .order_by('yyyy','mm')
         .values_list('pronostico_sed', flat=True)
     )
-
-    fin = time.time()
-    print(f"Tiempo de carga de datos: {fin - inicio:.2f} s")
+    # Convertir los valores a enteros
+    list_prom3 = [int(x) for x in list_prom3]
+    list_prom4 = [int(x) for x in list_prom4]
+    list_prom5 = [int(x) for x in list_prom5]
+    list_ses = [int(x) for x in list_ses]
+    list_sed = [int(x) for x in list_sed]
 
     # 3) Obtener los meses (números) via la misma consulta de demanda
     meses_nums = list(
