@@ -94,7 +94,7 @@ class Migration(migrations.Migration):
                 ('costo_vta', models.DecimalField(blank=True, decimal_places=2, max_digits=20, null=True)),
             ],
             options={
-                'db_table': 'venta_diaria',
+                'db_table': 'productos_venta',
                 'managed': False,
             },
         ),

@@ -1,7 +1,6 @@
 import time
 import pandas as pd
 import numpy as np
-from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 
 class PronosticoExpSimple:
     

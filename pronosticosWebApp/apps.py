@@ -6,4 +6,4 @@ class PronosticoswebappConfig(AppConfig):
     name = 'pronosticosWebApp'
     
     # def ready(self):
-    #     return
+    #     import pronosticosWebApp.signals

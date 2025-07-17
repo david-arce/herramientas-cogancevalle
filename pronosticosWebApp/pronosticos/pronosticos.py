@@ -22,6 +22,18 @@ class Pronosticos:
         (
             df_pronostico_p3
         ) = pm.promedioMovil_3(df_demanda, 3)
+        (
+            df_pronostico_p4
+        ) = pm.promedioMovil_4(df_demanda, 4)
+        (
+            df_pronostico_p5
+        ) = pm.promedioMovil_5(df_demanda, 5)
+        (
+            df_pronostico_ses
+        ) = ses.pronosticoExpSimple(df_demanda, 0.5)
+        (
+            df_pronostico_sed
+        ) = sed.pronosticoExpDoble(df_demanda, 0.5, 0.5, 1)
         # obtener los datos del Inventario
         inv = Inventario.objects.all()
         # agrupar inv por sku, sku_nom, y bod y sumar inv_saldo
@@ -91,19 +103,6 @@ class Pronosticos:
         }
         df_demanda_final['bod'] = df_demanda_final['bod'].replace(reverse_reemplazos_bod)
         
-        (
-            df_pronostico_p4
-        ) = pm.promedioMovil_4(df_demanda, 4)
-        (
-            df_pronostico_p5
-        ) = pm.promedioMovil_5(df_demanda, 5)
-
-        (
-            df_pronostico_ses
-        ) = ses.pronosticoExpSimple(df_demanda, 0.5)
-        (
-            df_pronostico_sed
-        ) = sed.pronosticoExpDoble(df_demanda, 0.5, 0.5, 1)
         
         # extraer los datos de df_pronostico_p3 del mes 13
         # df_total = df_pronostico_p3[df_pronostico_p3['mm'] == 13].copy()
@@ -147,33 +146,6 @@ class Pronosticos:
             on=['sku', 'sku_nom', 'bod'],
             how='left'
         )
-        
-        # eliminar columnas umd, total, precio, promedio_movil, error, errorMAPE, errorMAPEPrima, errorECM, MAD, MAPE, MAPE_Prima
-        # df_total = df_total.drop(
-        #     columns=[
-        #         'total',
-        #         'promedio_movil',
-        #         'error',
-        #         'errorMAPE',
-        #         'errorMAPEPrima',
-        #         'errorECM',
-        #         'MAD',
-        #         'MAPE',
-        #         'MAPE_Prima'
-        #     ]
-        # )
-        
-        # df_total.loc[:,'ECM_P4'] = df_pronostico_p4[df_pronostico_p4['mm'] == 13]['ECM'].values
-        # df_total.loc[:,'ECM_P5'] = df_pronostico_p5[df_pronostico_p5['mm'] == 13]['ECM'].values
-        # df_total.loc[:,'ECM_SES'] = df_pronostico_ses[df_pronostico_ses['mm'] == 13]['ECM'].values
-        # df_total.loc[:,'ECM_SED'] = df_pronostico_sed[df_pronostico_sed['mm'] == 13]['ECM'].values
-        
-        # añadir columnas para los pronosticos de cada metodo
-        # df_total.loc[:,'promedio_movil'] = df_pronostico_p3[df_pronostico_p3['mm'] == 13]['promedio_movil'].values
-        # df_total.loc[:,'promedio_movil_p4'] = df_pronostico_p4[df_pronostico_p4['mm'] == 13]['promedio_movil'].values
-        # df_total.loc[:,'promedio_movil_p5'] = df_pronostico_p5[df_pronostico_p5['mm'] == 13]['promedio_movil'].values
-        # df_total.loc[:,'pronostico_ses'] = df_pronostico_ses[df_pronostico_ses['mm'] == 13]['pronostico_ses'].values
-        # df_total.loc[:,'pronostico_sed'] = df_pronostico_sed[df_pronostico_sed['mm'] == 13]['pronostico_sed'].values
         
         # Asegúrate de que todas las columnas estén en formato numérico
         cols_ecm = ['ECM', 'ECM_P4', 'ECM_P5', 'ECM_SES', 'ECM_SED']

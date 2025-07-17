@@ -62,23 +62,6 @@ class Producto(models.Model):
         return f"Producto {self.numero} - {self.sku_nom}"
 
 
-# class Inventario(models.Model):
-#     cta = models.CharField(max_length=50)
-#     marca = models.CharField(max_length=50)
-#     marca_nom = models.CharField(max_length=100)
-#     sku = models.CharField(max_length=50)
-#     sku_nom = models.CharField(max_length=200)
-#     lpt = models.CharField(max_length=8)  
-#     bod = models.CharField(max_length=10)
-#     bod_nom = models.CharField(max_length=100)
-#     inv_saldo = models.IntegerField(null=True, blank=True)
-#     inv_trsto = models.IntegerField(null=True, blank=True)
-#     vlr_unit = models.DecimalField(max_digits=20, decimal_places=2)
-#     vlr_total = models.DecimalField(max_digits=20, decimal_places=2)
-
-#     class Meta:
-#         db_table = "inventario"
-
 class LeadTime(models.Model):
     sku = models.IntegerField(null=True, blank=True)
     sku_nom = models.CharField(max_length=200)
@@ -88,3 +71,162 @@ class LeadTime(models.Model):
 
     class Meta:
         db_table = "leadtime"
+
+#---------------models for pronosticos----------------
+class PronosticoMoviln3(models.Model):
+    yyyy = models.IntegerField()
+    mm = models.IntegerField()
+    sku = models.CharField(max_length=50)
+    sku_nom = models.CharField(max_length=200)
+    marca_nom = models.CharField(max_length=100)
+    bod = models.CharField(max_length=10)
+    umd = models.CharField(max_length=10, null=True, blank=True)
+    total = models.IntegerField(null=True, blank=True)
+    sede = models.CharField(max_length=50, null=True, blank=True)
+    promedio_movil = models.FloatField(null=True, blank=True)
+    error = models.FloatField(null=True, blank=True)
+    errorMAPE = models.FloatField(null=True, blank=True)
+    errorMAPEPrima = models.FloatField(null=True, blank=True)
+    errorECM = models.FloatField(null=True, blank=True)
+    MAD = models.FloatField(null=True, blank=True)
+    MAPE = models.FloatField(null=True, blank=True)
+    MAPE_Prima = models.FloatField(null=True, blank=True)
+    ECM = models.FloatField(null=True, blank=True)
+
+    class Meta:
+        db_table = "pronostico_movil_n3"
+        managed = False  # This model is managed by the database, not Django migrations
+        
+class PronosticoMoviln4(models.Model):
+    yyyy = models.IntegerField()
+    mm = models.IntegerField()
+    sku = models.CharField(max_length=50)
+    sku_nom = models.CharField(max_length=200)
+    marca_nom = models.CharField(max_length=100)
+    bod = models.CharField(max_length=10)
+    umd = models.CharField(max_length=10, null=True, blank=True)
+    total = models.IntegerField(null=True, blank=True)
+    sede = models.CharField(max_length=50, null=True, blank=True)
+    promedio_movil = models.FloatField(null=True, blank=True)
+    error = models.FloatField(null=True, blank=True)
+    errorMAPE = models.FloatField(null=True, blank=True)
+    errorMAPEPrima = models.FloatField(null=True, blank=True)
+    errorECM = models.FloatField(null=True, blank=True)
+    MAD = models.FloatField(null=True, blank=True)
+    MAPE = models.FloatField(null=True, blank=True)
+    MAPE_Prima = models.FloatField(null=True, blank=True)
+    ECM = models.FloatField(null=True, blank=True)
+
+    class Meta:
+        db_table = "pronostico_movil_n4"
+        managed = False
+    
+class PronosticoMoviln5(models.Model):
+    yyyy = models.IntegerField()
+    mm = models.IntegerField()
+    sku = models.CharField(max_length=50)
+    sku_nom = models.CharField(max_length=200)
+    marca_nom = models.CharField(max_length=100)
+    bod = models.CharField(max_length=10)
+    umd = models.CharField(max_length=10, null=True, blank=True)
+    total = models.IntegerField(null=True, blank=True)
+    sede = models.CharField(max_length=50, null=True, blank=True)
+    promedio_movil = models.FloatField(null=True, blank=True)
+    error = models.FloatField(null=True, blank=True)
+    errorMAPE = models.FloatField(null=True, blank=True)
+    errorMAPEPrima = models.FloatField(null=True, blank=True)
+    errorECM = models.FloatField(null=True, blank=True)
+    MAD = models.FloatField(null=True, blank=True)
+    MAPE = models.FloatField(null=True, blank=True)
+    MAPE_Prima = models.FloatField(null=True, blank=True)
+    ECM = models.FloatField(null=True, blank=True)
+
+    class Meta:
+        db_table = "pronostico_movil_n5"
+        managed = False
+    
+class PronosticoSes(models.Model):
+    yyyy = models.IntegerField()
+    mm = models.IntegerField()
+    sku = models.CharField(max_length=50)
+    sku_nom = models.CharField(max_length=200)
+    marca_nom = models.CharField(max_length=100)
+    bod = models.CharField(max_length=10)
+    umd = models.CharField(max_length=10, null=True, blank=True)
+    total = models.IntegerField(null=True, blank=True)
+    sede = models.CharField(max_length=50, null=True, blank=True)
+    pronostico_ses = models.FloatField(null=True, blank=True)
+    error = models.FloatField(null=True, blank=True)
+    errorMAPE = models.FloatField(null=True, blank=True)
+    errorMAPEPrima = models.FloatField(null=True, blank=True)
+    errorECM = models.FloatField(null=True, blank=True)
+    MAD = models.FloatField(null=True, blank=True)
+    MAPE = models.FloatField(null=True, blank=True)
+    MAPE_Prima = models.FloatField(null=True, blank=True)
+    ECM = models.FloatField(null=True, blank=True)
+
+    class Meta:
+        db_table = "pronostico_ses"
+        managed = False
+    
+class PronosticoSed(models.Model):
+    yyyy = models.IntegerField()
+    mm = models.IntegerField()
+    sku = models.CharField(max_length=50)
+    sku_nom = models.CharField(max_length=200)
+    marca_nom = models.CharField(max_length=100)
+    bod = models.CharField(max_length=10)
+    umd = models.CharField(max_length=10, null=True, blank=True)
+    total = models.IntegerField(null=True, blank=True)
+    sede = models.CharField(max_length=50, null=True, blank=True)
+    pronostico_sed = models.FloatField(null=True, blank=True)
+    error = models.FloatField(null=True, blank=True)
+    errorMAPE = models.FloatField(null=True, blank=True)
+    errorMAPEPrima = models.FloatField(null=True, blank=True)
+    errorECM = models.FloatField(null=True, blank=True)
+    MAD = models.FloatField(null=True, blank=True)
+    MAPE = models.FloatField(null=True, blank=True)
+    MAPE_Prima = models.FloatField(null=True, blank=True)
+    ECM = models.FloatField(null=True, blank=True)
+
+    class Meta:
+        db_table = "pronostico_sed"
+        managed = False
+    
+class Demanda(models.Model):
+    yyyy = models.IntegerField()
+    mm = models.IntegerField()
+    sku = models.CharField(max_length=50)
+    sku_nom = models.CharField(max_length=200)
+    marca_nom = models.CharField(max_length=100)
+    bod = models.CharField(max_length=10)
+    umd = models.CharField(max_length=10, null=True, blank=True)
+    total = models.IntegerField(null=True, blank=True)
+    sede = models.CharField(max_length=50, null=True, blank=True)
+    precio = models.IntegerField()
+
+    class Meta:
+        db_table = "demanda"
+        managed = False
+        
+class PronosticoFinal(models.Model):
+    bodega = models.CharField(max_length=50, null=True, blank=True)
+    item = models.CharField(max_length=50, null=True, blank=True)
+    codigo = models.CharField(max_length=50, null=True, blank=True)
+    producto = models.CharField(max_length=200, null=True, blank=True)
+    unimed = models.CharField(max_length=50, null=True, blank=True)
+    lotepro = models.CharField(max_length=10, null=True, blank=True)
+    proveedor = models.CharField(max_length=200, null=True, blank=True)
+    sede = models.CharField(max_length=50, null=True, blank=True)
+    cantidad = models.IntegerField()
+    stock = models.IntegerField()
+    cantidadx3 = models.IntegerField()
+    precio = models.IntegerField()
+    fecha = models.CharField(max_length=50, null=True, blank=True)
+
+    class Meta:
+        db_table = "pronostico_final"
+        managed = False
+    
+
+        

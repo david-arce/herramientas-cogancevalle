@@ -1,5 +1,5 @@
 from datetime import date, datetime, timedelta
-from django.db.models import Sum, Case, When, IntegerField, Value, CharField, ExpressionWrapper, DecimalField, F
+from django.db.models import Sum, Case, When, IntegerField, Value, CharField, ExpressionWrapper, F
 import pandas as pd
 import numpy as np
 import time
@@ -574,7 +574,8 @@ class PronosticoMovil:
             .agg(
                 marca_nom=('marca_nom','last'),
                 bod       =('bod','last'),
-                yyyy      =('yyyy','last')
+                yyyy      =('yyyy','last'),
+                umd       =('umd','last')
             )
             .reset_index()
         )

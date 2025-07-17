@@ -64,7 +64,7 @@ class Venta(models.Model):
     costo_vta = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
 
     class Meta:
-        db_table = "venta_diaria"
+        db_table = "productos_venta"
         managed = False # desactiva las migraciones
 
 

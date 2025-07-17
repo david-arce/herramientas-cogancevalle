@@ -16,6 +16,8 @@ const handleRowClick = (data) => {
 
 document.getElementById('send-data').addEventListener('click', async () => {
     try {
+        const modal = document.getElementById("processingModal");
+        modal.style.display = "block";  // Mostrar el modal
         const response = await fetch('/send_data/', {
             method: 'POST',
             headers: {
@@ -28,9 +30,15 @@ document.getElementById('send-data').addEventListener('click', async () => {
         console.log(result);
         if (result.status === "success") {
             await initChart(); // Volver a cargar el gráfico después de enviar los datos
+            modal.style.display = "none";  // Ocultar el modal
+        }
+        else {
+            modal.style.display = "none";  // Ocultar el modal
+            alert("No se pudo generar el gráfico. Intenta de nuevo.");
         }
     } catch (e) {
         console.error("Error sending data: ", e);
+        modal.style.display = "none";
         alert("Por favor selecciona una fila de la tabla para generar la gráfica");
     }
 });
