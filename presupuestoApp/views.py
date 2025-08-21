@@ -1,6 +1,6 @@
 from django.shortcuts import render
 import pandas as pd
-from .models import Producto, BdPresupuesto1, BdPresupuesto2, BdPresupuesto3
+from .models import Producto, BdPresupuesto1, BdPresupuesto2, BdPresupuesto3, BdPresupuestoNomina
 from django.db.models.functions import Concat
 from django.db.models import Sum
 import numpy as np
@@ -13,33 +13,10 @@ def presupuesto(request):
     bd2 = BdPresupuesto2.objects.values('nombre_linea_n1', 'lapso').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'suma')
     bd3 = BdPresupuesto3.objects.values('nombre_linea_n1', 'lapso').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'suma')
     
-    
     df1 = pd.DataFrame(list(bd1))
     df2 = pd.DataFrame(list(bd2))
     df3 = pd.DataFrame(list(bd3))
     
-    bd1_centro_operacion1 = BdPresupuesto1.objects.filter(centro_de_operacion=1).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd1_centro_operacion2 = BdPresupuesto1.objects.filter(centro_de_operacion=2).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd1_centro_operacion3 = BdPresupuesto1.objects.filter(centro_de_operacion=3).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd1_centro_operacion4 = BdPresupuesto1.objects.filter(centro_de_operacion=4).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd2_centro_operacion1 = BdPresupuesto2.objects.filter(centro_de_operacion=1).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd2_centro_operacion2 = BdPresupuesto2.objects.filter(centro_de_operacion=2).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd2_centro_operacion3 = BdPresupuesto2.objects.filter(centro_de_operacion=3).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd2_centro_operacion4 = BdPresupuesto2.objects.filter(centro_de_operacion=4).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd3_centro_operacion1 = BdPresupuesto3.objects.filter(centro_de_operacion=1).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd3_centro_operacion2 = BdPresupuesto3.objects.filter(centro_de_operacion=2).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd3_centro_operacion3 = BdPresupuesto3.objects.filter(centro_de_operacion=3).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd3_centro_operacion4 = BdPresupuesto3.objects.filter(centro_de_operacion=4).values('lapso').annotate(suma=Sum('valor_neto'))
-    
-    bd1_clase_cliente1 = BdPresupuesto1.objects.filter(nombre_clase_cliente='CLIENTES', centro_de_operacion=1).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd1_clase_distribuidor1 = BdPresupuesto1.objects.filter(nombre_clase_cliente='DISTRIBUIDOR', centro_de_operacion=1).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd2_clase_cliente2 = BdPresupuesto1.objects.filter(nombre_clase_cliente='CLIENTES', centro_de_operacion=2).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd2_clase_distribuidor2 = BdPresupuesto1.objects.filter(nombre_clase_cliente='DISTRIBUIDOR', centro_de_operacion=2).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd3_clase_cliente3 = BdPresupuesto1.objects.filter(nombre_clase_cliente='CLIENTES', centro_de_operacion=3).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd3_clase_distribuidor3 = BdPresupuesto1.objects.filter(nombre_clase_cliente='DISTRIBUIDOR', centro_de_operacion=3).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd4_clase_cliente4 = BdPresupuesto1.objects.filter(nombre_clase_cliente='CLIENTES', centro_de_operacion=4).values('lapso').annotate(suma=Sum('valor_neto'))
-    bd4_clase_distribuidor4 = BdPresupuesto1.objects.filter(nombre_clase_cliente='DISTRIBUIDOR', centro_de_operacion=4).values('lapso').annotate(suma=Sum('valor_neto'))
-   
     df_lapso_2020_2021 = df1.groupby('lapso')['suma'].sum().reset_index()
     df_lapso_2024 = df2.groupby('lapso')['suma'].sum().reset_index()
     df_lapso_2022_2023 = df3.groupby('lapso')['suma'].sum().reset_index()
@@ -127,7 +104,6 @@ def presupuesto(request):
                 'coef_correl_pct': round(coef_abs_pct, 2)  # ej. 87.32%
             })
 
-
     # Crear DataFrame con los coeficientes
     df_correlaciones = pd.DataFrame(correlaciones)
 
@@ -144,3 +120,8 @@ def presupuesto(request):
 
 def dashboard(request):
     return render(request, 'presupuestoApp/dashboard.html')
+
+def presupuestoNomina(request):
+    nomina = BdPresupuestoNomina.objects.values()
+    print(nomina)
+    return render(request, 'presupuestoApp/presupuesto_nomina.html')

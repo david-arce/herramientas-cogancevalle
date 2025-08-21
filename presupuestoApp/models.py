@@ -131,3 +131,18 @@ class BdPresupuesto3(models.Model):
     class Meta:
         managed = False
         db_table = 'bd_presupuesto_3'
+
+class BdPresupuestoNomina(models.Model):
+    cedula = models.CharField(max_length=50, blank=True, null=True)
+    nombre = models.CharField(max_length=255, blank=True, null=True)
+    nombre_cen = models.CharField(max_length=255, blank=True, null=True)
+    nombre_car = models.CharField(max_length=255, blank=True, null=True)
+    salario = models.IntegerField(blank=True, null=True)
+    auxilio = models.IntegerField(blank=True, null=True)
+    nombre_des = models.CharField(max_length=255, blank=True, null=True)
+    tipo_cargo = models.CharField(max_length=50, blank=True, null=True)
+    valor = models.IntegerField(blank=True, null=True)
+    
+    class Meta:
+        managed = False
+        db_table = 'bd_presupuesto_nomina'
