@@ -401,11 +401,13 @@
       </header>
 
       <section aria-label="Resumen de datos" class="dashboard-summary">
+        <a  href="{% url 'presupuesto' %}">
         <article class="card" tabindex="0" aria-labelledby="totalNotesLabel" role="region">
           <span class="material-icons card-icon" aria-hidden="true">note</span>
           <h3 id="totalNotesLabel" class="card-title">Usuario 1</h3>
           <p class="card-number">Haz clic para ver el presupuesto</p>
         </article>
+        </a>
         <article class="card" tabindex="0" aria-labelledby="foldersLabel" role="region" style="background:#009688;">
           <span class="material-icons card-icon" aria-hidden="true">folder_open</span>
           <h3 id="foldersLabel" class="card-title">Usuario 2</h3>

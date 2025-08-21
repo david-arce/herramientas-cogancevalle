@@ -22,7 +22,7 @@ urlpatterns = [
     path('', include('pronosticosWebApp.urls')),
     path('accounts/', include('django.contrib.auth.urls')),
     path('conteo/', include('conteoApp.urls')),
-    # path('presupuesto/', include('presupuestoApp.urls')),
+    path('presupuesto/', include('presupuestoApp.urls')),
 ]
 # Manejar errores 403
 handler403 = 'conteoApp.views.error_permiso'
