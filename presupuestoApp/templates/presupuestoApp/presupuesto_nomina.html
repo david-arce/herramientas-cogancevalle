@@ -15,32 +15,92 @@
             font-family: Arial, sans-serif;
             margin: 30px;
         }
-
         table.dataTable thead th {
             background-color: #007bff;
             color: white;
         }
-
         .dataTables_wrapper {
-            max-width: 1000px;
-            margin: auto;
+            width: 100% !important;       /* ocupar todo el ancho */
+            margin: 20px auto; /* centrado arriba y abajo */
         }
+        .acciones {
+            max-width: 1000px;
+            margin: 20px auto;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        input[type="number"] {
+            padding: 6px;
+            width: 120px;
+        }
+        button {
+            padding: 6px 12px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+
+
+        
     </style>
 </head>
 <body>
-    <h2>Presupuesto por Línea y Lapso</h2>
+    <h2>Presupuesto Nomina</h2>
+
+    <!-- Controles -->
+    <div class="acciones">
+        <label for="porcentaje">Incremento salarial (%):</label>
+        <input type="number" id="porcentaje" min="0" step="0.01">
+        <button id="calcularBtn">Calcular</button>
+        <button id="resetBtn" style="background:#6c757d;">Restablecer</button>
+    </div>
+
     <table id="presupuestoTable" class="display">
         <thead>
             <tr>
                 <th>Cedula</th>
                 <th>Nombre</th>
+                <th>Nombre cargo</th>
+                <th>Salario base</th>
+                <th>Enero</th>
+                <th>Febrero</th>
+                <th>Marzo</th>
+                <th>Abril</th>
+                <th>Mayo</th>
+                <th>Junio</th>
+                <th>Julio</th>
+                <th>Agosto</th>
+                <th>Septiembre</th>
+                <th>Octubre</th>
+                <th>Noviembre</th>
+                <th>Diciembre</th>
             </tr>
         </thead>
         <tbody>
-            {% for row in presupuesto_nomina %}
+            {% for row in nomina %}
             <tr>
                 <td>{{ row.cedula }}</td>
                 <td>{{ row.nombre }}</td>
+                <td>{{ row.nombre_car }}</td>
+                <td class="salario-original">{{ row.salario }}</td>
+                <td class="salario-calculado"></td>
+                <td class="salario-calculado"></td>
+                <td class="salario-calculado"></td>
+                <td class="salario-calculado"></td>
+                <td class="salario-calculado"></td>
+                <td class="salario-calculado"></td>
+                <td class="salario-calculado"></td>
+                <td class="salario-calculado"></td>
+                <td class="salario-calculado"></td>
+                <td class="salario-calculado"></td>
+                <td class="salario-calculado"></td>
+                <td class="salario-calculado"></td>
             </tr>
             {% endfor %}
         </tbody>
@@ -48,10 +108,35 @@
 
     <script>
         $(document).ready(function () {
-            $('#presupuestoTable').DataTable({
+            let table = $('#presupuestoTable').DataTable({
                 language: {
                     url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
                 }
+            });
+
+            // Botón Calcular
+            $('#calcularBtn').on('click', function () {
+                let porcentaje = parseFloat($('#porcentaje').val());
+                if (isNaN(porcentaje)) {
+                    alert("Por favor ingresa un número válido");
+                    return;
+                }
+
+                $('#presupuestoTable tbody tr').each(function () {
+                    let salarioOriginal = parseFloat($(this).find("td.salario-original").text());
+                    if (!isNaN(salarioOriginal)) {
+                        let nuevoSalario = salarioOriginal + (salarioOriginal * porcentaje / 100);
+                        $(this).find("td.salario-calculado").text(nuevoSalario.toFixed(2));
+                    }
+                });
+            });
+
+            // Botón Restablecer
+            $('#resetBtn').on('click', function () {
+                $('#presupuestoTable tbody tr').each(function () {
+                    $(this).find("td.salario-calculado").text(""); // limpia la columna calculada
+                });
+                $('#porcentaje').val(""); // limpia el input
             });
         });
     </script>

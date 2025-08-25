@@ -141,6 +141,7 @@ class BdPresupuestoNomina(models.Model):
     auxilio = models.IntegerField(blank=True, null=True)
     nombre_des = models.CharField(max_length=255, blank=True, null=True)
     tipo_cargo = models.CharField(max_length=50, blank=True, null=True)
+    nombre_cpt = models.CharField(max_length=255, blank=True, null=True)
     valor = models.IntegerField(blank=True, null=True)
     
     class Meta:

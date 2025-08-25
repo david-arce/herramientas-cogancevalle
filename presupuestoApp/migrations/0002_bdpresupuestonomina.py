@@ -22,6 +22,7 @@ class Migration(migrations.Migration):
                 ('auxilio', models.IntegerField(blank=True, null=True)),
                 ('nombre_des', models.CharField(blank=True, max_length=255, null=True)),
                 ('tipo_cargo', models.CharField(blank=True, max_length=50, null=True)),
+                ('nombre_cpt', models.CharField(blank=True, max_length=255, null=True)),
                 ('valor', models.IntegerField(blank=True, null=True)),
             ],
             options={

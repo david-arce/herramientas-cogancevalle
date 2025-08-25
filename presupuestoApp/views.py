@@ -122,6 +122,9 @@ def dashboard(request):
     return render(request, 'presupuestoApp/dashboard.html')
 
 def presupuestoNomina(request):
-    nomina = BdPresupuestoNomina.objects.values()
-    print(nomina)
-    return render(request, 'presupuestoApp/presupuesto_nomina.html')
+    # nomina = BdPresupuestoNomina.objects.values()
+    # obtener los valores de nomina unicos
+    nomina = BdPresupuestoNomina.objects.values('cedula','nombre','nombre_car','salario').distinct()
+    
+    df_nomina = pd.DataFrame(list(nomina))
+    return render(request, 'presupuestoApp/presupuesto_nomina.html', {'nomina': nomina})
