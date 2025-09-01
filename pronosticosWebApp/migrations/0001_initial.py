@@ -12,20 +12,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='LeadTime',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('sku', models.IntegerField(blank=True, null=True)),
-                ('sku_nom', models.CharField(max_length=200)),
-                ('marca_nom', models.CharField(max_length=100)),
-                ('bod', models.IntegerField(blank=True, null=True)),
-                ('tiempo_entrega', models.IntegerField(blank=True, null=True)),
-            ],
-            options={
-                'db_table': 'leadtime',
-            },
-        ),
-        migrations.CreateModel(
             name='Producto',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
