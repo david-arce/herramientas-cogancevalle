@@ -1,6 +1,6 @@
 from django.shortcuts import render
 import pandas as pd
-from .models import Producto, BdPresupuesto1, BdPresupuesto2, BdPresupuesto3, BdPresupuestoNomina
+from .models import Producto, BdPresupuesto1, BdPresupuesto2, BdPresupuesto3, Nom005Salarios
 from django.db.models.functions import Concat
 from django.db.models import Sum
 import numpy as np
@@ -122,9 +122,43 @@ def dashboard(request):
     return render(request, 'presupuestoApp/dashboard.html')
 
 def presupuestoNomina(request):
-    # nomina = BdPresupuestoNomina.objects.values()
+   
+    return render(request, 'presupuesto_nomina/dashboard_nomina.html')
+
+
+
+def tablas(request):
+     # nomina = BdPresupuestoNomina.objects.values()
     # obtener los valores de nomina unicos
-    nomina = BdPresupuestoNomina.objects.values('cedula','nombre','nombre_car','salario').distinct()
+    nomina = Nom005Salarios.objects.values('cedula','nombre','nombre_car','salario').distinct()
     
     df_nomina = pd.DataFrame(list(nomina))
-    return render(request, 'presupuestoApp/presupuesto_nomina.html', {'nomina': nomina})
+    # Capturar parámetros GET
+    # incremento_salarial = request.GET.get("incrementoSalarial", 0)
+    # incremento_ipc = request.GET.get("incrementoIPC", 0)
+    # auxilio_transporte = request.GET.get("auxilioTransporte", 0)
+    # cesantias = request.GET.get("cesantias", 0)
+    # intereses_cesantias = request.GET.get("interesesCesantias", 0)
+    # prima = request.GET.get("prima", 0)
+    # vacaciones = request.GET.get("vacaciones", 0)
+    # salario_minimo = request.GET.get("salarioMinimo", 0)
+    # incremento_comisiones = request.GET.get("incrementoComisiones", 0)
+
+    # # Traer datos de la BD
+    # nomina = Nom005Salarios.objects.all()  # 👈 consulta al modelo real
+
+    # context = {
+    #     "nomina": nomina,
+    #     "params": {
+    #         "incremento_salarial": incremento_salarial,
+    #         "incremento_ipc": incremento_ipc,
+    #         "auxilio_transporte": auxilio_transporte,
+    #         "cesantias": cesantias,
+    #         "intereses_cesantias": intereses_cesantias,
+    #         "prima": prima,
+    #         "vacaciones": vacaciones,
+    #         "salario_minimo": salario_minimo,
+    #         "incremento_comisiones": incremento_comisiones,
+    #     }
+    # }
+    return render(request, "presupuesto_nomina/presupuesto_nomina.html", {'nomina': nomina})

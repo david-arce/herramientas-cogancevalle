@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Presupuesto - Configuración</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+        }
+        h2 {
+            text-align: center;
+        }
+        .grid-acciones {
+            max-width: 800px;
+            margin: 20px auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+        .acciones {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .acciones label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        input[type="number"] {
+            padding: 6px;
+            width: 120px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .btn-group {
+            grid-column: 1 / -1;
+            text-align: center;
+            margin-top: 20px;
+        }
+        button {
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            margin: 0 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #btnTabla {
+            background: #6c757d;
+        }
+        #btnTabla:hover {
+            background: #5a6268;
+        }
+        #resultado {
+            margin-top: 20px;
+            text-align: center;
+            font-weight: bold;
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <h2>Presupuesto Nómina - Parámetros</h2>
+
+    <!-- Formulario solo para el botón Ir a la tabla -->
+    <form id="formTabla" action="{% url 'tablas' %}" method="get">
+        <div class="grid-acciones">
+            <div class="acciones">
+                <label for="incrementoSalarial">Incremento salarial (%):</label>
+                <input type="number" id="incrementoSalarial" name="incrementoSalarial" min="0" step="0.01">
+            </div>
+            <div class="acciones">
+                <label for="incrementoIPC">Incremento IPC (%):</label>
+                <input type="number" id="incrementoIPC" name="incrementoIPC" min="0" step="0.01">
+            </div>
+            <div class="acciones">
+                <label for="auxilioTransporte">Auxilio de transporte (%):</label>
+                <input type="number" id="auxilioTransporte" name="auxilioTransporte" min="0" step="0.01">
+            </div>
+            <div class="acciones">
+                <label for="cesantias">Cesantías (%):</label>
+                <input type="number" id="cesantias" name="cesantias" min="0" step="0.01">
+            </div>
+            <div class="acciones">
+                <label for="interesesCesantias">Intereses cesantías (%):</label>
+                <input type="number" id="interesesCesantias" name="interesesCesantias" min="0" step="0.01">
+            </div>
+            <div class="acciones">
+                <label for="prima">Prima (%):</label>
+                <input type="number" id="prima" name="prima" min="0" step="0.01">
+            </div>
+            <div class="acciones">
+                <label for="vacaciones">Vacaciones (%):</label>
+                <input type="number" id="vacaciones" name="vacaciones" min="0" step="0.01">
+            </div>
+            <div class="acciones">
+                <label for="salarioMinimo">Salario mínimo:</label>
+                <input type="number" id="salarioMinimo" name="salarioMinimo" min="0" step="0.01">
+            </div>
+            <div class="acciones">
+                <label for="incrementoComisiones">Incremento comisiones (%):</label>
+                <input type="number" id="incrementoComisiones" name="incrementoComisiones" min="0" step="0.01">
+            </div>
+
+            <!-- Botones -->
+            <div class="btn-group">
+                <button type="button" id="btnCalcular">Calcular</button>
+                <button type="submit" id="btnTabla">Sueldos</button>
+                <button type="submit" id="btnTabla">Comisiones</button>
+                <button type="submit" id="btnTabla">Horas extras</button>
+                <button type="submit" id="btnTabla">Auxilio de transporte</button>
+                <button type="submit" id="btnTabla">Medios de transporte</button>
+                <button type="submit" id="btnTabla">Ayuda al transporte</button>
+                <button type="submit" id="btnTabla">Cesantias</button>
+                <button type="submit" id="btnTabla">Prima</button>
+                <button type="submit" id="btnTabla">Vacaciones</button>
+                <button type="submit" id="btnTabla">Bonificaciones</button>
+                <button type="submit" id="btnTabla">Aprendiz</button>
+            </div>
+        </div>
+    </form>
+
+    <div id="resultado"></div>
+
+    <script>
+        document.getElementById("btnCalcular").addEventListener("click", function () {
+            let incremento = parseFloat(document.getElementById("incrementoSalarial").value) || 0;
+            let ipc = parseFloat(document.getElementById("incrementoIPC").value) || 0;
+
+            if (incremento === 0 && ipc === 0) {
+                document.getElementById("resultado").innerText = "⚠️ Ingresa al menos un valor para calcular.";
+                document.getElementById("resultado").style.color = "red";
+                return;
+            }
+
+            // Aquí puedes mostrar un resultado temporal (ejemplo básico)
+            document.getElementById("resultado").innerText = 
+                `✅ Cálculo realizado: Incremento Salarial ${incremento}% | IPC ${ipc}%`;
+            document.getElementById("resultado").style.color = "green";
+        });
+    </script>
+</body>
+</html>
