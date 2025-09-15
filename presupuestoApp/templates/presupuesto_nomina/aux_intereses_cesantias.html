@@ -279,7 +279,7 @@ $(document).ready(function() {
         $spinner.show();
         $btn.prop("disabled", true);
 
-        $.get("{% url 'cargar_nomina_base' %}", function() {
+        $.get("{% url 'cargar_intereses_cesantias_base' %}", function() {
             table.ajax.reload();
             showToast("Datos cargados desde Conceptos (NOM516) 📂", "success");
         })
