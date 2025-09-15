@@ -327,6 +327,7 @@ $(document).ready(function() {
         //const incrementoSalarial = parseFloat(params.get("incrementoSalarial")) || 0;
         // 🔹 Obtener incrementoSalarial desde el contexto Django
         const incrementoSalarial = parseFloat("{{ incrementoSalarial|default:0 }}") || 0;
+        const salarioMinimo = parseFloat("{{ salarioMinimo|default:0 }}") || 0;
         console.log(`Incremento salarial: ${incrementoSalarial}%`);
         table.rows().every(function() {
             let data = this.data();
@@ -337,19 +338,37 @@ $(document).ready(function() {
                 let auxRetro = (nuevoSalario - salario) * 2;
                 let retro = nuevoSalario + auxRetro;
                 
-                // Enero a Agosto = nuevo salario
-                data.enero = salario;
-                data.febrero = salario;
-                data.marzo = Math.round(retro); // retroactivo
-                data.abril = Math.round(nuevoSalario);
-                data.mayo = Math.round(nuevoSalario);
-                data.junio = Math.round(nuevoSalario);
-                data.julio = Math.round(nuevoSalario);
-                data.agosto = Math.round(nuevoSalario);
-                data.septiembre = Math.round(nuevoSalario);
-                data.octubre = Math.round(nuevoSalario);
-                data.noviembre = Math.round(nuevoSalario);
-                data.diciembre = Math.round(nuevoSalario);
+                let minimoIncremento = salarioMinimo + (salarioMinimo * incrementoSalarial / 100);
+                
+                if (salario < minimoIncremento){
+                    auxRetro = (nuevoSalario - minimoIncremento) * 2;
+                    retro = nuevoSalario + auxRetro;
+                    data.enero = minimoIncremento;
+                    data.febrero = minimoIncremento;
+                    data.marzo = Math.round(retro); // retroactivo
+                    data.abril = Math.round(nuevoSalario);
+                    data.mayo = Math.round(nuevoSalario);
+                    data.junio = Math.round(nuevoSalario);
+                    data.julio = Math.round(nuevoSalario);
+                    data.agosto = Math.round(nuevoSalario);
+                    data.septiembre = Math.round(nuevoSalario);
+                    data.octubre = Math.round(nuevoSalario);
+                    data.noviembre = Math.round(nuevoSalario);
+                    data.diciembre = Math.round(nuevoSalario);
+                }else{
+                    data.enero = salario;
+                    data.febrero = salario;
+                    data.marzo = Math.round(retro); // retroactivo
+                    data.abril = Math.round(nuevoSalario);
+                    data.mayo = Math.round(nuevoSalario);
+                    data.junio = Math.round(nuevoSalario);
+                    data.julio = Math.round(nuevoSalario);
+                    data.agosto = Math.round(nuevoSalario);
+                    data.septiembre = Math.round(nuevoSalario);
+                    data.octubre = Math.round(nuevoSalario);
+                    data.noviembre = Math.round(nuevoSalario);
+                    data.diciembre = Math.round(nuevoSalario);
+                }
 
                 // Total
                 data.total = data.enero + data.febrero + data.marzo + data.abril +

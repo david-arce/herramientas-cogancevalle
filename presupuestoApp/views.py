@@ -242,7 +242,8 @@ def tabla_auxiliar_sueldos(request):
     # obtener el incremento salarial desde la tabla auxiliar
     parametros = TablaAuxiliar.objects.first()
     incremento_salarial = parametros.incremento_salarial if parametros else 0
-    return render(request, "presupuesto_nomina/aux_presupuesto_nomina.html", {'incrementoSalarial': incremento_salarial})
+    salario = parametros.salario_minimo if parametros else 0
+    return render(request, "presupuesto_nomina/aux_presupuesto_nomina.html", {'incrementoSalarial': incremento_salarial, 'salarioMinimo': salario})
 
 def cargar_nomina_base(request):
     """
