@@ -71,7 +71,7 @@ def exportar_excel_presupuestos(request):
 
     return response
 
-def presupuesto(request):
+def presupuesto_comercial(request):
     # ventas = BdPresupuesto1.objects.values('nombre_linea_n1','lapso').distinct()
     # obtener la suma de cada mes y nombre_linea_n1 es decir, si el lapso es 202001 retornar la suma
     # de los productos que pertenecen a la linea_n1
@@ -87,12 +87,21 @@ def presupuesto(request):
     df_lapso_2024 = df2.groupby('lapso')['suma'].sum().reset_index()
     df_lapso_2022_2023 = df3.groupby('lapso')['suma'].sum().reset_index()
     df_lapso_total = pd.concat([df_lapso_2020_2021, df_lapso_2024, df_lapso_2022_2023], ignore_index=True)
-
+    
+    # calcular suma por mes
+    df_lapso_total = df_lapso_total.groupby('lapso')['suma'].sum().reset_index()
+    
     # CALUCLAR PREDICCIÓN PARA 2025 POR CADA MES -----------------------------------------
     # Extraer año y mes
-    df_lapso_total['año'] = df_lapso_total['lapso'] // 100
+    df_lapso_total['year'] = df_lapso_total['lapso'] // 100
     df_lapso_total['mes'] = df_lapso_total['lapso'] % 100
+    # 📌 Suma por año
+    df_por_año = df_lapso_total.groupby("year")["suma"].sum().reset_index()
 
+    # 📌 Suma por mes (todos los años juntos, ej: todos los eneros, febreros, etc.)
+    df_por_mes = df_lapso_total.groupby("mes")["suma"].sum().reset_index()
+
+    print(df_por_mes)
     # Lista para almacenar predicciones
     predicciones_2025 = []
 
@@ -101,7 +110,7 @@ def presupuesto(request):
         datos_mes = df_lapso_total[df_lapso_total['mes'] == mes]
         
         # Datos para regresión
-        x = datos_mes['año'].values
+        x = datos_mes['year'].values
         y = datos_mes['suma'].values
 
         if len(x) >= 2:  # Se necesita al menos 2 puntos para ajustar una recta
@@ -156,24 +165,28 @@ def presupuesto(request):
     # R2 ----------------------------------------------
     # Lista para almacenar resultados
     correlaciones = []
-
     # Agrupar por producto
     for nombre, grupo in df_final_pronostico.groupby('nombre_linea_n1'):
         x = grupo['year'].values
         y = grupo['suma'].values
 
-        if len(x) >= 2:
+        if len(x) >= 2 and np.std(y) != 0 and np.std(x) != 0:  # evitar división por 0
             coef = np.corrcoef(x, y)[0, 1]
             coef_abs_pct = abs(coef) * 100  # valor absoluto en porcentaje
-            correlaciones.append({
-                'nombre_linea_n1': nombre,
-                'R2': round(coef_abs_pct, 2)  # ej. 87.32%
-            })
+        else:
+            coef_abs_pct = 0.0  # o NaN si prefieres marcarlo
+
+        correlaciones.append({
+            'nombre_linea_n1': nombre,
+            'R2': round(coef_abs_pct, 2)
+        })
 
     # Crear DataFrame con los coeficientes
     df_correlaciones = pd.DataFrame(correlaciones)
-
-    # calcular variacion porcentual entre 2024 y 2025
+    # concatenar con el df_final_pronostico
+    df_final_pronostico = pd.merge(df_final_pronostico, df_correlaciones, on='nombre_linea_n1', how='left')
+   
+    # ---------------------calcular variacion porcentual entre 2024 y 2025-------------------------------
     df_2024 = df_final_pronostico[df_final_pronostico['year'] == 2024][['nombre_linea_n1', 'suma']].rename(columns={'suma': 'suma_2024'})
     df_2025 = df_final_pronostico[df_final_pronostico['year'] == 2025][['nombre_linea_n1', 'suma']].rename(columns={'suma': 'suma_2025'})
     df_variacion = pd.merge(df_2024, df_2025, on='nombre_linea_n1')
@@ -195,19 +208,22 @@ def presupuesto(request):
     # calcular crecimiento comercial mes, es decir, dividir el crecimiento_comercial entre 12
     df_variacion['crecimiento_comercial_mes'] = (df_variacion['crecimiento_comercial'] / 12).round().astype(int)
     
-    print(df_variacion)
-    
+    # concatenar con el df_final_pronostico
+    df_final_pronostico = pd.merge(df_final_pronostico, df_variacion[['nombre_linea_n1', 'variacion_pct', 'variacion_valor', 'variacion_mes', 'variacion_precios', 'crecimiento_comercial', 'crecimiento_comercial_mes']], on='nombre_linea_n1', how='left')
+  
     # unir con el df_final_pronostico
     data = pd.merge(df_final_pronostico, df_correlaciones, on='nombre_linea_n1', how='left')
-    # print(data)
-    # df.to_excel('ventas.xlsx', index=False)
-    # Convertir a lista de diccionarios para pasar al template
+    
+    # proyección presupuesto general
+    
+    
     data = data.to_dict(orient='records')
     return render(request, 'presupuesto_ventas/presupuesto_ventas.html', {'data': data})
 
 def dashboard(request):
     return render(request, 'presupuestoApp/dashboard.html')
 
+# -------------------------------NOMINA-------------------------------------------------------------
 def presupuestoNomina(request):
    # Obtiene el único registro (o lo crea vacío la primera vez)
     parametros, created = TablaAuxiliar.objects.get_or_create(id=1)

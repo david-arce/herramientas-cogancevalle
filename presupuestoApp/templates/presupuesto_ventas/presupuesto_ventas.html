@@ -36,6 +36,12 @@
                 <th>Año</th>
                 <th>Suma</th>
                 <th>R2</th>
+                <th>Varicación %</th>
+                <th>Variación $</th>
+                <th>Variación mes</th>
+                <th>Variación precios</th>
+                <th>Crecimiento comercial</th>
+                <th>Crecimiento comercial mesual</th>
             </tr>
         </thead>
         <tbody>
@@ -45,6 +51,12 @@
                 <td>{{ row.year }}</td>
                 <td>{{ row.suma|floatformat:2 }}</td>
                 <td>{{ row.R2}}</td>
+                <td>{{ row.variacion_pct|floatformat:2 }}</td>
+                <td>{{ row.variacion_valor|floatformat:2 }}</td>
+                <td>{{ row.variacion_mes|floatformat:2 }}</td>
+                <td>{{ row.variacion_precios|floatformat:2 }}</td>
+                <td>{{ row.crecimiento_comercial|floatformat:2 }}</td>
+                <td>{{ row.crecimiento_comercial_mes|floatformat:2 }}</td>
             </tr>
             {% endfor %}
         </tbody>
