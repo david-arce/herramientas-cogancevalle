@@ -314,55 +314,74 @@ def guardar_nomina_temp(request):
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
 def subir_presupuesto_sueldos(request):
-    if request.method == "POST":
-        temporales = PresupuestoNominaAux.objects.all()
-
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-
-        # Calcular versión siguiente
-        ultima_version = PresupuestoNomina.objects.aggregate(
-            Max("version")
-        )["version__max"] or 0
-        nueva_version = ultima_version + 1
-
-        for temp in temporales:
-            PresupuestoNomina.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area=temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                salario_base=temp.salario_base,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-                version=nueva_version,
-                fecha_carga=timezone.now()
-            )
+    if request.method != "POST":
         return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto subido como versión {nueva_version} ✅"
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
+            "success": False,
+            "msg": "Método no permitido"
+        }, status=405)
 
+    temporales = PresupuestoNominaAux.objects.all()
+    if not temporales.exists():
+        return JsonResponse({
+            "success": False,
+            "msg": "No hay datos temporales para subir ❌"
+        }, status=400)
+
+    # Calcular versión siguiente
+    ultima_version = PresupuestoNomina.objects.aggregate(Max("version"))["version__max"] or 0
+    nueva_version = ultima_version + 1
+
+    # Obtener todos los registros existentes de esta versión
+    cedula_concepto_existentes = set(
+        PresupuestoNomina.objects.filter(version=nueva_version)
+        .values_list("cedula", "concepto")
+    )
+
+    # Preparar lista de objetos a crear
+    registros_a_crear = []
+    for temp in temporales:
+        key = (temp.cedula, temp.concepto)
+        if key not in cedula_concepto_existentes:
+            registros_a_crear.append(
+                PresupuestoNomina(
+                    cedula=temp.cedula,
+                    nombre=temp.nombre,
+                    centro=temp.centro,
+                    area=temp.area,
+                    cargo=temp.cargo,
+                    concepto=temp.concepto,
+                    salario_base=temp.salario_base,
+                    enero=temp.enero,
+                    febrero=temp.febrero,
+                    marzo=temp.marzo,
+                    abril=temp.abril,
+                    mayo=temp.mayo,
+                    junio=temp.junio,
+                    julio=temp.julio,
+                    agosto=temp.agosto,
+                    septiembre=temp.septiembre,
+                    octubre=temp.octubre,
+                    noviembre=temp.noviembre,
+                    diciembre=temp.diciembre,
+                    total=temp.total,
+                    version=nueva_version,
+                    fecha_carga=timezone.now()
+                )
+            )
+
+    if not registros_a_crear:
+        return JsonResponse({
+            "success": False,
+            "msg": "Todos los registros ya existían ❌"
+        }, status=400)
+
+    # Guardar todos los registros de una sola vez
+    PresupuestoNomina.objects.bulk_create(registros_a_crear)
+
+    return JsonResponse({
+        "success": True,
+        "msg": f"Presupuesto subido como versión {nueva_version} ✅ ({len(registros_a_crear)} nuevos registros)"
+    })
 def listar_versiones():
     return (
         PresupuestoNomina.objects

@@ -62,7 +62,10 @@
 <body>
     <h2>Presupuesto Nómina - Tabla auxiliar seguridad social</h2>
     <div class="btn-group">
-        <button id="cargarBase">Cargar desde Conceptos</button>
+        <button id="cargarBase">
+            Cargar desde Conceptos
+            <span class="spinner" style="display:none; margin-left:8px;"></span>
+        </button>
         <button id="agregarFila">➕ Agregar fila</button>
         <button id="guardarTempBtn">Guardar en BD (temporal)<span class="spinner" style="display:none; margin-left:8px;"></span>
         </button>
@@ -133,6 +136,14 @@ $(document).ready(function() {
                 orderable: false
             }
         ],
+        createdRow: function(row, data, dataIndex) {
+            // marcar todas menos Acciones como editables
+            $('td', row).each(function(index) {
+                if (index < 20) { // hasta "total"
+                    $(this).addClass("editable");
+                }
+            });
+        },
         dom: 'Bfrtip',
         buttons: [
         {
@@ -150,8 +161,73 @@ $(document).ready(function() {
         }
     ]
     });
+     let editingCell = null;
+    // doble clic para editar
+    $('#tempTable').on('dblclick', 'td.editable', function() {
+        if (editingCell) return; // ya editando algo
+        let cell = table.cell(this);
+        let oldValue = cell.data();
+
+        $(this).html('<input type="text" class="cell-input" value="'+ oldValue +'"/>');
+        let $input = $(this).find("input").focus();
+        editingCell = this;
+
+        // seleccionar todo el contenido
+        $input[0].setSelectionRange(0, $input.val().length);
+
+        // manejar Enter, Escape y flechas
+        $input.on("keydown", function(e) {
+            if (e.key === "Enter") {
+                cell.data($input.val()).draw(false);
+                editingCell = null;
+            } else if (e.key === "Escape") {
+                cell.data(oldValue).draw(false);
+                editingCell = null;
+            } else if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) {
+                e.preventDefault();
+                let $td = $(editingCell);
+                let $tr = $td.closest("tr");
+                let rowIdx = $tr.index();
+                let colIdx = $td.index();
+
+                if (e.key === "ArrowUp") rowIdx--;
+                if (e.key === "ArrowDown") rowIdx++;
+                if (e.key === "ArrowLeft") colIdx--;
+                if (e.key === "ArrowRight") colIdx++;
+
+                let $target = $('#tempTable tbody tr').eq(rowIdx).find("td").eq(colIdx);
+                if ($target.length && $target.hasClass("editable")) {
+                    // guardar antes de mover
+                    cell.data($input.val()).draw(false);
+                    editingCell = null;
+                    $target.dblclick();
+                }
+            }
+        });
+    });
+    // 🔥 Guardar al hacer clic fuera de la tabla
+    $(document).on("click", function(e) {
+        if (editingCell) {
+            let $cell = $(editingCell);
+            let $input = $cell.find("input");
+            if ($input.length && !$(e.target).closest("#tempTable").length) {
+                // guardar y salir
+                let cell = table.cell(editingCell);
+                cell.data($input.val()).draw(false);
+                editingCell = null;
+            }
+        }
+    });
+
     $('#subirPresupuestoForm').on('submit', function(e) {
         e.preventDefault(); // Evita el submit normal
+
+        let $btn = $("#subirBtn");
+        let $spinner = $btn.find(".spinner");
+
+        // Mostrar spinner y deshabilitar botón
+        $spinner.show();
+        $btn.prop("disabled", true);
 
         $.post("{% url 'subir_presupuesto_seguridad_social' %}", {
             csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val()
@@ -161,36 +237,14 @@ $(document).ready(function() {
             } else {
                 showToast(response.msg, "error");
             }
-        });
-    });
-
-    // inline editing en TODAS las celdas excepto acciones
-    $('#tempTable').on('click', 'td', function() {
-        let cell = table.cell(this);
-        if (cell.index().column === table.columns().count() - 1) return; // no editar acciones
-
-        let oldValue = cell.data();
-        let $input = $('<input type="text">').val(oldValue);
-        $(this).html($input);
-        $input.focus();
-
-        $input.on("blur keypress", function(e) {
-            if (e.type === "blur" || (e.type === "keypress" && e.which === 13)) {
-                let newValue = $(this).val();
-                cell.data(newValue).draw();
-
-                // recalcular total si se editó un mes o salario
-                let rowData = table.row(cell.index().row).data();
-                rowData.total = (
-                    parseFloat(rowData.enero || 0) + parseFloat(rowData.febrero || 0) +
-                    parseFloat(rowData.marzo || 0) + parseFloat(rowData.abril || 0) +
-                    parseFloat(rowData.mayo || 0) + parseFloat(rowData.junio || 0) +
-                    parseFloat(rowData.julio || 0) + parseFloat(rowData.agosto || 0) +
-                    parseFloat(rowData.septiembre || 0) + parseFloat(rowData.octubre || 0) +
-                    parseFloat(rowData.noviembre || 0) + parseFloat(rowData.diciembre || 0)
-                );
-                table.row(cell.index().row).data(rowData).draw();
-            }
+        })
+        .fail(function() {
+            showToast("Error en la subida ❌", "error");
+        })
+        .always(function() {
+            // Ocultar spinner y reactivar botón
+            $spinner.hide();
+            $btn.prop("disabled", false);
         });
     });
 
@@ -213,9 +267,24 @@ $(document).ready(function() {
 
     // Cargar datos base
     $('#cargarBase').on('click', function() {
-        $.get("{% url 'cargar_seguridad_social_base' %}", function() {
+        let $btn = $(this);
+        let $spinner = $btn.find(".spinner");
+
+        // Mostrar spinner y deshabilitar botón
+        $spinner.show();
+        $btn.prop("disabled", true);
+
+        $.get("{% url 'cargar_nomina_base' %}", function() {
             table.ajax.reload();
             showToast("Datos cargados desde Conceptos (NOM516) 📂", "success");
+        })
+        .fail(function() {
+            showToast("Error al cargar datos ❌", "error");
+        })
+        .always(function() {
+            // Ocultar spinner y reactivar botón
+            $spinner.hide();
+            $btn.prop("disabled", false);
         });
     });
 
