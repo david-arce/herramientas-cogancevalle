@@ -97,11 +97,11 @@
     </style>
 </head>
 <body>
-    <h2>Presupuesto Nómina - Ayuda transporte</h2>
+    <h2>Presupuesto Nómina - Tabla bonos_kyrovet</h2>
     <div class="toast-container" id="toastContainer"></div>
     <!-- Contenedor de botones -->
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-        <button id="btnTabla">Ir a tabla auxiliar de sueldos</button>
+        <button id="btnTabla">Ir a tabla auxiliar de bonos_kyrovet</button>
         <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
             Borrar Presupuesto
         </button>
@@ -115,7 +115,7 @@
                 <th>Area</th>
                 <th>Cargo</th>
                 <th>Concepto</th>
-                <th>base</th>
+                <th>Base</th>
                 <th>Enero</th>
                 <th>Febrero</th>
                 <th>Marzo</th>
@@ -136,7 +136,7 @@
     <script>
        $(document).ready(function () {
             let table = $('#presupuestoTable').DataTable({
-                ajax: "{% url 'obtener_presupuesto_ayuda_transporte' %}",
+                ajax: "{% url 'obtener_presupuesto_bonos_kyrovet' %}",
                 columns: [
                     { data: "cedula" },
                     { data: "nombre" },
@@ -145,34 +145,34 @@
                     { data: "cargo" },
                     { data: "concepto"},
                     // 🔹 Formato con separador de miles
-                    { data: "base", render: $.fn.dataTable.render.number('.', ',', 0, '')},
-                    { data: "enero", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "febrero", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "marzo",  render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "abril", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "mayo", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "junio", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "julio", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "agosto", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "septiembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "octubre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "noviembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "diciembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "total", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "base", render: $.fn.dataTable.render.number('.', ',', 0, '')},
+                { data: "enero", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "febrero", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "marzo",  render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "abril", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "mayo", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "junio", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "julio", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "agosto", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "septiembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "octubre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "noviembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "diciembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "total", render: $.fn.dataTable.render.number('.', ',', 0, '') },
                 ],
                 language: {
                     url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
                 }
             });
         
-            // 🔴 Botón para borrar 
+            // 🔴 Botón para borrar PresupuestoNomina
             $("#btnBorrar").on("click", function () {
                 if (!confirm("⚠️ ¿Estás seguro de borrar todo el presupuesto? Esta acción no se puede deshacer.")) {
                     return;
                 }
 
                 $.ajax({
-                    url: "{% url 'borrar_presupuesto_ayuda_transporte' %}", // 🔥 Nueva vista Django
+                    url: "{% url 'borrar_presupuesto_bonos_kyrovet' %}", // 🔥 Nueva vista Django
                     type: "POST",
                     headers: { "X-CSRFToken": $("meta[name='csrf-token']").attr("content") },
                     success: function (response) {
@@ -210,7 +210,7 @@
 
     // Botón Ir a la tabla de sueldos
     document.getElementById("btnTabla").addEventListener("click", function () {
-        window.location.href = "{% url 'tabla_auxiliar_ayuda_transporte' %}";
+        window.location.href = "{% url 'tabla_auxiliar_bonos_kyrovet' %}";
     });
     </script>
 </body>

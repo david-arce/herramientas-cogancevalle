@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Presupuesto Nómina Temporal</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <!-- DataTables Buttons CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <style>
+        td.editable { background: #f8f9fa; cursor: pointer; }
+        button { margin: 10px; }
+
+        /* Contenedor de toasts */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            min-width: 250px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.5s ease-in-out;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .toast.success { background-color: #28a745; }
+        .toast.error { background-color: #dc3545; }
+
+        /* Spinner */
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #fff;
+            border-right: 2px solid #fff;
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            display: inline-block;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+    </style>
+</head>
+<body>
+    <h2>Presupuesto Nómina - Tabla auxiliar comisiones</h2>
+    <div class="btn-group">
+        <span>cesantias (%): <strong>{{ cesantias|default:"0" }}</strong></span>
+        <button id="cargarBase">Cargar desde Conceptos</button>
+        <button id="calcularBtn">Calcular</button>
+        <button id="agregarFila">➕ Agregar fila</button>
+        <button id="guardarTempBtn">Guardar en BD (temporal)<span class="spinner" style="display:none; margin-left:8px;"></span>
+        </button>
+    </div>
+
+    <form id="subirPresupuestoForm" method="post" action="{% url 'subir_presupuesto_cesantias' %}">
+        {% csrf_token %}
+        <button type="submit" id="subirBtn" class="btn btn-success">
+            Subir Presupuesto cesantias
+        </button>
+    </form>
+    <table id="tempTable" class="display">
+        <thead>
+            <tr>
+                <th>Cedula</th>
+                <th>Nombre</th>
+                <th>Centro</th>
+                <th>Area</th>
+                <th>Cargo</th>
+                <th>Concepto</th>
+                <th>Enero</th>
+                <th>Febrero</th>
+                <th>Marzo</th>
+                <th>Abril</th>
+                <th>Mayo</th>
+                <th>Junio</th>
+                <th>Julio</th>
+                <th>Agosto</th>
+                <th>Septiembre</th>
+                <th>Octubre</th>
+                <th>Noviembre</th>
+                <th>Diciembre</th>
+                <th>Total</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+    </table>
+
+    <!-- Contenedor de toasts -->
+    <div class="toast-container" id="toastContainer"></div>
+
+<script>
+$(document).ready(function() {
+    let table = $('#tempTable').DataTable({
+        ajax: {
+            url: "{% url 'obtener_cesantias_temp' %}",
+            dataSrc: ""
+        },
+        columns: [
+            { data: "cedula" },
+            { data: "nombre" },
+            { data: "centro" },
+            { data: "area" },
+            { data: "cargo" },
+            { data: "concepto" },
+            { data: "enero" },
+            { data: "febrero" },
+            { data: "marzo" },
+            { data: "abril" },
+            { data: "mayo" },
+            { data: "junio" },
+            { data: "julio" },
+            { data: "agosto" },
+            { data: "septiembre" },
+            { data: "octubre" },
+            { data: "noviembre" },
+            { data: "diciembre" },
+            { data: "total" },
+            { 
+                data: null,
+                defaultContent: '<button class="eliminarFila">❌</button>',
+                orderable: false
+            }
+        ],
+        dom: 'Bfrtip',
+        buttons: [
+        {
+            extend: 'excelHtml5',
+            text: '📥 Exportar a Excel',
+            filename: 'presupuesto_nomina',
+            exportOptions: {
+                modifier: {
+                    page: 'all',   // 🔥 Exporta todas las páginas
+                    search: 'applied',
+                    order: 'applied'
+                },
+                columns: ':not(:last-child)' // 🔥 excluye columna "Acciones"
+            }
+        }
+    ]
+    });
+    $('#subirPresupuestoForm').on('submit', function(e) {
+        e.preventDefault(); // Evita el submit normal
+
+        $.post("{% url 'subir_presupuesto_cesantias' %}", {
+            csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val()
+        }, function(response) {
+            if (response.success) {
+                showToast(response.msg, "success");
+            } else {
+                showToast(response.msg, "error");
+            }
+        });
+    });
+
+    // inline editing en TODAS las celdas excepto acciones
+    $('#tempTable').on('click', 'td', function() {
+        let cell = table.cell(this);
+        if (cell.index().column === table.columns().count() - 1) return; // no editar acciones
+
+        let oldValue = cell.data();
+        let $input = $('<input type="text">').val(oldValue);
+        $(this).html($input);
+        $input.focus();
+
+        $input.on("blur keypress", function(e) {
+            if (e.type === "blur" || (e.type === "keypress" && e.which === 13)) {
+                let newValue = $(this).val();
+                cell.data(newValue).draw();
+
+                // recalcular total si se editó un mes o salario
+                let rowData = table.row(cell.index().row).data();
+                rowData.total = (
+                    parseFloat(rowData.enero || 0) + parseFloat(rowData.febrero || 0) +
+                    parseFloat(rowData.marzo || 0) + parseFloat(rowData.abril || 0) +
+                    parseFloat(rowData.mayo || 0) + parseFloat(rowData.junio || 0) +
+                    parseFloat(rowData.julio || 0) + parseFloat(rowData.agosto || 0) +
+                    parseFloat(rowData.septiembre || 0) + parseFloat(rowData.octubre || 0) +
+                    parseFloat(rowData.noviembre || 0) + parseFloat(rowData.diciembre || 0)
+                );
+                table.row(cell.index().row).data(rowData).draw();
+            }
+        });
+    });
+
+    // agregar fila vacía
+    $('#agregarFila').on('click', function() {
+        table.row.add({
+            cedula: "", nombre: "", centro: "", area: "", cargo: "", concepto: "",
+            enero: 0, febrero: 0, marzo: 0, abril: 0, mayo: 0, junio: 0,
+            julio: 0, agosto: 0, septiembre: 0, octubre: 0, noviembre: 0, diciembre: 0,
+            total: 0
+        }).draw();
+        showToast("Fila agregada ✅", "success");
+    });
+
+    // eliminar fila
+    $('#tempTable').on('click', '.eliminarFila', function() {
+        table.row($(this).parents('tr')).remove().draw();
+        showToast("Fila eliminada ❌", "error");
+    });
+
+    // Cargar datos base
+    $('#cargarBase').on('click', function() {
+        $.get("{% url 'cargar_cesantias_base' %}", function() {
+            table.ajax.reload();
+            showToast("Datos cargados desde Conceptos (NOM516) 📂", "success");
+        });
+    });
+
+    // Calcular
+    $('#calcularBtn').on('click', function() {
+        // 🔹 Obtener incrementoSalarial desde el contexto Django
+        const cesantias = parseFloat("{{ cesantias|floatformat:2 }}".replace(",", ".")) || 0;
+        console.log(`cesantias: ${cesantias}%`);
+        table.rows().every(function() {
+            let data = this.data();
+            let enero = parseFloat(data.enero) || 0;
+            let febrero = parseFloat(data.febrero) || 0;
+            let marzo = parseFloat(data.marzo) || 0;
+            let abril = parseFloat(data.abril) || 0;
+            let mayo = parseFloat(data.mayo) || 0;
+            let junio = parseFloat(data.junio) || 0;
+            let julio = parseFloat(data.julio) || 0;
+            let agosto = parseFloat(data.agosto) || 0;
+            let septiembre = parseFloat(data.septiembre) || 0;
+            let octubre = parseFloat(data.octubre) || 0;
+            let noviembre = parseFloat(data.noviembre) || 0;
+            let diciembre = parseFloat(data.diciembre) || 0;
+
+            let nuevaCesantiaEnero =(enero * cesantias / 100);
+            let nuevaCesantiaFebrero = (febrero * cesantias / 100);
+            let nuevaCesantiaMarzo =(marzo * cesantias / 100);
+            let nuevaCesantiaAbril =(abril * cesantias / 100);
+            let nuevaCesantiaMayo =(mayo * cesantias / 100);
+            let nuevaCesantiaJunio = (junio * cesantias / 100);
+            let nuevaCesantiaJulio = (julio * cesantias / 100);
+            let nuevaCesantiaAgosto =  (agosto * cesantias / 100);
+            let nuevaCesantiaSeptiembre = (septiembre * cesantias / 100);
+            let nuevaCesantiaOctubre = (octubre * cesantias / 100);
+            let nuevaCesantiaNoviembre = (noviembre * cesantias / 100);
+            let nuevaCesantiaDiciembre = (diciembre * cesantias / 100);
+            
+            data.enero = Math.round(nuevaCesantiaEnero);
+            data.febrero = Math.round(nuevaCesantiaFebrero);
+            data.marzo = Math.round(nuevaCesantiaMarzo);
+            data.abril = Math.round(nuevaCesantiaAbril);
+            data.mayo = Math.round(nuevaCesantiaMayo);
+            data.junio = Math.round(nuevaCesantiaJunio);
+            data.julio = Math.round(nuevaCesantiaJulio);
+            data.agosto = Math.round(nuevaCesantiaAgosto);
+            data.septiembre = Math.round(nuevaCesantiaSeptiembre);
+            data.octubre = Math.round(nuevaCesantiaOctubre);
+            data.noviembre = Math.round(nuevaCesantiaNoviembre);
+            data.diciembre = Math.round(nuevaCesantiaDiciembre);
+
+            // Total
+            data.total = data.enero + data.febrero + data.marzo + data.abril +
+                            data.mayo + data.junio + data.julio + data.agosto +
+                            data.septiembre + data.octubre + data.noviembre + data.diciembre;
+        
+
+            this.data(data);
+        });
+        table.draw();
+        showToast("Cálculo aplicado correctamente ✅", "success");
+    });
+
+    // Configurar CSRF para AJAX
+    function getCSRFToken() {
+        return document.querySelector('meta[name="csrf-token"]').getAttribute("content");
+    }
+
+    $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            if (!(/^GET|HEAD|OPTIONS|TRACE$/i.test(settings.type))) {
+                xhr.setRequestHeader("X-CSRFToken", getCSRFToken());
+            }
+        }
+    });
+
+    // Guardar en BD temporal
+    $('#guardarTempBtn').on('click', function() {
+        let $btn = $(this);
+        let $spinner = $btn.find('.spinner');
+        let data = table.rows().data().toArray();
+
+        // Mostrar spinner
+        $spinner.show();
+        $btn.prop("disabled", true);
+
+        $.ajax({
+            url: "{% url 'guardar_cesantias_temp' %}",
+            type: "POST",
+            data: JSON.stringify(data),
+            contentType: "application/json",
+            success: function() {
+                showToast("Datos guardados en tabla temporal ✅", "success");
+            },
+            error: function() {
+                showToast("Error al guardar ❌", "error");
+            },
+            complete: function() {
+                // Ocultar spinner y reactivar botón
+                $spinner.hide();
+                $btn.prop("disabled", false);
+            }
+        });
+    });
+});
+
+// 🔥 Función para mostrar toasts
+function showToast(message, type = "success", duration = 3000) {
+    let container = document.getElementById("toastContainer");
+    let toast = document.createElement("div");
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+
+    container.appendChild(toast);
+
+    setTimeout(() => toast.classList.add("show"), 50);
+
+    setTimeout(() => {
+        toast.classList.remove("show");
+        setTimeout(() => toast.remove(), 500);
+    }, duration);
+}
+</script>
+<!-- DataTables Buttons JS -->
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Comisiones</title>
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+        }
+        h2 {
+            text-align: center;
+        }
+        table.dataTable thead th {
+            background-color: #007bff;
+            color: white;
+        }
+        .dataTables_wrapper {
+            width: 100% !important;
+            margin: 20px auto;
+        }
+        #btnTabla {
+            position: relative;
+            padding: 8px 16px;
+            border: none;
+            background-color: #646464ff;
+            color: white;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <h2>Presupuesto Nómina - Cesantias</h2>
+    <!-- Contenedor de botones -->
+    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+        <button id="btnTabla">Ir a tabla auxiliar de cesantias</button>
+        <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
+            Borrar Presupuesto
+        </button>
+    </div>
+    <table id="presupuestoTable" class="display">
+        <thead>
+            <tr>
+                <th>Cedula</th>
+                <th>Nombre</th>
+                <th>Centro</th>
+                <th>Area</th>
+                <th>Cargo</th>
+                <th>Concepto</th>
+                <th>Enero</th>
+                <th>Febrero</th>
+                <th>Marzo</th>
+                <th>Abril</th>
+                <th>Mayo</th>
+                <th>Junio</th>
+                <th>Julio</th>
+                <th>Agosto</th>
+                <th>Septiembre</th>
+                <th>Octubre</th>
+                <th>Noviembre</th>
+                <th>Diciembre</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        
+    </table>
+
+    <script>   
+        $(document).ready(function () {
+            let table = $('#presupuestoTable').DataTable({
+                ajax: {url: '{% url "obtener_presupuesto_cesantias" %}',
+                },
+                columns: [
+                { data: "cedula" },
+                    { data: "nombre" },
+                    { data: "centro" },
+                    { data: "area" },
+                    { data: "cargo" },
+                    { data: "concepto"},
+                    { data: "enero", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+            { data: "febrero", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+            { data: "marzo", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+            { data: "abril", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+            { data: "mayo", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+            { data: "junio", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+            { data: "julio", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+            { data: "agosto", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+            { data: "septiembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+            { data: "octubre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+            { data: "noviembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+            { data: "diciembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+            { data: "total", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                ],
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+                }
+            });
+            // Función para mostrar toasts
+            function showToast(message, type = "success", duration = 3000) {
+                let container = document.getElementById("toastContainer");
+
+                // Crear toast
+                let toast = document.createElement("div");
+                toast.className = `toast ${type}`;
+                toast.textContent = message;
+
+                // Insertar en el contenedor
+                container.appendChild(toast);
+
+                // Forzar reflow para animación
+                setTimeout(() => toast.classList.add("show"), 50);
+
+                // Ocultar y eliminar después de "duration"
+                setTimeout(() => {
+                    toast.classList.remove("show");
+                    setTimeout(() => toast.remove(), 500); // eliminar después de animación
+                }, duration);
+            }
+
+            // Botón Ir a la tabla de sueldos
+            document.getElementById("btnTabla").addEventListener("click", function () {
+                window.location.href = "{% url 'tabla_auxiliar_cesantias' %}";
+            });
+
+            // 🔴 Botón para borrar PresupuestoNomina
+            $("#btnBorrar").on("click", function () {
+                if (!confirm("⚠️ ¿Estás seguro de borrar todo el presupuesto? Esta acción no se puede deshacer.")) {
+                    return;
+                }
+
+                $.ajax({
+                    url: "{% url 'borrar_presupuesto_cesantias' %}", // 🔥 Nueva vista Django
+                    type: "POST",
+                    headers: { "X-CSRFToken": $("meta[name='csrf-token']").attr("content") },
+                    success: function (response) {
+                        showToast("Presupuesto eliminado correctamente ✅", "success");
+                        table.ajax.reload(null, false); // recarga sin perder paginación
+                    },
+                    error: function (xhr) {
+                        showToast("Error al borrar ❌: " + xhr.responseText, "error");
+                    }
+                });
+            });
+                    
+        });
+        
+
+    </script>
+</body>
+</html>

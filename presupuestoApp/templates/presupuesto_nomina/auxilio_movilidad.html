@@ -80,7 +80,7 @@
     <script>   
         $(document).ready(function () {
             let table = $('#presupuestoTable').DataTable({
-                ajax: {url: '{% url "obtener_presupuesto_comisiones" %}',
+                ajax: {url: '{% url "obtener_presupuesto_auxilio_movilidad" %}',
                 },
                 columns: [
                 { data: "cedula" },
@@ -131,7 +131,7 @@
 
             // Botón Ir a la tabla de sueldos
             document.getElementById("btnTabla").addEventListener("click", function () {
-                window.location.href = "{% url 'tabla_auxiliar_comisiones' %}";
+                window.location.href = "{% url 'tabla_auxiliar_auxilio_movilidad' %}";
             });
 
             // 🔴 Botón para borrar PresupuestoNomina
@@ -141,7 +141,7 @@
                 }
 
                 $.ajax({
-                    url: "{% url 'borrar_presupuesto_comisiones' %}", // 🔥 Nueva vista Django
+                    url: "{% url 'borrar_presupuesto_auxilio_movilidad' %}", // 🔥 Nueva vista Django
                     type: "POST",
                     headers: { "X-CSRFToken": $("meta[name='csrf-token']").attr("content") },
                     success: function (response) {

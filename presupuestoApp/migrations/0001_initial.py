@@ -285,7 +285,7 @@ class Migration(migrations.Migration):
                 ('incremento_comisiones', models.FloatField(blank=True, null=True)),
             ],
             options={
-                'db_table': 'tabla_auxiliar',
+                'db_table': 'tabla_auxiliar'
             },
         ),
     ]

@@ -35,6 +35,7 @@
                 <th>Línea N1</th>
                 <th>Año</th>
                 <th>Suma</th>
+                <th>R2</th>
             </tr>
         </thead>
         <tbody>
@@ -43,6 +44,7 @@
                 <td>{{ row.nombre_linea_n1 }}</td>
                 <td>{{ row.year }}</td>
                 <td>{{ row.suma|floatformat:2 }}</td>
+                <td>{{ row.R2}}</td>
             </tr>
             {% endfor %}
         </tbody>

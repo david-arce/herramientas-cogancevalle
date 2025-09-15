@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, text, Table, Column, Integer, String, Float, MetaData
+from sqlalchemy import create_engine, text, Table, Column, Integer, String, Float, MetaData, BigInteger
 from sqlalchemy.orm import sessionmaker
 import pandas as pd
 import logging
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # Función para mapear tipos de datos de Pandas a SQLAlchemy
 def mapear_tipos(columna):
     if pd.api.types.is_integer_dtype(columna):
-        return Integer
+        return BigInteger
     elif pd.api.types.is_float_dtype(columna):
         return Float
     elif pd.api.types.is_string_dtype(columna):
@@ -107,10 +107,10 @@ def cargar_excel_a_postgresql_delete(file_path, sheet_name, db_url, table_name):
 
 # Parámetros
 ruta_carpeta = os.path.join('..', 'bd')
-file_path = os.path.join(ruta_carpeta, 'nom016-fijos.xlsx')
+file_path = os.path.join(ruta_carpeta, 'conceptos_variables_y_fijos.xlsx')
 sheet_name = 'Page 001'
 db_url = os.getenv('DATABASE_URL')
-table_name = 'nom016_conceptos_fijos'
+table_name = 'conceptos_variables_y_fijos'
 
 # Llamada a la función
 cargar_excel_a_postgresql_delete(file_path, sheet_name, db_url, table_name)
