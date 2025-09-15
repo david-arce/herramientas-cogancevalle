@@ -161,7 +161,36 @@ $(document).ready(function() {
         }
     ]
     });
-     let editingCell = null;
+    // función para recalcular total de una fila
+    function recalcularTotal(rowData) {
+        let meses = ["enero","febrero","marzo","abril","mayo","junio",
+                    "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+        let total = 0;
+        meses.forEach(m => {
+            total += parseFloat(rowData[m]) || 0;
+        });
+        rowData.total = total;
+        return rowData;
+    }
+    // cerrar edición y guardar valor
+    function cerrarEdicion(cell, newValue) {
+        let row = table.row($(cell).closest("tr"));
+        let rowData = row.data();
+
+        // actualizar la celda
+        let colIdx = table.cell(cell).index().column;
+        let colName = table.column(colIdx).dataSrc();
+
+        rowData[colName] = newValue;
+
+        // recalcular total dinámicamente
+        rowData = recalcularTotal(rowData);
+
+        row.data(rowData).draw(false);
+        editingCell = null;
+    }
+
+    let editingCell = null;
     // doble clic para editar
     $('#tempTable').on('dblclick', 'td.editable', function() {
         if (editingCell) return; // ya editando algo
@@ -178,10 +207,9 @@ $(document).ready(function() {
         // manejar Enter, Escape y flechas
         $input.on("keydown", function(e) {
             if (e.key === "Enter") {
-                cell.data($input.val()).draw(false);
-                editingCell = null;
+                cerrarEdicion(editingCell, $input.val());
             } else if (e.key === "Escape") {
-                cell.data(oldValue).draw(false);
+                table.cell(editingCell).data(oldValue).draw(false);
                 editingCell = null;
             } else if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) {
                 e.preventDefault();
@@ -198,8 +226,7 @@ $(document).ready(function() {
                 let $target = $('#tempTable tbody tr').eq(rowIdx).find("td").eq(colIdx);
                 if ($target.length && $target.hasClass("editable")) {
                     // guardar antes de mover
-                    cell.data($input.val()).draw(false);
-                    editingCell = null;
+                    cerrarEdicion(editingCell, $input.val());
                     $target.dblclick();
                 }
             }
@@ -211,10 +238,7 @@ $(document).ready(function() {
             let $cell = $(editingCell);
             let $input = $cell.find("input");
             if ($input.length && !$(e.target).closest("#tempTable").length) {
-                // guardar y salir
-                let cell = table.cell(editingCell);
-                cell.data($input.val()).draw(false);
-                editingCell = null;
+                cerrarEdicion(editingCell, $input.val());
             }
         }
     });
