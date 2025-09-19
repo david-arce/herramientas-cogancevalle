@@ -231,7 +231,7 @@ def asignar_tareas(request):
                 }, inplace=True)
                 response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 response['Content-Disposition'] = 'attachment; filename=tareas.xlsx'
-                df.to_excel(response, index=False)
+                
                 # Limpiar la sesión
                 selected_user_ids = request.session.pop('selected_user_ids', [])
                 fecha_asignacion = request.session.pop('fecha_asignacion', None)
@@ -271,7 +271,7 @@ def asignar_tareas(request):
                 }, inplace=True)
                 response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 response['Content-Disposition'] = 'attachment; filename=diferencias.xlsx'
-                df.to_excel(response, index=False)
+                
                 # Limpiar la sesión
                 selected_user_ids = request.session.pop('selected_user_ids', [])
                 fecha_asignacion = request.session.pop('fecha_asignacion', None)
