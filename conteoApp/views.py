@@ -209,8 +209,13 @@ def asignar_tareas(request):
                 # Crear un DataFrame con las tareas
                 df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'producto__inv_saldo', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion','verificado')))
                 
-                # Cambiar True/False a 'OK' o ''
-                df['verificado'] = df['verificado'].apply(lambda x: 'OK' if x else '')
+                # Asegurarnos de que la columna exista (si la consulta devolvió 0 filas, no habrá columnas)
+                if 'verificado' not in df.columns:
+                    # crear con False por defecto (o '' si prefieres)
+                    df['verificado'] = False
+
+                # Normalizar valores nulos y convertir a 'OK' / ''
+                df['verificado'] = df['verificado'].fillna(False).apply(lambda x: 'OK' if bool(x) else '')
 
                 # Renombrar las columnas con nombres personalizados
                 df.rename(columns={
@@ -249,8 +254,13 @@ def asignar_tareas(request):
                 # Crear un DataFrame con las tareas
                 df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'producto__inv_saldo', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion', 'verificado')))
                 
-                # Cambiar True/False a 'OK' o ''
-                df['verificado'] = df['verificado'].apply(lambda x: 'OK' if x else '')
+                # Asegurarnos de que la columna exista (si la consulta devolvió 0 filas, no habrá columnas)
+                if 'verificado' not in df.columns:
+                    # crear con False por defecto (o '' si prefieres)
+                    df['verificado'] = False
+
+                # Normalizar valores nulos y convertir a 'OK' / ''
+                df['verificado'] = df['verificado'].fillna(False).apply(lambda x: 'OK' if bool(x) else '')
                 
                 # Renombrar las columnas con nombres personalizados
                 df.rename(columns={
