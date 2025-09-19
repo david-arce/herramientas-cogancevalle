@@ -236,12 +236,11 @@ def asignar_tareas(request):
                 }, inplace=True)
                 response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 response['Content-Disposition'] = 'attachment; filename=tareas.xlsx'
-                df.to_excel(response, index=False)
+                
                 # Limpiar la sesión
                 selected_user_ids = request.session.pop('selected_user_ids', [])
                 fecha_asignacion = request.session.pop('fecha_asignacion', None)
                 return response
-            # return redirect('asignar_tareas')
         
         if 'export_excel_diferencias' in request.POST:
             # Recuperar los datos de la sesión
@@ -249,10 +248,10 @@ def asignar_tareas(request):
             fecha_asignacion = request.session.get('fecha_asignacion', None)
             if selected_user_ids and fecha_asignacion:
                 selected_users = User.objects.filter(id__in=selected_user_ids)
-                tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion, activo=True).exclude(diferencia=0)
+                tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion)
                 
                 # Crear un DataFrame con las tareas
-                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'producto__inv_saldo', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion', 'verificado')))
+                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'producto__inv_saldo', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion','verificado')))
                 
                 # Asegurarnos de que la columna exista (si la consulta devolvió 0 filas, no habrá columnas)
                 if 'verificado' not in df.columns:
@@ -261,7 +260,7 @@ def asignar_tareas(request):
 
                 # Normalizar valores nulos y convertir a 'OK' / ''
                 df['verificado'] = df['verificado'].fillna(False).apply(lambda x: 'OK' if bool(x) else '')
-                
+
                 # Renombrar las columnas con nombres personalizados
                 df.rename(columns={
                     'usuario__first_name': 'Nombre',
@@ -280,16 +279,12 @@ def asignar_tareas(request):
                     'verificado': 'Verificado'
                 }, inplace=True)
                 response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-                response['Content-Disposition'] = 'attachment; filename=diferencias.xlsx'
-                df.to_excel(response, index=False)
+                response['Content-Disposition'] = 'attachment; filename=tareas.xlsx'
+                
                 # Limpiar la sesión
                 selected_user_ids = request.session.pop('selected_user_ids', [])
                 fecha_asignacion = request.session.pop('fecha_asignacion', None)
                 return response
-            # return redirect('asignar_tareas')
-            
-    # else:
-    #     form = AsignarTareaForm()
     
     # Limpiar usuarios seleccionados y mostrar tareas si `assigned=1`
     if 'assigned' in request.GET:
