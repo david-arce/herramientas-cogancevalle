@@ -42,7 +42,6 @@
         padding-right: 10px;
     }
 
-
     .bloque-vista {
       border-radius: 8px;
       padding: 15px;
@@ -127,6 +126,52 @@
     color: #d33;
   }
   
+  /* Botones dentro del bloque-vista */
+  .btn-accion {
+      background-color: #28a745;  /* verde */
+      color: white;
+      padding: 8px 18px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.2s ease;
+      margin-right: 10px;
+  }
+
+  .btn-accion:hover:not(:disabled) {
+      background-color: #218838;
+      transform: translateY(-1px);
+  }
+
+  .btn-accion:disabled {
+      background-color: #6c757d;
+      cursor: not-allowed;
+  }
+
+  /* Estilo especial para guardar */
+  .btn-guardar {
+      background-color: #808080ff; /* amarillo */
+      color: #212529;
+  }
+
+  .btn-guardar:hover:not(:disabled) {
+      background-color: #9e9e9eff;
+  }
+
+  /* Spinner pequeño dentro de botones si quieres */
+  .btn-accion .spinner {
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top: 2px solid #fff;
+      border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-left: 8px;
+      vertical-align: middle;
+  }
+
   </style>
   {% endblock %}
 
