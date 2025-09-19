@@ -248,7 +248,7 @@ def asignar_tareas(request):
             fecha_asignacion = request.session.get('fecha_asignacion', None)
             if selected_user_ids and fecha_asignacion:
                 selected_users = User.objects.filter(id__in=selected_user_ids)
-                tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion, ativo=True).exclude(diferencia=0)
+                tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion, activo=True).exclude(diferencia=0)
                 
                 # Crear un DataFrame con las tareas
                 df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'producto__inv_saldo', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion','verificado')))
