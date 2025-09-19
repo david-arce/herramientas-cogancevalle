@@ -1,0 +1,129 @@
+<div class="bloque-vista">
+    <h2>📊 Proyección presupuesto centro operacion - Ventas</h2>
+
+    <div class="btn-group">
+        <button type="button" id="cargarBtn">🔄 Cargar desde histórico</button>
+        <button type="button" id="guardarBtn">💾 Guardar cambios</button>
+    </div>
+
+    <table id="presupuestoTableCentroOperacionCostos" class="display" style="width:100%">
+        <thead>
+            <tr>
+                <th>Año</th>
+                <th>Mes</th>
+                <th>Centro de operacion</th>
+                <th>Total</th>
+                <th>R2 %</th>
+            </tr>
+        </thead>
+    </table>
+</div>
+
+<script>
+function numberFormat(data, type, row) {
+    if (type === 'display' && !isNaN(data)) {
+        return new Intl.NumberFormat('es-ES').format(data);
+    }
+    return data;
+}
+
+$(function () {   // ⚡ $(function() {}) == $(document).ready()
+    let table = $('#presupuestoTableCentroOperacionCostos').DataTable({
+        ajax: {
+            url: "{% url 'obtener_presupuesto_centro_costos' %}",
+            dataSrc: ""
+        },
+        columns: [
+            { data: "year" },
+            { data: "mes" },
+            { data: "centro_operacion" },
+            { data: "total" },
+            { data: "r2"}
+        ],
+        columnDefs: [
+            { targets: [3,4], render: numberFormat },
+            { targets: [3], className: "editable" }
+        ]
+    });
+
+    
+    let editingCell = null;
+    // Doble clic para editar SOLO si el año es 2025
+    $('#presupuestoTableCentroOperacionCostos').on('dblclick', 'td.editable', function () {
+        if (editingCell) return;
+
+        let cell = table.cell(this);
+        let rowData = table.row(this).data();  // obtiene toda la fila
+
+        if (rowData.year !== 2025) {
+            // 🚫 Bloquear edición
+            return;
+        }
+
+        let oldValue = cell.data();
+        $(this).html('<input type="text" class="cell-input" value="'+ oldValue +'"/>');
+        let $input = $(this).find("input").focus();
+        editingCell = this;
+
+        $input[0].setSelectionRange(0, $input.val().length);
+
+        $input.on("keydown", function(e) {
+            if (e.key === "Enter") {
+                cell.data($input.val()).draw(false);
+                editingCell = null;
+            } else if (e.key === "Escape") {
+                cell.data(oldValue).draw(false);
+                editingCell = null;
+            }
+        });
+    });
+
+    // Guardar cuando haces clic fuera
+    $(document).on("click", function(e) {
+        if (editingCell) {
+            let $cell = $(editingCell);
+            let $input = $cell.find("input");
+            if ($input.length && !$(e.target).closest("#presupuestoTableCentroOperacionCostos").length) {
+                let cell = table.cell(editingCell);
+                cell.data($input.val()).draw(false);
+                editingCell = null;
+            }
+        }
+    });
+
+    // 🔄 Botón cargar desde histórico
+    $(document).on("click", "#cargarBtn", function () {
+        $.ajax({
+            url: "{% url 'cargar_presupuesto_centro_costos' %}",
+            type: "GET",
+            success: function() {
+                alert("Datos recalculados y cargados desde histórico ✅");
+                table.ajax.reload();
+            },
+            error: function(xhr) {
+                alert("Error al cargar desde histórico ❌ " + xhr.responseText);
+            }
+        });
+    });
+
+    // 💾 Botón guardar cambios
+    $(document).on("click", "#guardarBtn", function () {
+        let data = table.rows().data().toArray();
+
+        $.ajax({
+            url: "{% url 'guardar_presupuesto_centro_costos' %}",
+            type: "POST",
+            data: JSON.stringify(data),
+            contentType: "application/json",
+            headers: { "X-CSRFToken": "{{ csrf_token }}" },
+            success: function() {
+                alert("Cambios guardados ✅");
+                table.ajax.reload();
+            },
+            error: function(xhr) {
+                alert("Error al guardar ❌: " + xhr.responseText);
+            }
+        });
+    });
+});
+</script>

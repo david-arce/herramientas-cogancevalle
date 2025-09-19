@@ -2,9 +2,53 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.dashboard, name='dashboardPresupuesto'),
-    path('presupuesto-ventas/', views.presupuesto_comercial, name='presupuestoVentas'), 
+    path('', views.dashboard, name='dashboardPresupuesto'), 
     path("exportar-excel/", views.exportar_excel_presupuestos, name="exportar_excel"),
+    
+    path('presupuesto-ventas-mod/', views.base_comercial, name='baseComercial'), 
+    path('presupuesto-ventas/', views.presupuesto_comercial, name='baseComercial'), 
+    
+    # Presupuesto general ventas
+    path('presupuesto-general-ventas/', views.vista_presupuesto_general_ventas, name='presupuestoGeneralVentas'), 
+    path('guardar-presupuesto-general-ventas/', views.guardar_presupuesto_general_ventas, name='guardar_presupuesto_general_ventas'),
+    path('obtener-presupuesto-general-ventas/', views.obtener_presupuesto_general_ventas, name='obtener_presupuesto_general_ventas'),
+    path('cargar-presupuesto-general-ventas/', views.cargar_presupuesto_general_ventas, name='cargar_presupuesto_general_ventas'),
+    
+    # presupuesto centro ventas
+    path('presupuesto-centro-ventas/', views.vista_presupuesto_centro_ventas, name='presupuestoCentroVentas'), 
+    path('guardar-presupuesto-centro-ventas/', views.guardar_presupuesto_centro_ventas, name='guardar_presupuesto_centro_ventas'),
+    path('obtener-presupuesto-centro-ventas/', views.obtener_presupuesto_centro_ventas, name='obtener_presupuesto_centro_ventas'),
+    path('cargar-presupuesto-centro-ventas/', views.cargar_presupuesto_centro_ventas, name='cargar_presupuesto_centro_ventas'),
+    
+    # presupuesto centro - segmento ventas
+    path('presupuesto-centro-segmento-ventas/', views.vista_presupuesto_centro_segmento_ventas, name='presupuestoCentroSegmentoVentas'), 
+    path('guardar-presupuesto-centro-segmento-ventas/', views.guardar_presupuesto_centro_segmento_ventas, name='guardar_presupuesto_centro_segmento_ventas'),
+    path('obtener-presupuesto-centro-segmento-ventas/', views.obtener_presupuesto_centro_segmento_ventas, name='obtener_presupuesto_centro_segmento_ventas'),
+    path('cargar-presupuesto-centro-segmento-ventas/', views.cargar_presupuesto_centro_segmento_ventas, name='cargar_presupuesto_centro_segmento_ventas'),
+    
+    # presupuesto general costos
+    path('presupuesto-general-costos/', views.vista_presupuesto_general_costos, name='presupuestoGeneralCostos'), 
+    path('guardar-presupuesto-general-costos/', views.guardar_presupuesto_general_costos, name='guardar_presupuesto_general_costos'),
+    path('obtener-presupuesto-general-costos/', views.obtener_presupuesto_general_costos, name='obtener_presupuesto_general_costos'),
+    path('cargar-presupuesto-general-costos/', views.cargar_presupuesto_general_costos, name='cargar_presupuesto_general_costos'),
+    
+    # presupuesto centro costos
+    path('presupuesto-centro-costos/', views.vista_presupuesto_centro_costos, name='presupuestoCentroCostos'), 
+    path('guardar-presupuesto-centro-costos/', views.guardar_presupuesto_centro_costos, name='guardar_presupuesto_centro_costos'),
+    path('obtener-presupuesto-centro-costos/', views.obtener_presupuesto_centro_costos, name='obtener_presupuesto_centro_costos'),
+    path('cargar-presupuesto-centro-costos/', views.cargar_presupuesto_centro_costos, name='cargar_presupuesto_centro_costos'),
+    
+    # presupuesto centro-segmento costos
+    path('presupuesto-centro-segmento-costos/', views.vista_presupuesto_centro_segmento_costos, name='presupuestoCentroSegmentoCostos'), 
+    path('guardar-presupuesto-centro-segmento-costos/', views.guardar_presupuesto_centro_segmento_costos, name='guardar_presupuesto_centro_segmento_costos'),
+    path('obtener-presupuesto-centro-segmento-costos/', views.obtener_presupuesto_centro_segmento_costos, name='obtener_presupuesto_centro_segmento_costos'),
+    path('cargar-presupuesto-centro-segmento-costos/', views.cargar_presupuesto_centro_segmento_costos, name='cargar_presupuesto_centro_segmento_costos'),
+    
+    # presupuesto comercial
+    path('presupuesto-comercial/', views.vista_presupuesto_comercial, name='presupuestoComercial'),
+    path('guardar-presupuesto-comercial/', views.guardar_presupuesto_comercial, name='guardar_presupuesto_comercial'),
+    path('obtener-presupuesto-comercial/', views.obtener_presupuesto_comercial, name='obtener_presupuesto_comercial'),
+    path('cargar-presupuesto-comercial/', views.cargar_presupuesto_comercial, name='cargar_presupuesto_comercial'),
     
     path('presupuesto-nomina/', views.presupuestoNomina, name='presupuestoNomina'),
     # sueldos

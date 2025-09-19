@@ -1,0 +1,186 @@
+<div class="bloque-vista">
+    <h2>📊 Proyección presupuesto general - Ventas</h2>
+
+    <div class="btn-group">
+        <button type="button" id="cargarBtn">🔄 Cargar desde histórico</button>
+        <button type="button" id="guardarBtn">💾 Guardar cambios</button>
+    </div>
+
+    <table id="presupuestoTable" class="display" style="width:100%">
+        <thead>
+            <tr>
+                <th>Línea N1</th>
+                <th>Año</th>
+                <th>Ventas</th>
+                <th>Costos</th>
+                <th>R2-ventas %</th>
+                <th>R2-Costos %</th>
+                <th>Varicación - ventas %</th>
+                <th>Varicación - costos %</th>
+                <th>Variación - ventas $</th>
+                <th>Variación - costos $</th>
+                <th>Variación mes - ventas $</th>
+                <th>Variación mes - costos $</th>
+                <th>Variación precios - ventas $</th>
+                <th>Variación precios - costos $</th>
+                <th>Crecimiento comercial - ventas $</th>
+                <th>Crecimiento comercial - costos $</th>
+                <th>Crecimiento comercial mesual - ventas $</th>
+                <th>Crecimiento comercial mesual - costos $</th>
+                <th>utilidad %</th>
+                <th>utilidad valor $</th>
+            </tr>
+        </thead>
+    </table>
+</div>
+
+<script>
+function numberFormat(data, type, row) {
+    if (type === 'display' && !isNaN(data)) {
+        return new Intl.NumberFormat('es-ES').format(data);
+    }
+    return data;
+}
+
+// 💵 Formato moneda (con signo pesos)
+function moneyFormat(data, type) {
+    if (type === 'display' && !isNaN(data)) {
+        return new Intl.NumberFormat('es-CO', {
+            style: 'currency',
+            currency: 'COP',
+            minimumFractionDigits: 0
+        }).format(data);
+    }
+    return data;
+}
+
+// 📊 Formato porcentaje
+function percentFormat(data, type, row) {
+    if (type === 'display' && !isNaN(data)) {
+        return new Intl.NumberFormat('es-CO', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(data) + " %";
+    }
+    return data;
+}
+
+$(function () {   // ⚡ $(function() {}) == $(document).ready()
+    let table = $('#presupuestoTable').DataTable({
+        ajax: {
+            url: "{% url 'obtener_presupuesto_comercial' %}",
+            dataSrc: ""
+        },
+        columns: [
+            { data: "linea" },
+            { data: "year" },
+            { data: "ventas" },
+            { data: "costos" },
+            { data: "r2_ventas" },
+            { data: "r2_costos" },
+            { data: "variacion_porcentual_ventas" },
+            { data: "variacion_porcentual_costos" },
+            { data: "variacion_valor_ventas" },
+            { data: "variacion_valor_costos" },
+            { data: "variacion_mes_ventas" },
+            { data: "variacion_mes_costos" },
+            { data: "variacion_precios_ventas" },
+            { data: "variacion_precios_costos" },
+            { data: "crecimiento_comercial_ventas" },
+            { data: "crecimiento_comercial_costos" },
+            { data: "crecimiento_comercial_mes_ventas" },
+            { data: "crecimiento_comercial_mes_costos" },
+            { data: "utilidad_porcentual" },
+            { data: "utilidad_valor" }
+        ],
+        columnDefs: [
+            // 💵 columnas con dinero
+        { targets: [2, 3, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19], render: moneyFormat, className: "dt-right" },
+        // 📊 columnas con porcentaje
+        { targets: [4, 5, 6, 7, 18], render: percentFormat, className: "dt-right" },
+            { targets: [2, 3], className: "editable dt-right" }
+        ]
+    });
+
+    
+    let editingCell = null;
+    // Doble clic para editar SOLO si el año es 2025
+    $('#presupuestoTable').on('dblclick', 'td.editable', function () {
+        if (editingCell) return;
+
+        let cell = table.cell(this);
+        let rowData = table.row(this).data();  // obtiene toda la fila
+
+        if (rowData.year !== 2025) {
+            // 🚫 Bloquear edición
+            return;
+        }
+
+        let oldValue = cell.data();
+        $(this).html('<input type="text" class="cell-input" value="'+ oldValue +'"/>');
+        let $input = $(this).find("input").focus();
+        editingCell = this;
+
+        $input[0].setSelectionRange(0, $input.val().length);
+
+        $input.on("keydown", function(e) {
+            if (e.key === "Enter") {
+                cell.data($input.val()).draw(false);
+                editingCell = null;
+            } else if (e.key === "Escape") {
+                cell.data(oldValue).draw(false);
+                editingCell = null;
+            }
+        });
+    });
+
+    // Guardar cuando haces clic fuera
+    $(document).on("click", function(e) {
+        if (editingCell) {
+            let $cell = $(editingCell);
+            let $input = $cell.find("input");
+            if ($input.length && !$(e.target).closest("#presupuestoTable").length) {
+                let cell = table.cell(editingCell);
+                cell.data($input.val()).draw(false);
+                editingCell = null;
+            }
+        }
+    });
+
+    // 🔄 Botón cargar desde histórico
+    $(document).on("click", "#cargarBtn", function () {
+        $.ajax({
+            url: "{% url 'cargar_presupuesto_comercial' %}",
+            type: "GET",
+            success: function() {
+                alert("Datos recalculados y cargados desde histórico ✅");
+                table.ajax.reload();
+            },
+            error: function(xhr) {
+                alert("Error al cargar desde histórico ❌ " + xhr.responseText);
+            }
+        });
+    });
+
+    // 💾 Botón guardar cambios
+    $(document).on("click", "#guardarBtn", function () {
+        let data = table.rows().data().toArray();
+
+        $.ajax({
+            url: "{% url 'guardar_presupuesto_comercial' %}",
+            type: "POST",
+            data: JSON.stringify(data),
+            contentType: "application/json",
+            headers: { "X-CSRFToken": "{{ csrf_token }}" },
+            success: function() {
+                alert("Cambios guardados ✅");
+                table.ajax.reload();
+            },
+            error: function(xhr) {
+                alert("Error al guardar ❌: " + xhr.responseText);
+            }
+        });
+    });
+    
+});
+</script>

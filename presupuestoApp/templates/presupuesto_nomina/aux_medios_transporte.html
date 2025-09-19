@@ -56,7 +56,16 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-
+        #btnTabla {
+            position: relative;
+            padding: 8px 16px;
+            border: none;
+            background-color: #646464ff;
+            color: white;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -71,6 +80,7 @@
         <button id="agregarFila">➕ Agregar fila</button>
         <button id="guardarTempBtn">Guardar en BD (temporal)<span class="spinner" style="display:none; margin-left:8px;"></span>
         </button>
+        <button id="btnTabla"> Ir a tabla principal</button>
     </div>
 
     <form id="subirPresupuestoForm" method="post" action="{% url 'subir_presupuesto_medios_transporte' %}">
@@ -112,6 +122,10 @@
 
 <script>
 $(document).ready(function() {
+    // Botón Ir a la tabla medios_transporte
+    document.getElementById("btnTabla").addEventListener("click", function () {
+        window.location.href = "{% url 'medios_transporte' %}";
+    });
     let table = $('#tempTable').DataTable({
         ajax: {
             url: "{% url 'obtener_medios_transporte_temp' %}",
@@ -201,9 +215,19 @@ $(document).ready(function() {
     let editingCell = null;
     // doble clic para editar
     $('#tempTable').on('dblclick', 'td.editable', function() {
-        if (editingCell) return; // ya editando algo
         let cell = table.cell(this);
         let oldValue = cell.data();
+
+        // 🔥 Si ya hay otra celda editándose, cerrarla primero
+        if (editingCell && editingCell !== this) {
+            let $prevInput = $(editingCell).find("input");
+            if ($prevInput.length) {
+                cerrarEdicion(editingCell, $prevInput.val());
+            }
+        }
+
+        // Si la misma celda está en edición, no volver a abrir
+        if (editingCell === this) return;
 
         $(this).html('<input type="text" class="cell-input" value="'+ oldValue +'"/>');
         let $input = $(this).find("input").focus();

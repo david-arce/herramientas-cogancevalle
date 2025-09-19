@@ -1,0 +1,305 @@
+{% extends "presupuesto_comercial/base_presupuesto_comercial.html" %}
+{% load static %} 
+{% block title %}Presupuesto{% endblock %} 
+
+{% block css %}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+        }
+
+        table.dataTable thead th {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .dataTables_wrapper {
+            max-width: 1000px;
+            margin: auto;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <h2>Proyección presupuesto general - Valor neto</h2>
+    <table id="presupuestoTableProyeccionGeneral" class="display">
+        <thead>
+            <tr>
+                <th>Año</th>
+                <th>Mes</th>
+                <th>Total</th>
+                <th>R2</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in proyeccion_general %}
+            <tr>
+                <td>{{ row.year }}</td>
+                <td>{{ row.mes }}</td>
+                <td>{{ row.suma}}</td>
+                <td>{{ row.coef_correlacion|floatformat:2}}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Proyección presupuesto por Centro de Operación - Valor neto</h2>
+    <table id="presupuestoTableCentroOperacion" class="display">
+        <thead>
+            <tr>
+                <th>Año</th>
+                <th>Mes</th>
+                <th>Centro operacion</th>
+                <th>Total</th>
+                <th>R2</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in proyeccion_centro_operacion %}
+            <tr>
+                <td>{{ row.year }}</td>
+                <td>{{ row.mes }}</td>
+                <td>{{ row.centro_de_operacion }}</td>
+                <td>{{ row.suma}}</td>
+                <td>{{ row.coef_correlacion|floatformat:2}}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Proyección presupuesto por Centro de Operación - Segmento -Valor neto</h2>
+    <table id="presupuestoTableCentroOperacionSegmento" class="display">
+        <thead>
+            <tr>
+                <th>Año</th>
+                <th>Mes</th>
+                <th>Segmento</th>
+                <th>Centro operacion</th>
+                <th>Total</th>
+                <th>R2</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in proyeccion_centro_operacion_segmento %}
+            <tr>
+                <td>{{ row.year }}</td>
+                <td>{{ row.mes }}</td>
+                <td>{{ row.nombre_clase_cliente}}</td>
+                <td>{{ row.centro_de_operacion}}</td>
+                <td>{{ row.suma}}</td>
+                <td>{{ row.coef_correlacion|floatformat:2}}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Proyección presupuesto general - Costos</h2>
+    <table id="presupuestoTableProyeccionGeneralCostos" class="display">
+        <thead>
+            <tr>
+                <th>Año</th>
+                <th>Mes</th>
+                <th>Total</th>
+                <th>R2</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in proyeccion_general_costos %}
+            <tr>
+                <td>{{ row.year }}</td>
+                <td>{{ row.mes }}</td>
+                <td>{{ row.suma}}</td>
+                <td>{{ row.coef_correlacion|floatformat:2}}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Proyección presupuesto por Centro de Operación - Costos</h2>
+    <table id="presupuestoTableCentroOperacionCostos" class="display">
+        <thead>
+            <tr>
+                <th>Año</th>
+                <th>Mes</th>
+                <th>Centro operacion</th>
+                <th>Total</th>
+                <th>R2</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in proyeccion_centro_operacion_costos %}
+            <tr>
+                <td>{{ row.year }}</td>
+                <td>{{ row.mes }}</td>
+                <td>{{ row.centro_de_operacion }}</td>
+                <td>{{ row.suma}}</td>
+                <td>{{ row.coef_correlacion|floatformat:2}}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Proyección presupuesto por Centro de Operación - Segmento -Costos</h2>
+    <table id="presupuestoTableCentroOperacionSegmentoCostos" class="display">
+        <thead>
+            <tr>
+                <th>Año</th>
+                <th>Mes</th>
+                <th>Segmento</th>
+                <th>Centro operacion</th>
+                <th>Total</th>
+                <th>R2</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in proyeccion_centro_operacion_segmento_costos %}
+            <tr>
+                <td>{{ row.year }}</td>
+                <td>{{ row.mes }}</td>
+                <td>{{ row.nombre_clase_cliente}}</td>
+                <td>{{ row.centro_de_operacion}}</td>
+                <td>{{ row.suma}}</td>
+                <td>{{ row.coef_correlacion|floatformat:2}}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Presupuesto por Línea y Lapso</h2>
+    <table id="presupuestoTable" class="display">
+        <thead>
+            <tr>
+                <th>Línea N1</th>
+                <th>Año</th>
+                <th>Ventas</th>
+                <th>Costos</th>
+                <th>R2 - ventas</th>
+                <th>R2 - Costos</th>
+                <th>Varicación % - ventas</th>
+                <th>Varicación % - costos</th>
+                <th>Variación $ - ventas</th>
+                <th>Variación $ - costos</th>
+                <th>Variación mes - ventas</th>
+                <th>Variación mes - costos</th>
+                <th>Variación precios - ventas</th>
+                <th>Variación precios - costos</th>
+                <th>Crecimiento comercial - ventas</th>
+                <th>Crecimiento comercial - costos</th>
+                <th>Crecimiento comercial mesual - ventas</th>
+                <th>Crecimiento comercial mesual - costos</th>
+                <th>utilidad</th>
+                <th>utilidad valor</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data %}
+            <tr>
+                <td>{{ row.nombre_linea_n1 }}</td>
+                <td>{{ row.year }}</td>
+                <td>{{ row.ventas }}</td>
+                <td>{{ row.costos }}</td>
+                <td>{{ row.R2_x}}%</td>
+                <td>{{ row.R2_y}}%</td>
+                <td>{{ row.variacion_pct_x|floatformat:2 }}%</td>
+                <td>{{ row.variacion_pct_y|floatformat:2 }}%</td>
+                <td>{{ row.variacion_valor_x}}</td>
+                <td>{{ row.variacion_valor_y}}</td>
+                <td>{{ row.variacion_mes_x}}</td>
+                <td>{{ row.variacion_mes_y}}</td>
+                <td>{{ row.variacion_precios_x}}</td>
+                <td>{{ row.variacion_precios_y}}</td>
+                <td>{{ row.crecimiento_comercial_x}}</td>
+                <td>{{ row.crecimiento_comercial_y}}</td>
+                <td>{{ row.crecimiento_comercial_mes_x }}</td>
+                <td>{{ row.crecimiento_comercial_mes_y }}</td>
+                <td>{{ row.utilidad|floatformat:2 }}%</td>
+                <td>{{ row.utilidad_valor}}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+
+{% block js %}
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<script>
+    // Función para formatear números con puntos de miles
+    function numberFormat(data, type, row) {
+        if (type === 'display' && !isNaN(data)) {
+            return new Intl.NumberFormat('es-ES').format(data);
+        }
+        return data;
+    }
+
+    $(document).ready(function () {
+        $('#presupuestoTableProyeccionGeneral').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            },
+            columnDefs: [
+                { targets: 2, render: numberFormat } // Columna "Total"
+            ]
+        });
+
+        $('#presupuestoTableCentroOperacion').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            },
+            columnDefs: [
+                { targets: 3, render: numberFormat } // Columna "Total"
+            ]
+        });
+
+        $('#presupuestoTableCentroOperacionSegmento').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            },
+            columnDefs: [
+                { targets: 4, render: numberFormat } // Columna "Total"
+            ]
+        });
+
+        $('#presupuestoTableProyeccionGeneralCostos').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            },
+            columnDefs: [
+                { targets: 2, render: numberFormat } // Columna "Total"
+            ]
+        });
+
+        $('#presupuestoTableCentroOperacionCostos').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            },
+            columnDefs: [
+                { targets: 3, render: numberFormat } // Columna "Total"
+            ]
+        });
+
+        $('#presupuestoTableCentroOperacionSegmentoCostos').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            },
+            columnDefs: [
+                { targets: 4, render: numberFormat } // Columna "Total"
+            ]
+        });
+
+        $('#presupuestoTable').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            },
+            columnDefs: [
+                { targets: [2, 3, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19], render: numberFormat }
+                // Ajusta índices según las columnas numéricas
+            ]
+        });
+    });
+</script>
+{% endblock %}
