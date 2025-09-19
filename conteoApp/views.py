@@ -240,7 +240,7 @@ def asignar_tareas(request):
                 # Limpiar la sesión
                 selected_user_ids = request.session.pop('selected_user_ids', [])
                 fecha_asignacion = request.session.pop('fecha_asignacion', None)
-                return response
+            return response
         
         if 'export_excel_diferencias' in request.POST:
             # Recuperar los datos de la sesión
@@ -284,7 +284,7 @@ def asignar_tareas(request):
                 # Limpiar la sesión
                 selected_user_ids = request.session.pop('selected_user_ids', [])
                 fecha_asignacion = request.session.pop('fecha_asignacion', None)
-                return response
+            return response
     
     # Limpiar usuarios seleccionados y mostrar tareas si `assigned=1`
     if 'assigned' in request.GET:
