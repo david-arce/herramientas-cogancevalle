@@ -204,10 +204,18 @@ def asignar_tareas(request):
             fecha_asignacion = request.session.get('fecha_asignacion', None)
             if selected_user_ids and fecha_asignacion:
                 selected_users = User.objects.filter(id__in=selected_user_ids)
-                tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion)
+                tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=datetime.date.today())
+
+                # Validar si hay tareas
+                if not tareas.exists():
+                    return redirect('asignar_tareas')
                 
                 # Crear un DataFrame con las tareas
                 df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'producto__inv_saldo', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion','verificado')))
+                
+                # Validar si el DataFrame quedó vacío
+                if df.empty:
+                    return redirect('asignar_tareas')
                 
                 # Cambiar True/False a 'OK' o ''
                 df['verificado'] = df['verificado'].apply(lambda x: 'OK' if x else '')
@@ -231,7 +239,7 @@ def asignar_tareas(request):
                 }, inplace=True)
                 response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 response['Content-Disposition'] = 'attachment; filename=tareas.xlsx'
-                
+                df.to_excel(response, index=False)
                 # Limpiar la sesión
                 selected_user_ids = request.session.pop('selected_user_ids', [])
                 fecha_asignacion = request.session.pop('fecha_asignacion', None)
@@ -245,13 +253,21 @@ def asignar_tareas(request):
             if selected_user_ids and fecha_asignacion:
                 selected_users = User.objects.filter(id__in=selected_user_ids)
                 tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion, activo=True).exclude(diferencia=0)
+
+                # Validar si hay tareas
+                if not tareas.exists():
+                    return redirect('asignar_tareas')
                 
                 # Crear un DataFrame con las tareas
                 df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'producto__inv_saldo', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion', 'verificado')))
                 
+                # Validar si el DataFrame quedó vacío
+                if df.empty:
+                    return redirect('asignar_tareas')
+                
                 # Cambiar True/False a 'OK' o ''
                 df['verificado'] = df['verificado'].apply(lambda x: 'OK' if x else '')
-                print(df)
+                
                 # Renombrar las columnas con nombres personalizados
                 df.rename(columns={
                     'usuario__first_name': 'Nombre',
@@ -271,7 +287,7 @@ def asignar_tareas(request):
                 }, inplace=True)
                 response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 response['Content-Disposition'] = 'attachment; filename=diferencias.xlsx'
-                
+                df.to_excel(response, index=False)
                 # Limpiar la sesión
                 selected_user_ids = request.session.pop('selected_user_ids', [])
                 fecha_asignacion = request.session.pop('fecha_asignacion', None)
@@ -498,148 +514,3 @@ def conteo(request):
 
 def error_permiso(request, exception):
     return render(request, 'error.html', status=403)
-
-import os
-# Cargar el archivo Excel
-# def actualizar_saldo_desde_excel(request):
-#     ruta_carpeta = os.path.join('..', 'bd')
-#     ruta_excel = os.path.join(ruta_carpeta, 'inv06a.xlsx')
-#     df = pd.read_excel(ruta_excel, sheet_name="inv", dtype={"FECVENCE": str})
-    
-#     with transaction.atomic():  # Usar transacción para mayor seguridad
-#         # Primero, insertar los productos que no existen
-#         for _, row in df.iterrows():
-#             if not Inv06.objects.filter(
-#                 marnombre=row["MARNOMBRE"],
-#                 mcnproduct=row["MCNPRODUCT"],
-#                 pronombre=row["PRONOMBRE"],
-#                 fecvence=row["FECVENCE"]
-#             ).exists():
-#                 Inv06.objects.create(
-#                     mcncuenta=row["MCNCUENTA"],
-#                     promarca=row["PROMARCA"],
-#                     marnombre=row["MARNOMBRE"],
-#                     mcnproduct=row["MCNPRODUCT"],
-#                     pronombre=row["PRONOMBRE"],
-#                     fecvence=row["FECVENCE"],
-#                     mcnbodega=row["MCNBODEGA"],
-#                     bodnombre=row["BODNOMBRE"],
-#                     saldo=row["SALDO"],
-#                     vrunit=row["VRUNIT"],
-#                     vrtotal=row["VRTOTAL"]
-#                 )
-        
-#         # Luego, actualizar los saldos de todos los productos
-#         for _, row in df.iterrows():
-#             Inv06.objects.filter(
-#                 marnombre=row["MARNOMBRE"],
-#                 mcnproduct=row["MCNPRODUCT"],
-#                 pronombre=row["PRONOMBRE"],
-#                 fecvence=row["FECVENCE"]
-#             ).update(saldo=row["SALDO"])
-    
-#     print("Inserción y actualización completadas.")
-#     return HttpResponse("Inserción y actualización completadas.")
-
-
-from django.db.models import Q
-
-def actualizar_saldo_desde_excel(request):
-    import os
-    import pandas as pd
-    from django.db import transaction
-
-    # Construir la ruta y cargar el archivo Excel
-    ruta_carpeta = os.path.join('..', 'bd')
-    ruta_excel = os.path.join(ruta_carpeta, 'inv06a.xlsx')
-    df = pd.read_excel(ruta_excel, sheet_name="inv", dtype={"FECVENCE": str})
-
-    # Construir el conjunto de llaves únicas del Excel
-    claves_df = set(
-        tuple(row) for row in df[['MARNOMBRE', 'MCNPRODUCT', 'PRONOMBRE', 'FECVENCE']].values
-    )
-
-    # Consultar en bloque las llaves existentes en la base de datos
-    registros_existentes = Inv06.objects.filter(
-        marnombre__in=[clave[0] for clave in claves_df],
-        mcnproduct__in=[clave[1] for clave in claves_df],
-        pronombre__in=[clave[2] for clave in claves_df],
-        fecvence__in=[clave[3] for clave in claves_df]
-    ).values_list('marnombre', 'mcnproduct', 'pronombre', 'fecvence')
-    claves_existentes = set(registros_existentes)
-
-    nuevos_registros = []
-    saldo_mapping = {}
-
-    # Recorrer cada fila del DataFrame una sola vez
-    for _, row in df.iterrows():
-        clave = (row["MARNOMBRE"], row["MCNPRODUCT"], row["PRONOMBRE"], row["FECVENCE"])
-        saldo_mapping[clave] = row["SALDO"]
-        if clave not in claves_existentes:
-            nuevos_registros.append(Inv06(
-                mcncuenta=row["MCNCUENTA"],
-                promarca=row["PROMARCA"],
-                marnombre=row["MARNOMBRE"],
-                mcnproduct=row["MCNPRODUCT"],
-                pronombre=row["PRONOMBRE"],
-                fecvence=row["FECVENCE"],
-                mcnbodega=row["MCNBODEGA"],
-                bodnombre=row["BODNOMBRE"],
-                saldo=row["SALDO"],
-                vrunit=row["VRUNIT"],
-                vrtotal=row["VRTOTAL"]
-            ))
-
-    with transaction.atomic():
-        # 1. Crear en bloque los nuevos registros
-        if nuevos_registros:
-            Inv06.objects.bulk_create(nuevos_registros)
-
-        # 2. Actualizar saldo en los que sí están en el DataFrame
-        qs = Inv06.objects.filter(
-            marnombre__in=[clave[0] for clave in claves_df],
-            mcnproduct__in=[clave[1] for clave in claves_df],
-            pronombre__in=[clave[2] for clave in claves_df],
-            fecvence__in=[clave[3] for clave in claves_df]
-        )
-        registros_a_actualizar = []
-        for registro in qs:
-            clave = (registro.marnombre, registro.mcnproduct, registro.pronombre, registro.fecvence)
-            nuevo_saldo = saldo_mapping.get(clave)
-            if nuevo_saldo is not None and registro.saldo != nuevo_saldo:
-                registro.saldo = nuevo_saldo
-                registros_a_actualizar.append(registro)
-
-        if registros_a_actualizar:
-            Inv06.objects.bulk_update(registros_a_actualizar, ['saldo'])
-
-        # 3. Poner en saldo=0 todo registro NO presente en las combinaciones de df
-        if claves_df:
-            # Construimos un Q "grande" que incluya todas las combinaciones que SÍ están en df
-            q_in_df = Q()
-            for marnombre, mcnproduct, pronombre, fecvence in claves_df:
-                q_in_df |= Q(
-                    marnombre=marnombre,
-                    mcnproduct=mcnproduct,
-                    pronombre=pronombre,
-                    fecvence=fecvence
-                )
-            # Excluimos todos los que sí están en df, para quedarnos con los que NO aparecen
-            no_en_df = Inv06.objects.exclude(q_in_df)
-        else:
-            # Si df está vacío, todos van a saldo 0
-            no_en_df = Inv06.objects.all()
-
-        # Actualizamos en memoria
-        registros_cero = []
-        for registro in no_en_df:
-            if registro.saldo != 0:
-                registro.saldo = 0
-                registros_cero.append(registro)
-
-        # Bulk update para poner saldo=0
-        if registros_cero:
-            Inv06.objects.bulk_update(registros_cero, ['saldo'])
-
-    print("Inserción y actualización completadas.")
-    return HttpResponse("Inserción y actualización completadas.")
