@@ -147,11 +147,11 @@ def asignar_tareas(request):
         if 'filter_users' in request.POST:
             selected_user_ids = request.POST.getlist('usuarios')  # Obtiene una lista de IDs de los usuarios seleccionados
             selected_users = User.objects.filter(id__in=selected_user_ids) # Obtener los objetos Usuario a partir de los IDs
-            fecha_asignacion = request.POST.get('fecha_asignacion') # obtener la fecha seleccionada
+            fecha_asignacion_filter = request.POST.get('fecha_asignacion') # obtener la fecha seleccionada
             
             # Guardar los datos en la sesión
             request.session['selected_user_ids'] = selected_user_ids
-            request.session['fecha_asignacion'] = fecha_asignacion
+            request.session['fecha_asignacion'] = fecha_asignacion_filter
            
             # Verificar si se seleccionaron usuarios 
             if not selected_users:
@@ -159,7 +159,7 @@ def asignar_tareas(request):
                 cant_tareas_por_usuario = []
             else:
                 # Filtrar las tareas por esos usuarios.
-                tareas = Tarea.objects.filter(usuario__in=selected_user_ids, fecha_asignacion = fecha_asignacion)
+                tareas = Tarea.objects.filter(usuario__in=selected_user_ids, fecha_asignacion = fecha_asignacion_filter)
                 
                 # Si quieres agrupar y contar tareas por usuario:
                 cant_tareas_por_usuario = (
@@ -202,9 +202,10 @@ def asignar_tareas(request):
             # Recuperar los datos de la sesión
             selected_user_ids = request.session.get('selected_user_ids', [])
             fecha_asignacion = request.session.get('fecha_asignacion', None)
+            
             if selected_user_ids and fecha_asignacion:
                 selected_users = User.objects.filter(id__in=selected_user_ids)
-                tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=datetime.date.today())
+                tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion)
 
                 # Validar si hay tareas
                 if not tareas.exists():
