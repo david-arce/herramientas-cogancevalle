@@ -797,7 +797,8 @@ def cargar_presupuesto_general_ventas(request):
     PresupuestoGeneralVentas.objects.all().delete()
     PresupuestoGeneralVentas.objects.bulk_create(registros)
     
-    return JsonResponse({"status": "ok", "mensaje": "Datos cargados y guardados correctamente ✅"})
+    data = list(PresupuestoGeneralVentas.objects.values())
+    return JsonResponse(data, safe=False) 
 
 @csrf_exempt
 def guardar_presupuesto_general_ventas(request):
@@ -846,10 +847,8 @@ def guardar_presupuesto_general_ventas(request):
             PresupuestoGeneralVentas.objects.all().delete()
             PresupuestoGeneralVentas.objects.bulk_create(registros)
 
-            return JsonResponse({
-                "status": "ok",
-                "mensaje": "Presupuesto guardado y R² recalculado correctamente ✅"
-            })
+            data = list(PresupuestoGeneralVentas.objects.values())
+            return JsonResponse(data, safe=False)
 
         except Exception as e:
             return JsonResponse({"status": "error", "mensaje": str(e)}, status=400)
@@ -947,7 +946,8 @@ def cargar_presupuesto_centro_ventas(request):
     PresupuestoCentroOperacionVentas.objects.all().delete() 
     PresupuestoCentroOperacionVentas.objects.bulk_create(registros)
     
-    return JsonResponse({"status": "ok", "mensaje": "Datos cargados correctamente ✅"})
+    data = list(PresupuestoCentroOperacionVentas.objects.values())
+    return JsonResponse(data, safe=False)
     
 @csrf_exempt
 def guardar_presupuesto_centro_ventas(request):
@@ -955,7 +955,7 @@ def guardar_presupuesto_centro_ventas(request):
         try:
             data = json.loads(request.body)  # 📥 datos editados desde DataTable
             df = pd.DataFrame(data)
-
+            # print(data)
             # --- asegurar tipos correctos ---
             df["year"] = df["year"].astype(int)
             df["mes"] = df["mes"].astype(int)
@@ -1000,15 +1000,12 @@ def guardar_presupuesto_centro_ventas(request):
             PresupuestoCentroOperacionVentas.objects.all().delete()
             PresupuestoCentroOperacionVentas.objects.bulk_create(registros)
 
-            return JsonResponse({
-                "status": "ok",
-                "mensaje": "Presupuesto por centro guardado y R² recalculado correctamente ✅"
-            })
+            data = list(PresupuestoCentroOperacionVentas.objects.values())
+            return JsonResponse(data, safe=False)
 
         except Exception as e:
             return JsonResponse({"status": "error", "mensaje": str(e)}, status=400)
 
-    return JsonResponse({"status": "error", "mensaje": "Método no permitido"}, status=405)
 
 def obtener_presupuesto_centro_ventas(request):
     data = list(PresupuestoCentroOperacionVentas.objects.values())

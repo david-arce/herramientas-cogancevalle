@@ -71,10 +71,13 @@ $(function () {   // ⚡ $(function() {}) == $(document).ready()
     // 🟢 Configurar filtros dinámicos
     table.on('init.dt', function () {
         // Mueve el botón de Excel al grupo de botones personalizado
-        $(".dt-buttons").appendTo(".btn-group");
+        let wrapper = $(table.table().container()); 
+        wrapper.find(".dt-buttons").appendTo(wrapper.closest(".bloque-vista").find(".btn-group"));
+
+        let headerCells = $(table.table().header()).find("tr.filters th");
         table.columns().every(function (index) {
             let column = this;
-            let headerCell = $('thead tr.filters th').eq(index);
+            let headerCell = headerCells.eq(index);
 
             if (index === 0 || index === 1 || index === 2) {
                 // 👉 Año y Mes con select
@@ -103,6 +106,7 @@ $(function () {   // ⚡ $(function() {}) == $(document).ready()
             }
         });
     });
+
     
     let editingCell = null;
     // Doble clic para editar SOLO si el año es 2025

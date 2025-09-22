@@ -2,8 +2,8 @@
     <h2>📊 Proyección presupuesto centro operacion-segmento Ventas</h2>
 
     <div class="btn-group">
-        <button type="button" id="cargarBtn">🔄 Cargar desde histórico</button>
-        <button type="button" id="guardarBtn">💾 Guardar cambios</button>
+        <button type="button" id="cargarBtn" class="btn-accion">🔄 Cargar desde histórico</button>
+        <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button>
     </div>
 
     <table id="presupuestoTableCentroOperacionSegmento" class="display" style="width:100%">
@@ -15,6 +15,14 @@
                 <th>Centro de operacion</th>
                 <th>Total</th>
                 <th>R2 %</th>
+            </tr>
+            <tr class="filters"> <!-- Filtros arriba -->
+                <th></th> <!-- select año -->
+                <th></th> <!-- select mes -->
+                <th></th> <!-- select segmento -->
+                <th></th> <!-- select centro de operacion -->
+                <th><input type="text" placeholder="🔍 Total" style="width:100%"></th>
+                <th><input type="text" placeholder="🔍 R2 %" style="width:100%"></th>
             </tr>
         </thead>
     </table>
@@ -45,7 +53,55 @@ $(function () {   // ⚡ $(function() {}) == $(document).ready()
         columnDefs: [
             { targets: [4,5], render: numberFormat },
             { targets: [4], className: "editable" }
+        ],
+        orderCellsTop: true,
+        fixedHeader: true,
+        dom: 'Bltip', // 👈 mantiene el selector de filas y agrega botones
+        buttons: [
+            {
+                extend: 'excelHtml5',
+                text: '📥 Exportar a Excel',
+                title: 'Presupuesto General Ventas'
+            }
         ]
+    });
+    // 🟢 Configurar filtros dinámicos
+    table.on('init.dt', function () {
+        // Mueve el botón de Excel al grupo de botones personalizado
+        let wrapper = $(table.table().container()); 
+        wrapper.find(".dt-buttons").appendTo(wrapper.closest(".bloque-vista").find(".btn-group"));
+
+        let headerCells = $(table.table().header()).find("tr.filters th");
+        table.columns().every(function (index) {
+            let column = this;
+            let headerCell = headerCells.eq(index);
+
+            if (index === 0 || index === 1 || index === 2 || index === 3) {
+                // 👉 Año y Mes con select
+                let select = $('<select><option value="">Todos</option></select>')
+                    .appendTo(headerCell.empty())
+                    .on('change', function () {
+                        let val = $.fn.dataTable.util.escapeRegex($(this).val());
+                        column.search(val ? '^' + val + '$' : '', true, false).draw();
+                    });
+
+                // Llenar opciones únicas
+                column.data().unique().sort().each(function (d) {
+                    if (d) {
+                        select.append('<option value="' + d + '">' + d + '</option>');
+                    }
+                });
+            } else {
+                // 👉 Total y R2 con input texto
+                $('<input type="text" placeholder="🔍" style="width:100%"/>')
+                    .appendTo(headerCell.empty())
+                    .on('keyup change clear', function () {
+                        if (column.search() !== this.value) {
+                            column.search(this.value).draw();
+                        }
+                    });
+            }
+        });
     });
 
     
