@@ -9,20 +9,20 @@
   
   <!-- DataTables CSS (global) -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
 
   <!-- jQuery y DataTables JS (global) -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     
   <!--custom css-->
   {% block css %}
   <style>
     td.editable { background: #f8f9fa; cursor: pointer; }
-    button { margin: 10px; }
+    button { margin: 5px; }
     body {
       font-family: Arial, sans-serif;
       margin: 30px;
@@ -34,7 +34,7 @@
     }
 
     .dataTables_wrapper {
-      max-width: 1000px;
+      max-width: 1500px;
       margin: auto;
     }
     .dt-right {
@@ -170,6 +170,50 @@
       display: inline-block;
       margin-left: 8px;
       vertical-align: middle;
+  }
+
+  #presupuestoTableProyeccionGeneral th,
+  #presupuestoTableProyeccionGeneral td {
+      min-width: 80px;   /* ajusta según lo necesites */
+      text-align: left; /* opcional, para alinear números */
+  }
+
+  /* Contenedor del menú */
+  .excel-filter {
+      display: none;
+      position: absolute;
+      background: white;
+      border: 1px solid #ccc;
+      padding: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      z-index: 1000;
+      max-height: 200px;
+      overflow-y: auto;
+      border-radius: 6px;
+      width: 150px !important;   /* ajusta a lo que necesites */
+      min-width: 80px;          /* opcional */
+  }
+
+  /* Título búsqueda */
+  .excel-filter input[type="text"] {
+      width: 100%;
+      margin-bottom: 6px;
+      padding: 3px;
+  }
+
+  .excel-filter-btn {
+      width: 100%;
+      padding: 4px 6px;
+      background: #f4f4f4;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      text-align: left;
+  }
+
+  .excel-filter-btn:hover {
+      background: #e0e0e0;
   }
 
   </style>

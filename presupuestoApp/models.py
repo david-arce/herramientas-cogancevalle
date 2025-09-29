@@ -74,19 +74,14 @@ class BdVentas2020(models.Model):
     lapso = models.BigIntegerField(db_column='Lapso', blank=True, null=True)  # Field name made lowercase.
     centro_de_operacion = models.BigIntegerField(db_column='Centro de Operacion', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     nombre_centro_de_operacion = models.CharField(db_column='Nombre Centro de Operacion', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    criterio_item_1 = models.FloatField(db_column='Criterio Item 1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    nombre_criterio_item_1 = models.CharField(db_column='Nombre Criterio Item 1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    item = models.BigIntegerField(db_column='Item', blank=True, null=True)  # Field name made lowercase.
-    nombre_item = models.CharField(db_column='Nombre Item', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    linea_n1 = models.BigIntegerField(db_column='Linea N1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    linea_n1 = models.CharField(db_column='Linea N1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     nombre_linea_n1 = models.CharField(db_column='Nombre Linea N1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     cliente = models.CharField(db_column='Cliente', blank=True, null=True)  # Field name made lowercase.
     nombre_cliente = models.CharField(db_column='Nombre Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    clase_cliente = models.BigIntegerField(db_column='Clase Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    clase_cliente = models.CharField(db_column='Clase Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     nombre_clase_cliente = models.CharField(db_column='Nombre Clase Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    cantidad_1 = models.FloatField(db_column='Cantidad 1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     valor_costo = models.FloatField(db_column='Valor Costo', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    valor_neto = models.BigIntegerField(db_column='Valor Neto', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    valor_neto = models.FloatField(db_column='Valor Neto', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
 
     class Meta:
         managed = False
@@ -96,19 +91,14 @@ class BdVentas2021(models.Model):
     lapso = models.BigIntegerField(db_column='Lapso', blank=True, null=True)  # Field name made lowercase.
     centro_de_operacion = models.BigIntegerField(db_column='Centro de Operacion', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     nombre_centro_de_operacion = models.CharField(db_column='Nombre Centro de Operacion', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    criterio_item_1 = models.FloatField(db_column='Criterio Item 1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    nombre_criterio_item_1 = models.CharField(db_column='Nombre Criterio Item 1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    item = models.BigIntegerField(db_column='Item', blank=True, null=True)  # Field name made lowercase.
-    nombre_item = models.CharField(db_column='Nombre Item', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    linea_n1 = models.BigIntegerField(db_column='Linea N1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    linea_n1 = models.CharField(db_column='Linea N1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     nombre_linea_n1 = models.CharField(db_column='Nombre Linea N1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     cliente = models.CharField(db_column='Cliente', blank=True, null=True)  # Field name made lowercase.
     nombre_cliente = models.CharField(db_column='Nombre Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    clase_cliente = models.BigIntegerField(db_column='Clase Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    clase_cliente = models.CharField(db_column='Clase Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     nombre_clase_cliente = models.CharField(db_column='Nombre Clase Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    cantidad_1 = models.FloatField(db_column='Cantidad 1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     valor_costo = models.FloatField(db_column='Valor Costo', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    valor_neto = models.BigIntegerField(db_column='Valor Neto', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    valor_neto = models.FloatField(db_column='Valor Neto', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
 
     class Meta:
         managed = False
@@ -118,19 +108,14 @@ class BdVentas2022(models.Model):
     lapso = models.BigIntegerField(db_column='Lapso', blank=True, null=True)  # Field name made lowercase.
     centro_de_operacion = models.BigIntegerField(db_column='Centro de Operacion', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     nombre_centro_de_operacion = models.CharField(db_column='Nombre Centro de Operacion', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    criterio_item_1 = models.FloatField(db_column='Criterio Item 1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    nombre_criterio_item_1 = models.CharField(db_column='Nombre Criterio Item 1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    item = models.BigIntegerField(db_column='Item', blank=True, null=True)  # Field name made lowercase.
-    nombre_item = models.CharField(db_column='Nombre Item', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    linea_n1 = models.BigIntegerField(db_column='Linea N1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    linea_n1 = models.CharField(db_column='Linea N1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     nombre_linea_n1 = models.CharField(db_column='Nombre Linea N1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     cliente = models.CharField(db_column='Cliente', blank=True, null=True)  # Field name made lowercase.
     nombre_cliente = models.CharField(db_column='Nombre Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    clase_cliente = models.BigIntegerField(db_column='Clase Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    clase_cliente = models.CharField(db_column='Clase Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     nombre_clase_cliente = models.CharField(db_column='Nombre Clase Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    cantidad_1 = models.FloatField(db_column='Cantidad 1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     valor_costo = models.FloatField(db_column='Valor Costo', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    valor_neto = models.BigIntegerField(db_column='Valor Neto', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    valor_neto = models.FloatField(db_column='Valor Neto', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
 
     class Meta:
         managed = False
@@ -140,19 +125,14 @@ class BdVentas2023(models.Model):
     lapso = models.BigIntegerField(db_column='Lapso', blank=True, null=True)  # Field name made lowercase.
     centro_de_operacion = models.BigIntegerField(db_column='Centro de Operacion', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     nombre_centro_de_operacion = models.CharField(db_column='Nombre Centro de Operacion', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    criterio_item_1 = models.FloatField(db_column='Criterio Item 1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    nombre_criterio_item_1 = models.CharField(db_column='Nombre Criterio Item 1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    item = models.BigIntegerField(db_column='Item', blank=True, null=True)  # Field name made lowercase.
-    nombre_item = models.CharField(db_column='Nombre Item', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    linea_n1 = models.BigIntegerField(db_column='Linea N1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    linea_n1 = models.CharField(db_column='Linea N1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     nombre_linea_n1 = models.CharField(db_column='Nombre Linea N1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     cliente = models.CharField(db_column='Cliente', blank=True, null=True)  # Field name made lowercase.
     nombre_cliente = models.CharField(db_column='Nombre Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    clase_cliente = models.BigIntegerField(db_column='Clase Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    clase_cliente = models.CharField(db_column='Clase Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     nombre_clase_cliente = models.CharField(db_column='Nombre Clase Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    cantidad_1 = models.FloatField(db_column='Cantidad 1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     valor_costo = models.FloatField(db_column='Valor Costo', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    valor_neto = models.BigIntegerField(db_column='Valor Neto', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    valor_neto = models.FloatField(db_column='Valor Neto', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
 
     class Meta:
         managed = False
@@ -162,25 +142,64 @@ class BdVentas2024(models.Model):
     lapso = models.BigIntegerField(db_column='Lapso', blank=True, null=True)  # Field name made lowercase.
     centro_de_operacion = models.BigIntegerField(db_column='Centro de Operacion', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     nombre_centro_de_operacion = models.CharField(db_column='Nombre Centro de Operacion', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    criterio_item_1 = models.FloatField(db_column='Criterio Item 1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    nombre_criterio_item_1 = models.CharField(db_column='Nombre Criterio Item 1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    item = models.BigIntegerField(db_column='Item', blank=True, null=True)  # Field name made lowercase.
-    nombre_item = models.CharField(db_column='Nombre Item', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    linea_n1 = models.BigIntegerField(db_column='Linea N1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    linea_n1 = models.CharField(db_column='Linea N1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     nombre_linea_n1 = models.CharField(db_column='Nombre Linea N1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     cliente = models.CharField(db_column='Cliente', blank=True, null=True)  # Field name made lowercase.
     nombre_cliente = models.CharField(db_column='Nombre Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    clase_cliente = models.BigIntegerField(db_column='Clase Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    clase_cliente = models.CharField(db_column='Clase Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     nombre_clase_cliente = models.CharField(db_column='Nombre Clase Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    cantidad_1 = models.FloatField(db_column='Cantidad 1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     valor_costo = models.FloatField(db_column='Valor Costo', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    valor_neto = models.BigIntegerField(db_column='Valor Neto', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    valor_neto = models.FloatField(db_column='Valor Neto', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
 
     class Meta:
         managed = False
         db_table = 'bd_ventas_2024'
 
- 
+class BdVentas2025(models.Model):
+    lapso = models.BigIntegerField(db_column='Lapso', blank=True, null=True)  # Field name made lowercase.
+    centro_de_operacion = models.BigIntegerField(db_column='Centro de Operacion', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    nombre_centro_de_operacion = models.CharField(db_column='Nombre Centro de Operacion', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    linea_n1 = models.CharField(db_column='Linea N1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    nombre_linea_n1 = models.CharField(db_column='Nombre Linea N1', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    cliente = models.CharField(db_column='Cliente', blank=True, null=True)  # Field name made lowercase.
+    nombre_cliente = models.CharField(db_column='Nombre Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    clase_cliente = models.CharField(db_column='Clase Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    nombre_clase_cliente = models.CharField(db_column='Nombre Clase Cliente', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    valor_costo = models.FloatField(db_column='Valor Costo', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    valor_neto = models.FloatField(db_column='Valor Neto', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+
+    class Meta:
+        managed = False
+        db_table = 'bd_ventas_2025'
+
+
+class Plantillagastos2025(models.Model):
+    centro_tra = models.CharField(db_column='CENTRO_TRA', blank=True, null=True)  # Field name made lowercase.
+    nombre_cen = models.CharField(db_column='NOMBRE_CEN', blank=True, null=True)  # Field name made lowercase.
+    codcosto = models.CharField(db_column='CODCOSTO', blank=True, null=True)  # Field name made lowercase.
+    responsable = models.CharField(db_column='RESPONSABLE', blank=True, null=True)  # Field name made lowercase.
+    cuenta = models.BigIntegerField(db_column='CUENTA', blank=True, null=True)  # Field name made lowercase.
+    cuenta_mayor = models.CharField(db_column='CUENTA MAYOR', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    detalle_cuenta = models.CharField(db_column='DETALLE CUENTA', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    sede_distribucion = models.FloatField(db_column='SEDE  DISTRIBUCION', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
+    proveedor = models.CharField(blank=True, null=True)
+    enero = models.BigIntegerField(blank=True, null=True)
+    febrero = models.BigIntegerField(blank=True, null=True)
+    marzo = models.BigIntegerField(blank=True, null=True)
+    abril = models.FloatField(blank=True, null=True)
+    mayo = models.BigIntegerField(blank=True, null=True)
+    junio = models.BigIntegerField(blank=True, null=True)
+    julio = models.BigIntegerField(blank=True, null=True)
+    agosto = models.FloatField(blank=True, null=True)
+    septiembre = models.FloatField(blank=True, null=True)
+    octubre = models.FloatField(blank=True, null=True)
+    noviembre = models.FloatField(blank=True, null=True)
+    diciembre = models.FloatField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'plantillagastos2025'
+
 class ConceptosFijosYVariables(models.Model):
     centro_tra = models.IntegerField(db_column='CENTRO_TRA', blank=True, null=True)  # Field name made lowercase.
     nombre_cen = models.CharField(db_column='NOMBRE_CEN', blank=True, null=True)  # Field name made lowercase.
@@ -210,6 +229,14 @@ class ConceptosFijosYVariables(models.Model):
     class Meta:
         managed = False
         db_table = 'conceptos_fijos_y_variables'
+
+class CuentasContables(models.Model):
+    cuenta = models.BigIntegerField(blank=True, null=True)
+    nom_cuenta = models.CharField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'cuentas_contables'
         
 class ParametrosPresupuestos(models.Model):
     incremento_salarial = models.FloatField(blank=True, null=True)
@@ -1085,10 +1112,12 @@ class PresupuestoBonosKyrovetAux(models.Model):
     class Meta:
         db_table = 'presupuesto_bonos_kyrovet_auxiliar'
         
-# TABLAS PARA PRESUPUESTO DE VENTAS
+# TABLAS PARA PRESUPUESTO COMERCIAL----------------------------------------
 class PresupuestoComercial(models.Model):
     linea = models.CharField(max_length=100)
     year = models.IntegerField()
+    nombre_centro_de_operacion = models.CharField(max_length=100, null=True, blank=True)
+    nombre_clase_cliente = models.CharField(max_length=100, null=True, blank=True)
     ventas = models.BigIntegerField(default=0)
     costos = models.BigIntegerField(default=0)
     r2_ventas = models.FloatField(default=0)
@@ -1105,8 +1134,16 @@ class PresupuestoComercial(models.Model):
     crecimiento_comercial_costos = models.BigIntegerField(default=0)
     crecimiento_comercial_mes_ventas = models.BigIntegerField(default=0)
     crecimiento_comercial_mes_costos = models.BigIntegerField(default=0)
+    crecimiento_ventas = models.BigIntegerField(default=0)
+    proyeccion_ventas = models.BigIntegerField(default=0)
+    crecimiento_costos = models.BigIntegerField(default=0)
+    proyeccion_costos = models.BigIntegerField(default=0)
     utilidad_porcentual = models.FloatField(default=0)
     utilidad_valor = models.BigIntegerField(default=0)
+    utilidad_porcentual_actual = models.FloatField(default=0)
+    utilidad_valor_actual = models.BigIntegerField(default=0)
+    variacion_proyectada_porcentual = models.FloatField(default=0)
+    variacion_proyectada_valor = models.BigIntegerField(default=0)
 
     class Meta:
         db_table = 'presupuesto_comercial'
@@ -1116,6 +1153,13 @@ class PresupuestoGeneralVentas(models.Model):
     mes = models.IntegerField()
     total = models.BigIntegerField(default=0)
     r2 = models.FloatField(default=0)
+    total_year = models.BigIntegerField(default=0)
+    total_year_costos = models.BigIntegerField(default=0)
+    variacion_pct = models.FloatField(default=0)
+    variacion_valor = models.BigIntegerField(default=0)
+    utilidad_pct = models.FloatField(default=0)
+    utilidad_valor = models.BigIntegerField(default=0)
+    total_proyectado = models.BigIntegerField(default=0)
     
     class Meta:
         db_table = 'presupuesto_general_ventas'
@@ -1125,6 +1169,11 @@ class PresupuestoGeneralCostos(models.Model):
     mes = models.IntegerField()
     total = models.BigIntegerField(default=0)
     r2 = models.FloatField(default=0)
+    total_year = models.BigIntegerField(default=0)
+    variacion_pct = models.FloatField(default=0)
+    variacion_valor = models.BigIntegerField(default=0)
+    utilidad_pct = models.FloatField(default=0)
+    utilidad_valor = models.BigIntegerField(default=0)
     
     class Meta:
         db_table = 'presupuesto_general_costos'
@@ -1132,9 +1181,16 @@ class PresupuestoGeneralCostos(models.Model):
 class PresupuestoCentroOperacionVentas(models.Model):
     year = models.IntegerField()
     mes = models.IntegerField()
-    centro_operacion = models.IntegerField()
+    nombre_centro_operacion = models.CharField(max_length=100, null=True, blank=True)
     total = models.BigIntegerField(default=0)
     r2 = models.FloatField(default=0)
+    total_year = models.BigIntegerField(default=0)
+    total_year_costos = models.BigIntegerField(default=0)
+    variacion_pct = models.FloatField(default=0)
+    variacion_valor = models.BigIntegerField(default=0)
+    utilidad_pct = models.FloatField(default=0)
+    utilidad_valor = models.BigIntegerField(default=0)
+    total_proyectado = models.BigIntegerField(default=0)
     
     class Meta:
         db_table = 'presupuesto_centro_operacion_ventas'
@@ -1142,9 +1198,14 @@ class PresupuestoCentroOperacionVentas(models.Model):
 class PresupuestoCentroOperacionCostos(models.Model):
     year = models.IntegerField()
     mes = models.IntegerField()
-    centro_operacion = models.IntegerField()
+    nombre_centro_operacion = models.CharField(max_length=100, null=True, blank=True)
     total = models.BigIntegerField(default=0)
     r2 = models.FloatField(default=0)
+    total_year = models.BigIntegerField(default=0)
+    variacion_pct = models.FloatField(default=0)
+    variacion_valor = models.BigIntegerField(default=0)
+    utilidad_pct = models.FloatField(default=0)
+    utilidad_valor = models.BigIntegerField(default=0)
     
     class Meta:
         db_table = 'presupuesto_centro_operacion_costos'
@@ -1152,10 +1213,17 @@ class PresupuestoCentroOperacionCostos(models.Model):
 class PresupuestoCentroSegmentoVentas(models.Model):
     year = models.IntegerField()
     mes = models.IntegerField()
-    centro_operacion = models.IntegerField()
+    nombre_centro_operacion = models.CharField(max_length=100, null=True, blank=True)
     segmento = models.CharField(max_length=100)
     total = models.BigIntegerField(default=0)
     r2 = models.FloatField(default=0)
+    total_year = models.BigIntegerField(default=0)
+    total_year_costos = models.BigIntegerField(default=0)
+    variacion_pct = models.FloatField(default=0)
+    variacion_valor = models.BigIntegerField(default=0)
+    utilidad_pct = models.FloatField(default=0)
+    utilidad_valor = models.BigIntegerField(default=0)
+    total_proyectado = models.BigIntegerField(default=0)
     
     class Meta:
         db_table = 'presupuesto_centro_segmento_ventas'
@@ -1163,11 +1231,101 @@ class PresupuestoCentroSegmentoVentas(models.Model):
 class PresupuestoCentroSegmentoCostos(models.Model):
     year = models.IntegerField()
     mes = models.IntegerField()
-    centro_operacion = models.IntegerField()
+    nombre_centro_operacion = models.CharField(max_length=100, null=True, blank=True)
     segmento = models.CharField(max_length=100)
     total = models.BigIntegerField(default=0)
     r2 = models.FloatField(default=0)
+    total_year = models.BigIntegerField(default=0)
+    variacion_pct = models.FloatField(default=0)
+    variacion_valor = models.BigIntegerField(default=0)
+    utilidad_pct = models.FloatField(default=0)
+    utilidad_valor = models.BigIntegerField(default=0)
     
     class Meta:
         db_table = 'presupuesto_centro_segmento_costos'
         
+        
+#--------------------- TABLAS PARA PRESUPUESTO GENERAL-----------------------
+class PresupuestoTecnologia(models.Model):
+    centro_tra = models.CharField(blank=True, null=True)  
+    nombre_cen = models.CharField(blank=True, null=True)  
+    codcosto = models.CharField(blank=True, null=True) 
+    responsable = models.CharField(blank=True, null=True)  
+    cuenta = models.BigIntegerField(blank=True, null=True) 
+    cuenta_mayor = models.CharField(blank=True, null=True)  
+    detalle_cuenta = models.CharField(blank=True, null=True)  
+    sede_distribucion = models.FloatField(blank=True, null=True)  
+    proveedor = models.CharField(blank=True, null=True)
+    enero = models.BigIntegerField(blank=True, null=True)
+    febrero = models.BigIntegerField(blank=True, null=True)
+    marzo = models.BigIntegerField(blank=True, null=True)
+    abril = models.BigIntegerField(blank=True, null=True)
+    mayo = models.BigIntegerField(blank=True, null=True)
+    junio = models.BigIntegerField(blank=True, null=True)
+    julio = models.BigIntegerField(blank=True, null=True)
+    agosto = models.BigIntegerField(blank=True, null=True)
+    septiembre = models.BigIntegerField(blank=True, null=True)
+    octubre = models.BigIntegerField(blank=True, null=True)
+    noviembre = models.BigIntegerField(blank=True, null=True)
+    diciembre = models.BigIntegerField(blank=True, null=True)
+    total = models.BigIntegerField(blank=True, null=True)
+    comentario = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        db_table = 'presupuesto_tecnologia'
+        
+class PresupuestoTecnologiaAux(models.Model):
+    centro_tra = models.CharField(blank=True, null=True)  
+    nombre_cen = models.CharField(blank=True, null=True)  
+    codcosto = models.CharField(blank=True, null=True) 
+    responsable = models.CharField(blank=True, null=True)  
+    cuenta = models.BigIntegerField(blank=True, null=True) 
+    cuenta_mayor = models.CharField(blank=True, null=True)  
+    detalle_cuenta = models.CharField(blank=True, null=True)  
+    sede_distribucion = models.FloatField(blank=True, null=True)  
+    proveedor = models.CharField(blank=True, null=True)
+    enero = models.BigIntegerField(blank=True, null=True)
+    febrero = models.BigIntegerField(blank=True, null=True)
+    marzo = models.BigIntegerField(blank=True, null=True)
+    abril = models.BigIntegerField(blank=True, null=True)
+    mayo = models.BigIntegerField(blank=True, null=True)
+    junio = models.BigIntegerField(blank=True, null=True)
+    julio = models.BigIntegerField(blank=True, null=True)
+    agosto = models.BigIntegerField(blank=True, null=True)
+    septiembre = models.BigIntegerField(blank=True, null=True)
+    octubre = models.BigIntegerField(blank=True, null=True)
+    noviembre = models.BigIntegerField(blank=True, null=True)
+    diciembre = models.BigIntegerField(blank=True, null=True)
+    total = models.BigIntegerField(blank=True, null=True)
+    comentario = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        db_table = 'presupuesto_tecnologia_auxiliar'
+        
+class PresupuestotecnologiaAprobado(models.Model):
+    centro_tra = models.CharField(blank=True, null=True)  
+    nombre_cen = models.CharField(blank=True, null=True)  
+    codcosto = models.CharField(blank=True, null=True) 
+    responsable = models.CharField(blank=True, null=True)  
+    cuenta = models.BigIntegerField(blank=True, null=True) 
+    cuenta_mayor = models.CharField(blank=True, null=True)  
+    detalle_cuenta = models.CharField(blank=True, null=True)  
+    sede_distribucion = models.FloatField(blank=True, null=True)  
+    proveedor = models.CharField(blank=True, null=True)
+    enero = models.BigIntegerField(blank=True, null=True)
+    febrero = models.BigIntegerField(blank=True, null=True)
+    marzo = models.BigIntegerField(blank=True, null=True)
+    abril = models.BigIntegerField(blank=True, null=True)
+    mayo = models.BigIntegerField(blank=True, null=True)
+    junio = models.BigIntegerField(blank=True, null=True)
+    julio = models.BigIntegerField(blank=True, null=True)
+    agosto = models.BigIntegerField(blank=True, null=True)
+    septiembre = models.BigIntegerField(blank=True, null=True)
+    octubre = models.BigIntegerField(blank=True, null=True)
+    noviembre = models.BigIntegerField(blank=True, null=True)
+    diciembre = models.BigIntegerField(blank=True, null=True)
+    total = models.BigIntegerField(blank=True, null=True)
+    comentario = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        db_table = 'presupuesto_tecnologia_aprobado'

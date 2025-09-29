@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Presupuesto Tecnología</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <!-- DataTables Buttons CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <style>
+        td.editable { background: #f8f9fa; cursor: pointer; }
+        button { margin: 10px; }
+
+        /* Columna de acciones fija */
+        #tempTable th:first-child,
+        #tempTable td:first-child {
+            position: sticky;
+            left: 0;
+            background: #fff;   /* fondo blanco para que no se superponga */
+            z-index: 10;        /* asegura que quede encima de las demás */
+        }
+        /*fijar encabezado*/
+        #tempTable thead th {
+            position: sticky;
+            top: 0;
+            background: #e9ecef;  /* gris clarito */
+            z-index: 11;
+        }
+
+
+        /* Contenedor de toasts */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            min-width: 250px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.5s ease-in-out;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .toast.success { background-color: #28a745; }
+        .toast.error { background-color: #dc3545; }
+
+        /* Spinner */
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #fff;
+            border-right: 2px solid #fff;
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            display: inline-block;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #btnTabla {
+            position: relative;
+            padding: 8px 16px;
+            border: none;
+            background-color: #646464ff;
+            color: white;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+    </style>
+</head>
+<body>
+    <h2>Presupuesto Tecnología Año actual</h2>
+    <div class="btn-group">
+        <button id="cargarBase">
+            Cargar presupuesto anterior
+            <span class="spinner" style="display:none; margin-left:8px;"></span>
+        </button>
+        <button id="agregarFila">➕ Agregar fila vacia</button>
+        <button id="guardarTempBtn">
+            Guardar presupuesto proyectado<span class="spinner" style="display:none; margin-left:8px;"></span>
+        </button>
+        <button id="btnTabla"> Ir a tabla principal</button> 
+    </div>
+
+    <form id="subirPresupuestoForm" method="post" action="{% url 'subir_presupuesto_tecnologia' %}">
+        {% csrf_token %}
+        <button type="submit" id="subirBtn" class="btn btn-success">
+            Subir Presupuesto proyectado
+        </button>
+    </form>
+    <div style="overflow-x:auto; max-width:100%;">
+    <table id="tempTable" class="display">
+        <thead>
+            <tr>
+                <th>Acciones</th>
+                <th>Centro trabajo</th>
+                <th>Nombre centro</th>
+                <th>Código costo</th>
+                <th>Responsable</th>
+                <th>Cuenta</th>
+                <th>Cuenta Mayor</th>
+                <th>Detalle Cuenta</th>
+                <th>Sede distribucción</th>
+                <th>Proveedor</th>
+                <th>Enero</th>
+                <th>Febrero</th>
+                <th>Marzo</th>
+                <th>Abril</th>
+                <th>Mayo</th>
+                <th>Junio</th>
+                <th>Julio</th>
+                <th>Agosto</th>
+                <th>Septiembre</th>
+                <th>Octubre</th>
+                <th>Noviembre</th>
+                <th>Diciembre</th>
+                <th>Total</th>
+                <th>Comentario</th>
+            </tr>
+        </thead>
+    </table>
+    </div>
+    <!-- Contenedor de toasts -->
+    <div class="toast-container" id="toastContainer"></div>
+
+<script>
+    function numberFormat(data, type, row) {
+    if (type === 'display' && !isNaN(data)) {
+        return new Intl.NumberFormat('es-ES').format(data);
+    }
+    return data;
+    }
+    
+    let opcionesCuentaMayor = [];
+    let mapaCuentaMayor = {};
+    function cargarOpciones() {
+        $.get("{% url 'seleccionCuentasContables' %}", function(response) {
+            opcionesCuentaMayor = Object.values(response.cuentas_dict || []);
+            mapaCuentaMayor = response.cuentas_dict || {};
+        });
+    }
+
+    $(document).ready(function() {
+        // Botón Ir a la tabla presupuesto nomina
+        document.getElementById("btnTabla").addEventListener("click", function () {
+            window.location.href = "{% url 'presupuestoTecnologia' %}";
+        });
+        cargarOpciones();
+        let table = $('#tempTable').DataTable({
+            ajax: {
+                url: "{% url 'obtener_tecnologia_temp' %}",
+                dataSrc: ""
+            },
+            columns: [
+                { 
+                    data: null,
+                    defaultContent: `
+                        <button class="duplicarFila">📑</button>
+                        <button class="eliminarFila">❌</button>
+                    `,
+                    orderable: false
+                },
+                { data: "centro_tra" },
+                { data: "nombre_cen" },
+                { data: "codcosto" },
+                { data: "responsable" },
+                { data: "cuenta" },
+                { data: "cuenta_mayor" },
+                { data: "detalle_cuenta" },
+                { data: "sede_distribucion" },
+                { data: "proveedor" },
+                { data: "enero" , render: numberFormat},
+                { data: "febrero", render: numberFormat },
+                { data: "marzo", render: numberFormat },
+                { data: "abril", render: numberFormat },
+                { data: "mayo", render: numberFormat },
+                { data: "junio", render: numberFormat },
+                { data: "julio", render: numberFormat }, 
+                { data: "agosto", render: numberFormat },
+                { data: "septiembre", render: numberFormat },
+                { data: "octubre", render: numberFormat },
+                { data: "noviembre", render: numberFormat },
+                { data: "diciembre", render: numberFormat },
+                { data: "total", render: numberFormat },
+                { data: "comentario" }
+            ],
+            createdRow: function(row, data, dataIndex) {
+                // marcar todas menos Acciones como editables
+                $('td', row).each(function(index) {
+                    let colName = table.column(index).dataSrc();
+
+                    // ❌ columnas bloqueadas
+                    if (["codcosto", "centro_tra", "cuenta", "total"].includes(colName)) {
+                        $(this).removeClass("editable"); 
+                    } else if (index > 0 && index <= 23) {
+                        // ✅ solo las demás editables
+                        $(this).addClass("editable");
+                    }
+                });
+            },
+            dom: 'Bfltip', // 🔥 agrega botones arriba de la tabla
+            buttons: [
+                {
+                    extend: 'excelHtml5',
+                    text: '📥 Exportar a Excel',
+                    filename: 'presupuesto_tecnologia',
+                    exportOptions: {
+                        modifier: {
+                            page: 'all',   // 🔥 Exporta todas las páginas
+                            search: 'applied',
+                            order: 'applied'
+                        },
+                        columns: ':not(:first-child)' // 🔥 excluye columna "Acciones"
+                    }
+                }
+            ]
+        });
+        // función para recalcular total de una fila
+        function recalcularTotal(rowData) {
+            let meses = ["enero","febrero","marzo","abril","mayo","junio",
+                        "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+            let total = 0;
+            meses.forEach(m => {
+                total += parseFloat(rowData[m]) || 0;
+            });
+            rowData.total = total;
+            return rowData;
+        }
+        // cerrar edición y guardar valor
+        function cerrarEdicion(cell, newValue) {
+            let row = table.row($(cell).closest("tr"));
+            let rowData = row.data();
+
+            // actualizar la celda
+            let colIdx = table.cell(cell).index().column;
+            let colName = table.column(colIdx).dataSrc();
+
+            rowData[colName] = newValue;
+
+            // recalcular total dinámicamente
+            rowData = recalcularTotal(rowData);
+
+            row.data(rowData).draw(false);
+            editingCell = null;
+        }
+
+        let editingCell = null;
+
+        // duplicar fila
+        $('#tempTable').on('click', '.duplicarFila', function() {
+            let row = table.row($(this).parents('tr'));
+            let rowData = row.data();
+
+            // clonar datos
+            let newRow = { ...rowData };
+
+            // reiniciar meses
+            let meses = ["enero","febrero","marzo","abril","mayo","junio",
+                        "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+            meses.forEach(m => newRow[m] = 0);
+
+            // total en 0
+            newRow.total = 0;
+
+            // obtener todos los datos de la tabla
+            let allData = table.rows().data().toArray();
+
+            // insertar justo después de la fila actual
+            let currentIndex = row.index();
+            allData.splice(currentIndex + 1, 0, newRow);
+
+            // recargar tabla con el nuevo orden
+            table.clear().rows.add(allData).draw(false);
+
+            // volver a ubicar la fila duplicada
+            let $newRowNode = $('#tempTable tbody tr').eq(currentIndex + 1);
+
+            // abrir edición en la primera celda editable
+            let $firstEditable = $newRowNode.find("td.editable").first();
+            if ($firstEditable.length) {
+                $firstEditable.dblclick();
+            }
+
+            showToast("Fila duplicada 📑", "success");
+        });
+
+        // lista desplegable para columna nombre centro
+        const opcionesNombreCentro = {
+            "ALMACEN TULUA": {codigoCosto: "020202", centro: "001"},
+            "ALMACEN BUGA": {codigoCosto: "020200", centro: "002"},
+            "ALMACEN CARTAGO": {codigoCosto: "020202", centro: "003"},
+            "ALMACEN CALI" : {codigoCosto: "020202", centro: "004"},
+            "ADMINISTRACIÓN" : {codigoCosto: "0102", centro: "001"},
+            "SEVICIOS TÉCNICOS" : {codigoCosto: "020302", centro: "001"},
+        };
+
+        // doble clic para editar
+        $('#tempTable').on('dblclick', 'td.editable', function() {
+            let cell = table.cell(this);
+            let oldValue = cell.data();
+            let colIdx = table.cell(this).index().column;
+            let colName = table.column(colIdx).dataSrc();
+
+            // 🔥 Si ya hay otra celda editándose, cerrarla primero
+            if (editingCell && editingCell !== this) {
+                let $prevInput = $(editingCell).find("input");
+                if ($prevInput.length) {
+                    cerrarEdicion(editingCell, $prevInput.val());
+                }
+            }
+
+            // Si la misma celda está en edición, no volver a abrir
+            if (editingCell === this) return;
+
+            // si es columna con desplegable
+            if (colName === "cuenta_mayor") {
+                let opciones = Object.keys(mapaCuentaMayor); // 🔥 ahora son las claves (códigos)
+
+                // 🔥 Lista de códigos a excluir exactamente
+                const excluir = [
+                    "51", "52", "5105", "5110", "54",
+                    "541001", "541003", "541006", "5410",
+                    "541019", "541027", "541033", "541095"
+                ];
+                // 🔥 Filtrar excluyendo solo coincidencias exactas
+                opciones = opciones.filter(o => !excluir.includes(o));
+
+                // 🔹 Ordenamos por la clave (código) ascendente
+                opciones.sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+                let htmlSelect = `<select class="cell-select">` +
+                opciones.map(o => {
+                    let leyenda = mapaCuentaMayor[o] || "";
+                    return `<option value="${o}" ${o==oldValue ? "selected":""}>${o} - ${leyenda}</option>`;
+                }).join("") +
+                `</select>`;
+
+                $(this).html(htmlSelect);
+                let $select = $(this).find("select").focus();
+                editingCell = this;
+
+                $select.on("change blur", function() {
+                    let nuevoValor = $(this).val();
+                    
+                    // 🔥 Actualizar columna cuenta en la misma fila
+                    let row = table.row($(editingCell).closest("tr"));
+                    let rowData = row.data();
+                    rowData["cuenta_mayor"] = mapaCuentaMayor[nuevoValor] || "";
+                    rowData["cuenta"] = nuevoValor;
+                    // 🔥 Condición especial: si es capacitación o salud ocupacional → codcosto = 0101
+                    if (nuevoValor === "510531" || nuevoValor === "51059503") {
+                        rowData["codcosto"] = "0101";
+                    }
+
+                    row.data(rowData).draw(false);
+                    editingCell = null;
+                });
+
+
+                $select.on("keydown", function(e) {
+                    if (e.key === "Enter") {
+                        cerrarEdicion(editingCell, $(this).val());
+                    } else if (e.key === "Escape") {
+                        table.cell(editingCell).data(oldValue).draw(false);
+                        editingCell = null;
+                    }
+                });
+            } else if (colName === "nombre_cen") {
+                let opciones = Object.keys(opcionesNombreCentro);
+                let htmlSelect = `<select class="cell-select">` +
+                    opciones.map(o => `<option value="${o}" ${o==oldValue ? "selected":""}>${o}</option>`).join("") +
+                    `</select>`;
+                $(this).html(htmlSelect);
+                let $select = $(this).find("select").focus();
+                editingCell = this;
+
+                $select.on("change blur", function() {
+                    let nuevoValor = $(this).val();
+                    // 🔥 Actualizar columnas código costo y centro en la misma fila
+                    let row = table.row($(editingCell).closest("tr"));
+                    let rowData = row.data();
+                    rowData["nombre_cen"] = nuevoValor;
+                    rowData["codcosto"] = opcionesNombreCentro[nuevoValor]?.codigoCosto || "";
+                    rowData["centro_tra"] = opcionesNombreCentro[nuevoValor]?.centro || "";
+
+                    row.data(rowData).draw(false);
+                    editingCell = null;
+                });
+
+                $select.on("keydown", function(e) {
+                    if (e.key === "Enter") {
+                        cerrarEdicion(editingCell, $(this).val());
+                    } else if (e.key === "Escape") {
+                        table.cell(editingCell).data(oldValue).draw(false);
+                        editingCell = null;
+                    }
+                });
+            } 
+            else {
+                // para otras columnas, input de texto
+                $(this).html('<input type="text" class="cell-input" value="'+ oldValue +'"/>');
+                let $input = $(this).find("input").focus();
+                editingCell = this;
+                // seleccionar todo el contenido
+                $input[0].setSelectionRange(0, $input.val().length);
+                
+                // 🔥 convertir a mayúsculas mientras escribe
+                $input.on("input", function() {
+                    this.value = this.value.toUpperCase();
+                });
+                // manejar Enter, Escape y flechas
+                $input.on("keydown", function(e) {
+                    if (e.key === "Enter") {
+                        cerrarEdicion(editingCell, $input.val());
+                    } else if (e.key === "Escape") {
+                        table.cell(editingCell).data(oldValue).draw(false);
+                        editingCell = null;
+                    } else if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) {
+                        e.preventDefault();
+                        let $td = $(editingCell);
+                        let $tr = $td.closest("tr");
+                        let rowIdx = $tr.index();
+                        let colIdx = $td.index();
+
+                        if (e.key === "ArrowUp") rowIdx--;
+                        if (e.key === "ArrowDown") rowIdx++;
+                        if (e.key === "ArrowLeft") colIdx--;
+                        if (e.key === "ArrowRight") colIdx++;
+
+                        let $target = $('#tempTable tbody tr').eq(rowIdx).find("td").eq(colIdx);
+                        if ($target.length && $target.hasClass("editable")) {
+                            // guardar antes de mover
+                            cerrarEdicion(editingCell, $input.val());
+                            $target.dblclick();
+                        }
+                    }
+                });
+            }
+        });
+        // 🔥 Guardar al hacer clic fuera de la tabla
+        $(document).on("click", function(e) {
+            if (editingCell) {
+                let $cell = $(editingCell);
+                let $input = $cell.find("input");
+                if ($input.length && !$(e.target).closest("#tempTable").length) {
+                    cerrarEdicion(editingCell, $input.val());
+                }
+            }
+        });
+
+        $('#subirPresupuestoForm').on('submit', function(e) {
+            e.preventDefault(); // Evita el submit normal
+
+            let $btn = $("#subirBtn");
+            let $spinner = $btn.find(".spinner");
+
+            // Mostrar spinner y deshabilitar botón
+            $spinner.show();
+            $btn.prop("disabled", true);
+
+            $.post("{% url 'subir_presupuesto_tecnologia' %}", {
+                csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val()
+            }, function(response) {
+                if (response.success) {
+                    showToast(response.msg, "success");
+                } else {
+                    showToast(response.msg, "error");
+                }
+            })
+            .fail(function() {
+                showToast("Error en la subida ❌", "error");
+            })
+            .always(function() {
+                // Ocultar spinner y reactivar botón
+                $spinner.hide();
+                $btn.prop("disabled", false);
+            });
+        });
+
+        // agregar fila vacía
+        $('#agregarFila').on('click', function() {
+            table.row.add({
+                centro_tra: "",
+                nombre_cen: "",
+                codcosto: "",
+                responsable: "",
+                cuenta: "",
+                cuenta_mayor: "",
+                detalle_cuenta: "",
+                sede_distribucion: "",
+                proveedor: "",
+                enero: 0,
+                febrero: 0,
+                marzo: 0,
+                abril: 0,
+                mayo: 0,
+                junio: 0,
+                julio: 0,
+                agosto: 0,
+                septiembre: 0,
+                octubre: 0,
+                noviembre: 0,
+                diciembre: 0,
+                total: 0
+            }).draw();
+            showToast("Fila agregada ✅", "success");
+        });
+
+        // eliminar fila
+        $('#tempTable').on('click', '.eliminarFila', function() {
+            table.row($(this).parents('tr')).remove().draw();
+            showToast("Fila eliminada ❌", "error");
+        });
+
+        // Cargar datos base
+        $('#cargarBase').on('click', function() {
+            let $btn = $(this);
+            let $spinner = $btn.find(".spinner");
+
+            // Mostrar spinner y deshabilitar botón
+            $spinner.show();
+            $btn.prop("disabled", true);
+
+            $.get("{% url 'cargar_tecnologia_base' %}", function() {
+                table.ajax.reload();
+                showToast("Datos cargados desde plantilla gastos 📂", "success");
+            })
+            .fail(function() {
+                showToast("Error al cargar datos ❌", "error");
+            })
+            .always(function() {
+                // Ocultar spinner y reactivar botón
+                $spinner.hide();
+                $btn.prop("disabled", false);
+            });
+        });
+
+        // Configurar CSRF para AJAX
+        function getCSRFToken() {
+            return document.querySelector('meta[name="csrf-token"]').getAttribute("content");
+        }
+
+        $.ajaxSetup({
+            beforeSend: function(xhr, settings) {
+                if (!(/^GET|HEAD|OPTIONS|TRACE$/i.test(settings.type))) {
+                    xhr.setRequestHeader("X-CSRFToken", getCSRFToken());
+                }
+            }
+        });
+
+        // Guardar en BD temporal
+        $('#guardarTempBtn').on('click', function() {
+            let $btn = $(this);
+            let $spinner = $btn.find('.spinner');
+            let data = table.rows().data().toArray();
+
+            // Mostrar spinner
+            $spinner.show();
+            $btn.prop("disabled", true);
+
+            $.ajax({
+                url: "{% url 'guardar_tecnologia_temp' %}",
+                type: "POST",
+                data: JSON.stringify(data),
+                contentType: "application/json",
+                success: function() {
+                    showToast("Datos guardados en tabla temporal ✅", "success");
+                },
+                error: function() {
+                    showToast("Error al guardar ❌", "error");
+                },
+                complete: function() {
+                    // Ocultar spinner y reactivar botón
+                    $spinner.hide();
+                    $btn.prop("disabled", false);
+                }
+            });
+        });
+
+        function showToast(message, type = "success", duration = 3000) {
+            let container = document.getElementById("toastContainer");
+            let toast = document.createElement("div");
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.add("show"), 50);
+
+            setTimeout(() => {
+                toast.classList.remove("show");
+                setTimeout(() => toast.remove(), 500);
+            }, duration);
+        }
+        
+    });
+</script>
+<!-- DataTables Buttons JS -->
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</body>
+</html>

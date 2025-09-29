@@ -3,7 +3,7 @@
 
     <div class="btn-group">
         <button type="button" id="cargarBtn" class="btn-accion">🔄 Cargar desde histórico</button>
-        <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button>
+        {% comment %} <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button> {% endcomment %}
     </div>
 
     <!-- Tabla pivotada -->
@@ -23,6 +23,13 @@
                 <th>Oct</th>
                 <th>Nov</th>
                 <th>Dic</th>
+                <th>Total Año Ventas</th>
+                <th>Total Año Costos</th>
+                <th>Variación Valor Ventas</th>
+                <th>Variación Ventas %</th>
+                <th>Margen %</th>
+                <th>Margen Valor </th>
+                <th>Total proyectado</th>
             </tr>
         </thead>
         <tbody></tbody>
@@ -42,10 +49,28 @@ function pivotData(data) {
     let pivot = {}; 
     let meses = { 1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic" }; 
     data.forEach(row => { 
-        if (!pivot[row.year]) pivot[row.year] = { year: row.year }; 
+        if (!pivot[row.year]) {
+            pivot[row.year] = { 
+                year: row.year,
+                total_year: row.total_year || 0,
+                total_year_costos: row.total_year_costos || 0,
+                variacion_valor: row.variacion_valor || 0,
+                variacion_pct: row.variacion_pct || 0,
+                utilidad_pct: row.utilidad_pct || 0,
+                utilidad_valor: row.utilidad_valor || 0,
+                total_proyectado: row.total_proyectado || 0
+            };
+        } 
         pivot[row.year][meses[row.mes]] = row.total; 
-        if (!pivot["R2"]) pivot["R2"] = { year: "R2" }; 
-        pivot["R2"][meses[row.mes]] = row.r2; 
+        {% comment %} if (!pivot["R2"]) {
+            pivot["R2"] = { 
+                year: "R2" ,
+                total_year: 0,
+                variacion_valor: 0,
+                variacion_pct: 0
+            };
+        } 
+        pivot["R2"][meses[row.mes]] = row.r2;  {% endcomment %}
     }); 
     return Object.values(pivot); 
 }
@@ -54,7 +79,7 @@ function unpivotData(tableData) {
     let meses = { "Ene":1, "Feb":2, "Mar":3, "Abr":4, "May":5, "Jun":6, "Jul":7, "Ago":8, "Sep":9, "Oct":10, "Nov":11, "Dic":12 };
     let result = [];
     tableData.forEach(row => {
-        if(row.year === "R2") return; // ignorar fila R2
+        {% comment %} if(row.year === "R2") return;  {% endcomment %}
         Object.keys(meses).forEach(m => {
             if(row[m] !== undefined){
                 result.push({
@@ -78,10 +103,20 @@ $(function () {
         meses.forEach(m => {
             columns.push({ data: m, title: m, render: numberFormat, className: "editable" });
         });
+        // ➕ columnas extra
+        columns.push({ data: "total_year", title: "Total Año Ventas", render: numberFormat });
+        columns.push({ data: "total_year_costos", title: "Total Año Costos", render: numberFormat });
+        columns.push({ data: "variacion_valor", title: "Variación Valor Ventas", render: numberFormat });
+        columns.push({ data: "variacion_pct", title: "Variación Ventas%", render: function(data){ return data ? data.toFixed(2) + "%" : "0%"; }});
+        columns.push({ data: "utilidad_pct", title: "Margen %", render: function(data){ return data ? data.toFixed(2) + "%" : "0%"; }});
+        columns.push({ data: "utilidad_valor", title: "Margen Valor", render: numberFormat });
+        columns.push({ data: "total_proyectado", title: "Total proyectado", render: numberFormat });
 
         if (table) {
             table.destroy();
             $('#presupuestoTableProyeccionGeneral').empty();
+            $("#excel-filter-ventas").remove();  // 🔹 elimina menús anteriores
+            $(".dt-buttons").remove();           // 🔹 elimina los botones Excel previos
         }
 
         table = $('#presupuestoTableProyeccionGeneral').DataTable({
@@ -98,9 +133,9 @@ $(function () {
                     title: 'Presupuesto General Ventas'
                 }
             ],
-            rowCallback: function(row, data) {
+            {% comment %} rowCallback: function(row, data) {
                 if (data.year === "R2") $(row).addClass("fila-r2");
-            },
+            }, {% endcomment %}
             columnDefs: [
                 {
                     targets: 0,
@@ -122,14 +157,62 @@ $(function () {
         table.columns().every(function (index) {
             if (index === 0) {
                 let column = this;
-                let select = $('<select><option value="">Todos</option></select>')
-                    .appendTo($(column.header()).empty())
-                    .on('change', function () {
-                        let val = $.fn.dataTable.util.escapeRegex($(this).val());
-                        column.search(val ? '^' + val + '$' : '', true, false).draw();
-                    });
+                
+                // Botón en el header
+                let button = $('<button id="excel-filter-btn-ventas" class="excel-filter-btn">Año ⬇</button>').appendTo($(column.header()).empty());
+
+                // Contenedor del menú
+                let menu = $('<div id="excel-filter-ventas" class="excel-filter"></div>').appendTo('body');
+
+                // Input de búsqueda
+                let searchBox = $('<input type="text" placeholder="Buscar...">').appendTo(menu);
+
+                // Lista de checkboxes
+                let list = $('<div></div>').appendTo(menu);
+
+                // Agregar opciones únicas como checkboxes
                 column.data().unique().sort().each(function (d) {
-                    if (d) select.append('<option value="' + d + '">' + d + '</option>');
+                    if (d) {
+                        list.append('<label><input type="checkbox" value="' + d + '" checked> ' + d + '</label><br/>');
+                    }
+                });
+
+                // Función aplicar filtro
+                function applyFilter() {
+                    let selected = [];
+                    menu.find('input[type="checkbox"]:checked').each(function () {
+                        selected.push('^' + $.fn.dataTable.util.escapeRegex($(this).val()) + '$');
+                    });
+                    column.search(selected.length ? selected.join('|') : '', true, false).draw();
+                }
+
+                // Evento checkbox
+                list.on('change', 'input[type="checkbox"]', applyFilter);
+
+                // Evento búsqueda dentro del menú
+                searchBox.on('keyup', function () {
+                    let val = $(this).val().toLowerCase();
+                    list.find("label").each(function () {
+                        $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+                    });
+                });
+
+                // Mostrar/ocultar menú
+                button.on('click', function (e) {
+                    e.stopPropagation();
+                    let offset = $(this).offset();
+                    menu.css({
+                        top: offset.top + $(this).outerHeight(),
+                        left: offset.left,
+                        width: $(this).outerWidth()
+                    }).toggle();
+                });
+
+                // Cerrar menú al hacer clic fuera
+                $(document).on('click', function (e) {
+                    if (!$(e.target).closest('#excel-filter-ventas, button').length) {
+                        menu.hide();
+                    }
                 });
             }
         });
@@ -140,7 +223,7 @@ $(function () {
             if (editingCell) return;
             let cell = table.cell(this);
             let rowData = table.row(this).data();
-            if (rowData.year !== 2025) return;
+            if (rowData.year !== 2026) return;
 
             let oldValue = cell.data() || "";
             $(this).html('<input type="text" class="cell-input" value="'+ oldValue +'"/>');
@@ -226,6 +309,8 @@ $(function () {
         }
     });
 });
+
+
 </script>
 
 <style>

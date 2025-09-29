@@ -1,39 +1,109 @@
 <div class="bloque-vista">
-    <h2>📊 Proyección presupuesto general - Ventas</h2>
+    <h2>📊 Proyección presupuesto general</h2>
 
     <div class="btn-group">
-        <button type="button" id="cargarBtn" class="btn-accion">🔄 Cargar desde histórico</button>
-        <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button>
+        {% comment %} <button type="button" id="cargarBtnGeneral" class="btn-accion">🔄 Cargar desde histórico</button> {% endcomment %}
+        <button type="button" id="guardarBtnGeneral" class="btn-accion btn-guardar">💾 Guardar cambios</button>
     </div>
+
+   <!-- 🎯 FILTROS -->
+<div class="filtros">
+    <label>📌 Línea:
+        <details class="dropdown">
+            <summary>Seleccionar</summary>
+            <div class="opciones" id="filtroLinea"></div>
+        </details>
+    </label>
+    <label>📅 Año:
+        <details class="dropdown">
+            <summary>Seleccionar</summary>
+            <div class="opciones" id="filtroYear"></div>
+        </details>
+    </label>
+    <label>🏭 Centro de operación:
+        <details class="dropdown">
+            <summary>Seleccionar</summary>
+            <div class="opciones" id="filtroCentro"></div>
+        </details>
+    </label>
+    <label>👥 Clase cliente:
+        <details class="dropdown">
+            <summary>Seleccionar</summary>
+            <div class="opciones" id="filtroClase"></div>
+        </details>
+    </label>
+</div>
 
     <table id="presupuestoTable" class="display" style="width:100%">
         <thead>
             <tr>
                 <th>Línea N1</th>
                 <th>Año</th>
+                <th>Centro de operación</th>
+                <th>Clase cliente</th>
                 <th>Ventas</th>
                 <th>Costos</th>
-                <th>R2-ventas %</th>
-                <th>R2-Costos %</th>
-                <th>Varicación - ventas %</th>
-                <th>Varicación - costos %</th>
-                <th>Variación - ventas $</th>
-                <th>Variación - costos $</th>
-                <th>Variación mes - ventas $</th>
-                <th>Variación mes - costos $</th>
-                <th>Variación precios - ventas $</th>
-                <th>Variación precios - costos $</th>
-                <th>Crecimiento comercial - ventas $</th>
-                <th>Crecimiento comercial - costos $</th>
-                <th>Crecimiento comercial mesual - ventas $</th>
-                <th>Crecimiento comercial mesual - costos $</th>
-                <th>utilidad %</th>
-                <th>utilidad valor $</th>
+                <th>Variación ventas %</th>
+                <th>Variación costos %</th>
+                <th>Variación ventas $</th>
+                <th>Variación costos $</th>
+                <th>Variación mes ventas $</th>
+                <th>Variación mes costos $</th>
+                <th>Variación precios ventas $</th>
+                <th>Variación precios costos $</th>
+                <th>Crecimiento ventas proyectado</th> 
+                <th>Proyección ventas</th>
+                <th>Crecimiento costos proyectado</th> 
+                <th>Proyección costos</th>
+                <th>Margen proyectado %</th>
+                <th>Margen valor proyectado $</th>
+                <th>Margen actual %</th>
+                <th>Margen valor actual $</th>
+                <th>Variación %</th>
+                <th>Variación $</th>
             </tr>
         </thead>
     </table>
 </div>
 
+<style>
+.dropdown {
+  display: inline-block;
+  position: relative;
+}
+.dropdown summary {
+  cursor: pointer;
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 4px;
+}
+.dropdown[open] summary {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.opciones {
+  position: absolute;
+  background: #fff;
+  border: 1px solid #ccc;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 0 0 4px 4px;
+  z-index: 10;
+  min-width: 180px;
+}
+.opciones input[type="text"] {
+  width: 95%;
+  padding: 3px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.opciones label {
+  display: block;
+  font-size: 13px;
+}
+</style>
 <script>
 function numberFormat(data, type, row) {
     if (type === 'display' && !isNaN(data)) {
@@ -74,45 +144,183 @@ $(function () {   // ⚡ $(function() {}) == $(document).ready()
         columns: [
             { data: "linea" },
             { data: "year" },
-            { data: "ventas" },
+            { data: "nombre_centro_de_operacion" },
+            { data: "nombre_clase_cliente" },
+            { data: "ventas" },// 4
             { data: "costos" },
-            { data: "r2_ventas" },
-            { data: "r2_costos" },
             { data: "variacion_porcentual_ventas" },
             { data: "variacion_porcentual_costos" },
             { data: "variacion_valor_ventas" },
-            { data: "variacion_valor_costos" },
+            { data: "variacion_valor_costos" }, // 10
             { data: "variacion_mes_ventas" },
             { data: "variacion_mes_costos" },
             { data: "variacion_precios_ventas" },
             { data: "variacion_precios_costos" },
-            { data: "crecimiento_comercial_ventas" },
-            { data: "crecimiento_comercial_costos" },
-            { data: "crecimiento_comercial_mes_ventas" },
-            { data: "crecimiento_comercial_mes_costos" },
-            { data: "utilidad_porcentual" },
-            { data: "utilidad_valor" }
+            { data: "crecimiento_ventas" },
+            { data: "proyeccion_ventas" },
+            { data: "crecimiento_costos" }, // 16
+            { data: "proyeccion_costos" },
+            { data: "utilidad_porcentual" }, // 18
+            { data: "utilidad_valor" },
+            { data: "utilidad_porcentual_actual" },
+            { data: "utilidad_valor_actual" },
+            { data: "variacion_proyectada_porcentual" },
+            { data: "variacion_proyectada_valor" } // 23
+        ],
+        dom: 'Bltip',
+        buttons: [
+            {
+                extend: 'excelHtml5',
+                text: '📥 Exportar a Excel',
+                title: 'Presupuesto General Ventas',
+                exportOptions: {
+                columns: ':visible',
+                format: {
+                    body: function (data, row, column, node) {
+                    // Helper: quitar etiquetas HTML y trim
+                    function stripHtml(input) {
+                        if (input === null || input === undefined) return '';
+                        if (typeof input !== 'string') return input;
+                        return input.replace(/<\/?[^>]+(>|$)/g, "").trim();
+                    }
+
+                    var txt = stripHtml(data);
+
+                    // Índices de tus columnas numéricas según tu DataTable (0-based)
+                    var moneyCols = [4,5,8,9,10,11,12,13,15,17,19,21,23];
+                    var percentCols = [6,7,14,16,18,20,22];
+
+                    // Si es columna de dinero: quitar separadores de miles, símbolo y ajustar decimal
+                    if (moneyCols.indexOf(column) !== -1) {
+                        txt = String(txt)
+                                .replace(/\s/g,'')    // quita espacios
+                                .replace(/\$/g,'')    // quita signo peso (si lo hubiera)
+                                .replace(/\./g,'')    // quita separador de miles
+                                .replace(/,/g,'.')    // cambia coma decimal por punto
+                                .replace(/[^0-9.-]/g,''); // deja sólo números, punto y signo
+                        return txt === '' ? 0 : txt;
+                    }
+
+                    // Si es columna de porcentaje: quitar % y normalizar decimal
+                    if (percentCols.indexOf(column) !== -1) {
+                        txt = String(txt)
+                                .replace(/\s/g,'')
+                                .replace(/%/g,'')
+                                .replace(/\./g,'')
+                                .replace(/,/g,'.')
+                                .replace(/[^0-9.-]/g,'');
+                        return txt === '' ? 0 : txt;
+                    }
+
+                    // Columnas de texto: devolver el texto limpio (sin HTML)
+                    return txt;
+                    }
+                }
+                }
+            }
         ],
         columnDefs: [
             // 💵 columnas con dinero
-        { targets: [2, 3, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19], render: moneyFormat, className: "dt-right" },
+        { targets: [4, 5, 8, 9, 10, 11, 12, 13, 15, 17, 19, 21, 23], render: moneyFormat, className: "dt-right" },
         // 📊 columnas con porcentaje
-        { targets: [4, 5, 6, 7, 18], render: percentFormat, className: "dt-right" },
-            { targets: [2, 3], className: "editable dt-right" }
-        ]
+        { targets: [6, 7, 14, 16, 18, 20, 22], render: percentFormat, className: "dt-right" },
+            { targets: [14, 16], className: "editable dt-right" }
+        ],
+        initComplete: function () {
+            let api = this.api();
+
+            function llenarFiltro(colIndex, contenedor) {
+                let uniqueValues = [];
+                api.column(colIndex).data().each(function (d) {
+                    if (d && uniqueValues.indexOf(d) === -1) {
+                        uniqueValues.push(d);
+                    }
+                });
+                uniqueValues.sort();
+
+                let div = $(contenedor);
+                div.empty();
+
+                // 🔎 Campo búsqueda
+                div.append('<input type="text" placeholder="Buscar...">');
+
+                // ✅ Opción Todos
+                div.append('<label><input type="checkbox" class="chk-todos" checked> (Todos)</label>');
+
+                // Opciones únicas
+                $.each(uniqueValues, function (i, v) {
+                    div.append('<label><input type="checkbox" class="chk-opcion" value="' + v + '" checked> ' + v + '</label>');
+                });
+
+                // 📌 Manejo de "Todos"
+                div.find(".chk-todos").on("change", function () {
+                    let checked = $(this).is(":checked");
+                    div.find(".chk-opcion").prop("checked", checked).trigger("change");
+                });
+
+                // 📌 Manejo de checkboxes individuales
+                div.find(".chk-opcion").on("change", function () {
+                    let vals = [];
+                    div.find(".chk-opcion:checked").each(function () {
+                        vals.push($(this).val());
+                    });
+
+                    // Actualizar estado de "Todos"
+                    let allChecked = div.find(".chk-opcion").length === div.find(".chk-opcion:checked").length;
+                    div.find(".chk-todos").prop("checked", allChecked);
+
+                    // Filtrar tabla
+                    if (vals.length > 0) {
+                        api.column(colIndex).search(vals.join("|"), true, false).draw();
+                    } else {
+                        api.column(colIndex).search("XXXXXXXX", true, false).draw(); // nada
+                    }
+                });
+
+                // 🔎 Filtrado por texto dentro del dropdown
+                div.find('input[type="text"]').on("keyup", function () {
+                    let term = $(this).val().toLowerCase();
+                    div.find("label").not(":first").each(function () {
+                        let txt = $(this).text().toLowerCase();
+                        $(this).toggle(txt.indexOf(term) > -1);
+                    });
+                });
+            }
+
+            // Llenar cada filtro
+            llenarFiltro(0, "#filtroLinea");   // Línea
+            llenarFiltro(1, "#filtroYear");    // Año
+            llenarFiltro(2, "#filtroCentro");  // Centro operación
+            llenarFiltro(3, "#filtroClase");   // Clase cliente
+        }
+
+
+    });
+    // 🎯 Eventos de filtro
+    $("#filtroLinea").on("change", function () {
+        table.column(0).search(this.value).draw();
+    });
+    $("#filtroYear").on("change", function () {
+        table.column(1).search(this.value).draw();
+    });
+    $("#filtroCentro").on("change", function () {
+        table.column(2).search(this.value).draw();
+    });
+    $("#filtroClase").on("change", function () {
+        table.column(3).search(this.value).draw();
     });
 
     
     let editingCell = null;
-    // Doble clic para editar SOLO si el año es 2025
+    // Doble clic para editar solo 2025 en columna crecimiento
     $('#presupuestoTable').on('dblclick', 'td.editable', function () {
         if (editingCell) return;
 
         let cell = table.cell(this);
-        let rowData = table.row(this).data();  // obtiene toda la fila
+        let row = table.row(this);
+        let rowData = row.data();  // obtiene toda la fila
 
-        if (rowData.year !== 2025) {
-            // 🚫 Bloquear edición
+        if (rowData.year != 2026) {
             return;
         }
 
@@ -123,13 +331,60 @@ $(function () {   // ⚡ $(function() {}) == $(document).ready()
 
         $input[0].setSelectionRange(0, $input.val().length);
 
+        function commitChange() {
+            let newValue = parseFloat($input.val()) || 0;
+            cell.data(newValue).draw(false); // actualizar celda crecimiento
+            editingCell = null;
+
+            let colIdx = cell.index().column; // índice de la columna editada
+            let colName = table.column(colIdx).dataSrc(); // nombre del campo
+
+            // ⚡ Recalcular en vivo según la columna editada
+            if (colName === "crecimiento_ventas") {
+                let proyeccionBase = parseFloat(rowData.ventas) || 0;
+                let nuevaProyeccion = proyeccionBase + (proyeccionBase * (newValue / 100));
+                rowData.crecimiento_ventas = newValue;
+                rowData.proyeccion_ventas = Math.round(nuevaProyeccion);
+
+            }
+            else if (colName === "crecimiento_costos") {
+                let proyeccionBase = parseFloat(rowData.costos) || 0;
+                let nuevaProyeccion = proyeccionBase + (proyeccionBase * (newValue / 100));
+                rowData.crecimiento_costos = newValue;
+                rowData.proyeccion_costos = Math.round(nuevaProyeccion);
+            }
+            // ✅ Recalcular utilidad
+            let utilidad_valor = (rowData.proyeccion_ventas || 0) - (rowData.proyeccion_costos || 0);
+            let utilidad_porcentual = 0;
+            if (rowData.proyeccion_ventas && rowData.proyeccion_ventas !== 0) {
+                utilidad_porcentual = (utilidad_valor / rowData.proyeccion_ventas) * 100;
+            }
+
+            // recalcular variación proyectada
+            let variacion_proyectada_valor = utilidad_valor - (rowData.utilidad_valor_actual || 0);
+            let variacion_proyectada_porcentual = utilidad_porcentual - (rowData.utilidad_porcentual_actual || 0);
+
+            rowData.utilidad_valor = Math.round(utilidad_valor);
+            rowData.utilidad_porcentual = utilidad_porcentual.toFixed(2);
+            rowData.variacion_proyectada_valor = Math.round(variacion_proyectada_valor);
+            rowData.variacion_proyectada_porcentual = variacion_proyectada_porcentual.toFixed(2);
+            
+            rowData.editado = true;  // marcar fila como modificada
+            row.data(rowData).invalidate().draw(false);
+        }
         $input.on("keydown", function(e) {
             if (e.key === "Enter") {
-                cell.data($input.val()).draw(false);
-                editingCell = null;
+                commitChange();
             } else if (e.key === "Escape") {
                 cell.data(oldValue).draw(false);
                 editingCell = null;
+            }
+        });
+
+        // Guardar al perder foco
+        $input.on("blur", function() {
+            if (editingCell) {
+                commitChange();
             }
         });
     });
@@ -148,24 +403,31 @@ $(function () {   // ⚡ $(function() {}) == $(document).ready()
     });
 
     // 🔄 Botón cargar desde histórico
-    $(document).on("click", "#cargarBtn", function () {
+    $(document).on("click", "#cargarBtnGeneral", function () {
+        let boton = $(this);
+        boton.prop("disabled", true).append('<span class="spinner"></span>');
         $.ajax({
             url: "{% url 'cargar_presupuesto_comercial' %}",
             type: "GET",
             success: function() {
-                alert("Datos recalculados y cargados desde histórico ✅");
                 table.ajax.reload();
             },
-            error: function(xhr) {
-                alert("Error al cargar desde histórico ❌ " + xhr.responseText);
+            error: function(err) {
+                console.error("Error AJAX:", err);
+            },
+            complete: function() {
+                boton.prop("disabled", false).find(".spinner").remove();
             }
         });
     });
 
     // 💾 Botón guardar cambios
-    $(document).on("click", "#guardarBtn", function () {
+    $(document).on("click", "#guardarBtnGeneral", function () {
+        if (!table) return;
+        let boton = $(this);
+        boton.prop("disabled", true).append('<span class="spinner"></span>');
         let data = table.rows().data().toArray();
-
+        // solo filas modificadas
         $.ajax({
             url: "{% url 'guardar_presupuesto_comercial' %}",
             type: "POST",
@@ -173,11 +435,13 @@ $(function () {   // ⚡ $(function() {}) == $(document).ready()
             contentType: "application/json",
             headers: { "X-CSRFToken": "{{ csrf_token }}" },
             success: function() {
-                alert("Cambios guardados ✅");
                 table.ajax.reload();
             },
             error: function(xhr) {
                 alert("Error al guardar ❌: " + xhr.responseText);
+            },
+            complete: function() {
+                boton.prop("disabled", false).find(".spinner").remove();
             }
         });
     });

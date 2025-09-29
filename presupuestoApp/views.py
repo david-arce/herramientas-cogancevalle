@@ -5,13 +5,14 @@ from pyexpat.errors import messages
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 import pandas as pd
-from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoAuxilioMovilidad, PresupuestoAuxilioMovilidadAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial
+from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoAuxilioMovilidad, PresupuestoAuxilioMovilidadAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.db.models.functions import Concat
 from django.db.models import Sum, Max
 import numpy as np
 import json
 from django.utils import timezone
+from django.contrib.auth.decorators import login_required
 
 def exportar_excel_presupuestos(request):
     # Obtener datos de cada tabla
@@ -71,6 +72,7 @@ def exportar_excel_presupuestos(request):
 
     return response
 
+@login_required
 def base_comercial(request):
     return render(request, 'presupuesto_comercial/base_presupuesto_comercial.html')
 
@@ -82,15 +84,20 @@ def presupuesto_comercial_costos():
     bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
     bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
     bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2025 = BdVentas2025.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
     
     df1 = pd.DataFrame(list(bd2020))
     df2 = pd.DataFrame(list(bd2021))
     df3 = pd.DataFrame(list(bd2022))
     df4 = pd.DataFrame(list(bd2023))
     df5 = pd.DataFrame(list(bd2024))
+    df6 = pd.DataFrame(list(bd2025))
     
-    df_total = pd.concat([df1, df2, df3, df4, df5], ignore_index=True)
-    # print(df_total)
+    year_actual = timezone.now().year
+    year_siguiente = timezone.now().year + 1
+   
+    df_total = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
+    print(df_total)
     # calcular suma por lapso y centro de operacion
     df_lapso_total = df_total.groupby('lapso')['suma'].sum().reset_index()
     df_centro_operacion = df_total.groupby(['centro_de_operacion', 'lapso'])['suma'].sum().reset_index()
@@ -108,27 +115,28 @@ def presupuesto_comercial_costos():
     df_por_year_mes = df_lapso_total.groupby(["year", "mes"])["suma"].sum().reset_index()
     
     # calcular predicción para 2025 por cada mes usando regresión lineal
-    predicciones_2025_general = []
+    predicciones_2026_general = []
     # recorrer cada mes (1 a 12)
     for mes in range(1, 13):
         datos_mes = df_por_year_mes[df_por_year_mes["mes"] == mes]
 
         x = datos_mes["year"].values
         y = datos_mes["suma"].values
+
         if len(x) >= 2:  # se necesitan al menos 2 años
             a, b = np.polyfit(x, y, 1)  # ajuste lineal
-            y_pred = a * 2025 + b
-            predicciones_2025_general.append({
-                "year": 2025,
+            y_pred = a * year_siguiente + b
+            predicciones_2026_general.append({
+                "year": year_siguiente,
                 "mes": mes,
                 "suma_pred": round(y_pred),
-                "lapso": 2025 * 100 + mes
+                "lapso": year_siguiente * 100 + mes
             })
 
     # convertir a dataframe
-    df_pred_2025_general = pd.DataFrame(predicciones_2025_general)
+    df_pred_2026_general = pd.DataFrame(predicciones_2026_general)
     # unir con df_por_year_mes
-    df_proyeccion_general = pd.concat([df_lapso_total[['lapso', 'suma']], df_pred_2025_general[['lapso', 'suma_pred']].rename(columns={'suma_pred': 'suma'})], ignore_index=True)
+    df_proyeccion_general = pd.concat([df_lapso_total[['lapso', 'suma']], df_pred_2026_general[['lapso', 'suma_pred']].rename(columns={'suma_pred': 'suma'})], ignore_index=True)
    
     #extrer año y mes
     df_proyeccion_general['year'] = df_proyeccion_general['lapso'] // 100
@@ -137,6 +145,7 @@ def presupuesto_comercial_costos():
     correlaciones = []
     for mes in range(1, 13):
         datos_mes = df_proyeccion_general[df_proyeccion_general["mes"] == mes]
+
         if len(datos_mes) >= 2 and datos_mes["suma"].std() != 0:
             coef = np.corrcoef(datos_mes["year"], datos_mes["suma"])[0, 1]
         else:
@@ -152,29 +161,30 @@ def presupuesto_comercial_costos():
     # unir con el df_proyeccion_centro_operacion
     df_proyeccion_general = pd.merge(df_proyeccion_general, df_correl_por_mes, on='mes', how='left')
     df_proyeccion_general['suma'] = df_proyeccion_general['suma'].round().astype(int)
-    
+   
     # ----------CALCULAR PROYECCION PRESUPUESTO CENTRO DE OPERACION--------------------------------
     # Extraer año y mes
     df_centro_operacion['year'] = df_centro_operacion['lapso'] // 100
     df_centro_operacion['mes'] = df_centro_operacion['lapso'] % 100
     # Lista para almacenar predicciones por centro de operacion
-    predicciones_2025_centro = []
+    predicciones_2026_centro = []
     # Hacer predicción para cada centro de operacion y mes
     for centro, grupo in df_centro_operacion.groupby('centro_de_operacion'):
         for mes in range(1, 13):
             datos_mes = grupo[grupo['mes'] == mes]
+            
             # Datos para regresión
             x = datos_mes['year'].values
             y = datos_mes['suma'].values
 
             if len(x) >= 2:  # Se necesita al menos 2 puntos para ajustar una recta
                 a, b = np.polyfit(x, y, 1)  # Ajuste lineal
-                y_pred = a * 2025 + b
-                predicciones_2025_centro.append({'centro_de_operacion': centro, 'lapso': 2025 * 100 + mes, 'suma': round(y_pred)})
+                y_pred = a * year_siguiente + b
+                predicciones_2026_centro.append({'centro_de_operacion': centro, 'lapso': year_siguiente * 100 + mes, 'suma': round(y_pred)})
     # Crear DataFrame con predicciones
-    df_pred_2025_centro = pd.DataFrame(predicciones_2025_centro)
+    df_pred_2026_centro = pd.DataFrame(predicciones_2026_centro)
     # (Opcional) Unir con el DataFrame original y ordenar por lapso y centro de operacion
-    df_proyeccion_centro_operacion = pd.concat([df_centro_operacion[['centro_de_operacion', 'lapso', 'suma']], df_pred_2025_centro], ignore_index=True)
+    df_proyeccion_centro_operacion = pd.concat([df_centro_operacion[['centro_de_operacion', 'lapso', 'suma']], df_pred_2026_centro], ignore_index=True)
     df_proyeccion_centro_operacion = df_proyeccion_centro_operacion.sort_values(['centro_de_operacion', 'lapso']).reset_index(drop=True)
     # extraer año y mes
     df_proyeccion_centro_operacion['year'] = df_proyeccion_centro_operacion['lapso'] // 100
@@ -203,10 +213,11 @@ def presupuesto_comercial_costos():
     
     # ------------ CALCULAR PROYECCION PRESUPUESTO CENTRO DE OPERACION - SEGMENTO (CLASE CLIENTE) -----------------------------------------
     # Extraer año y mes
+    # df_centro_operacion_segmento.to_excel("df_centro_operacion_segmento.xlsx")
     df_centro_operacion_segmento['year'] = df_centro_operacion_segmento['lapso'] // 100
     df_centro_operacion_segmento['mes'] = df_centro_operacion_segmento['lapso'] % 100
     # Lista para almacenar predicciones por centro de operacion y segmento
-    predicciones_2025_centro_segmento = []
+    predicciones_2026_centro_segmento = []
     # Hacer predicción para cada centro de operacion, segmento y mes
     for (centro, segmento), grupo in df_centro_operacion_segmento.groupby(['centro_de_operacion', 'nombre_clase_cliente']):
         for mes in range(1, 13):
@@ -218,16 +229,17 @@ def presupuesto_comercial_costos():
 
             if len(x) >= 2:  # Se necesita al menos 2 puntos para ajustar una recta
                 a, b = np.polyfit(x, y, 1)  # Ajuste lineal
-                y_pred = a * 2025 + b
-                predicciones_2025_centro_segmento.append({'centro_de_operacion': centro, 'nombre_clase_cliente': segmento, 'lapso': 2025 * 100 + mes, 'suma': round(y_pred)})
+                y_pred = a * year_siguiente + b
+                predicciones_2026_centro_segmento.append({'centro_de_operacion': centro, 'nombre_clase_cliente': segmento, 'lapso': year_siguiente * 100 + mes, 'suma': round(y_pred)})
     # Crear DataFrame con predicciones
-    df_pred_2025_centro_segmento = pd.DataFrame(predicciones_2025_centro_segmento)
+    df_pred_2026_centro_segmento = pd.DataFrame(predicciones_2026_centro_segmento)
     # (Opcional) Unir con el DataFrame original y ordenar por lapso, centro de operacion y segmento
-    df_proyeccion_centro_operacion_segmento = pd.concat([df_centro_operacion_segmento[['centro_de_operacion', 'nombre_clase_cliente', 'lapso', 'suma']], df_pred_2025_centro_segmento], ignore_index=True)
+    df_proyeccion_centro_operacion_segmento = pd.concat([df_centro_operacion_segmento[['centro_de_operacion', 'nombre_clase_cliente', 'lapso', 'suma']], df_pred_2026_centro_segmento], ignore_index=True)
     df_proyeccion_centro_operacion_segmento = df_proyeccion_centro_operacion_segmento.sort_values(['centro_de_operacion', 'nombre_clase_cliente', 'lapso']).reset_index(drop=True)
     # extraer año y mes
     df_proyeccion_centro_operacion_segmento['year'] = df_proyeccion_centro_operacion_segmento['lapso'] // 100
     df_proyeccion_centro_operacion_segmento['mes'] = df_proyeccion_centro_operacion_segmento['lapso'] % 100
+    
     # ----------------------------calcular el coeficiente de correlación R2 para la proyección por centro de operacion, segmento y lapso ----------------------------
     correlaciones_centro_segmento = []
     for (centro, segmento), grupo in df_proyeccion_centro_operacion_segmento.groupby(['centro_de_operacion', 'nombre_clase_cliente']):
@@ -252,7 +264,7 @@ def presupuesto_comercial_costos():
     
     #------------------------------------------------------PRONOSTICO FINAL---------------------------------------------------
     # Lista para almacenar predicciones
-    predicciones_2025 = []
+    predicciones_2026 = []
 
     # Hacer predicción para cada mes
     for mes in range(1, 13):
@@ -264,15 +276,14 @@ def presupuesto_comercial_costos():
 
         if len(x) >= 2:  # Se necesita al menos 2 puntos para ajustar una recta
             a, b = np.polyfit(x, y, 1)  # Ajuste lineal
-            y_pred = a * 2025 + b
-            predicciones_2025.append({'lapso': 2025 * 100 + mes, 'suma': round(y_pred)})
+            y_pred = a * year_siguiente + b
+            predicciones_2026.append({'lapso': year_siguiente * 100 + mes, 'suma': round(y_pred)})
 
     # Crear DataFrame con predicciones
-    df_pred_2025_general = pd.DataFrame(predicciones_2025)
-    # print(df_pred_2025)
+    df_pred_2026_general = pd.DataFrame(predicciones_2026)
 
     # Concatenar los dataframes para el dinamismo
-    df_dinamismo = pd.concat([df1, df2, df3, df4, df5], ignore_index=True)
+    df_dinamismo = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
     
     # Extraer el año desde 'lapso'
     df_dinamismo['year'] = df_dinamismo['lapso'] // 100
@@ -295,16 +306,16 @@ def presupuesto_comercial_costos():
         if len(x) >= 2:
             # Ajuste lineal
             a, b = np.polyfit(x, y, 1)
-            y_pred = a * 2025 + b
+            y_pred = a * year_siguiente + b
             predicciones.append({
                 'nombre_linea_n1': nombre,
-                'year': 2025,
+                'year': year_siguiente,
                 'suma': round(y_pred)
             })
 
     # Crear DataFrame con predicciones
-    df_pred_2025_pro_lineal = pd.DataFrame(predicciones)
-    df_final_pronostico = pd.concat([df_agrupado, df_pred_2025_pro_lineal], ignore_index=True)
+    df_pred_2026_pro_lineal = pd.DataFrame(predicciones)
+    df_final_pronostico = pd.concat([df_agrupado, df_pred_2026_pro_lineal], ignore_index=True)
     df_final_pronostico = df_final_pronostico.sort_values(by=['nombre_linea_n1', 'year']).reset_index(drop=True)
     
     # R2 ----------------------------------------------
@@ -328,26 +339,27 @@ def presupuesto_comercial_costos():
 
     # Crear DataFrame con los coeficientes
     df_correlaciones = pd.DataFrame(correlaciones)
+    
     # concatenar con el df_final_pronostico
     df_final_pronostico = pd.merge(df_final_pronostico, df_correlaciones, on='nombre_linea_n1', how='left')
    
-    # ---------------------calcular variacion porcentual entre 2024 y 2025-------------------------------
-    df_2024 = df_final_pronostico[df_final_pronostico['year'] == 2024][['nombre_linea_n1', 'suma']].rename(columns={'suma': 'suma_2024'})
-    df_2025 = df_final_pronostico[df_final_pronostico['year'] == 2025][['nombre_linea_n1', 'suma']].rename(columns={'suma': 'suma_2025'})
-    df_variacion = pd.merge(df_2024, df_2025, on='nombre_linea_n1')
+    # ---------------------calcular variacion porcentual entre 2025 y 2026-------------------------------
+    df_2025 = df_final_pronostico[df_final_pronostico['year'] == year_actual][['nombre_linea_n1', 'suma']].rename(columns={'suma': 'suma_2024'})
+    df_2026 = df_final_pronostico[df_final_pronostico['year'] == year_siguiente][['nombre_linea_n1', 'suma']].rename(columns={'suma': 'suma_2025'})
+    df_variacion = pd.merge(df_2025, df_2026, on='nombre_linea_n1')
     df_variacion['variacion_pct'] = ((df_variacion['suma_2025'] - df_variacion['suma_2024']) / df_variacion['suma_2024']) * 100
     df_variacion['variacion_pct'] = df_variacion['variacion_pct'].round(2)
     
     # calcular variacion en valor en pesos entre 2024 y 2025
     df_variacion['variacion_valor'] = df_variacion['suma_2025'] - df_variacion['suma_2024']
     # calcular variacion mes, es decir, dividir la variacion_valor entre 12
-    df_variacion['variacion_mes'] = (df_variacion['variacion_valor'] / 12).fillna(0).round().astype(int)
+    df_variacion['variacion_mes'] = (df_variacion['variacion_valor'] / 12).round().astype(int)
     # calcular variacion precios, es decir, tomar el año anterior(2024) y multiplicarlo por el 2%
-    df_variacion['variacion_precios'] = (df_variacion['suma_2024'] * 0.02).fillna(0).round().astype(int)
+    df_variacion['variacion_precios'] = (df_variacion['suma_2024'] * 0.02).round().astype(int)
     # calcular crecimiento comercial, es decir, restar la variacion_pct y la variacion_precios
-    df_variacion['crecimiento_comercial'] = (df_variacion['variacion_valor'] - df_variacion['variacion_precios']).fillna(0).round().astype(int) 
+    df_variacion['crecimiento_comercial'] = (df_variacion['variacion_valor'] - df_variacion['variacion_precios']).round().astype(int) 
     # calcular crecimiento comercial mes, es decir, dividir el crecimiento_comercial entre 12
-    df_variacion['crecimiento_comercial_mes'] = (df_variacion['crecimiento_comercial'] / 12).fillna(0).round().astype(int)
+    df_variacion['crecimiento_comercial_mes'] = (df_variacion['crecimiento_comercial'] / 12).round().astype(int)
     
     # concatenar con el df_final_pronostico
     df_final_pronostico = pd.merge(df_final_pronostico, df_variacion[['nombre_linea_n1', 'variacion_pct', 'variacion_valor', 'variacion_mes', 'variacion_precios', 'crecimiento_comercial', 'crecimiento_comercial_mes']], on='nombre_linea_n1', how='left')
@@ -373,15 +385,21 @@ def presupuesto_comercial(request):
     bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
     bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
     bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2025 = BdVentas2025.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
     
     df1 = pd.DataFrame(list(bd2020))
     df2 = pd.DataFrame(list(bd2021))
     df3 = pd.DataFrame(list(bd2022))
     df4 = pd.DataFrame(list(bd2023))
     df5 = pd.DataFrame(list(bd2024))
+    df6 = pd.DataFrame(list(bd2025))
+    
+    year_anterior = timezone.now().year - 1
+    year_actual = timezone.now().year
+    year_siguiente = timezone.now().year + 1
    
-    df_total = pd.concat([df1, df2, df3, df4, df5], ignore_index=True)
-    # print(df_total)
+    df_total = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
+    print(df_total)
     # calcular suma por lapso y centro de operacion
     df_lapso_total = df_total.groupby('lapso')['suma'].sum().reset_index()
     df_centro_operacion = df_total.groupby(['centro_de_operacion', 'lapso'])['suma'].sum().reset_index()
@@ -399,7 +417,7 @@ def presupuesto_comercial(request):
     df_por_year_mes = df_lapso_total.groupby(["year", "mes"])["suma"].sum().reset_index()
     
     # calcular predicción para 2025 por cada mes usando regresión lineal
-    predicciones_2025_general = []
+    predicciones_2026_general = []
     # recorrer cada mes (1 a 12)
     for mes in range(1, 13):
         datos_mes = df_por_year_mes[df_por_year_mes["mes"] == mes]
@@ -409,18 +427,18 @@ def presupuesto_comercial(request):
 
         if len(x) >= 2:  # se necesitan al menos 2 años
             a, b = np.polyfit(x, y, 1)  # ajuste lineal
-            y_pred = a * 2025 + b
-            predicciones_2025_general.append({
-                "year": 2025,
+            y_pred = a * year_siguiente + b
+            predicciones_2026_general.append({
+                "year": year_siguiente,
                 "mes": mes,
                 "suma_pred": round(y_pred),
-                "lapso": 2025 * 100 + mes
+                "lapso": year_siguiente * 100 + mes
             })
 
     # convertir a dataframe
-    df_pred_2025_general = pd.DataFrame(predicciones_2025_general)
+    df_pred_2026_general = pd.DataFrame(predicciones_2026_general)
     # unir con df_por_year_mes
-    df_proyeccion_general = pd.concat([df_lapso_total[['lapso', 'suma']], df_pred_2025_general[['lapso', 'suma_pred']].rename(columns={'suma_pred': 'suma'})], ignore_index=True)
+    df_proyeccion_general = pd.concat([df_lapso_total[['lapso', 'suma']], df_pred_2026_general[['lapso', 'suma_pred']].rename(columns={'suma_pred': 'suma'})], ignore_index=True)
    
     #extrer año y mes
     df_proyeccion_general['year'] = df_proyeccion_general['lapso'] // 100
@@ -451,7 +469,7 @@ def presupuesto_comercial(request):
     df_centro_operacion['year'] = df_centro_operacion['lapso'] // 100
     df_centro_operacion['mes'] = df_centro_operacion['lapso'] % 100
     # Lista para almacenar predicciones por centro de operacion
-    predicciones_2025_centro = []
+    predicciones_2026_centro = []
     # Hacer predicción para cada centro de operacion y mes
     for centro, grupo in df_centro_operacion.groupby('centro_de_operacion'):
         for mes in range(1, 13):
@@ -463,12 +481,12 @@ def presupuesto_comercial(request):
 
             if len(x) >= 2:  # Se necesita al menos 2 puntos para ajustar una recta
                 a, b = np.polyfit(x, y, 1)  # Ajuste lineal
-                y_pred = a * 2025 + b
-                predicciones_2025_centro.append({'centro_de_operacion': centro, 'lapso': 2025 * 100 + mes, 'suma': round(y_pred)})
+                y_pred = a * year_siguiente + b
+                predicciones_2026_centro.append({'centro_de_operacion': centro, 'lapso': year_siguiente * 100 + mes, 'suma': round(y_pred)})
     # Crear DataFrame con predicciones
-    df_pred_2025_centro = pd.DataFrame(predicciones_2025_centro)
+    df_pred_2026_centro = pd.DataFrame(predicciones_2026_centro)
     # (Opcional) Unir con el DataFrame original y ordenar por lapso y centro de operacion
-    df_proyeccion_centro_operacion = pd.concat([df_centro_operacion[['centro_de_operacion', 'lapso', 'suma']], df_pred_2025_centro], ignore_index=True)
+    df_proyeccion_centro_operacion = pd.concat([df_centro_operacion[['centro_de_operacion', 'lapso', 'suma']], df_pred_2026_centro], ignore_index=True)
     df_proyeccion_centro_operacion = df_proyeccion_centro_operacion.sort_values(['centro_de_operacion', 'lapso']).reset_index(drop=True)
     # extraer año y mes
     df_proyeccion_centro_operacion['year'] = df_proyeccion_centro_operacion['lapso'] // 100
@@ -497,10 +515,11 @@ def presupuesto_comercial(request):
     
     # ------------ CALCULAR PROYECCION PRESUPUESTO CENTRO DE OPERACION - SEGMENTO (CLASE CLIENTE) -----------------------------------------
     # Extraer año y mes
+    # df_centro_operacion_segmento.to_excel("df_centro_operacion_segmento.xlsx")
     df_centro_operacion_segmento['year'] = df_centro_operacion_segmento['lapso'] // 100
     df_centro_operacion_segmento['mes'] = df_centro_operacion_segmento['lapso'] % 100
     # Lista para almacenar predicciones por centro de operacion y segmento
-    predicciones_2025_centro_segmento = []
+    predicciones_2026_centro_segmento = []
     # Hacer predicción para cada centro de operacion, segmento y mes
     for (centro, segmento), grupo in df_centro_operacion_segmento.groupby(['centro_de_operacion', 'nombre_clase_cliente']):
         for mes in range(1, 13):
@@ -512,16 +531,17 @@ def presupuesto_comercial(request):
 
             if len(x) >= 2:  # Se necesita al menos 2 puntos para ajustar una recta
                 a, b = np.polyfit(x, y, 1)  # Ajuste lineal
-                y_pred = a * 2025 + b
-                predicciones_2025_centro_segmento.append({'centro_de_operacion': centro, 'nombre_clase_cliente': segmento, 'lapso': 2025 * 100 + mes, 'suma': round(y_pred)})
+                y_pred = a * year_siguiente + b
+                predicciones_2026_centro_segmento.append({'centro_de_operacion': centro, 'nombre_clase_cliente': segmento, 'lapso': year_siguiente * 100 + mes, 'suma': round(y_pred)})
     # Crear DataFrame con predicciones
-    df_pred_2025_centro_segmento = pd.DataFrame(predicciones_2025_centro_segmento)
+    df_pred_2026_centro_segmento = pd.DataFrame(predicciones_2026_centro_segmento)
     # (Opcional) Unir con el DataFrame original y ordenar por lapso, centro de operacion y segmento
-    df_proyeccion_centro_operacion_segmento = pd.concat([df_centro_operacion_segmento[['centro_de_operacion', 'nombre_clase_cliente', 'lapso', 'suma']], df_pred_2025_centro_segmento], ignore_index=True)
+    df_proyeccion_centro_operacion_segmento = pd.concat([df_centro_operacion_segmento[['centro_de_operacion', 'nombre_clase_cliente', 'lapso', 'suma']], df_pred_2026_centro_segmento], ignore_index=True)
     df_proyeccion_centro_operacion_segmento = df_proyeccion_centro_operacion_segmento.sort_values(['centro_de_operacion', 'nombre_clase_cliente', 'lapso']).reset_index(drop=True)
     # extraer año y mes
     df_proyeccion_centro_operacion_segmento['year'] = df_proyeccion_centro_operacion_segmento['lapso'] // 100
     df_proyeccion_centro_operacion_segmento['mes'] = df_proyeccion_centro_operacion_segmento['lapso'] % 100
+    
     # ----------------------------calcular el coeficiente de correlación R2 para la proyección por centro de operacion, segmento y lapso ----------------------------
     correlaciones_centro_segmento = []
     for (centro, segmento), grupo in df_proyeccion_centro_operacion_segmento.groupby(['centro_de_operacion', 'nombre_clase_cliente']):
@@ -546,7 +566,7 @@ def presupuesto_comercial(request):
     
     #------------------------------------------------------PRONOSTICO FINAL---------------------------------------------------
     # Lista para almacenar predicciones
-    predicciones_2025 = []
+    predicciones_2026 = []
 
     # Hacer predicción para cada mes
     for mes in range(1, 13):
@@ -558,14 +578,14 @@ def presupuesto_comercial(request):
 
         if len(x) >= 2:  # Se necesita al menos 2 puntos para ajustar una recta
             a, b = np.polyfit(x, y, 1)  # Ajuste lineal
-            y_pred = a * 2025 + b
-            predicciones_2025.append({'lapso': 2025 * 100 + mes, 'suma': round(y_pred)})
+            y_pred = a * year_siguiente + b
+            predicciones_2026.append({'lapso': year_siguiente * 100 + mes, 'suma': round(y_pred)})
 
     # Crear DataFrame con predicciones
-    df_pred_2025_general = pd.DataFrame(predicciones_2025)
+    df_pred_2026_general = pd.DataFrame(predicciones_2026)
 
     # Concatenar los dataframes para el dinamismo
-    df_dinamismo = pd.concat([df1, df2, df3, df4, df5], ignore_index=True)
+    df_dinamismo = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
     
     # Extraer el año desde 'lapso'
     df_dinamismo['year'] = df_dinamismo['lapso'] // 100
@@ -588,16 +608,16 @@ def presupuesto_comercial(request):
         if len(x) >= 2:
             # Ajuste lineal
             a, b = np.polyfit(x, y, 1)
-            y_pred = a * 2025 + b
+            y_pred = a * year_siguiente + b
             predicciones.append({
                 'nombre_linea_n1': nombre,
-                'year': 2025,
+                'year': year_siguiente,
                 'suma': round(y_pred)
             })
 
     # Crear DataFrame con predicciones
-    df_pred_2025_pro_lineal = pd.DataFrame(predicciones)
-    df_final_pronostico = pd.concat([df_agrupado, df_pred_2025_pro_lineal], ignore_index=True)
+    df_pred_2026_pro_lineal = pd.DataFrame(predicciones)
+    df_final_pronostico = pd.concat([df_agrupado, df_pred_2026_pro_lineal], ignore_index=True)
     df_final_pronostico = df_final_pronostico.sort_values(by=['nombre_linea_n1', 'year']).reset_index(drop=True)
     
     # R2 ----------------------------------------------
@@ -625,10 +645,10 @@ def presupuesto_comercial(request):
     # concatenar con el df_final_pronostico
     df_final_pronostico = pd.merge(df_final_pronostico, df_correlaciones, on='nombre_linea_n1', how='left')
    
-    # ---------------------calcular variacion porcentual entre 2024 y 2025-------------------------------
-    df_2024 = df_final_pronostico[df_final_pronostico['year'] == 2024][['nombre_linea_n1', 'suma']].rename(columns={'suma': 'suma_2024'})
-    df_2025 = df_final_pronostico[df_final_pronostico['year'] == 2025][['nombre_linea_n1', 'suma']].rename(columns={'suma': 'suma_2025'})
-    df_variacion = pd.merge(df_2024, df_2025, on='nombre_linea_n1')
+    # ---------------------calcular variacion porcentual entre 2025 y 2026-------------------------------
+    df_2025 = df_final_pronostico[df_final_pronostico['year'] == year_actual][['nombre_linea_n1', 'suma']].rename(columns={'suma': 'suma_2024'})
+    df_2026 = df_final_pronostico[df_final_pronostico['year'] == year_siguiente][['nombre_linea_n1', 'suma']].rename(columns={'suma': 'suma_2025'})
+    df_variacion = pd.merge(df_2025, df_2026, on='nombre_linea_n1')
     df_variacion['variacion_pct'] = ((df_variacion['suma_2025'] - df_variacion['suma_2024']) / df_variacion['suma_2024']) * 100
     df_variacion['variacion_pct'] = df_variacion['variacion_pct'].round(2)
     
@@ -708,33 +728,32 @@ def cargar_presupuesto_general_ventas(request):
     bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
     bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
     bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2025 = BdVentas2025.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
     
     df1 = pd.DataFrame(list(bd2020))
     df2 = pd.DataFrame(list(bd2021))
     df3 = pd.DataFrame(list(bd2022))
     df4 = pd.DataFrame(list(bd2023))
     df5 = pd.DataFrame(list(bd2024))
-   
-    df_total = pd.concat([df1, df2, df3, df4, df5], ignore_index=True)
+    df6 = pd.DataFrame(list(bd2025))
+    
+    year_actual = timezone.now().year
+    year_siguiente = timezone.now().year + 1
+    
+    df_total = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
     # print(df_total)
     # calcular suma por lapso y centro de operacion
     df_lapso_total = df_total.groupby('lapso')['suma'].sum().reset_index()
-    df_centro_operacion = df_total.groupby(['centro_de_operacion', 'lapso'])['suma'].sum().reset_index()
-    df_centro_operacion_segmento = df_total.groupby(['nombre_clase_cliente', 'centro_de_operacion', 'lapso'])['suma'].sum().reset_index()
     
     # ------------PROYECCION PRESUPUESTO GENERAL - CALUCLAR PREDICCIÓN PARA 2025 POR CADA MES -----------------------------------------
     # Extraer año y mes
     df_lapso_total['year'] = df_lapso_total['lapso'] // 100
     df_lapso_total['mes'] = df_lapso_total['lapso'] % 100
-    # 📌 Suma por año
-    df_por_año = df_lapso_total.groupby("year")["suma"].sum().reset_index()
-    # 📌 Suma por mes (todos los años juntos, ej: todos los eneros, febreros, etc.)
-    df_por_mes = df_lapso_total.groupby("mes")["suma"].sum().reset_index()
-    # suma por año y mes
+    
     df_por_year_mes = df_lapso_total.groupby(["year", "mes"])["suma"].sum().reset_index()
     
     # calcular predicción para 2025 por cada mes usando regresión lineal
-    predicciones_2025_general = []
+    predicciones_2026_general = []
     # recorrer cada mes (1 a 12)
     for mes in range(1, 13):
         datos_mes = df_por_year_mes[df_por_year_mes["mes"] == mes]
@@ -744,21 +763,37 @@ def cargar_presupuesto_general_ventas(request):
 
         if len(x) >= 2:  # se necesitan al menos 2 años
             a, b = np.polyfit(x, y, 1)  # ajuste lineal
-            y_pred = a * 2025 + b
-            predicciones_2025_general.append({
-                "year": 2025,
+            y_pred = a * year_siguiente + b
+            predicciones_2026_general.append({
+                "year": year_siguiente,
                 "mes": mes,
                 "suma_pred": round(y_pred),
-                "lapso": 2025 * 100 + mes
+                "lapso": year_siguiente * 100 + mes
             })
 
     # convertir a dataframe
-    df_pred_2025_general = pd.DataFrame(predicciones_2025_general)
+    df_pred_2025_general = pd.DataFrame(predicciones_2026_general)
     # unir con df_por_year_mes
     df_proyeccion_general = pd.concat([df_lapso_total[['lapso', 'suma']], df_pred_2025_general[['lapso', 'suma_pred']].rename(columns={'suma_pred': 'suma'})], ignore_index=True)
-   
-    #extrer año y mes
+    
     df_proyeccion_general['year'] = df_proyeccion_general['lapso'] // 100
+    df_por_año = df_proyeccion_general.groupby("year")["suma"].sum().reset_index()
+    df_por_año = df_por_año.sort_values("year").reset_index(drop=True)
+    df_por_año["variacion_pesos"] = (df_por_año["suma"].diff()).round().astype('Int64')
+    df_por_año["variacion_pct"] = (df_por_año["suma"].pct_change() * 100).round(2)
+    df_por_año["variacion_pct"] = df_por_año["variacion_pct"].fillna(0)
+    df_por_año["variacion_pesos"] = df_por_año["variacion_pesos"].fillna(0) 
+    # renombrar suma por total
+    df_por_año = df_por_año.rename(columns={'suma': 'total'})
+    
+    # ================== COSTOS: total_year ==============================
+    costos = PresupuestoGeneralCostos.objects.values("year", "total_year")
+    df_costos = pd.DataFrame(list(costos)).rename(columns={"total_year": "total_year_costos"})
+
+    # Merge ventas + costos
+    df_por_año = pd.merge(df_por_año, df_costos, on="year", how="left")
+    
+    #extrer año y mes
     df_proyeccion_general['mes'] = df_proyeccion_general['lapso'] % 100
     # calcular el coeficiente de correlación R2 para la proyección general---
     correlaciones = []
@@ -780,6 +815,17 @@ def cargar_presupuesto_general_ventas(request):
     # unir con el df_proyeccion_centro_operacion
     df_proyeccion_general = pd.merge(df_proyeccion_general, df_correl_por_mes, on='mes', how='left')
     df_proyeccion_general['suma'] = df_proyeccion_general['suma'].round().astype(int)
+
+    # merge de df_proyeccion_general con df_por_año para agregar las columnas de variacion_pesos y variacion_pct
+    df_proyeccion_general = pd.merge(df_proyeccion_general, df_por_año[['year', 'total', 'total_year_costos','variacion_pesos', 'variacion_pct']], on='year', how='left')
+    # calcular utilidad por año, 1 - (costos / ventas), el costo está en el df_proyeccion_general y se encuentra en la columna total_year_costos, y las ventas están en la columna total
+    df_proyeccion_general['utilidad_pct'] = (1 - (df_proyeccion_general['total_year_costos'] / df_proyeccion_general['total'])) * 100
+    df_proyeccion_general['utilidad_pct'] = df_proyeccion_general['utilidad_pct'].round(2)
+    # llenar los valores infinitos o NaN con 0
+    df_proyeccion_general['utilidad_pct'] = df_proyeccion_general['utilidad_pct'].replace([np.inf, -np.inf], 0).fillna(0)
+    # utilidad en valor
+    df_proyeccion_general['utilidad_valor'] = df_proyeccion_general['total'] - df_proyeccion_general['total_year_costos']
+    df_proyeccion_general['utilidad_valor'] = df_proyeccion_general['utilidad_valor'].round().astype(int)
     
     # ----------- GUARDAR EN LA BD ------------
     registros = []
@@ -789,7 +835,13 @@ def cargar_presupuesto_general_ventas(request):
                 year=int(row['year']),
                 mes=int(row['mes']),
                 total=int(row['suma']),
-                r2=row['coef_correlacion'] if row['coef_correlacion'] is not None else 0
+                r2=row['coef_correlacion'] if row['coef_correlacion'] is not None else 0,
+                total_year=row['total'] if row['total'] is not None else 0,
+                total_year_costos=row['total_year_costos'] if row['total_year_costos'] is not None else 0,
+                variacion_valor=row['variacion_pesos'] if row['variacion_pesos'] is not None else 0,
+                variacion_pct=row['variacion_pct'] if row['variacion_pct'] is not None else 0,
+                utilidad_pct=row['utilidad_pct'] if row['utilidad_pct'] is not None else 0,
+                utilidad_valor=row['utilidad_valor'] if row['utilidad_valor'] is not None else 0,
             )
         )
 
@@ -802,6 +854,7 @@ def cargar_presupuesto_general_ventas(request):
 
 @csrf_exempt
 def guardar_presupuesto_general_ventas(request):
+    print("Guardar presupuesto general ventas")
     if request.method == "POST":
         try:
             data = json.loads(request.body)  # 📥 datos editados del DataTable
@@ -866,20 +919,25 @@ def vista_presupuesto_general_ventas(request):
 def cargar_presupuesto_centro_ventas(request):
     # obtener la suma de cada mes y nombre_linea_n1 es decir, si el lapso es 202001 retornar la suma
     # de los productos que pertenecen a la linea_n1
-    bd2020 = BdVentas2020.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2021 = BdVentas2021.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2020 = BdVentas2020.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2021 = BdVentas2021.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2025 = BdVentas2025.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
     
     df1 = pd.DataFrame(list(bd2020))
     df2 = pd.DataFrame(list(bd2021))
     df3 = pd.DataFrame(list(bd2022))
     df4 = pd.DataFrame(list(bd2023))
     df5 = pd.DataFrame(list(bd2024))
+    df6 = pd.DataFrame(list(bd2025))
     
-    df_total = pd.concat([df1, df2, df3, df4, df5], ignore_index=True)
-    df_centro_operacion = df_total.groupby(['centro_de_operacion', 'lapso'])['suma'].sum().reset_index()
+    year_actual = timezone.now().year
+    year_siguiente = timezone.now().year + 1
+    
+    df_total = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
+    df_centro_operacion = df_total.groupby(['nombre_centro_de_operacion', 'lapso'])['suma'].sum().reset_index()
     
     # Extraer año y mes
     df_centro_operacion['year'] = df_centro_operacion['lapso'] // 100
@@ -887,7 +945,7 @@ def cargar_presupuesto_centro_ventas(request):
     # Lista para almacenar predicciones por centro de operacion
     predicciones_2025_centro = []
     # Hacer predicción para cada centro de operacion y mes
-    for centro, grupo in df_centro_operacion.groupby('centro_de_operacion'):
+    for centro, grupo in df_centro_operacion.groupby('nombre_centro_de_operacion'):
         for mes in range(1, 13):
             datos_mes = grupo[grupo['mes'] == mes]
             
@@ -897,20 +955,20 @@ def cargar_presupuesto_centro_ventas(request):
 
             if len(x) >= 2:  # Se necesita al menos 2 puntos para ajustar una recta
                 a, b = np.polyfit(x, y, 1)  # Ajuste lineal
-                y_pred = a * 2025 + b
-                predicciones_2025_centro.append({'centro_de_operacion': centro, 'lapso': 2025 * 100 + mes, 'suma': round(y_pred)})
+                y_pred = a * year_siguiente + b
+                predicciones_2025_centro.append({'nombre_centro_de_operacion': centro, 'lapso': year_siguiente * 100 + mes, 'suma': round(y_pred)})
     # Crear DataFrame con predicciones
     df_pred_2025_centro = pd.DataFrame(predicciones_2025_centro)
     # (Opcional) Unir con el DataFrame original y ordenar por lapso y centro de operacion
-    df_proyeccion_centro_operacion = pd.concat([df_centro_operacion[['centro_de_operacion', 'lapso', 'suma']], df_pred_2025_centro], ignore_index=True)
-    df_proyeccion_centro_operacion = df_proyeccion_centro_operacion.sort_values(['centro_de_operacion', 'lapso']).reset_index(drop=True)
+    df_proyeccion_centro_operacion = pd.concat([df_centro_operacion[['nombre_centro_de_operacion', 'lapso', 'suma']], df_pred_2025_centro], ignore_index=True)
+    df_proyeccion_centro_operacion = df_proyeccion_centro_operacion.sort_values(['nombre_centro_de_operacion', 'lapso']).reset_index(drop=True)
     # extraer año y mes
     df_proyeccion_centro_operacion['year'] = df_proyeccion_centro_operacion['lapso'] // 100
     df_proyeccion_centro_operacion['mes'] = df_proyeccion_centro_operacion['lapso'] % 100
     
     # calcular el coeficiente de correlación R2 para la proyección por centro de operacion y lapso -----------
     correlaciones_centro = []   
-    for centro, grupo in df_proyeccion_centro_operacion.groupby('centro_de_operacion'):
+    for centro, grupo in df_proyeccion_centro_operacion.groupby('nombre_centro_de_operacion'):
         for mes in range(1, 13):
             datos_mes = grupo[grupo["mes"] == mes]
 
@@ -920,25 +978,71 @@ def cargar_presupuesto_centro_ventas(request):
                 coef = np.nan  # si no hay variación, correlación indefinida
 
             correlaciones_centro.append({
-                "centro_de_operacion": centro,
+                "nombre_centro_de_operacion": centro,
                 "mes": mes,
                 "coef_correlacion": (round(coef, 4))*100 if not np.isnan(coef) else None
             })
     df_correl_por_mes_centro = pd.DataFrame(correlaciones_centro)
     # unir con el df_proyeccion_centro_operacion
-    df_proyeccion_centro_operacion = pd.merge(df_proyeccion_centro_operacion, df_correl_por_mes_centro, on=['centro_de_operacion', 'mes'], how='left')
+    df_proyeccion_centro_operacion = pd.merge(df_proyeccion_centro_operacion, df_correl_por_mes_centro, on=['nombre_centro_de_operacion', 'mes'], how='left')
     df_proyeccion_centro_operacion['suma'] = df_proyeccion_centro_operacion['suma'].round().astype(int)   
+    
+    # ================= TOTAL_YEAR POR CENTRO ===================
+    df_total_year_centro = (
+        df_proyeccion_centro_operacion
+        .groupby(['nombre_centro_de_operacion', 'year'])['suma']
+        .sum()
+        .reset_index()
+        .rename(columns={'suma': 'total_year'})
+    )
+    # Calcular variaciones por centro
+    df_total_year_centro['variacion_pesos'] = df_total_year_centro.groupby('nombre_centro_de_operacion')['total_year'].diff().round().astype('Int64')
+    df_total_year_centro['variacion_pct'] = (df_total_year_centro.groupby('nombre_centro_de_operacion')['total_year'].pct_change() * 100).round(2)
+
+    # Rellenar NaN en la primera fila de cada grupo
+    df_total_year_centro[['variacion_pesos', 'variacion_pct']] = df_total_year_centro[['variacion_pesos', 'variacion_pct']].fillna(0)
+    
+    # ================== COSTOS: total_year ==============================
+    costos = PresupuestoCentroOperacionCostos.objects.values("year", "nombre_centro_operacion", "total_year")
+    df_costos = pd.DataFrame(list(costos)).rename(columns={"total_year": "total_year_costos"})
+
+    # Merge ventas + costos
+    df_total_year_centro = pd.merge(
+        df_total_year_centro,
+        df_costos,
+        left_on=["nombre_centro_de_operacion", "year"],
+        right_on=["nombre_centro_operacion", "year"],
+        how="left"
+    ).drop(columns=["nombre_centro_operacion"])  # evitar columna duplicada
+    
+    # merge de df_proyeccion_centro_operacion con df_por_año para agregar las columnas de total, variacion_pesos y variacion_pct
+    df_proyeccion_centro_operacion = pd.merge(df_proyeccion_centro_operacion, df_total_year_centro[['nombre_centro_de_operacion','year', 'total_year', 'total_year_costos','variacion_pesos', 'variacion_pct']], on=["nombre_centro_de_operacion", "year"], how='left')
+    
+    # calcular utilidad por año, 1 - (costos / ventas), el costo está en el df_proyeccion_general y se encuentra en la columna total_year_costos, y las ventas están en la columna total
+    df_proyeccion_centro_operacion['utilidad_pct'] = (1 - (df_proyeccion_centro_operacion['total_year_costos'] / df_proyeccion_centro_operacion['total_year'])) * 100
+    df_proyeccion_centro_operacion['utilidad_pct'] = df_proyeccion_centro_operacion['utilidad_pct'].round(2)
+    # llenar los valores infinitos o NaN con 0
+    df_proyeccion_centro_operacion['utilidad_pct'] = df_proyeccion_centro_operacion['utilidad_pct'].replace([np.inf, -np.inf], 0).fillna(0)
+    # utilidad en valor
+    df_proyeccion_centro_operacion['utilidad_valor'] = df_proyeccion_centro_operacion['total_year'] - df_proyeccion_centro_operacion['total_year_costos']
+    df_proyeccion_centro_operacion['utilidad_valor'] = df_proyeccion_centro_operacion['utilidad_valor'].round().astype(int)
     
     # guardar en la bd
     registros = []
     for _, row in df_proyeccion_centro_operacion.iterrows():
         registros.append(
             PresupuestoCentroOperacionVentas(
-                centro_operacion=row['centro_de_operacion'],
+                nombre_centro_operacion=row['nombre_centro_de_operacion'],
                 year=int(row['year']),
                 mes=int(row['mes']),
                 total=int(row['suma']),
-                r2=row['coef_correlacion'] if row['coef_correlacion'] is not None else 0
+                r2=row['coef_correlacion'] if row['coef_correlacion'] is not None else 0,
+                total_year=row['total_year'] if row['total_year'] is not None else 0,
+                total_year_costos=row['total_year_costos'] if row['total_year_costos'] is not None else 0,
+                variacion_valor=row['variacion_pesos'] if row['variacion_pesos'] is not None else 0,
+                variacion_pct=row['variacion_pct'] if row['variacion_pct'] is not None else 0,
+                utilidad_pct=row['utilidad_pct'] if row['utilidad_pct'] is not None else 0,
+                utilidad_valor=row['utilidad_valor'] if row['utilidad_valor'] is not None else 0
             )
         )
     
@@ -960,11 +1064,11 @@ def guardar_presupuesto_centro_ventas(request):
             df["year"] = df["year"].astype(int)
             df["mes"] = df["mes"].astype(int)
             df["total"] = df["total"].astype(int)
-            df["centro_operacion"] = df["centro_operacion"].astype(str)
+            df["nombre_centro_operacion"] = df["nombre_centro_operacion"].astype(str)
 
             # --- recalcular R² por centro de operación y mes ---
             correlaciones = []
-            for centro, grupo in df.groupby("centro_operacion"):
+            for centro, grupo in df.groupby("nombre_centro_operacion"):
                 for mes in range(1, 13):
                     datos_mes = grupo[grupo["mes"] == mes]
 
@@ -974,7 +1078,7 @@ def guardar_presupuesto_centro_ventas(request):
                         coef = np.nan
 
                     correlaciones.append({
-                        "centro_operacion": centro,
+                        "nombre_centro_operacion": centro,
                         "mes": mes,
                         "coef_correlacion": (round(coef, 4)) * 100 if not np.isnan(coef) else 0
                     })
@@ -982,14 +1086,14 @@ def guardar_presupuesto_centro_ventas(request):
             df_correl = pd.DataFrame(correlaciones)
 
             # unir correlaciones recalculadas con los datos originales
-            df = pd.merge(df, df_correl, on=["centro_operacion", "mes"], how="left")
+            df = pd.merge(df, df_correl, on=["nombre_centro_operacion", "mes"], how="left")
 
             # --- guardar en la BD ---
             registros = []
             for _, row in df.iterrows():
                 registros.append(
                     PresupuestoCentroOperacionVentas(
-                        centro_operacion=row["centro_operacion"],
+                        nombre_centro_operacion=row["nombre_centro_operacion"],
                         year=int(row["year"]),
                         mes=int(row["mes"]),
                         total=int(row["total"]),
@@ -1016,20 +1120,25 @@ def vista_presupuesto_centro_ventas(request):
 
 #------PRESUPUESTO POR CENTRO OPERACION - SEGMENTO VENTAS
 def cargar_presupuesto_centro_segmento_ventas(request):
-    bd2020 = BdVentas2020.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2021 = BdVentas2021.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2020 = BdVentas2020.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2021 = BdVentas2021.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2025 = BdVentas2025.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
     
     df1 = pd.DataFrame(list(bd2020))
     df2 = pd.DataFrame(list(bd2021))
     df3 = pd.DataFrame(list(bd2022))
     df4 = pd.DataFrame(list(bd2023))
     df5 = pd.DataFrame(list(bd2024))
+    df6 = pd.DataFrame(list(bd2025))
+    
+    year_actual = timezone.now().year
+    year_siguiente = timezone.now().year + 1
    
-    df_total = pd.concat([df1, df2, df3, df4, df5], ignore_index=True)
-    df_centro_operacion_segmento = df_total.groupby(['nombre_clase_cliente', 'centro_de_operacion', 'lapso'])['suma'].sum().reset_index()
+    df_total = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
+    df_centro_operacion_segmento = df_total.groupby(['nombre_clase_cliente', 'nombre_centro_de_operacion', 'lapso'])['suma'].sum().reset_index()
     
     # Extraer año y mes
     df_centro_operacion_segmento['year'] = df_centro_operacion_segmento['lapso'] // 100
@@ -1037,7 +1146,7 @@ def cargar_presupuesto_centro_segmento_ventas(request):
     # Lista para almacenar predicciones por centro de operacion y segmento
     predicciones_2025_centro_segmento = []
     # Hacer predicción para cada centro de operacion, segmento y mes
-    for (centro, segmento), grupo in df_centro_operacion_segmento.groupby(['centro_de_operacion', 'nombre_clase_cliente']):
+    for (centro, segmento), grupo in df_centro_operacion_segmento.groupby(['nombre_centro_de_operacion', 'nombre_clase_cliente']):
         for mes in range(1, 13):
             datos_mes = grupo[grupo['mes'] == mes]
             
@@ -1047,49 +1156,114 @@ def cargar_presupuesto_centro_segmento_ventas(request):
 
             if len(x) >= 2:  # Se necesita al menos 2 puntos para ajustar una recta
                 a, b = np.polyfit(x, y, 1)  # Ajuste lineal
-                y_pred = a * 2025 + b
-                predicciones_2025_centro_segmento.append({'centro_de_operacion': centro, 'nombre_clase_cliente': segmento, 'lapso': 2025 * 100 + mes, 'suma': round(y_pred)})
+                y_pred = a * year_siguiente + b
+                predicciones_2025_centro_segmento.append({'nombre_centro_de_operacion': centro, 'nombre_clase_cliente': segmento, 'lapso': year_siguiente * 100 + mes, 'suma': round(y_pred)})
     # Crear DataFrame con predicciones
     df_pred_2025_centro_segmento = pd.DataFrame(predicciones_2025_centro_segmento)
     # (Opcional) Unir con el DataFrame original y ordenar por lapso, centro de operacion y segmento
-    df_proyeccion_centro_operacion_segmento = pd.concat([df_centro_operacion_segmento[['centro_de_operacion', 'nombre_clase_cliente', 'lapso', 'suma']], df_pred_2025_centro_segmento], ignore_index=True)
-    df_proyeccion_centro_operacion_segmento = df_proyeccion_centro_operacion_segmento.sort_values(['centro_de_operacion', 'nombre_clase_cliente', 'lapso']).reset_index(drop=True)
+    df_proyeccion_centro_operacion_segmento = pd.concat([df_centro_operacion_segmento[['nombre_centro_de_operacion', 'nombre_clase_cliente', 'lapso', 'suma']], df_pred_2025_centro_segmento], ignore_index=True)
+    df_proyeccion_centro_operacion_segmento = df_proyeccion_centro_operacion_segmento.sort_values(['nombre_centro_de_operacion', 'nombre_clase_cliente', 'lapso']).reset_index(drop=True)
     # extraer año y mes
     df_proyeccion_centro_operacion_segmento['year'] = df_proyeccion_centro_operacion_segmento['lapso'] // 100
     df_proyeccion_centro_operacion_segmento['mes'] = df_proyeccion_centro_operacion_segmento['lapso'] % 100
     # ----------------------------calcular el coeficiente de correlación R2 para la proyección por centro de operacion, segmento y lapso ----------------------------
     correlaciones_centro_segmento = []
-    for (centro, segmento), grupo in df_proyeccion_centro_operacion_segmento.groupby(['centro_de_operacion', 'nombre_clase_cliente']):
+    for (centro, segmento), grupo in df_proyeccion_centro_operacion_segmento.groupby(['nombre_centro_de_operacion', 'nombre_clase_cliente']):
         for mes in range(1, 13):
             datos_mes = grupo[grupo["mes"] == mes]
 
             if len(datos_mes) >= 2 and datos_mes["suma"].std() != 0:
                 coef = np.corrcoef(datos_mes["year"], datos_mes["suma"])[0, 1]
             else:
-                coef = np.nan  # si no hay variación, correlación indefinida
+                coef = 0  # si no hay variación, correlación indefinida
 
             correlaciones_centro_segmento.append({
-                "centro_de_operacion": centro,
+                "nombre_centro_de_operacion": centro,
                 "nombre_clase_cliente": segmento,
                 "mes": mes,
                 "coef_correlacion": (round(coef, 4))*100 if not np.isnan(coef) else None
             })
     df_correl_por_mes_centro_segmento = pd.DataFrame(correlaciones_centro_segmento)
     # unir con el df_proyeccion_centro_operacion_segmento
-    df_proyeccion_centro_operacion_segmento = pd.merge(df_proyeccion_centro_operacion_segmento, df_correl_por_mes_centro_segmento, on=['centro_de_operacion', 'nombre_clase_cliente', 'mes'], how='left')
+    df_proyeccion_centro_operacion_segmento = pd.merge(df_proyeccion_centro_operacion_segmento, df_correl_por_mes_centro_segmento, on=['nombre_centro_de_operacion', 'nombre_clase_cliente', 'mes'], how='left')
     df_proyeccion_centro_operacion_segmento['suma'] = df_proyeccion_centro_operacion_segmento['suma'].round().astype(int)
+
+    # ================= TOTAL_YEAR POR CENTRO + SEGMENTO ===================
+    df_total_year_centro_segmento = (
+        df_proyeccion_centro_operacion_segmento
+        .groupby(['nombre_centro_de_operacion', 'nombre_clase_cliente', 'year'])['suma']
+        .sum()
+        .reset_index()
+        .rename(columns={'suma': 'total_year'})
+    )
     
+    # Variaciones
+    df_total_year_centro_segmento['variacion_pesos'] = (
+        df_total_year_centro_segmento
+        .groupby(['nombre_centro_de_operacion', 'nombre_clase_cliente'])['total_year']
+        .diff()
+        .round()
+        .astype('Int64')
+    )
+    df_total_year_centro_segmento['variacion_pct'] = (
+        df_total_year_centro_segmento
+        .groupby(['nombre_centro_de_operacion', 'nombre_clase_cliente'])['total_year']
+        .pct_change() * 100
+    ).round(2)
+    df_total_year_centro_segmento[['variacion_pesos', 'variacion_pct']] = df_total_year_centro_segmento[['variacion_pesos', 'variacion_pct']].fillna(0)
+
+    # ================== COSTOS ==================
+    costos = PresupuestoCentroSegmentoCostos.objects.values(
+        "year", "nombre_centro_operacion", "segmento", "total_year"
+    )
+    df_costos = pd.DataFrame(list(costos)).rename(columns={"total_year": "total_year_costos"})
+
+    df_total_year_centro_segmento = pd.merge(
+        df_total_year_centro_segmento,
+        df_costos,
+        left_on=["nombre_centro_de_operacion", "nombre_clase_cliente", "year"],
+        right_on=["nombre_centro_operacion", "segmento", "year"],
+        how="left"
+    ).drop(columns=["nombre_centro_operacion", "segmento"])
+
+    # Merge con proyección
+    df_proyeccion_centro_operacion_segmento = pd.merge(
+        df_proyeccion_centro_operacion_segmento,
+        df_total_year_centro_segmento[['nombre_centro_de_operacion', 'nombre_clase_cliente', 'year', 'total_year', 'total_year_costos','variacion_pesos', 'variacion_pct']],
+        on=["nombre_centro_de_operacion", "nombre_clase_cliente", "year"],
+        how="left"
+    )
+   
+    # ================== UTILIDAD ==================
+    df_proyeccion_centro_operacion_segmento['utilidad_pct'] = (
+        1 - (df_proyeccion_centro_operacion_segmento['total_year_costos'] / df_proyeccion_centro_operacion_segmento['total_year'])
+    ) * 100
+    df_proyeccion_centro_operacion_segmento['utilidad_pct'] = df_proyeccion_centro_operacion_segmento['utilidad_pct'].round(2)
+    df_proyeccion_centro_operacion_segmento['utilidad_pct'] = df_proyeccion_centro_operacion_segmento['utilidad_pct'].replace([np.inf, -np.inf], 0).fillna(0)
+
+    df_proyeccion_centro_operacion_segmento['utilidad_valor'] = (
+        df_proyeccion_centro_operacion_segmento['total_year'] - df_proyeccion_centro_operacion_segmento['total_year_costos']
+    )
+    df_proyeccion_centro_operacion_segmento['utilidad_valor'] = df_proyeccion_centro_operacion_segmento['utilidad_valor'].round().astype(int)
+
+
     # guardar en la bd
     registros = []
     for _, row in df_proyeccion_centro_operacion_segmento.iterrows():
         registros.append(
             PresupuestoCentroSegmentoVentas(
-                centro_operacion=row['centro_de_operacion'],
+                nombre_centro_operacion=row['nombre_centro_de_operacion'],
                 segmento=row['nombre_clase_cliente'],
                 year=int(row['year']),
                 mes=int(row['mes']),
                 total=int(row['suma']),
-                r2=row['coef_correlacion'] if row['coef_correlacion'] is not None else 0
+                r2=row['coef_correlacion'] if row['coef_correlacion'] is not None else 0,
+                total_year=row['total_year'] if row['total_year'] is not None else 0,
+                total_year_costos=row['total_year_costos'] if row['total_year_costos'] is not None else 0,
+                variacion_valor=row['variacion_pesos'] if row['variacion_pesos'] is not None else 0,
+                variacion_pct=row['variacion_pct'] if row['variacion_pct'] is not None else 0,
+                utilidad_pct=row['utilidad_pct'] if row['utilidad_pct'] is not None else 0,
+                utilidad_valor=row['utilidad_valor'] if row['utilidad_valor'] is not None else 0
             )
         )
     
@@ -1097,7 +1271,8 @@ def cargar_presupuesto_centro_segmento_ventas(request):
     PresupuestoCentroSegmentoVentas.objects.all().delete()
     PresupuestoCentroSegmentoVentas.objects.bulk_create(registros)
     
-    return JsonResponse({"status": "ok", "mensaje": "Datos cargados correctamente ✅"})
+    data = list(PresupuestoCentroSegmentoVentas.objects.values())
+    return JsonResponse(data, safe=False)
 
 @csrf_exempt
 def guardar_presupuesto_centro_segmento_ventas(request):
@@ -1113,7 +1288,7 @@ def guardar_presupuesto_centro_segmento_ventas(request):
 
             # 🔄 recalcular R2 por centro, segmento y mes
             correlaciones = []
-            for (centro, segmento), grupo in df.groupby(["centro_operacion", "segmento"]):
+            for (centro, segmento), grupo in df.groupby(["nombre_centro_operacion", "segmento"]):
                 for mes in range(1, 13):
                     datos_mes = grupo[grupo["mes"] == mes]
 
@@ -1123,7 +1298,7 @@ def guardar_presupuesto_centro_segmento_ventas(request):
                         coef = np.nan
 
                     correlaciones.append({
-                        "centro_operacion": centro,
+                        "nombre_centro_operacion": centro,
                         "segmento": segmento,
                         "mes": mes,
                         "r2": (round(coef, 4)) * 100 if not np.isnan(coef) else 0
@@ -1135,7 +1310,7 @@ def guardar_presupuesto_centro_segmento_ventas(request):
             df_final = pd.merge(
                 df,
                 df_r2,
-                on=["centro_operacion", "segmento", "mes"],
+                on=["nombre_centro_operacion", "segmento", "mes"],
                 how="left"
             )
             df_final["r2"] = df_final["r2_y"].fillna(df_final["r2_x"])  # prioriza recalculado
@@ -1146,7 +1321,7 @@ def guardar_presupuesto_centro_segmento_ventas(request):
             for _, row in df_final.iterrows():
                 registros.append(
                     PresupuestoCentroSegmentoVentas(
-                        centro_operacion=row["centro_operacion"],
+                        nombre_centro_operacion=row["nombre_centro_operacion"],
                         segmento=row["segmento"],
                         year=int(row["year"]),
                         mes=int(row["mes"]),
@@ -1159,7 +1334,8 @@ def guardar_presupuesto_centro_segmento_ventas(request):
             PresupuestoCentroSegmentoVentas.objects.all().delete()
             PresupuestoCentroSegmentoVentas.objects.bulk_create(registros)
 
-            return JsonResponse({"status": "ok", "mensaje": "Presupuesto guardado y R² recalculado ✅"})
+            data = list(PresupuestoCentroSegmentoVentas.objects.values())
+            return JsonResponse(data, safe=False)
         except Exception as e:
             return JsonResponse({"status": "error", "mensaje": str(e)}, status=400)
 
@@ -1179,14 +1355,19 @@ def cargar_presupuesto_general_costos(request):
     bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
     bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
     bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2025 = BdVentas2025.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
     
     df1 = pd.DataFrame(list(bd2020))
     df2 = pd.DataFrame(list(bd2021))
     df3 = pd.DataFrame(list(bd2022))
     df4 = pd.DataFrame(list(bd2023))
     df5 = pd.DataFrame(list(bd2024))
+    df6 = pd.DataFrame(list(bd2025))
     
-    df_total = pd.concat([df1, df2, df3, df4, df5], ignore_index=True)
+    year_actual = timezone.now().year
+    year_siguiente = timezone.now().year + 1
+    
+    df_total = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
     
     df_lapso_total = df_total.groupby('lapso')['suma'].sum().reset_index()
     
@@ -1194,7 +1375,7 @@ def cargar_presupuesto_general_costos(request):
     df_lapso_total['year'] = df_lapso_total['lapso'] // 100
     df_lapso_total['mes'] = df_lapso_total['lapso'] % 100
     # 📌 Suma por año
-    df_por_año = df_lapso_total.groupby("year")["suma"].sum().reset_index()
+    # df_por_año = df_lapso_total.groupby("year")["suma"].sum().reset_index()
     # 📌 Suma por mes (todos los años juntos, ej: todos los eneros, febreros, etc.)
     df_por_mes = df_lapso_total.groupby("mes")["suma"].sum().reset_index()
     # suma por año y mes
@@ -1210,12 +1391,12 @@ def cargar_presupuesto_general_costos(request):
         y = datos_mes["suma"].values
         if len(x) >= 2:  # se necesitan al menos 2 años
             a, b = np.polyfit(x, y, 1)  # ajuste lineal
-            y_pred = a * 2025 + b
+            y_pred = a * year_siguiente + b
             predicciones_2025_general.append({
-                "year": 2025,
+                "year": year_siguiente,
                 "mes": mes,
                 "suma_pred": round(y_pred),
-                "lapso": 2025 * 100 + mes
+                "lapso": year_siguiente * 100 + mes
             })
 
     # convertir a dataframe
@@ -1246,6 +1427,16 @@ def cargar_presupuesto_general_costos(request):
     df_proyeccion_general = pd.merge(df_proyeccion_general, df_correl_por_mes, on='mes', how='left')
     df_proyeccion_general['suma'] = df_proyeccion_general['suma'].round().astype(int)
     
+    df_por_año = df_proyeccion_general.groupby("year")["suma"].sum().reset_index()
+    df_por_año = df_por_año.sort_values("year").reset_index(drop=True)
+    df_por_año["variacion_pesos"] = (df_por_año["suma"].diff()).round().astype('Int64')
+    df_por_año["variacion_pct"] = (df_por_año["suma"].pct_change() * 100).round(2)
+    df_por_año["variacion_pct"] = df_por_año["variacion_pct"].fillna(0)
+    df_por_año["variacion_pesos"] = df_por_año["variacion_pesos"].fillna(0) 
+    # renombrar suma por total
+    df_por_año = df_por_año.rename(columns={'suma': 'total'})
+    # merge de df_proyeccion_general con df_por_año para agregar las columnas de total, variacion_pesos y variacion_pct
+    df_proyeccion_general = pd.merge(df_proyeccion_general, df_por_año[['year', 'total','variacion_pesos', 'variacion_pct']], on='year', how='left')
     # ----------- GUARDAR EN LA BD ------------
     registros = []
     for _, row in df_proyeccion_general.iterrows():
@@ -1254,14 +1445,18 @@ def cargar_presupuesto_general_costos(request):
                 year=int(row['year']),
                 mes=int(row['mes']),
                 total=int(row['suma']),
-                r2=row['coef_correlacion'] if row['coef_correlacion'] is not None else 0
+                r2=row['coef_correlacion'] if row['coef_correlacion'] is not None else 0,
+                total_year=row['total'] if row['total'] is not None else 0,
+                variacion_valor=row['variacion_pesos'] if row['variacion_pesos'] is not None else 0,
+                variacion_pct=row['variacion_pct'] if row['variacion_pct'] is not None else 0
             )
         )
     # Opcional: limpiar tabla antes de insertar para evitar duplicados
     PresupuestoGeneralCostos.objects.all().delete()
     PresupuestoGeneralCostos.objects.bulk_create(registros)
     
-    return JsonResponse({"status": "ok", "mensaje": "Datos cargados y guardados correctamente ✅"})
+    data = list(PresupuestoGeneralCostos.objects.values())
+    return JsonResponse(data, safe=False)
 
 @csrf_exempt
 def guardar_presupuesto_general_costos(request):
@@ -1310,7 +1505,8 @@ def guardar_presupuesto_general_costos(request):
             PresupuestoGeneralCostos.objects.all().delete()
             PresupuestoGeneralCostos.objects.bulk_create(registros)
 
-            return JsonResponse({"status": "ok", "mensaje": "Presupuesto guardado correctamente ✅"})
+            data = list(PresupuestoGeneralCostos.objects.values())
+            return JsonResponse(data, safe=False)
         except Exception as e:
             return JsonResponse({"status": "error", "mensaje": str(e)}, status=400)
 
@@ -1325,20 +1521,24 @@ def vista_presupuesto_general_costos(request):
 
 #-----------PRESUPUESTO POR CENTRO OPERACION - COSTOS
 def cargar_presupuesto_centro_costos(request):
-    bd2020 = BdVentas2020.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2021 = BdVentas2021.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2020 = BdVentas2020.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2021 = BdVentas2021.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2025 = BdVentas2025.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
     
     df1 = pd.DataFrame(list(bd2020))
     df2 = pd.DataFrame(list(bd2021))
     df3 = pd.DataFrame(list(bd2022))
     df4 = pd.DataFrame(list(bd2023))
     df5 = pd.DataFrame(list(bd2024))
+    df6 = pd.DataFrame(list(bd2025))
+    year_actual = timezone.now().year
+    year_siguiente = timezone.now().year + 1
     
-    df_total = pd.concat([df1, df2, df3, df4, df5], ignore_index=True)
-    df_centro_operacion = df_total.groupby(['centro_de_operacion', 'lapso'])['suma'].sum().reset_index()
+    df_total = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
+    df_centro_operacion = df_total.groupby(['nombre_centro_de_operacion', 'lapso'])['suma'].sum().reset_index()
     
     # Extraer año y mes
     df_centro_operacion['year'] = df_centro_operacion['lapso'] // 100
@@ -1346,7 +1546,7 @@ def cargar_presupuesto_centro_costos(request):
     # Lista para almacenar predicciones por centro de operacion
     predicciones_2025_centro = []
     # Hacer predicción para cada centro de operacion y mes
-    for centro, grupo in df_centro_operacion.groupby('centro_de_operacion'):
+    for centro, grupo in df_centro_operacion.groupby('nombre_centro_de_operacion'):
         for mes in range(1, 13):
             datos_mes = grupo[grupo['mes'] == mes]
             # Datos para regresión
@@ -1355,20 +1555,20 @@ def cargar_presupuesto_centro_costos(request):
 
             if len(x) >= 2:  # Se necesita al menos 2 puntos para ajustar una recta
                 a, b = np.polyfit(x, y, 1)  # Ajuste lineal
-                y_pred = a * 2025 + b
-                predicciones_2025_centro.append({'centro_de_operacion': centro, 'lapso': 2025 * 100 + mes, 'suma': round(y_pred)})
+                y_pred = a * year_siguiente + b
+                predicciones_2025_centro.append({'nombre_centro_de_operacion': centro, 'lapso': year_siguiente * 100 + mes, 'suma': round(y_pred)})
     # Crear DataFrame con predicciones
     df_pred_2025_centro = pd.DataFrame(predicciones_2025_centro)
     # (Opcional) Unir con el DataFrame original y ordenar por lapso y centro de operacion
-    df_proyeccion_centro_operacion = pd.concat([df_centro_operacion[['centro_de_operacion', 'lapso', 'suma']], df_pred_2025_centro], ignore_index=True)
-    df_proyeccion_centro_operacion = df_proyeccion_centro_operacion.sort_values(['centro_de_operacion', 'lapso']).reset_index(drop=True)
+    df_proyeccion_centro_operacion = pd.concat([df_centro_operacion[['nombre_centro_de_operacion', 'lapso', 'suma']], df_pred_2025_centro], ignore_index=True)
+    df_proyeccion_centro_operacion = df_proyeccion_centro_operacion.sort_values(['nombre_centro_de_operacion', 'lapso']).reset_index(drop=True)
     # extraer año y mes
     df_proyeccion_centro_operacion['year'] = df_proyeccion_centro_operacion['lapso'] // 100
     df_proyeccion_centro_operacion['mes'] = df_proyeccion_centro_operacion['lapso'] % 100
     
     # calcular el coeficiente de correlación R2 para la proyección por centro de operacion y lapso -----------
     correlaciones_centro = []   
-    for centro, grupo in df_proyeccion_centro_operacion.groupby('centro_de_operacion'):
+    for centro, grupo in df_proyeccion_centro_operacion.groupby('nombre_centro_de_operacion'):
         for mes in range(1, 13):
             datos_mes = grupo[grupo["mes"] == mes]
 
@@ -1378,25 +1578,50 @@ def cargar_presupuesto_centro_costos(request):
                 coef = np.nan  # si no hay variación, correlación indefinida
 
             correlaciones_centro.append({
-                "centro_de_operacion": centro,
+                "nombre_centro_de_operacion": centro,
                 "mes": mes,
                 "coef_correlacion": (round(coef, 4))*100 if not np.isnan(coef) else None
             })
     df_correl_por_mes_centro = pd.DataFrame(correlaciones_centro)
     # unir con el df_proyeccion_centro_operacion
-    df_proyeccion_centro_operacion = pd.merge(df_proyeccion_centro_operacion, df_correl_por_mes_centro, on=['centro_de_operacion', 'mes'], how='left')
+    df_proyeccion_centro_operacion = pd.merge(df_proyeccion_centro_operacion, df_correl_por_mes_centro, on=['nombre_centro_de_operacion', 'mes'], how='left')
     df_proyeccion_centro_operacion['suma'] = df_proyeccion_centro_operacion['suma'].round().astype(int)   
     
+    
+    # ================= TOTAL_YEAR POR CENTRO ===================
+    df_total_year_centro = (
+        df_proyeccion_centro_operacion
+        .groupby(['nombre_centro_de_operacion', 'year'])['suma']
+        .sum()
+        .reset_index()
+        .rename(columns={'suma': 'total_year'})
+    )
+    # Calcular variaciones por centro
+    df_total_year_centro['variacion_pesos'] = df_total_year_centro.groupby('nombre_centro_de_operacion')['total_year'].diff().round().astype('Int64')
+    df_total_year_centro['variacion_pct'] = (df_total_year_centro.groupby('nombre_centro_de_operacion')['total_year'].pct_change() * 100).round(2)
+
+    # Rellenar NaN en la primera fila de cada grupo
+    df_total_year_centro[['variacion_pesos', 'variacion_pct']] = df_total_year_centro[['variacion_pesos', 'variacion_pct']].fillna(0)
+    # merge de df_proyeccion_centro_operacion con df_por_año para agregar las columnas de total, variacion_pesos y variacion_pct
+    df_proyeccion_centro_operacion = pd.merge(
+        df_proyeccion_centro_operacion,
+        df_total_year_centro[['nombre_centro_de_operacion', 'year', 'total_year','variacion_pesos', 'variacion_pct']],
+        on=['nombre_centro_de_operacion','year'],
+        how='left'
+    )
     # guardar en la bd
     registros = []
     for _, row in df_proyeccion_centro_operacion.iterrows():
         registros.append(
             PresupuestoCentroOperacionCostos(
-                centro_operacion=row['centro_de_operacion'],
+                nombre_centro_operacion=row['nombre_centro_de_operacion'],
                 year=int(row['year']),
                 mes=int(row['mes']),
                 total=int(row['suma']),
-                r2=row['coef_correlacion'] if row['coef_correlacion'] is not None else 0
+                r2=row['coef_correlacion'] if row['coef_correlacion'] is not None else 0,
+                total_year=row['total_year'] if row['total_year'] is not None else 0,
+                variacion_valor=row['variacion_pesos'] if row['variacion_pesos'] is not None else 0,
+                variacion_pct=row['variacion_pct'] if row['variacion_pct'] is not None else 0
             )
         )
     
@@ -1404,7 +1629,8 @@ def cargar_presupuesto_centro_costos(request):
     PresupuestoCentroOperacionCostos.objects.all().delete()
     PresupuestoCentroOperacionCostos.objects.bulk_create(registros)
     
-    return JsonResponse({"status": "ok", "mensaje": "Datos cargados correctamente ✅"})
+    data = list(PresupuestoCentroOperacionCostos.objects.values())
+    return JsonResponse(data, safe=False)
 
 @csrf_exempt
 def guardar_presupuesto_centro_costos(request):
@@ -1417,11 +1643,11 @@ def guardar_presupuesto_centro_costos(request):
             df["year"] = df["year"].astype(int)
             df["mes"] = df["mes"].astype(int)
             df["total"] = df["total"].astype(int)
-            df["centro_operacion"] = df["centro_operacion"].astype(str)
+            df["nombre_centro_operacion"] = df["nombre_centro_operacion"].astype(str)
 
             # --- recalcular R² por centro de operación y mes ---
             correlaciones = []
-            for centro, grupo in df.groupby("centro_operacion"):
+            for centro, grupo in df.groupby("nombre_centro_operacion"):
                 for mes in range(1, 13):
                     datos_mes = grupo[grupo["mes"] == mes]
 
@@ -1431,7 +1657,7 @@ def guardar_presupuesto_centro_costos(request):
                         coef = np.nan
 
                     correlaciones.append({
-                        "centro_operacion": centro,
+                        "nombre_centro_operacion": centro,
                         "mes": mes,
                         "coef_correlacion": (round(coef, 4)) * 100 if not np.isnan(coef) else 0
                     })
@@ -1439,12 +1665,12 @@ def guardar_presupuesto_centro_costos(request):
             df_correl = pd.DataFrame(correlaciones)
 
             # unir correlaciones recalculadas con los datos originales
-            df = pd.merge(df, df_correl, on=["centro_operacion", "mes"], how="left")
+            df = pd.merge(df, df_correl, on=["nombre_centro_operacion", "mes"], how="left")
             registros = []
             for _, row in df.iterrows():
                 registros.append(
                     PresupuestoCentroOperacionCostos(
-                        centro_operacion=row["centro_operacion"],
+                        nombre_centro_operacion=row["nombre_centro_operacion"],
                         year=int(row["year"]),
                         mes=int(row["mes"]),
                         total=int(row["total"]),
@@ -1456,7 +1682,8 @@ def guardar_presupuesto_centro_costos(request):
             PresupuestoCentroOperacionCostos.objects.all().delete()
             PresupuestoCentroOperacionCostos.objects.bulk_create(registros)
 
-            return JsonResponse({"status": "ok", "mensaje": "Presupuesto guardado correctamente ✅"})
+            data = list(PresupuestoCentroOperacionCostos.objects.values())
+            return JsonResponse(data, safe=False)
         except Exception as e:
             return JsonResponse({"status": "error", "mensaje": str(e)}, status=400)
 
@@ -1471,20 +1698,24 @@ def vista_presupuesto_centro_costos(request):
 
 #--------------------------PRESUPUESTO CENTRO OPERACION - SEGMENTO COSTOS---------------
 def cargar_presupuesto_centro_segmento_costos(request):
-    bd2020 = BdVentas2020.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2021 = BdVentas2021.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2020 = BdVentas2020.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2021 = BdVentas2021.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2025 = BdVentas2025.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
     
     df1 = pd.DataFrame(list(bd2020))
     df2 = pd.DataFrame(list(bd2021))
     df3 = pd.DataFrame(list(bd2022))
     df4 = pd.DataFrame(list(bd2023))
     df5 = pd.DataFrame(list(bd2024))
+    df6 = pd.DataFrame(list(bd2025))
+    year_actual = timezone.now().year
+    year_siguiente = timezone.now().year + 1
     
-    df_total = pd.concat([df1, df2, df3, df4, df5], ignore_index=True)
-    df_centro_operacion_segmento = df_total.groupby(['nombre_clase_cliente', 'centro_de_operacion', 'lapso'])['suma'].sum().reset_index()
+    df_total = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
+    df_centro_operacion_segmento = df_total.groupby(['nombre_clase_cliente', 'nombre_centro_de_operacion', 'lapso'])['suma'].sum().reset_index()
     
     # Extraer año y mes
     df_centro_operacion_segmento['year'] = df_centro_operacion_segmento['lapso'] // 100
@@ -1492,7 +1723,7 @@ def cargar_presupuesto_centro_segmento_costos(request):
     # Lista para almacenar predicciones por centro de operacion y segmento
     predicciones_2025_centro_segmento = []
     # Hacer predicción para cada centro de operacion, segmento y mes
-    for (centro, segmento), grupo in df_centro_operacion_segmento.groupby(['centro_de_operacion', 'nombre_clase_cliente']):
+    for (centro, segmento), grupo in df_centro_operacion_segmento.groupby(['nombre_centro_de_operacion', 'nombre_clase_cliente']):
         for mes in range(1, 13):
             datos_mes = grupo[grupo['mes'] == mes]
             
@@ -1502,49 +1733,90 @@ def cargar_presupuesto_centro_segmento_costos(request):
 
             if len(x) >= 2:  # Se necesita al menos 2 puntos para ajustar una recta
                 a, b = np.polyfit(x, y, 1)  # Ajuste lineal
-                y_pred = a * 2025 + b
-                predicciones_2025_centro_segmento.append({'centro_de_operacion': centro, 'nombre_clase_cliente': segmento, 'lapso': 2025 * 100 + mes, 'suma': round(y_pred)})
+                y_pred = a * year_siguiente + b
+                predicciones_2025_centro_segmento.append({'nombre_centro_de_operacion': centro, 'nombre_clase_cliente': segmento, 'lapso': year_siguiente * 100 + mes, 'suma': round(y_pred)})
     # Crear DataFrame con predicciones
     df_pred_2025_centro_segmento = pd.DataFrame(predicciones_2025_centro_segmento)
     # (Opcional) Unir con el DataFrame original y ordenar por lapso, centro de operacion y segmento
-    df_proyeccion_centro_operacion_segmento = pd.concat([df_centro_operacion_segmento[['centro_de_operacion', 'nombre_clase_cliente', 'lapso', 'suma']], df_pred_2025_centro_segmento], ignore_index=True)
-    df_proyeccion_centro_operacion_segmento = df_proyeccion_centro_operacion_segmento.sort_values(['centro_de_operacion', 'nombre_clase_cliente', 'lapso']).reset_index(drop=True)
+    df_proyeccion_centro_operacion_segmento = pd.concat([df_centro_operacion_segmento[['nombre_centro_de_operacion', 'nombre_clase_cliente', 'lapso', 'suma']], df_pred_2025_centro_segmento], ignore_index=True)
+    df_proyeccion_centro_operacion_segmento = df_proyeccion_centro_operacion_segmento.sort_values(['nombre_centro_de_operacion', 'nombre_clase_cliente', 'lapso']).reset_index(drop=True)
     # extraer año y mes
     df_proyeccion_centro_operacion_segmento['year'] = df_proyeccion_centro_operacion_segmento['lapso'] // 100
     df_proyeccion_centro_operacion_segmento['mes'] = df_proyeccion_centro_operacion_segmento['lapso'] % 100
     # ----------------------------calcular el coeficiente de correlación R2 para la proyección por centro de operacion, segmento y lapso ----------------------------
     correlaciones_centro_segmento = []
-    for (centro, segmento), grupo in df_proyeccion_centro_operacion_segmento.groupby(['centro_de_operacion', 'nombre_clase_cliente']):
+    for (centro, segmento), grupo in df_proyeccion_centro_operacion_segmento.groupby(['nombre_centro_de_operacion', 'nombre_clase_cliente']):
         for mes in range(1, 13):
             datos_mes = grupo[grupo["mes"] == mes]
 
             if len(datos_mes) >= 2 and datos_mes["suma"].std() != 0:
                 coef = np.corrcoef(datos_mes["year"], datos_mes["suma"])[0, 1]
             else:
-                coef = np.nan  # si no hay variación, correlación indefinida
+                coef = 0 # si no hay variación, correlación indefinida
 
             correlaciones_centro_segmento.append({
-                "centro_de_operacion": centro,
+                "nombre_centro_de_operacion": centro,
                 "nombre_clase_cliente": segmento,
                 "mes": mes,
                 "coef_correlacion": (round(coef, 4))*100 if not np.isnan(coef) else None
             })
     df_correl_por_mes_centro_segmento = pd.DataFrame(correlaciones_centro_segmento)
     # unir con el df_proyeccion_centro_operacion_segmento
-    df_proyeccion_centro_operacion_segmento = pd.merge(df_proyeccion_centro_operacion_segmento, df_correl_por_mes_centro_segmento, on=['centro_de_operacion', 'nombre_clase_cliente', 'mes'], how='left')
+    df_proyeccion_centro_operacion_segmento = pd.merge(df_proyeccion_centro_operacion_segmento, df_correl_por_mes_centro_segmento, on=['nombre_centro_de_operacion', 'nombre_clase_cliente', 'mes'], how='left')
     df_proyeccion_centro_operacion_segmento['suma'] = df_proyeccion_centro_operacion_segmento['suma'].round().astype(int)
     
+    # ================= TOTAL_YEAR POR CENTRO Y CLASE CLIENTE ===================
+    df_total_year_centro_clase = (
+        df_proyeccion_centro_operacion_segmento
+        .groupby(['nombre_centro_de_operacion', 'nombre_clase_cliente', 'year'])['suma']
+        .sum()
+        .reset_index()
+        .rename(columns={'suma': 'total_year'})
+    )
+
+    # Calcular variaciones por centro + clase cliente
+    df_total_year_centro_clase['variacion_pesos'] = (
+        df_total_year_centro_clase
+        .groupby(['nombre_centro_de_operacion', 'nombre_clase_cliente'])['total_year']
+        .diff()
+        .round()
+        .astype('Int64')
+    )
+
+    df_total_year_centro_clase['variacion_pct'] = (
+        df_total_year_centro_clase
+        .groupby(['nombre_centro_de_operacion', 'nombre_clase_cliente'])['total_year']
+        .pct_change() * 100
+    ).round(2)
+
+    # Rellenar NaN en la primera fila de cada grupo
+    df_total_year_centro_clase[['variacion_pesos', 'variacion_pct']] = (
+        df_total_year_centro_clase[['variacion_pesos', 'variacion_pct']].fillna(0)
+    )
+
+    # merge con df_proyeccion_centro_operacion_segmento
+    df_proyeccion_centro_operacion_segmento = pd.merge(
+        df_proyeccion_centro_operacion_segmento,
+        df_total_year_centro_clase[
+            ['nombre_centro_de_operacion', 'nombre_clase_cliente', 'year', 'total_year', 'variacion_pesos', 'variacion_pct']
+        ],
+        on=['nombre_centro_de_operacion', 'nombre_clase_cliente', 'year'],
+        how='left'
+    )
     # guardar en la bd
     registros = []
     for _, row in df_proyeccion_centro_operacion_segmento.iterrows():
         registros.append(
             PresupuestoCentroSegmentoCostos(
-                centro_operacion=row['centro_de_operacion'],
+                nombre_centro_operacion=row['nombre_centro_de_operacion'],
                 segmento=row['nombre_clase_cliente'],
                 year=int(row['year']),
                 mes=int(row['mes']),
                 total=int(row['suma']),
-                r2=row['coef_correlacion'] if row['coef_correlacion'] is not None else 0
+                r2=row['coef_correlacion'] if row['coef_correlacion'] is not None else 0,
+                total_year=row['total_year'] if row['total_year'] is not None else 0,
+                variacion_valor=row['variacion_pesos'] if row['variacion_pesos'] is not None else 0,
+                variacion_pct=row['variacion_pct'] if row['variacion_pct'] is not None else 0
             )
         )
     
@@ -1552,7 +1824,8 @@ def cargar_presupuesto_centro_segmento_costos(request):
     PresupuestoCentroSegmentoCostos.objects.all().delete()
     PresupuestoCentroSegmentoCostos.objects.bulk_create(registros)
     
-    return JsonResponse({"status": "ok", "mensaje": "Datos cargados correctamente ✅"})
+    data = list(PresupuestoCentroSegmentoCostos.objects.values())
+    return JsonResponse(data, safe=False)
 
 @csrf_exempt
 def guardar_presupuesto_centro_segmento_costos(request):
@@ -1568,7 +1841,7 @@ def guardar_presupuesto_centro_segmento_costos(request):
 
             # 🔄 recalcular R2 por centro, segmento y mes
             correlaciones = []
-            for (centro, segmento), grupo in df.groupby(["centro_operacion", "segmento"]):
+            for (centro, segmento), grupo in df.groupby(["nombre_centro_operacion", "segmento"]):
                 for mes in range(1, 13):
                     datos_mes = grupo[grupo["mes"] == mes]
 
@@ -1578,7 +1851,7 @@ def guardar_presupuesto_centro_segmento_costos(request):
                         coef = np.nan
 
                     correlaciones.append({
-                        "centro_operacion": centro,
+                        "nombre_centro_operacion": centro,
                         "segmento": segmento,
                         "mes": mes,
                         "r2": (round(coef, 4)) * 100 if not np.isnan(coef) else 0
@@ -1590,7 +1863,7 @@ def guardar_presupuesto_centro_segmento_costos(request):
             df_final = pd.merge(
                 df,
                 df_r2,
-                on=["centro_operacion", "segmento", "mes"],
+                on=["nombre_centro_operacion", "segmento", "mes"],
                 how="left"
             )
             df_final["r2"] = df_final["r2_y"].fillna(df_final["r2_x"])  # prioriza recalculado
@@ -1600,7 +1873,7 @@ def guardar_presupuesto_centro_segmento_costos(request):
             for _, row in df_final.iterrows():
                 registros.append(
                     PresupuestoCentroSegmentoCostos(
-                        centro_operacion=row["centro_operacion"],
+                        nombre_centro_operacion=row["nombre_centro_operacion"],
                         segmento=row["segmento"],
                         year=int(row["year"]),
                         mes=int(row["mes"]),
@@ -1613,7 +1886,8 @@ def guardar_presupuesto_centro_segmento_costos(request):
             PresupuestoCentroSegmentoCostos.objects.all().delete()
             PresupuestoCentroSegmentoCostos.objects.bulk_create(registros)
 
-            return JsonResponse({"status": "ok", "mensaje": "Presupuesto guardado correctamente ✅"})
+            data = list(PresupuestoCentroSegmentoCostos.objects.values())
+            return JsonResponse(data, safe=False)
         except Exception as e:
             return JsonResponse({"status": "error", "mensaje": str(e)}, status=400)
 
@@ -1631,19 +1905,23 @@ def dashboard(request):
 
 #----------------PRESUPUESTO COMERCIAL-----------------------
 def aux_presupuesto_comercial_costos():
-    bd2020 = BdVentas2020.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2021 = BdVentas2021.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2020 = BdVentas2020.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2021 = BdVentas2021.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2025 = BdVentas2025.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
     
     df1 = pd.DataFrame(list(bd2020))
     df2 = pd.DataFrame(list(bd2021))
     df3 = pd.DataFrame(list(bd2022))
     df4 = pd.DataFrame(list(bd2023))
     df5 = pd.DataFrame(list(bd2024))
+    df6 = pd.DataFrame(list(bd2025))
+    year_actual = timezone.now().year
+    year_siguiente = timezone.now().year + 1
     
-    df_total = pd.concat([df1, df2, df3, df4, df5], ignore_index=True)
+    df_total = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
     # print(df_total)
     # calcular suma por lapso y centro de operacion
     df_lapso_total = df_total.groupby('lapso')['suma'].sum().reset_index()
@@ -1651,67 +1929,63 @@ def aux_presupuesto_comercial_costos():
     df_lapso_total['year'] = df_lapso_total['lapso'] // 100
     df_lapso_total['mes'] = df_lapso_total['lapso'] % 100
     #------------------------------------------------------PRONOSTICO FINAL---------------------------------------------------
-    # Lista para almacenar predicciones
-    predicciones_2025 = []
-
-    # Hacer predicción para cada mes
-    for mes in range(1, 13):
-        datos_mes = df_lapso_total[df_lapso_total['mes'] == mes]
-        
-        # Datos para regresión
-        x = datos_mes['year'].values
-        y = datos_mes['suma'].values
-
-        if len(x) >= 2:  # Se necesita al menos 2 puntos para ajustar una recta
-            a, b = np.polyfit(x, y, 1)  # Ajuste lineal
-            y_pred = a * 2025 + b
-            predicciones_2025.append({'lapso': 2025 * 100 + mes, 'suma': round(y_pred)})
-
-    # Crear DataFrame con predicciones
-    df_pred_2025_general = pd.DataFrame(predicciones_2025)
-    # print(df_pred_2025)
-
-    # Concatenar los dataframes para el dinamismo
-    df_dinamismo = pd.concat([df1, df2, df3, df4, df5], ignore_index=True)
-    
     # Extraer el año desde 'lapso'
-    df_dinamismo['year'] = df_dinamismo['lapso'] // 100
+    df_total['year'] = df_total['lapso'] // 100
 
     # Agrupar por nombre de producto, año, y sumar
-    df_agrupado = df_dinamismo.groupby(['nombre_linea_n1', 'year'])['suma'].sum().reset_index()
-
+    df_agrupado = df_total.groupby(['nombre_linea_n1', 'year', 'nombre_centro_de_operacion', 'nombre_clase_cliente'])['suma'].sum().reset_index()
     # (Opcional) Ordenar resultados
     df_agrupado = df_agrupado.sort_values(by=['nombre_linea_n1', 'year'])
-    
+   
+    # Definir el rango de años esperado para añadir año faltante y agergarle 0
+    year = list(range(2020, 2026))
+    # Crear un dataframe con todas las combinaciones posibles
+    df_completo = (
+        pd.MultiIndex.from_product(
+            [
+                df_agrupado['nombre_linea_n1'].unique(), 
+                df_agrupado['nombre_centro_de_operacion'].unique(),
+                df_agrupado['nombre_clase_cliente'].unique(),
+                year],
+            names=['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'year']
+        )
+        .to_frame(index=False)
+    )
+    # Unir con tus datos reales
+    df_total_fill = df_completo.merge(df_agrupado, on=['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'year'], how='left')
+    # Rellenar con 0 las sumas faltantes
+    df_total_fill['suma'] = df_total_fill['suma'].fillna(0)
+    # print(df_total_fill)
     # PREDICCION PARA 2025 POR PRONOSTICO LINEAL -----------------------------------------
     # Lista para almacenar resultados
     predicciones = []
-
     # Agrupar por producto
-    for nombre, grupo in df_agrupado.groupby('nombre_linea_n1'):
+    for (nombre, centro, clase), grupo in df_total_fill.groupby( ['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente']):
         x = grupo['year'].values
         y = grupo['suma'].values
         
         if len(x) >= 2:
             # Ajuste lineal
             a, b = np.polyfit(x, y, 1)
-            y_pred = a * 2025 + b
+            y_pred = a * year_siguiente + b
             predicciones.append({
                 'nombre_linea_n1': nombre,
-                'year': 2025,
+                'nombre_centro_de_operacion': centro,
+                'nombre_clase_cliente': clase,
+                'year': year_siguiente,
                 'suma': round(y_pred)
             })
 
     # Crear DataFrame con predicciones
     df_pred_2025_pro_lineal = pd.DataFrame(predicciones)
-    df_final_pronostico = pd.concat([df_agrupado, df_pred_2025_pro_lineal], ignore_index=True)
+    df_final_pronostico = pd.concat([df_total_fill, df_pred_2025_pro_lineal], ignore_index=True)
     df_final_pronostico = df_final_pronostico.sort_values(by=['nombre_linea_n1', 'year']).reset_index(drop=True)
     
     # R2 ----------------------------------------------
     # Lista para almacenar resultados
     correlaciones = []
     # Agrupar por producto
-    for nombre, grupo in df_final_pronostico.groupby('nombre_linea_n1'):
+    for (nombre, centro, clase), grupo in df_final_pronostico.groupby(['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente']):
         x = grupo['year'].values
         y = grupo['suma'].values
 
@@ -1723,118 +1997,137 @@ def aux_presupuesto_comercial_costos():
 
         correlaciones.append({
             'nombre_linea_n1': nombre,
+            'nombre_centro_de_operacion': centro,
+            'nombre_clase_cliente': clase,
             'R2': round(coef_abs_pct, 2)
         })
 
     # Crear DataFrame con los coeficientes
     df_correlaciones = pd.DataFrame(correlaciones)
+    
     # concatenar con el df_final_pronostico
-    df_final_pronostico = pd.merge(df_final_pronostico, df_correlaciones, on='nombre_linea_n1', how='left')
+    df_final_pronostico = pd.merge(df_final_pronostico, df_correlaciones, on=['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente'], how='left')
    
-    # ---------------------calcular variacion porcentual entre 2024 y 2025-------------------------------
-    df_2024 = df_final_pronostico[df_final_pronostico['year'] == 2024][['nombre_linea_n1', 'suma']].rename(columns={'suma': 'suma_2024'})
-    df_2025 = df_final_pronostico[df_final_pronostico['year'] == 2025][['nombre_linea_n1', 'suma']].rename(columns={'suma': 'suma_2025'})
-    df_variacion = pd.merge(df_2024, df_2025, on='nombre_linea_n1')
-    df_variacion['variacion_pct'] = ((df_variacion['suma_2025'] - df_variacion['suma_2024']) / df_variacion['suma_2024']) * 100
-    df_variacion['variacion_pct'] = df_variacion['variacion_pct'].round(2)
-    
-    # calcular variacion en valor en pesos entre 2024 y 2025
-    df_variacion['variacion_valor'] = df_variacion['suma_2025'] - df_variacion['suma_2024']
-    # calcular variacion mes, es decir, dividir la variacion_valor entre 12
-    df_variacion['variacion_mes'] = (df_variacion['variacion_valor'] / 12).fillna(0).round().astype(int)
-    # calcular variacion precios, es decir, tomar el año anterior(2024) y multiplicarlo por el 2%
-    df_variacion['variacion_precios'] = (df_variacion['suma_2024'] * 0.02).fillna(0).round().astype(int)
-    # calcular crecimiento comercial, es decir, restar la variacion_pct y la variacion_precios
-    df_variacion['crecimiento_comercial'] = (df_variacion['variacion_valor'] - df_variacion['variacion_precios']).fillna(0).round().astype(int) 
-    # calcular crecimiento comercial mes, es decir, dividir el crecimiento_comercial entre 12
-    df_variacion['crecimiento_comercial_mes'] = (df_variacion['crecimiento_comercial'] / 12).fillna(0).round().astype(int)
+    # --------------------- Calcular variaciones año vs año anterior -------------------------------
+    df_final_pronostico['suma_anterior'] = df_final_pronostico.groupby(
+        ['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente']
+    )['suma'].shift(1)
+
+    # Calcular variación en porcentaje
+    df_final_pronostico['variacion_pct'] = np.where(
+        df_final_pronostico['suma_anterior'] == 0,
+        0,
+        ((df_final_pronostico['suma'] - df_final_pronostico['suma_anterior']) / df_final_pronostico['suma_anterior']) * 100
+    ).round(2)
+
+    # Calcular variación en valor (pesos)
+    df_final_pronostico['variacion_valor'] = (df_final_pronostico['suma'] - df_final_pronostico['suma_anterior']).fillna(0)
+
+    # Variación mensual
+    df_final_pronostico['variacion_mes'] = (df_final_pronostico['variacion_valor'] / 12).round().astype(int)
+
+    # Variación por precios (2% del año anterior)
+    df_final_pronostico['variacion_precios'] = (df_final_pronostico['suma_anterior'] * 0.02).round().fillna(0).astype(int)
+
+    # Crecimiento comercial (variación - variación precios)
+    df_final_pronostico['crecimiento_comercial'] = (df_final_pronostico['variacion_valor'] - df_final_pronostico['variacion_precios']).round().astype(int)
+
+    # Crecimiento comercial mensual
+    df_final_pronostico['crecimiento_comercial_mes'] = (df_final_pronostico['crecimiento_comercial'] / 12).round().astype(int)
+
+    # Reemplazar NaN por 0 en variaciones
+    cols_variaciones = ['variacion_pct', 'variacion_valor', 'variacion_mes', 'variacion_precios',
+                        'crecimiento_comercial', 'crecimiento_comercial_mes']
+    df_final_pronostico[cols_variaciones] = df_final_pronostico[cols_variaciones].fillna(0)
     
     # concatenar con el df_final_pronostico
-    df_final_pronostico = pd.merge(df_final_pronostico, df_variacion[['nombre_linea_n1', 'variacion_pct', 'variacion_valor', 'variacion_mes', 'variacion_precios', 'crecimiento_comercial', 'crecimiento_comercial_mes']], on='nombre_linea_n1', how='left')
+    # df_final_pronostico = pd.merge(df_final_pronostico, df_variacion[['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'variacion_pct', 'variacion_valor', 'variacion_mes', 'variacion_precios', 'crecimiento_comercial', 'crecimiento_comercial_mes']], on=['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente'], how='left') 
     
     return df_final_pronostico
     
 
 def cargar_presupuesto_comercial(request):
-    bd2020 = BdVentas2020.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2021 = BdVentas2021.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2020 = BdVentas2020.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2021 = BdVentas2021.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2025 = BdVentas2025.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
     
     df1 = pd.DataFrame(list(bd2020))
     df2 = pd.DataFrame(list(bd2021))
     df3 = pd.DataFrame(list(bd2022))
     df4 = pd.DataFrame(list(bd2023))
     df5 = pd.DataFrame(list(bd2024))
+    df6 = pd.DataFrame(list(bd2025))
+    year_actual = timezone.now().year
+    year_siguiente = timezone.now().year + 1
    
-    df_total = pd.concat([df1, df2, df3, df4, df5], ignore_index=True)
+    df_total = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
+    # print(df_total)
     df_lapso_total = df_total.groupby('lapso')['suma'].sum().reset_index()
-    
+    # print(df_lapso_total)
     # Extraer año y mes
     df_lapso_total['year'] = df_lapso_total['lapso'] // 100
     df_lapso_total['mes'] = df_lapso_total['lapso'] % 100
     #------------------------------------------------------PRONOSTICO FINAL---------------------------------------------------
-    # Lista para almacenar predicciones
-    predicciones_2025 = []
-
-    # Hacer predicción para cada mes
-    for mes in range(1, 13):
-        datos_mes = df_lapso_total[df_lapso_total['mes'] == mes]
-        
-        # Datos para regresión
-        x = datos_mes['year'].values
-        y = datos_mes['suma'].values
-
-        if len(x) >= 2:  # Se necesita al menos 2 puntos para ajustar una recta
-            a, b = np.polyfit(x, y, 1)  # Ajuste lineal
-            y_pred = a * 2025 + b
-            predicciones_2025.append({'lapso': 2025 * 100 + mes, 'suma': round(y_pred)})
-
-    # Crear DataFrame con predicciones
-    df_pred_2025_general = pd.DataFrame(predicciones_2025)
-
-    # Concatenar los dataframes para el dinamismo
-    df_dinamismo = pd.concat([df1, df2, df3, df4, df5], ignore_index=True)
-    
     # Extraer el año desde 'lapso'
-    df_dinamismo['year'] = df_dinamismo['lapso'] // 100
+    df_total['year'] = df_total['lapso'] // 100
 
     # Agrupar por nombre de producto, año, y sumar
-    df_agrupado = df_dinamismo.groupby(['nombre_linea_n1', 'year'])['suma'].sum().reset_index()
-
+    df_agrupado = df_total.groupby(['nombre_linea_n1', 'year', 'nombre_centro_de_operacion', 'nombre_clase_cliente'])['suma'].sum().reset_index()
     # (Opcional) Ordenar resultados
     df_agrupado = df_agrupado.sort_values(by=['nombre_linea_n1', 'year'])
-    
+   
+    # Definir el rango de años esperado para añadir año faltante y agergarle 0
+    year = list(range(2020, 2026))
+    # Crear un dataframe con todas las combinaciones posibles
+    df_completo = (
+        pd.MultiIndex.from_product(
+            [
+                df_agrupado['nombre_linea_n1'].unique(), 
+                df_agrupado['nombre_centro_de_operacion'].unique(),
+                df_agrupado['nombre_clase_cliente'].unique(),
+                year],
+            names=['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'year']
+        )
+        .to_frame(index=False)
+    )
+    # Unir con tus datos reales
+    df_total_fill = df_completo.merge(df_agrupado, on=['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'year'], how='left')
+    # Rellenar con 0 las sumas faltantes
+    df_total_fill['suma'] = df_total_fill['suma'].fillna(0)
+    # print(df_total_fill)
     # PREDICCION PARA 2025 POR PRONOSTICO LINEAL -----------------------------------------
     # Lista para almacenar resultados
     predicciones = []
-
     # Agrupar por producto
-    for nombre, grupo in df_agrupado.groupby('nombre_linea_n1'):
+    for (nombre, centro, clase), grupo in df_total_fill.groupby( ['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente']):
         x = grupo['year'].values
         y = grupo['suma'].values
         
         if len(x) >= 2:
             # Ajuste lineal
             a, b = np.polyfit(x, y, 1)
-            y_pred = a * 2025 + b
+            y_pred = a * year_siguiente + b
             predicciones.append({
                 'nombre_linea_n1': nombre,
-                'year': 2025,
+                'nombre_centro_de_operacion': centro,
+                'nombre_clase_cliente': clase,
+                'year': year_siguiente,
                 'suma': round(y_pred)
             })
 
     # Crear DataFrame con predicciones
     df_pred_2025_pro_lineal = pd.DataFrame(predicciones)
-    df_final_pronostico = pd.concat([df_agrupado, df_pred_2025_pro_lineal], ignore_index=True)
+    df_final_pronostico = pd.concat([df_total_fill, df_pred_2025_pro_lineal], ignore_index=True)
     df_final_pronostico = df_final_pronostico.sort_values(by=['nombre_linea_n1', 'year']).reset_index(drop=True)
     
     # R2 ----------------------------------------------
     # Lista para almacenar resultados
     correlaciones = []
     # Agrupar por producto
-    for nombre, grupo in df_final_pronostico.groupby('nombre_linea_n1'):
+    for (nombre, centro, clase), grupo in df_final_pronostico.groupby(['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente']):
         x = grupo['year'].values
         y = grupo['suma'].values
 
@@ -1846,6 +2139,8 @@ def cargar_presupuesto_comercial(request):
 
         correlaciones.append({
             'nombre_linea_n1': nombre,
+            'nombre_centro_de_operacion': centro,
+            'nombre_clase_cliente': clase,
             'R2': round(coef_abs_pct, 2)
         })
 
@@ -1853,60 +2148,126 @@ def cargar_presupuesto_comercial(request):
     df_correlaciones = pd.DataFrame(correlaciones)
     
     # concatenar con el df_final_pronostico
-    df_final_pronostico = pd.merge(df_final_pronostico, df_correlaciones, on='nombre_linea_n1', how='left')
+    df_final_pronostico = pd.merge(df_final_pronostico, df_correlaciones, on=['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente'], how='left')
    
-    # ---------------------calcular variacion porcentual entre 2024 y 2025-------------------------------
-    df_2024 = df_final_pronostico[df_final_pronostico['year'] == 2024][['nombre_linea_n1', 'suma']].rename(columns={'suma': 'suma_2024'})
-    df_2025 = df_final_pronostico[df_final_pronostico['year'] == 2025][['nombre_linea_n1', 'suma']].rename(columns={'suma': 'suma_2025'})
-    df_variacion = pd.merge(df_2024, df_2025, on='nombre_linea_n1')
-    df_variacion['variacion_pct'] = ((df_variacion['suma_2025'] - df_variacion['suma_2024']) / df_variacion['suma_2024']) * 100
-    df_variacion['variacion_pct'] = df_variacion['variacion_pct'].round(2)
-    
-    # calcular variacion en valor en pesos entre 2024 y 2025
-    df_variacion['variacion_valor'] = df_variacion['suma_2025'] - df_variacion['suma_2024']
-    # calcular variacion mes, es decir, dividir la variacion_valor entre 12
-    df_variacion['variacion_mes'] = (df_variacion['variacion_valor'] / 12).round().astype(int)
-    # calcular variacion precios, es decir, tomar el año anterior(2024) y multiplicarlo por el 2%
-    df_variacion['variacion_precios'] = (df_variacion['suma_2024'] * 0.02).round().astype(int)
-    # calcular crecimiento comercial, es decir, restar la variacion_pct y la variacion_precios
-    df_variacion['crecimiento_comercial'] = (df_variacion['variacion_valor'] - df_variacion['variacion_precios']).round().astype(int) 
-    # calcular crecimiento comercial mes, es decir, dividir el crecimiento_comercial entre 12
-    df_variacion['crecimiento_comercial_mes'] = (df_variacion['crecimiento_comercial'] / 12).round().astype(int)
+    # --------------------- Calcular variaciones año vs año anterior -------------------------------
+    df_final_pronostico['suma_anterior'] = df_final_pronostico.groupby(
+        ['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente']
+    )['suma'].shift(1)
+
+    # Calcular variación en porcentaje
+    df_final_pronostico['variacion_pct'] = np.where(
+        df_final_pronostico['suma_anterior'] == 0,
+        0,
+        ((df_final_pronostico['suma'] - df_final_pronostico['suma_anterior']) / df_final_pronostico['suma_anterior']) * 100
+    ).round(2)
+
+    # Calcular variación en valor (pesos)
+    df_final_pronostico['variacion_valor'] = (df_final_pronostico['suma'] - df_final_pronostico['suma_anterior']).fillna(0)
+
+    # Variación mensual
+    df_final_pronostico['variacion_mes'] = (df_final_pronostico['variacion_valor'] / 12).round().astype(int)
+
+    # Variación por precios (2% del año anterior)
+    df_final_pronostico['variacion_precios'] = (df_final_pronostico['suma_anterior'] * 0.02).round().fillna(0).astype(int)
+
+    # Crecimiento comercial (variación - variación precios)
+    df_final_pronostico['crecimiento_comercial'] = (df_final_pronostico['variacion_valor'] - df_final_pronostico['variacion_precios']).round().astype(int)
+
+    # Crecimiento comercial mensual
+    df_final_pronostico['crecimiento_comercial_mes'] = (df_final_pronostico['crecimiento_comercial'] / 12).round().astype(int)
+
+    # Reemplazar NaN por 0 en variaciones
+    cols_variaciones = ['variacion_pct', 'variacion_valor', 'variacion_mes', 'variacion_precios',
+                        'crecimiento_comercial', 'crecimiento_comercial_mes']
+    df_final_pronostico[cols_variaciones] = df_final_pronostico[cols_variaciones].fillna(0)
     
     # concatenar con el df_final_pronostico
-    df_final_pronostico = pd.merge(df_final_pronostico, df_variacion[['nombre_linea_n1', 'variacion_pct', 'variacion_valor', 'variacion_mes', 'variacion_precios', 'crecimiento_comercial', 'crecimiento_comercial_mes']], on='nombre_linea_n1', how='left')
+    # df_final_pronostico = pd.merge(df_final_pronostico, df_variacion[['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'variacion_pct', 'variacion_valor', 'variacion_mes', 'variacion_precios', 'crecimiento_comercial', 'crecimiento_comercial_mes']], on=['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente'], how='left')
 
     df_final_pronostico_costos = aux_presupuesto_comercial_costos()
     
-    df_final_neto_costos = pd.merge(df_final_pronostico, df_final_pronostico_costos, on=['nombre_linea_n1', 'year']) # x= netos y= costos
+    df_final_neto_costos = pd.merge(df_final_pronostico, df_final_pronostico_costos, on=['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'year']) # x= netos y= costos
+    df_final_neto_costos = pd.merge(
+    df_final_pronostico,
+    df_final_pronostico_costos,
+    on=['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'year'],
+    suffixes=('_ventas', '_costos')
+    )
 
+    # renombrar para claridad
+    df_final_neto_costos = df_final_neto_costos.rename(
+        columns={'suma_ventas': 'ventas', 'suma_costos': 'costos'}
+    )
     #-------------------UTILIDAD----------------------- 
     # calcular utilidad por año, 1 - (costos / ventas), el costo está en el df_fnal_pronostico_costos es decir la predicción, y las ventas están en el df_fnal_pronostico
-    df_final_neto_costos['utilidad'] = (1 - (df_final_neto_costos['suma_y'] / df_final_neto_costos['suma_x'])) * 100
-    df_final_neto_costos['utilidad'] = df_final_neto_costos['utilidad'].round(2)
-    # llenar los valores infinitos o NaN con 0
-    df_final_neto_costos['utilidad'] = df_final_neto_costos['utilidad'].replace([np.inf, -np.inf], 0).fillna(0)
-    # renombrar columnas
-    df_final_neto_costos = df_final_neto_costos.rename(columns={'suma_x': 'ventas', 'suma_y': 'costos'})    
-    # calcular utilidad en valor
-    df_final_neto_costos['utilidad_valor'] = df_final_neto_costos['ventas'] - df_final_neto_costos['costos']
+    # df_final_neto_costos['utilidad'] = (1 - (df_final_neto_costos['suma_y'] / df_final_neto_costos['suma_x'])) * 100
+    # df_final_neto_costos['utilidad'] = df_final_neto_costos['utilidad'].round(2)
+    # # llenar los valores infinitos o NaN con 0
+    # df_final_neto_costos['utilidad'] = df_final_neto_costos['utilidad'].replace([np.inf, -np.inf], 0).fillna(0)
+    # # renombrar columnas
+    # df_final_neto_costos = df_final_neto_costos.rename(columns={'suma_x': 'ventas', 'suma_y': 'costos'})    
+    # # calcular utilidad en valor
+    # df_final_neto_costos['utilidad_valor'] = df_final_neto_costos['ventas'] - df_final_neto_costos['costos']
+    
+    # ------------------- UTILIDAD SOLO AÑO ACTUAL -----------------------
+    # calcular solo para el año actual
+    df_final_neto_costos['utilidad_porcentual_actual'] = np.where(
+        df_final_neto_costos['year'] == year_actual,
+        (1 - (df_final_neto_costos['costos'] / df_final_neto_costos['ventas'])) * 100,
+        0
+    ).round(2)
+
+    df_final_neto_costos['utilidad_valor_actual'] = np.where(
+        df_final_neto_costos['year'] == year_actual,
+        df_final_neto_costos['ventas'] - df_final_neto_costos['costos'],
+        0
+    ).round().astype(int)
+    # limpiar NaN e infinitos
+    df_final_neto_costos['utilidad_porcentual_actual'] = df_final_neto_costos['utilidad_porcentual_actual'].replace([np.inf, -np.inf], 0).fillna(0)
+    df_final_neto_costos['utilidad_valor_actual'] = df_final_neto_costos['utilidad_valor_actual'].fillna(0)
+
+    # crear clave única para mapear utilidad del año actual al siguiente
+    df_actual = df_final_neto_costos[df_final_neto_costos['year'] == year_actual].copy()
+    df_actual['clave'] = df_actual['nombre_linea_n1'] + '|' + df_actual['nombre_centro_de_operacion'] + '|' + df_actual['nombre_clase_cliente']
+
+    # diccionarios para mapear valores
+    utilidad_pct_dict = df_actual.set_index('clave')['utilidad_porcentual_actual'].to_dict()
+    utilidad_val_dict = df_actual.set_index('clave')['utilidad_valor_actual'].to_dict()
+
+    # asignar al año siguiente
+    mask = df_final_neto_costos['year'] == year_siguiente
+    df_final_neto_costos.loc[mask, 'clave'] = df_final_neto_costos.loc[mask, 'nombre_linea_n1'] + '|' + df_final_neto_costos.loc[mask, 'nombre_centro_de_operacion'] + '|' + df_final_neto_costos.loc[mask, 'nombre_clase_cliente']
+
+    df_final_neto_costos.loc[mask, 'utilidad_porcentual_actual'] = df_final_neto_costos.loc[mask, 'clave'].map(utilidad_pct_dict)
+    df_final_neto_costos.loc[mask, 'utilidad_valor_actual'] = df_final_neto_costos.loc[mask, 'clave'].map(utilidad_val_dict)
+
+    # opcional: eliminar columna clave
+    df_final_neto_costos.drop(columns=['clave'], inplace=True)
     
     # agregar un cero a las columnas vacias
-    df_final_neto_costos['variacion_pct_x'] = df_final_neto_costos['variacion_pct_x'].fillna(0)
-    df_final_neto_costos['variacion_valor_x'] = df_final_neto_costos['variacion_valor_x'].fillna(0)
-    df_final_neto_costos['variacion_mes_x'] = df_final_neto_costos['variacion_mes_x'].fillna(0)
-    df_final_neto_costos['variacion_precios_x'] = df_final_neto_costos['variacion_precios_x'].fillna(0)
-    df_final_neto_costos['crecimiento_comercial_x'] = df_final_neto_costos['crecimiento_comercial_x'].fillna(0)
-    df_final_neto_costos['crecimiento_comercial_mes_x'] = df_final_neto_costos['crecimiento_comercial_mes_x'].fillna(0)
-    df_final_neto_costos['variacion_pct_y'] = df_final_neto_costos['variacion_pct_y'].fillna(0)
-    df_final_neto_costos['variacion_valor_y'] = df_final_neto_costos['variacion_valor_y'].fillna(0)
-    df_final_neto_costos['variacion_mes_y'] = df_final_neto_costos['variacion_mes_y'].fillna(0)
-    df_final_neto_costos['variacion_precios_y'] = df_final_neto_costos['variacion_precios_y'].fillna(0)
-    df_final_neto_costos['crecimiento_comercial_y'] = df_final_neto_costos['crecimiento_comercial_y'].fillna(0)
-    df_final_neto_costos['crecimiento_comercial_mes_y'] = df_final_neto_costos['crecimiento_comercial_mes_y'].fillna(0)
-    
+    df_final_neto_costos['variacion_pct_ventas'] = df_final_neto_costos['variacion_pct_ventas'].fillna(0)
+    df_final_neto_costos['variacion_valor_ventas'] = df_final_neto_costos['variacion_valor_ventas'].fillna(0)
+    df_final_neto_costos['variacion_mes_ventas'] = df_final_neto_costos['variacion_mes_ventas'].fillna(0)
+    df_final_neto_costos['variacion_precios_ventas'] = df_final_neto_costos['variacion_precios_ventas'].fillna(0)
+    df_final_neto_costos['crecimiento_comercial_ventas'] = df_final_neto_costos['crecimiento_comercial_ventas'].fillna(0)
+    df_final_neto_costos['crecimiento_comercial_mes_ventas'] = df_final_neto_costos['crecimiento_comercial_mes_ventas'].fillna(0)
+
+    df_final_neto_costos['variacion_pct_costos'] = df_final_neto_costos['variacion_pct_costos'].fillna(0)
+    df_final_neto_costos['variacion_valor_costos'] = df_final_neto_costos['variacion_valor_costos'].fillna(0)
+    df_final_neto_costos['variacion_mes_costos'] = df_final_neto_costos['variacion_mes_costos'].fillna(0)
+    df_final_neto_costos['variacion_precios_costos'] = df_final_neto_costos['variacion_precios_costos'].fillna(0)
+    df_final_neto_costos['crecimiento_comercial_costos'] = df_final_neto_costos['crecimiento_comercial_costos'].fillna(0)
+    df_final_neto_costos['crecimiento_comercial_mes_costos'] = df_final_neto_costos['crecimiento_comercial_mes_costos'].fillna(0)
+        
     # redondear las columnas que son float a int
-    columnas_a_redondear = ['ventas', 'costos', 'utilidad_valor', 'variacion_valor_x', 'variacion_mes_x', 'variacion_precios_x', 'crecimiento_comercial_x', 'crecimiento_comercial_mes_x', 'variacion_valor_y', 'variacion_mes_y', 'variacion_precios_y', 'crecimiento_comercial_y', 'crecimiento_comercial_mes_y']
+    columnas_a_redondear = [
+    'ventas', 'costos',
+    'variacion_valor_ventas', 'variacion_mes_ventas', 'variacion_precios_ventas',
+    'crecimiento_comercial_ventas', 'crecimiento_comercial_mes_ventas',
+    'variacion_valor_costos', 'variacion_mes_costos', 'variacion_precios_costos',
+    'crecimiento_comercial_costos', 'crecimiento_comercial_mes_costos'
+    ]
     df_final_neto_costos[columnas_a_redondear] = df_final_neto_costos[columnas_a_redondear].round().astype(int)
     
     # guardar en la bd
@@ -1916,24 +2277,30 @@ def cargar_presupuesto_comercial(request):
             PresupuestoComercial(
                 linea=row['nombre_linea_n1'],
                 year=int(row['year']),
+                nombre_centro_de_operacion=row['nombre_centro_de_operacion'],
+                nombre_clase_cliente=row['nombre_clase_cliente'],
                 ventas=int(row['ventas']),
                 costos=int(row['costos']),
-                r2_ventas=float(row['R2_x']),
-                r2_costos=float(row['R2_y']),
-                variacion_porcentual_ventas=float(row['variacion_pct_x']),
-                variacion_porcentual_costos=float(row['variacion_pct_y']),
-                variacion_valor_ventas=int(row['variacion_valor_x']),
-                variacion_valor_costos=int(row['variacion_valor_y']),
-                variacion_mes_ventas=int(row['variacion_mes_x']),
-                variacion_mes_costos=int(row['variacion_mes_y']),
-                variacion_precios_ventas=int(row['variacion_precios_x']),
-                variacion_precios_costos=int(row['variacion_precios_y']),
-                crecimiento_comercial_ventas=int(row['crecimiento_comercial_x']),
-                crecimiento_comercial_costos=int(row['crecimiento_comercial_y']),
-                crecimiento_comercial_mes_ventas=int(row['crecimiento_comercial_mes_x']),
-                crecimiento_comercial_mes_costos=int(row['crecimiento_comercial_mes_y']),
-                utilidad_porcentual=float(row['utilidad']),
-                utilidad_valor=int(row['utilidad_valor']),
+                r2_ventas=float(row['R2_ventas']),
+                r2_costos=float(row['R2_costos']),
+                variacion_porcentual_ventas=float(row['variacion_pct_ventas']),
+                variacion_porcentual_costos=float(row['variacion_pct_costos']),
+                variacion_valor_ventas=int(row['variacion_valor_ventas']),
+                variacion_valor_costos=int(row['variacion_valor_costos']),
+                variacion_mes_ventas=int(row['variacion_mes_ventas']),
+                variacion_mes_costos=int(row['variacion_mes_costos']),
+                variacion_precios_ventas=int(row['variacion_precios_ventas']),
+                variacion_precios_costos=int(row['variacion_precios_costos']),
+                crecimiento_comercial_ventas=int(row['crecimiento_comercial_ventas']),
+                crecimiento_comercial_costos=int(row['crecimiento_comercial_costos']),
+                crecimiento_comercial_mes_ventas=int(row['crecimiento_comercial_mes_ventas']),
+                crecimiento_comercial_mes_costos=int(row['crecimiento_comercial_mes_costos']),
+                # 👇 Aquí asignamos proyección = ventas si el año es el siguiente
+                proyeccion_ventas=int(row['ventas']) if int(row['year']) == year_siguiente else 0,
+                proyeccion_costos=int(row['costos']) if int(row['year']) == year_siguiente else 0,
+                # 👇 utilidad solo para 2025
+                utilidad_porcentual_actual=float(row['utilidad_porcentual_actual']),
+                utilidad_valor_actual=int(row['utilidad_valor_actual'])
             )
         )
     
@@ -1956,64 +2323,87 @@ def guardar_presupuesto_comercial(request):
             df["ventas"] = df["ventas"].fillna(0).astype(int)
             df["costos"] = df["costos"].fillna(0).astype(int)
 
+            # ================== 🔄 Recalcular proyecciones con base en ventas y costos 2025 ==================
+            if "crecimiento_ventas" in df.columns and "crecimiento_costos" in df.columns and "ventas" in df.columns and "costos" in df.columns and "year" in df.columns:
+                df["crecimiento_ventas"] = pd.to_numeric(df["crecimiento_ventas"], errors="coerce").fillna(0)
+                df["crecimiento_costos"] = pd.to_numeric(df["crecimiento_costos"], errors="coerce").fillna(0)
+                df["ventas"] = pd.to_numeric(df["ventas"], errors="coerce").fillna(0)
+                df["costos"] = pd.to_numeric(df["costos"], errors="coerce").fillna(0)
+
+                mask_2025 = df["year"] == 2026
+
+                # Proyección ventas = ventas 2025 + (ventas 2025 * crecimiento_ventas%)
+                df.loc[mask_2025, "proyeccion_ventas"] = (
+                    df.loc[mask_2025, "ventas"] + (df.loc[mask_2025, "ventas"] * (df.loc[mask_2025, "crecimiento_ventas"] / 100))
+                ).round().astype("int64")
+
+                # Proyección costos = costos 2025 + (costos 2025 * crecimiento_costos%)
+                df.loc[mask_2025, "proyeccion_costos"] = (
+                    df.loc[mask_2025, "costos"] + (df.loc[mask_2025, "costos"] * (df.loc[mask_2025, "crecimiento_costos"] / 100))
+                ).round().astype("int64")
+
             # ================== 🔄 Recalcular métricas ==================
-            df["utilidad_valor"] = df["ventas"] - df["costos"]
-            df["utilidad_porcentual"] = (1 - (df["costos"] / df["ventas"])) * 100
-            df["utilidad_porcentual"] = df["utilidad_porcentual"].replace([np.inf, -np.inf], 0).fillna(0).round(2)
+            # df["utilidad_valor"] = df["proyeccion_ventas"] - df["proyeccion_costos"]
+            # df["utilidad_porcentual"] = (1 - (df["proyeccion_ventas"] / df["proyeccion_costos"])) * 100
+            # df["utilidad_porcentual"] = df["utilidad_porcentual"].replace([np.inf, -np.inf], 0).fillna(0).round(2)
+            
+            # # recalcular variaciones
+            # df["variacion_proyectada_valor"] = df["utilidad_valor"] - df["utilidad_valor_actual"]
+            # df["variacion_proyectada_porcentual"] = df["utilidad_porcentual"] - df["utilidad_porcentual_actual"]
 
             # Agrupamos por línea para calcular variaciones entre 2024 y 2025
-            for linea, grupo in df.groupby("linea"):
-                if 2024 in grupo["year"].values and 2025 in grupo["year"].values:
-                    row2024 = grupo[grupo["year"] == 2024].iloc[0]
-                    row2025 = grupo[grupo["year"] == 2025].iloc[0]
+            # for linea, grupo in df.groupby("linea"):
+            #     if 2025 in grupo["year"].values and 2026 in grupo["year"].values:
+            #         row2024 = grupo[grupo["year"] == 2025].iloc[0]
+            #         row2025 = grupo[grupo["year"] == 2026].iloc[0]
 
-                    # Variaciones para ventas
-                    variacion_valor_ventas = row2025["ventas"] - row2024["ventas"]
-                    variacion_pct_ventas = (variacion_valor_ventas / row2024["ventas"] * 100) if row2024["ventas"] != 0 else 0
-                    variacion_mes_ventas = round(variacion_valor_ventas / 12)
-                    variacion_precios_ventas = round(row2024["ventas"] * 0.02)
-                    crecimiento_comercial_ventas = variacion_valor_ventas - variacion_precios_ventas
-                    crecimiento_comercial_mes_ventas = round(crecimiento_comercial_ventas / 12)
+            #         # Variaciones para ventas
+            #         variacion_valor_ventas = row2025["ventas"] - row2024["ventas"]
+            #         variacion_pct_ventas = (variacion_valor_ventas / row2024["ventas"] * 100) if row2024["ventas"] != 0 else 0
+            #         variacion_mes_ventas = round(variacion_valor_ventas / 12)
+            #         variacion_precios_ventas = round(row2024["ventas"] * 0.02)
+            #         crecimiento_comercial_ventas = variacion_valor_ventas - variacion_precios_ventas
+            #         crecimiento_comercial_mes_ventas = round(crecimiento_comercial_ventas / 12)
 
-                    # Variaciones para costos
-                    variacion_valor_costos = row2025["costos"] - row2024["costos"]
-                    variacion_pct_costos = (variacion_valor_costos / row2024["costos"] * 100) if row2024["costos"] != 0 else 0
-                    variacion_mes_costos = round(variacion_valor_costos / 12)
-                    variacion_precios_costos = round(row2024["costos"] * 0.02)
-                    crecimiento_comercial_costos = variacion_valor_costos - variacion_precios_costos
-                    crecimiento_comercial_mes_costos = round(crecimiento_comercial_costos / 12)
+            #         # Variaciones para costos
+            #         variacion_valor_costos = row2025["costos"] - row2024["costos"]
+            #         variacion_pct_costos = (variacion_valor_costos / row2024["costos"] * 100) if row2024["costos"] != 0 else 0
+            #         variacion_mes_costos = round(variacion_valor_costos / 12)
+            #         variacion_precios_costos = round(row2024["costos"] * 0.02)
+            #         crecimiento_comercial_costos = variacion_valor_costos - variacion_precios_costos
+            #         crecimiento_comercial_mes_costos = round(crecimiento_comercial_costos / 12)
 
-                    # Actualizar fila 2025
-                    df.loc[(df["linea"] == linea) & (df["year"] == 2025), [
-                        "variacion_porcentual_ventas", "variacion_valor_ventas", "variacion_mes_ventas",
-                        "variacion_precios_ventas", "crecimiento_comercial_ventas", "crecimiento_comercial_mes_ventas",
-                        "variacion_porcentual_costos", "variacion_valor_costos", "variacion_mes_costos",
-                        "variacion_precios_costos", "crecimiento_comercial_costos", "crecimiento_comercial_mes_costos"
-                    ]] = [
-                        round(variacion_pct_ventas, 2), variacion_valor_ventas, variacion_mes_ventas,
-                        variacion_precios_ventas, crecimiento_comercial_ventas, crecimiento_comercial_mes_ventas,
-                        round(variacion_pct_costos, 2), variacion_valor_costos, variacion_mes_costos,
-                        variacion_precios_costos, crecimiento_comercial_costos, crecimiento_comercial_mes_costos
-                    ]
+            #         # Actualizar fila 2025
+            #         df.loc[(df["linea"] == linea) & (df["year"] == 2026), [
+            #             "variacion_porcentual_ventas", "variacion_valor_ventas", "variacion_mes_ventas",
+            #             "variacion_precios_ventas", "crecimiento_comercial_ventas", "crecimiento_comercial_mes_ventas",
+            #             "variacion_porcentual_costos", "variacion_valor_costos", "variacion_mes_costos",
+            #             "variacion_precios_costos", "crecimiento_comercial_costos", "crecimiento_comercial_mes_costos"
+            #         ]] = [
+            #             round(variacion_pct_ventas, 2), variacion_valor_ventas, variacion_mes_ventas,
+            #             variacion_precios_ventas, crecimiento_comercial_ventas, crecimiento_comercial_mes_ventas,
+            #             round(variacion_pct_costos, 2), variacion_valor_costos, variacion_mes_costos,
+            #             variacion_precios_costos, crecimiento_comercial_costos, crecimiento_comercial_mes_costos
+            #         ]
                     
             # ================== 🔄 Recalcular R2 ==================
-            for linea, grupo in df.groupby("linea"):
-                x = grupo["year"].values
-                # --- R2 ventas ---
-                y_ventas = grupo["ventas"].values
-                if len(x) >= 2 and np.std(y_ventas) != 0 and np.std(x) != 0:
-                    r2_ventas = abs(np.corrcoef(x, y_ventas)[0, 1]) * 100
-                else:
-                    r2_ventas = 0.0
-                df.loc[df["linea"] == linea, "r2_ventas"] = round(r2_ventas, 2)
+            # for linea, grupo in df.groupby("linea"):
+            #     x = grupo["year"].values
+            #     # --- R2 ventas ---
+            #     y_ventas = grupo["ventas"].values
+            #     if len(x) >= 2 and np.std(y_ventas) != 0 and np.std(x) != 0:
+            #         r2_ventas = abs(np.corrcoef(x, y_ventas)[0, 1]) * 100
+            #     else:
+            #         r2_ventas = 0.0
+            #     df.loc[df["linea"] == linea, "r2_ventas"] = round(r2_ventas, 2)
 
-                # --- R2 costos ---
-                y_costos = grupo["costos"].values
-                if len(x) >= 2 and np.std(y_costos) != 0 and np.std(x) != 0:
-                    r2_costos = abs(np.corrcoef(x, y_costos)[0, 1]) * 100
-                else:
-                    r2_costos = 0.0
-                df.loc[df["linea"] == linea, "r2_costos"] = round(r2_costos, 2)
+            #     # --- R2 costos ---
+            #     y_costos = grupo["costos"].values
+            #     if len(x) >= 2 and np.std(y_costos) != 0 and np.std(x) != 0:
+            #         r2_costos = abs(np.corrcoef(x, y_costos)[0, 1]) * 100
+            #     else:
+            #         r2_costos = 0.0
+            #     df.loc[df["linea"] == linea, "r2_costos"] = round(r2_costos, 2)
 
             # ================== 🔄 Guardar en BD ==================
             registros = []
@@ -2021,6 +2411,8 @@ def guardar_presupuesto_comercial(request):
                 registros.append(
                     PresupuestoComercial(
                         linea=row["linea"],
+                        nombre_centro_de_operacion=row.get("nombre_centro_de_operacion", ""),
+                        nombre_clase_cliente=row.get("nombre_clase_cliente", ""),
                         year=int(row["year"]),
                         ventas=int(row["ventas"]),
                         costos=int(row["costos"]),
@@ -2038,14 +2430,69 @@ def guardar_presupuesto_comercial(request):
                         crecimiento_comercial_costos=int(row.get("crecimiento_comercial_costos", 0)),
                         crecimiento_comercial_mes_ventas=int(row.get("crecimiento_comercial_mes_ventas", 0)),
                         crecimiento_comercial_mes_costos=int(row.get("crecimiento_comercial_mes_costos", 0)),
+                        crecimiento_ventas=int(row.get("crecimiento_ventas", 0)),
+                        proyeccion_ventas=int(row.get("proyeccion_ventas", 0)),
+                        crecimiento_costos=int(row.get("crecimiento_costos", 0)),
+                        proyeccion_costos=int(row.get("proyeccion_costos", 0)),
                         utilidad_porcentual=float(row["utilidad_porcentual"]),
-                        utilidad_valor=int(row["utilidad_valor"])
+                        utilidad_valor=int(row["utilidad_valor"]),
+                        utilidad_porcentual_actual=float(row["utilidad_porcentual_actual"]),
+                        utilidad_valor_actual=int(row["utilidad_valor_actual"]),
+                        variacion_proyectada_porcentual=float(row["variacion_proyectada_porcentual"]),
+                        variacion_proyectada_valor=int(row["variacion_proyectada_valor"])
                     )
                 )
-
+            
             # Limpieza antes de insertar
             PresupuestoComercial.objects.all().delete()
             PresupuestoComercial.objects.bulk_create(registros)
+            
+            year_actual = timezone.now().year
+            year_siguiente = timezone.now().year + 1
+            # ================== 🔄 Actualizar PresupuestoGeneralVentas con total_proyectado ==================
+            total_2026 = PresupuestoComercial.objects.filter(year=year_siguiente).aggregate(
+                total_proyectado=Sum("proyeccion_ventas")
+            )["total_proyectado"] or 0
+
+            PresupuestoGeneralVentas.objects.filter(year=year_siguiente).update(
+                total_proyectado=total_2026
+            )
+            
+            # ================== 🔄 Actualizar PresupuestoCentroOperacionVentas con total_proyectado ==================
+            proyecciones = (
+                PresupuestoComercial.objects.filter(year=year_siguiente)
+                .values("year", "nombre_centro_de_operacion")
+                .annotate(total_proyectado=Sum("proyeccion_ventas"))
+            )
+
+            for item in proyecciones:
+                year = item["year"]
+                centro = item["nombre_centro_de_operacion"]
+                total_proyectado = item["total_proyectado"] or 0
+
+                PresupuestoCentroOperacionVentas.objects.filter(
+                    year=year,
+                    nombre_centro_operacion=centro
+                ).update(total_proyectado=total_proyectado)
+            
+            # ================== 🔄 Actualizar total_proyectado por año, centro y clase cliente ==================
+            proyecciones_seg_centro = (
+                PresupuestoComercial.objects.filter(year=2026)
+                .values("year", "nombre_centro_de_operacion", "nombre_clase_cliente")
+                .annotate(total_proyectado=Sum("proyeccion_ventas"))
+            )
+
+            for item in proyecciones_seg_centro:
+                year = item["year"]
+                centro = item["nombre_centro_de_operacion"]
+                clase = item["nombre_clase_cliente"]
+                total_proyectado = item["total_proyectado"] or 0
+
+                PresupuestoCentroSegmentoVentas.objects.filter(
+                    year=year,
+                    nombre_centro_operacion=centro,
+                    segmento=clase  # 👈 aquí "segmento" representa la clase cliente
+                ).update(total_proyectado=total_proyectado)
 
             return JsonResponse({"status": "ok", "mensaje": "Cambios guardados y recalculados ✅"})
 
@@ -4813,3 +5260,158 @@ def borrar_presupuesto_bonos_kyrovet(request):
         PresupuestoBonosKyrovet.objects.all().delete()
         return JsonResponse({"status": "ok", "message": "Presupuesto de bonos Kyrovet eliminado"})
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+
+# -----------------------------PRESUPUESTO GENERAL----------------------------------------------------------------------
+#SELECCIÓN DE CUENTAS CONTABLES-----------------
+def seleccion_cuentas_contables(request):
+    cuentas = list(CuentasContables.objects.values_list('cuenta', flat=True))
+    nom_cuentas = list(CuentasContables.objects.values_list('nom_cuenta', flat=True))
+ 
+    # Creamos el diccionario 
+    cuentas_dict = dict(zip(cuentas, nom_cuentas))
+    return JsonResponse({"cuentas": cuentas, "nom_cuentas": nom_cuentas, "cuentas_dict": cuentas_dict}, safe=False)
+
+# -PRESUPUESTO TECNOLOGIA--------------------------------
+def presupuesto_tecnologia(request):
+    return render(request, "presupuesto_general/presupuesto_tecnologia.html")
+
+def obtener_presupuesto_tecnologia(request):
+    tecnologia = list(PresupuestoTecnologia.objects.values())
+    return JsonResponse({"data": tecnologia}, safe=False)
+
+def tabla_auxiliar_tecnologia(request):
+    return render(request, "presupuesto_general/aux_presupuesto_tecnologia.html")
+
+def subir_presupuesto_tecnologia(request):
+    if request.method == "POST":
+        temporales = PresupuestoTecnologiaAux.objects.all()
+        if not temporales.exists():
+            return JsonResponse({
+                "success": False,
+                "msg": "No hay datos temporales para subir ❌"
+            }, status=400)
+
+        for temp in temporales:
+            PresupuestoTecnologia.objects.create(
+                centro_tra=temp.centro_tra,
+                nombre_cen=temp.nombre_cen,
+                codcosto=temp.codcosto,
+                responsable=temp.responsable,
+                cuenta=temp.cuenta,
+                cuenta_mayor=temp.cuenta_mayor,
+                detalle_cuenta=temp.detalle_cuenta,
+                sede_distribucion=temp.sede_distribucion,
+                proveedor=temp.proveedor,
+                enero=temp.enero,
+                febrero=temp.febrero,
+                marzo=temp.marzo,
+                abril=temp.abril,
+                mayo=temp.mayo,
+                junio=temp.junio,
+                julio=temp.julio,
+                agosto=temp.agosto,
+                septiembre=temp.septiembre,
+                octubre=temp.octubre,
+                noviembre=temp.noviembre,
+                diciembre=temp.diciembre,
+                total=temp.total,
+                comentario=temp.comentario,
+            )
+        return JsonResponse({
+            "success": True,
+            "msg": f"Presupuesto de tecnología subido ✅"
+        })
+    return JsonResponse({
+        "success": False,
+        "msg": "Método no permitido"
+    }, status=405)
+    
+def guardar_tecnologia_temp(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
+            }
+
+            # Limpiar la tabla antes de guardar
+            PresupuestoTecnologiaAux.objects.all().delete()
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoTecnologiaAux(**row_filtrado))
+
+            # Inserción masiva optimizada
+            PresupuestoTecnologiaAux.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+def obtener_tecnologia_temp(request):
+    data = list(PresupuestoTecnologiaAux.objects.values())
+    return JsonResponse(data, safe=False)
+
+def cargar_tecnologia_base(request):
+    # limpio tabla auxiliar de tecnología antes de recalcular
+    PresupuestoTecnologiaAux.objects.all().delete()
+    base_data = Plantillagastos2025.objects.values(
+       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+    )
+    # filtrar por responsable = 'DIEGO CANO'
+    base_data = base_data.filter(responsable__iexact="DIEGO CANO")
+    
+    for row in base_data:
+        PresupuestoTecnologiaAux.objects.create(
+            centro_tra=row["centro_tra"],
+            nombre_cen=row["nombre_cen"],
+            codcosto=row["codcosto"],
+            responsable=row["responsable"],
+            cuenta=row["cuenta"],
+            cuenta_mayor=row["cuenta_mayor"],
+            detalle_cuenta=row["detalle_cuenta"],
+            sede_distribucion=row["sede_distribucion"],
+            proveedor=row["proveedor"],
+            enero=row["enero"],
+            febrero=row["febrero"],
+            marzo=row["marzo"],
+            abril=row["abril"],
+            mayo=row["mayo"],
+            junio=row["junio"],
+            julio=row["julio"], 
+            agosto=row["agosto"],
+            septiembre=row["septiembre"],
+            octubre=row["octubre"],
+            noviembre=row["noviembre"],
+            diciembre=row["diciembre"],
+            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
+            comentario = ""
+        )
+    
+    return JsonResponse({"status": "ok"})
+
+@csrf_exempt
+def borrar_presupuesto_tecnologia(request):
+    if request.method == "POST":
+        PresupuestoTecnologia.objects.all().delete()
+        return JsonResponse({"status": "ok", "message": "Presupuesto de tecnología eliminado"})
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+    

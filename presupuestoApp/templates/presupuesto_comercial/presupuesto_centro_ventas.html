@@ -2,8 +2,8 @@
     <h2>📊 Proyección presupuesto centro operacion - Ventas</h2>
 
     <div class="btn-group">
-        <button type="button" id="cargarBtn" class="btn-accion">🔄 Cargar desde histórico</button>
-        <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button>
+        <button type="button" id="cargarBtnCentroVentas" class="btn-accion">🔄 Cargar desde histórico</button>
+        {% comment %} <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button> {% endcomment %}
     </div>
 
     <table id="presupuestoTableCentroOperacion" class="display" style="width:100%">
@@ -23,6 +23,13 @@
                 <th>Oct</th>
                 <th>Nov</th>
                 <th>Dic</th>
+                <th>Total Año Ventas</th>
+                <th>Variación Valor Ventas</th>
+                <th>Variación Ventas%</th>
+                <th>Total Año Costos</th>
+                <th>Margen %</th>
+                <th>Margen Valor </th>
+                <th>Total proyectado</th> 
             </tr>
         </thead>
         <tbody></tbody>
@@ -47,28 +54,40 @@ function pivotData(data, selectedCentro=null) {
     let meses = { 1:"Ene",2:"Feb",3:"Mar",4:"Abr",5:"May",6:"Jun",7:"Jul",8:"Ago",9:"Sep",10:"Oct",11:"Nov",12:"Dic" };
 
     data.forEach(row => {
-        let key = row.year + "_" + row.centro_operacion;
-        if (!pivot[key]) pivot[key] = { year: row.year, centro_operacion: row.centro_operacion };
+        let key = row.year + "_" + row.nombre_centro_operacion;
+        if (!pivot[key]) {
+            pivot[key] = { 
+                year: row.year, 
+                nombre_centro_operacion: row.nombre_centro_operacion, 
+                total_year: row.total_year, 
+                total_year_costos: row.total_year_costos,
+                variacion_valor: row.variacion_valor, 
+                variacion_pct: row.variacion_pct, 
+                utilidad_pct: row.utilidad_pct, 
+                utilidad_valor: row.utilidad_valor,
+                total_proyectado: row.total_proyectado
+            };
+        }
         pivot[key][meses[row.mes]] = row.total;
 
-        let r2Key = "R2_" + row.centro_operacion;
-        if (!pivot[r2Key]) pivot[r2Key] = { year: "R2", centro_operacion: row.centro_operacion };
-        pivot[r2Key][meses[row.mes]] = row.r2;
+        {% comment %} let r2Key = "R2_" + row.nombre_centro_operacion;
+        if (!pivot[r2Key]) pivot[r2Key] = { year: "R2", nombre_centro_operacion: row.nombre_centro_operacion, total_year: 0, variacion_valor: 0, variacion_pct: 0 };
+        pivot[r2Key][meses[row.mes]] = row.r2; {% endcomment %}
     });
 
     let result = Object.values(pivot);
 
     // Si hay filtro de centro, mostrar solo R2 de ese centro; otros R2 vacíos
-    if (selectedCentro !== null) {
+    {% comment %} if (selectedCentro !== null) {
         result = result.map(r => {
-            if(r.year === "R2" && r.centro_operacion !== selectedCentro) {
+            if(r.year === "R2" && r.nombre_centro_operacion !== selectedCentro) {
                 let emptyR2 = {...r};
                 Object.values(meses).forEach(m => emptyR2[m] = "");
                 return emptyR2;
             }
             return r;
         });
-    }
+    } {% endcomment %}
 
     return result;
 }
@@ -84,7 +103,7 @@ function unpivotData(tableData) {
                 result.push({
                     year: parseInt(row.year),
                     mes: meses[m],
-                    centro_operacion: row.centro_operacion,
+                    nombre_centro_operacion: row.nombre_centro_operacion,
                     total: parseInt(row[m]),
                     r2: 0 // recalcular en backend
                 });
@@ -105,24 +124,24 @@ $(function () {
 
         // Crear pivot por año + centro
         data.forEach(row => {
-            let key = row.year + "_" + row.centro_operacion;
-            if(!pivot[key]) pivot[key] = { year: row.year, centro_operacion: row.centro_operacion };
+            let key = row.year + "_" + row.nombre_centro_operacion;
+            if(!pivot[key]) pivot[key] = { year: row.year, nombre_centro_operacion: row.nombre_centro_operacion, total_year: row.total_year, variacion_valor: row.variacion_valor, variacion_pct: row.variacion_pct };
             pivot[key][meses[row.mes]] = row.total;
 
             // R2 separado
-            if(!pivot["R2_"+row.centro_operacion]) pivot["R2_"+row.centro_operacion] = { year:"R2", centro_operacion: row.centro_operacion };
-            pivot["R2_"+row.centro_operacion][meses[row.mes]] = row.r2;
+            if(!pivot["R2_"+row.nombre_centro_operacion]) pivot["R2_"+row.nombre_centro_operacion] = { year:"R2", nombre_centro_operacion: row.nombre_centro_operacion, total_year: 0, variacion_valor: 0, variacion_pct: 0 };
+            pivot["R2_"+row.nombre_centro_operacion][meses[row.mes]] = row.r2;
         });
 
         // Generar array final con R2 al final de cada centro
         let groupedByCentro = {};
         Object.values(pivot).forEach(r => {
             if(r.year === "R2") {
-                if(!groupedByCentro[r.centro_operacion]) groupedByCentro[r.centro_operacion] = { rows:[], r2: r };
-                else groupedByCentro[r.centro_operacion].r2 = r;
+                if(!groupedByCentro[r.nombre_centro_operacion]) groupedByCentro[r.nombre_centro_operacion] = { rows:[], r2: r };
+                else groupedByCentro[r.nombre_centro_operacion].r2 = r;
             } else {
-                if(!groupedByCentro[r.centro_operacion]) groupedByCentro[r.centro_operacion] = { rows:[], r2:{} };
-                groupedByCentro[r.centro_operacion].rows.push(r);
+                if(!groupedByCentro[r.nombre_centro_operacion]) groupedByCentro[r.nombre_centro_operacion] = { rows:[], r2:{} };
+                groupedByCentro[r.nombre_centro_operacion].rows.push(r);
             }
         });
 
@@ -140,14 +159,28 @@ $(function () {
         let meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
         let columns = [
             { data: 'year', title: 'Año' },
-            { data: 'centro_operacion', title: 'Centro de operación' }
+            { data: 'nombre_centro_operacion', title: 'Centro de operación' }
         ];
         meses.forEach(m => columns.push({ data: m, title: m, render: numberFormat, className:"editable" }));
 
-        if(table) { table.destroy(); $('#presupuestoTableCentroOperacion').empty(); }
+        // ➕ columnas extra
+        columns.push({ data: "total_year", title: "Total Año Ventas", render: numberFormat });
+        columns.push({ data: "variacion_valor", title: "Variación Valor Ventas", render: numberFormat });
+        columns.push({ data: "variacion_pct", title: "Variación Ventas %", render: function(data){ return data ? data.toFixed(2) + "%" : "0%"; }});
+        columns.push({ data: "total_year_costos", title: "Total Año Costos", render: numberFormat });
+        columns.push({ data: "utilidad_pct", title: "Margen %", render: function(data){ return data ? data.toFixed(2) + "%" : "0%"; }});
+        columns.push({ data: "utilidad_valor", title: "Margen Valor", render: numberFormat });
+        columns.push({ data: "total_proyectado", title: "Total proyectado", render: numberFormat });
+
+
+        if(table) { 
+            table.destroy();
+            $('#presupuestoTableCentroOperacion').empty(); 
+            $(".dt-buttons").remove();           // 🔹 elimina los botones Excel previos
+        }
 
         table = $('#presupuestoTableCentroOperacion').DataTable({
-            data: pivotDataR2Final(data),
+            data: pivotData(data),
             columns: columns,
             paging:false,
             scrollX:true,
@@ -171,26 +204,78 @@ $(function () {
         let wrapper = $(table.table().container());
         wrapper.find(".dt-buttons").appendTo(wrapper.closest(".bloque-vista").find(".btn-group"));
 
-        // Filtro por Centro
-        let column = table.column(1);
-        let select = $('<select><option value="">Todos</option></select>')
-            .appendTo($(column.header()).empty())
-            .on('change',function(){ 
-                let val = $(this).val();
-                let filtered = val? data.filter(d=>d.centro_operacion==val): data;
-                table.clear().rows.add(pivotDataR2Final(filtered)).draw();
-            });
-        column.data().unique().sort().each(d=>{ if(d!=="R2") select.append('<option value="'+d+'">'+d+'</option>'); });
+        // Filtros tipo Excel
+        table.columns().every(function (index) {
+            if (index === 0 || index === 1) {   // 🔹 0 = Año, 1 = Centro de operación
+                let column = this;
+                let filtroId = index === 0 ? "anio" : "centro"; // ID dinámico
 
-        // Filtro por Año
-        column = table.column(0);
-        select = $('<select><option value="">Todos</option></select>')
-            .appendTo($(column.header()).empty())
-            .on('change', function(){
-                let val = $(this).val();
-                table.column(0).search(val? '^'+val+'$':'',true,false).draw();
-            });
-        column.data().unique().sort().each(d=>{ if(d!=="R2") select.append('<option value="'+d+'">'+d+'</option>'); });
+                // Botón en el header
+                let button = $(`<button id="excel-filter-btn-${filtroId}" class="excel-filter-btn">
+                                    ${index === 0 ? "Año ⬇" : "Centro ⬇"}
+                                </button>`).appendTo($(column.header()).empty());
+
+                // Contenedor del menú
+                let menu = $(`<div id="excel-filter-${filtroId}" class="excel-filter"></div>`).appendTo("body");
+
+                // Input de búsqueda
+                let searchBox = $('<input type="text" placeholder="Buscar...">').appendTo(menu);
+
+                // Lista de checkboxes
+                let list = $("<div></div>").appendTo(menu);
+
+                // Agregar opciones únicas como checkboxes
+                column.data().unique().sort().each(function (d) {
+                    if (d) {
+                        list.append(`<label><input type="checkbox" value="${d}" checked> ${d}</label><br/>`);
+                    }
+                });
+
+                // Función aplicar filtro
+                function applyFilter() {
+                    let selected = [];
+                    menu.find("input[type='checkbox']:checked").each(function () {
+                        selected.push("^" + $.fn.dataTable.util.escapeRegex($(this).val()) + "$");
+                    });
+                    column.search(selected.length ? selected.join("|") : "", true, false).draw();
+                }
+
+                // Evento checkbox
+                list.on("change", "input[type='checkbox']", applyFilter);
+
+                // Evento búsqueda dentro del menú
+                searchBox.on("keyup", function () {
+                    let val = $(this).val().toLowerCase();
+                    list.find("label").each(function () {
+                        $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+                    });
+                });
+
+                // Mostrar este menú y ocultar los demás
+                button.on("click", function (e) {
+                    e.stopPropagation();
+
+                    // 🔹 Ocultar otros menús antes de abrir este
+                    $(".excel-filter").not(menu).hide();
+
+                    // Posicionar y mostrar este
+                    let offset = $(this).offset();
+                    menu.css({
+                        top: offset.top + $(this).outerHeight(),
+                        left: offset.left,
+                        width: $(this).outerWidth()
+                    }).toggle();
+                });
+
+                // Cerrar menú al hacer clic fuera
+                $(document).on("click", function (e) {
+                    if (!$(e.target).closest(`#excel-filter-${filtroId}, button`).length) {
+                        menu.hide();
+                    }
+                });
+            }
+        });
+
 
         // Edición doble clic solo 2025
         let editingCell = null;
@@ -204,8 +289,28 @@ $(function () {
             let $input = $(this).find("input").focus();
             editingCell=this;
             $input[0].setSelectionRange(0,$input.val().length);
+
             $input.on("keydown",function(e){
-                if(e.key==="Enter"){ cell.data($input.val()).draw(false); editingCell=null; }
+                if(e.key==="Enter"){ 
+                    cell.data($input.val()).draw(false);
+                    editingCell=null;
+
+                    // 🔄 actualizar también en allData
+                    let colName = table.column(cell.index().column).dataSrc(); // "Ene", "Feb", etc.
+                    let meses = { "Ene":1,"Feb":2,"Mar":3,"Abr":4,"May":5,"Jun":6,"Jul":7,"Ago":8,"Sep":9,"Oct":10,"Nov":11,"Dic":12 };
+                    let mesNum = meses[colName];
+
+                    if (mesNum) {
+                        let match = allData.find(d => 
+                            d.year == rowData.year &&
+                            d.nombre_centro_operacion == rowData.nombre_centro_operacion &&
+                            d.mes == mesNum
+                        );
+                        if (match) {
+                            match.total = parseInt($input.val().replace(/\./g,'')) || 0; // limpiar formato
+                        }
+                    } 
+                }
                 else if(e.key==="Escape"){ cell.data(oldValue).draw(false); editingCell=null; }
             });
         });
@@ -223,7 +328,7 @@ $(function () {
     }
 
     // Cargar histórico
-    $(document).on("click","#cargarBtn",function(){
+    $(document).on("click","#cargarBtnCentroVentas",function(){
         let boton=$(this); boton.prop("disabled",true).append('<span class="spinner"></span>');
         $.ajax({
             url:"{% url 'cargar_presupuesto_centro_ventas' %}",
@@ -239,7 +344,7 @@ $(function () {
         if (!table) return;
         let boton = $(this);
         boton.prop("disabled", true).append('<span class="spinner"></span>');
-        let data = unpivotData(table.rows().data().toArray());
+        let data = unpivotData(pivotData(allData));
 
         $.ajax({
             url: "{% url 'guardar_presupuesto_centro_ventas' %}",
@@ -250,6 +355,7 @@ $(function () {
             success: function(resp) { 
                 // si el servidor devuelve {data: [...]}
                 let datos = Array.isArray(resp) ? resp : resp.data;
+                console.log(datos);
                 loadTable(datos); 
             },
             complete: function() {

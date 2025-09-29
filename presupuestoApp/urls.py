@@ -5,8 +5,8 @@ urlpatterns = [
     path('', views.dashboard, name='dashboardPresupuesto'), 
     path("exportar-excel/", views.exportar_excel_presupuestos, name="exportar_excel"),
     
-    path('presupuesto-ventas-mod/', views.base_comercial, name='baseComercial'), 
-    path('presupuesto-ventas/', views.presupuesto_comercial, name='baseComercial'), 
+    path('presupuesto-ventas/', views.base_comercial, name='baseComercial'), 
+    # path('presupuesto-ventas/', views.presupuesto_comercial, name='baseComercial'), 
     
     # Presupuesto general ventas
     path('presupuesto-general-ventas/', views.vista_presupuesto_general_ventas, name='presupuestoGeneralVentas'), 
@@ -220,4 +220,19 @@ urlpatterns = [
     path("cargar-bonos-kyrovet-base/", views.cargar_bonos_kyrovet_base, name="cargar_bonos_kyrovet_base"),
     path("guardar-bonos-kyrovet-temp/", views.guardar_bonos_kyrovet_temp, name="guardar_bonos_kyrovet_temp"),
     path("borrar_presupuesto_bonos_kyrovet/", views.borrar_presupuesto_bonos_kyrovet, name="borrar_presupuesto_bonos_kyrovet"),
+    
+    #-----------------------------PRESUPUESTO GENERAL--------------------------------
+    #----CUENTAS CONTABLES---------
+    path('seleccion-cuentas-contables/', views.seleccion_cuentas_contables, name='seleccionCuentasContables'),
+    
+    #----------PRESUPUESTO TECNOLOGIA---------
+    path('presupuesto-tecnologia/', views.presupuesto_tecnologia, name='presupuestoTecnologia'),
+    path('obtener-presupuesto-tecnologia/', views.obtener_presupuesto_tecnologia, name='obtener_presupuesto_tecnologia'),
+    path('tabla-auxiliar-tecnologia/', views.tabla_auxiliar_tecnologia, name='tabla_auxiliar_tecnologia'), # ruta para la tabla temporal de la tecnologia
+    path('obtener-tecnologia-temp/', views.obtener_tecnologia_temp, name='obtener_tecnologia_temp'),
+    path('cargar-tecnologia-base/', views.cargar_tecnologia_base, name='cargar_tecnologia_base'),
+    path('guardar-tecnologia-temp/', views.guardar_tecnologia_temp, name='guardar_tecnologia_temp'),
+    path('subir-presupuesto-tecnologia/', views.subir_presupuesto_tecnologia, name='subir_presupuesto_tecnologia'),
+    path('borrar_presupuesto_tecnologia/', views.borrar_presupuesto_tecnologia, name='borrar_presupuesto_tecnologia'),
+
 ]
