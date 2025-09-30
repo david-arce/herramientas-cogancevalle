@@ -130,7 +130,52 @@ $(function () {
                 {
                     extend: 'excelHtml5',
                     text: '📥 Exportar a Excel',
-                    title: 'Presupuesto General Ventas'
+                    title: 'Presupuesto General Ventas',
+                    title: 'Presupuesto General Ventas',
+                exportOptions: {
+                columns: ':visible',
+                format: {
+                    body: function (data, row, column, node) {
+                    // Helper: quitar etiquetas HTML y trim
+                    function stripHtml(input) {
+                        if (input === null || input === undefined) return '';
+                        if (typeof input !== 'string') return input;
+                        return input.replace(/<\/?[^>]+(>|$)/g, "").trim();
+                    }
+
+                    var txt = stripHtml(data);
+
+                    // Índices de tus columnas numéricas según tu DataTable (0-based)
+                    var moneyCols = [1,2,3,4,5,8,9,10,11,12,13,15,19,20];
+                    var percentCols = [16,17,18];
+
+                    // Si es columna de dinero: quitar separadores de miles, símbolo y ajustar decimal
+                    if (moneyCols.indexOf(column) !== -1) {
+                        txt = String(txt)
+                                .replace(/\s/g,'')    // quita espacios
+                                .replace(/\$/g,'')    // quita signo peso (si lo hubiera)
+                                .replace(/\./g,'')    // quita separador de miles
+                                .replace(/,/g,'.')    // cambia coma decimal por punto
+                                .replace(/[^0-9.-]/g,''); // deja sólo números, punto y signo
+                        return txt === '' ? 0 : txt;
+                    }
+
+                    // Si es columna de porcentaje: quitar % y normalizar decimal
+                    if (percentCols.indexOf(column) !== -1) {
+                        txt = String(txt)
+                                .replace(/\s/g,'')
+                                .replace(/%/g,'')
+                                .replace(/\./g,'')
+                                .replace(/,/g,'.')
+                                .replace(/[^0-9.-]/g,'');
+                        return txt === '' ? 0 : txt;
+                    }
+
+                    // Columnas de texto: devolver el texto limpio (sin HTML)
+                    return txt;
+                    }
+                }
+                }
                 }
             ],
             {% comment %} rowCallback: function(row, data) {
