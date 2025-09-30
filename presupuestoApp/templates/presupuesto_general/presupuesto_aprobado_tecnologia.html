@@ -6,8 +6,6 @@
     <title>Presupuesto - Tabla</title>
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-    <!-- DataTables Buttons CSS -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <!-- DataTables JS -->
@@ -99,31 +97,13 @@
     </style>
 </head>
 <body>
-    <h2>Presupuesto Tecnología proyectado</h2>
+    <h2>Presupuesto Tecnología Aprobado</h2>
     <div class="toast-container" id="toastContainer"></div>
-    
-    <!-- Filtros -->
-    <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">
-        <div>
-            <label for="versionSelect"><b>Versión:</b></label>
-            <select id="versionSelect">
-                {% for v in versiones %}
-                    <option value="{{ v }}" {% if v == ultima_version %}selected{% endif %}>
-                        {{ v }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-    </div>
-
     <!-- Contenedor de botones -->
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
         <button id="btnTabla">Ir a tabla auxiliar de presupuesto</button>
-        <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
-            Borrar Presupuesto
-        </button>
+        
     </div>
-    
     <table id="presupuestoTable" class="display">
         <thead>
             <tr>
@@ -156,14 +136,8 @@
 
     <script>
        $(document).ready(function () {
-            let versionActual = $("#versionSelect").val();
             let table = $('#presupuestoTable').DataTable({
-                ajax: {
-                    url: "{% url 'obtener_presupuesto_tecnologia' %}",
-                    data: function (d) {
-                        d.version = versionActual;  // 🔥 enviar versión seleccionada al backend
-                    }
-                },
+                ajax: "{% url 'obtener_presupuesto_aprobado_tecnologia' %}",
                 columns: [
                 { data: "centro_tra" },
                 { data: "nombre_cen" },
@@ -192,49 +166,8 @@
                 language: {
                     url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
                 },
-                dom: 'Bfltip', // 🔥 agrega botones arriba de la tabla
-            buttons: [
-                {
-                    extend: 'excelHtml5',
-                    text: '📥 Exportar a Excel',
-                    filename: 'presupuesto_tecnologia',
-                    exportOptions: {
-                        modifier: {
-                            page: 'all',   // 🔥 Exporta todas las páginas
-                            search: 'applied',
-                            order: 'applied'
-                        },
-                        columns: ':not(:first-child)' // 🔥 excluye columna "Acciones"
-                    }
-                }
-            ]
-                
-            });
-            // 🔥 Recargar tabla al cambiar versión
-            $("#versionSelect").on("change", function () {
-                versionActual = $(this).val();
-                table.ajax.reload();
             });
         
-            // 🔴 Botón para borrar PresupuestoNomina
-            $("#btnBorrar").on("click", function () {
-                if (!confirm("⚠️ ¿Estás seguro de borrar todo el presupuesto? Esta acción no se puede deshacer.")) {
-                    return;
-                }
-
-                $.ajax({
-                    url: "{% url 'borrar_presupuesto_tecnologia' %}", // 🔥 Nueva vista Django
-                    type: "POST",
-                    headers: { "X-CSRFToken": $("meta[name='csrf-token']").attr("content") },
-                    success: function (response) {
-                        showToast("Presupuesto eliminado correctamente ✅", "success");
-                        table.ajax.reload(null, false); // recarga sin perder paginación
-                    },
-                    error: function (xhr) {
-                        showToast("Error al borrar ❌: " + xhr.responseText, "error");
-                    }
-                });
-            });
         });
 
     // Función para mostrar toasts
@@ -264,9 +197,5 @@
         window.location.href = "{% url 'tabla_auxiliar_tecnologia' %}";
     });
     </script>
-    <!-- DataTables Buttons JS -->
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </body>
 </html>

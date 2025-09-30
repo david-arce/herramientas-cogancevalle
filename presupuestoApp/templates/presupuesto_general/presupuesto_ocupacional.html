@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>Presupuesto - Tabla</title>
+    <title>Presupuesto Salud Ocupacional</title>
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <!-- DataTables Buttons CSS -->
@@ -99,7 +99,7 @@
     </style>
 </head>
 <body>
-    <h2>Presupuesto Tecnología proyectado</h2>
+    <h2>Presupuesto Salud Ocupacional Proyectado</h2>
     <div class="toast-container" id="toastContainer"></div>
     
     <!-- Filtros -->
@@ -159,7 +159,7 @@
             let versionActual = $("#versionSelect").val();
             let table = $('#presupuestoTable').DataTable({
                 ajax: {
-                    url: "{% url 'obtener_presupuesto_tecnologia' %}",
+                    url: "{% url 'obtener_presupuesto_ocupacional' %}",
                     data: function (d) {
                         d.version = versionActual;  // 🔥 enviar versión seleccionada al backend
                     }
@@ -223,7 +223,7 @@
                 }
 
                 $.ajax({
-                    url: "{% url 'borrar_presupuesto_tecnologia' %}", // 🔥 Nueva vista Django
+                    url: "{% url 'borrar_presupuesto_ocupacional' %}", // 🔥 Nueva vista Django
                     type: "POST",
                     headers: { "X-CSRFToken": $("meta[name='csrf-token']").attr("content") },
                     success: function (response) {
@@ -261,7 +261,7 @@
 
     // Botón Ir a la tabla de sueldos
     document.getElementById("btnTabla").addEventListener("click", function () {
-        window.location.href = "{% url 'tabla_auxiliar_tecnologia' %}";
+        window.location.href = "{% url 'tabla_auxiliar_ocupacional' %}";
     });
     </script>
     <!-- DataTables Buttons JS -->

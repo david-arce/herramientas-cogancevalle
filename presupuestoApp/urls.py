@@ -228,11 +228,25 @@ urlpatterns = [
     #----------PRESUPUESTO TECNOLOGIA---------
     path('presupuesto-tecnologia/', views.presupuesto_tecnologia, name='presupuestoTecnologia'),
     path('obtener-presupuesto-tecnologia/', views.obtener_presupuesto_tecnologia, name='obtener_presupuesto_tecnologia'),
+    path('presupuesto-aprobado-tecnologia/', views.presupuesto_aprobado_tecnologia, name='presupuestoAprobadoTecnologia'),
+    path('obtener-presupuesto-aprobado-tecnologia/', views.obtener_presupuesto_aprobado_tecnologia, name='obtener_presupuesto_aprobado_tecnologia'),
     path('tabla-auxiliar-tecnologia/', views.tabla_auxiliar_tecnologia, name='tabla_auxiliar_tecnologia'), # ruta para la tabla temporal de la tecnologia
     path('obtener-tecnologia-temp/', views.obtener_tecnologia_temp, name='obtener_tecnologia_temp'),
     path('cargar-tecnologia-base/', views.cargar_tecnologia_base, name='cargar_tecnologia_base'),
     path('guardar-tecnologia-temp/', views.guardar_tecnologia_temp, name='guardar_tecnologia_temp'),
     path('subir-presupuesto-tecnologia/', views.subir_presupuesto_tecnologia, name='subir_presupuesto_tecnologia'),
     path('borrar_presupuesto_tecnologia/', views.borrar_presupuesto_tecnologia, name='borrar_presupuesto_tecnologia'),
+    
+    #------PRESUPUESTO OCUPACIONAL---------------------------------
+    path('presupuesto-ocupacional/', views.presupuesto_ocupacional, name='presupuestoOcupacional'), 
+    path('obtener-presupuesto-ocupacional/', views.obtener_presupuesto_ocupacional, name='obtener_presupuesto_ocupacional'),
+    path('presupuesto-aprobado-ocupacional/', views.presupuesto_aprobado_ocupacional, name='presupuestoAprobadoOcupacional'), 
+    path('obtener-presupuesto-aprobado-ocupacional/', views.obtener_presupuesto_aprobado_ocupacional, name='obtener_presupuesto_aprobado_ocupacional'),
+    path('tabla-auxiliar-ocupacional/', views.tabla_auxiliar_ocupacional, name='tabla_auxiliar_ocupacional'), # ruta para la tabla temporal del presupuesto ocupacional
+    path('obtener-ocupacional-temp/', views.obtener_ocupacional_temp, name='obtener_ocupacional_temp'),
+    path('cargar-ocupacional-base/', views.cargar_ocupacional_base, name='cargar_ocupacional_base'),
+    path('guardar-ocupacional-temp/', views.guardar_ocupacional_temp, name='guardar_ocupacional_temp'),
+    path('subir-presupuesto-ocupacional/', views.subir_presupuesto_ocupacional, name='subir_presupuesto_ocupacional'),
+    path('borrar_presupuesto_ocupacional/', views.borrar_presupuesto_ocupacional, name='borrar_presupuesto_ocupacional'),
 
 ]

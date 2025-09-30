@@ -1,11 +1,12 @@
 from collections import defaultdict
+import datetime
 from decimal import Decimal
 from itertools import chain
 from pyexpat.errors import messages
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 import pandas as pd
-from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoAuxilioMovilidad, PresupuestoAuxilioMovilidadAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables
+from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoAuxilioMovilidad, PresupuestoAuxilioMovilidadAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.db.models.functions import Concat
 from django.db.models import Sum, Max
@@ -5278,54 +5279,136 @@ def seleccion_cuentas_contables(request):
 
 # -PRESUPUESTO TECNOLOGIA--------------------------------
 def presupuesto_tecnologia(request):
-    return render(request, "presupuesto_general/presupuesto_tecnologia.html")
+    # 🔹 obtener versiones disponibles
+    versiones = (
+        PresupuestoTecnologia.objects
+        .values_list("version", flat=True)
+        .distinct()
+        .order_by("version")
+    )
+    ultima_version = max(versiones) if versiones else 1
+    return render(request, "presupuesto_general/presupuesto_tecnologia.html", {"versiones": versiones, "ultima_version": ultima_version})
+
 
 def obtener_presupuesto_tecnologia(request):
-    tecnologia = list(PresupuestoTecnologia.objects.values())
-    return JsonResponse({"data": tecnologia}, safe=False)
+    version = request.GET.get("version")  # 🔥 versión recibida
+    qs = PresupuestoTecnologia.objects.all()
+    if version:
+        qs = qs.filter(version=version)
+
+    data = list(qs.values())
+    return JsonResponse({"data": data}, safe=False)
+
+def presupuesto_aprobado_tecnologia(request):
+    return render(request, "presupuesto_general/presupuesto_aprobado_tecnologia.html")
+
+def obtener_presupuesto_aprobado_tecnologia(request):
+    tecnologia_aprobado = list(PresupuestotecnologiaAprobado.objects.values())
+    return JsonResponse({"data": tecnologia_aprobado}, safe=False)
 
 def tabla_auxiliar_tecnologia(request):
+    # 📌 Definir fecha límite
+    fecha_limite = datetime.date(2025, 9, 30)  # <-- cámbiala según lo que necesites
+    hoy = datetime.date.today()
+
+    # 🚫 Si ya pasó la fecha, negar acceso
+    if hoy > fecha_limite:
+        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
+                                     f"{fecha_limite.strftime('%d/%m/%Y')}")
+
+    # ✅ Si aún no llega la fecha, mostrar vista normal
     return render(request, "presupuesto_general/aux_presupuesto_tecnologia.html")
+from django.db import models
 
 def subir_presupuesto_tecnologia(request):
     if request.method == "POST":
         temporales = PresupuestoTecnologiaAux.objects.all()
+        fecha_limite = datetime.date(2025, 10, 30)
+
         if not temporales.exists():
             return JsonResponse({
                 "success": False,
                 "msg": "No hay datos temporales para subir ❌"
             }, status=400)
 
+        # 📌 Fecha actual
+        fecha_hoy = timezone.now().date()
+
+        # 📌 Obtener versión global (tomando la última registrada en la tabla principal)
+        ultima_version = PresupuestoTecnologia.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
+        nueva_version = ultima_version + 1
+
         for temp in temporales:
-            PresupuestoTecnologia.objects.create(
-                centro_tra=temp.centro_tra,
-                nombre_cen=temp.nombre_cen,
-                codcosto=temp.codcosto,
-                responsable=temp.responsable,
-                cuenta=temp.cuenta,
-                cuenta_mayor=temp.cuenta_mayor,
-                detalle_cuenta=temp.detalle_cuenta,
-                sede_distribucion=temp.sede_distribucion,
-                proveedor=temp.proveedor,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-                comentario=temp.comentario,
+            # --- Guardar en tabla principal ---
+            obj, created = PresupuestoTecnologia.objects.update_or_create(
+                id=temp.id,  
+                defaults={
+                    "centro_tra": temp.centro_tra,
+                    "nombre_cen": temp.nombre_cen,
+                    "codcosto": temp.codcosto,
+                    "responsable": temp.responsable,
+                    "cuenta": temp.cuenta,
+                    "cuenta_mayor": temp.cuenta_mayor,
+                    "detalle_cuenta": temp.detalle_cuenta,
+                    "sede_distribucion": temp.sede_distribucion,
+                    "proveedor": temp.proveedor,
+                    "enero": temp.enero,
+                    "febrero": temp.febrero,
+                    "marzo": temp.marzo,
+                    "abril": temp.abril,
+                    "mayo": temp.mayo,
+                    "junio": temp.junio,
+                    "julio": temp.julio,
+                    "agosto": temp.agosto,
+                    "septiembre": temp.septiembre,
+                    "octubre": temp.octubre,
+                    "noviembre": temp.noviembre,
+                    "diciembre": temp.diciembre,
+                    "total": temp.total,
+                    "comentario": temp.comentario,
+                    "version": nueva_version,
+                    "fecha": fecha_hoy,
+                }
             )
+
+            # --- Guardar en tabla aprobada si aplica ---
+            if fecha_hoy <= fecha_limite:
+                PresupuestotecnologiaAprobado.objects.update_or_create(
+                    id=temp.id,
+                    defaults={
+                        "centro_tra": temp.centro_tra,
+                        "nombre_cen": temp.nombre_cen,
+                        "codcosto": temp.codcosto,
+                        "responsable": temp.responsable,
+                        "cuenta": temp.cuenta,
+                        "cuenta_mayor": temp.cuenta_mayor,
+                        "detalle_cuenta": temp.detalle_cuenta,
+                        "sede_distribucion": temp.sede_distribucion,
+                        "proveedor": temp.proveedor,
+                        "enero": temp.enero,
+                        "febrero": temp.febrero,
+                        "marzo": temp.marzo,
+                        "abril": temp.abril,
+                        "mayo": temp.mayo,
+                        "junio": temp.junio,
+                        "julio": temp.julio,
+                        "agosto": temp.agosto,
+                        "septiembre": temp.septiembre,
+                        "octubre": temp.octubre,
+                        "noviembre": temp.noviembre,
+                        "diciembre": temp.diciembre,
+                        "total": temp.total,
+                        "comentario": temp.comentario,
+                        "version": nueva_version,
+                        "fecha": fecha_hoy,
+                    }
+                )
+
         return JsonResponse({
             "success": True,
-            "msg": f"Presupuesto de tecnología subido ✅"
+            "msg": f"Presupuesto de tecnología actualizado ✅ (versión {nueva_version})"
         })
+
     return JsonResponse({
         "success": False,
         "msg": "Método no permitido"
@@ -5416,6 +5499,240 @@ def cargar_tecnologia_base(request):
 def borrar_presupuesto_tecnologia(request):
     if request.method == "POST":
         PresupuestoTecnologia.objects.all().delete()
+        # 📌 Fecha límite (cámbiala según lo que necesites)
+        fecha_limite = datetime.date(2025, 10, 30) 
+        # borrar también la tabla aprobada si la fecha limite no ha pasado
+        if timezone.now().date() <= fecha_limite:
+            PresupuestotecnologiaAprobado.objects.all().delete()
         return JsonResponse({"status": "ok", "message": "Presupuesto de tecnología eliminado"})
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+#--PRESUPUESTO OCUPACIONAL-----------------------------
+@login_required
+def presupuesto_ocupacional(request):
+    usuarios_permitidos = ['admin', 'SALUDOCUPACIONAL']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    # 🔹 obtener versiones disponibles
+    versiones = (
+        PresupuestoOcupacional.objects
+        .values_list("version", flat=True)
+        .distinct()
+        .order_by("version")
+    )
+    ultima_version = max(versiones) if versiones else 1
+    return render(request, "presupuesto_general/presupuesto_ocupacional.html", {"versiones": versiones, "ultima_version": ultima_version})
+
+def obtener_presupuesto_ocupacional(request):
+    version = request.GET.get("version")  # 🔥 versión recibida
+    qs = PresupuestoOcupacional.objects.all()
+    if version:
+        qs = qs.filter(version=version)
+
+    data = list(qs.values())
+    return JsonResponse({"data": data}, safe=False)
+
+def presupuesto_aprobado_ocupacional(request):
+    return render(request, "presupuesto_general/presupuesto_aprobado_ocupacional.html")
+
+def obtener_presupuesto_aprobado_ocupacional(request):
+    ocupacional_aprobado = list(PresupuestoOcupacionalAprobado.objects.values())
+    return JsonResponse({"data": ocupacional_aprobado}, safe=False)
+
+def tabla_auxiliar_ocupacional(request):
+    # 📌 Definir fecha límite
+    fecha_limite = datetime.date(2025, 9, 30)  # <-- cámbiala según lo que necesites
+    hoy = datetime.date.today()
+
+    # 🚫 Si ya pasó la fecha, negar acceso
+    if hoy > fecha_limite:
+        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
+                                     f"{fecha_limite.strftime('%d/%m/%Y')}")
+
+    # ✅ Si aún no llega la fecha, mostrar vista normal
+    return render(request, "presupuesto_general/aux_presupuesto_ocupacional.html")
+
+def subir_presupuesto_ocupacional(request):
+    if request.method == "POST":
+        temporales = PresupuestoOcupacionalAux.objects.all()
+        fecha_limite = datetime.date(2025, 10, 30)
+
+        if not temporales.exists():
+            return JsonResponse({
+                "success": False,
+                "msg": "No hay datos temporales para subir ❌"
+            }, status=400)
+
+        # 📌 Fecha actual
+        fecha_hoy = timezone.now().date()
+
+        # 📌 Obtener versión global (tomando la última registrada en la tabla principal)
+        ultima_version = PresupuestoOcupacional.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
+        nueva_version = ultima_version + 1
+
+        for temp in temporales:
+            # --- Guardar en tabla principal ---
+            obj, created = PresupuestoOcupacional.objects.update_or_create(
+                id=temp.id,  
+                defaults={
+                    "centro_tra": temp.centro_tra,
+                    "nombre_cen": temp.nombre_cen,
+                    "codcosto": temp.codcosto,
+                    "responsable": temp.responsable,
+                    "cuenta": temp.cuenta,
+                    "cuenta_mayor": temp.cuenta_mayor,
+                    "detalle_cuenta": temp.detalle_cuenta,
+                    "sede_distribucion": temp.sede_distribucion,
+                    "proveedor": temp.proveedor,
+                    "enero": temp.enero,
+                    "febrero": temp.febrero,
+                    "marzo": temp.marzo,
+                    "abril": temp.abril,
+                    "mayo": temp.mayo,
+                    "junio": temp.junio,
+                    "julio": temp.julio,
+                    "agosto": temp.agosto,
+                    "septiembre": temp.septiembre,
+                    "octubre": temp.octubre,
+                    "noviembre": temp.noviembre,
+                    "diciembre": temp.diciembre,
+                    "total": temp.total,
+                    "comentario": temp.comentario,
+                    "version": nueva_version,
+                    "fecha": fecha_hoy,
+                }
+            )
+
+            # --- Guardar en tabla aprobada si aplica ---
+            if fecha_hoy <= fecha_limite:
+                PresupuestoOcupacionalAprobado.objects.update_or_create(
+                    id=temp.id,
+                    defaults={
+                        "centro_tra": temp.centro_tra,
+                        "nombre_cen": temp.nombre_cen,
+                        "codcosto": temp.codcosto,
+                        "responsable": temp.responsable,
+                        "cuenta": temp.cuenta,
+                        "cuenta_mayor": temp.cuenta_mayor,
+                        "detalle_cuenta": temp.detalle_cuenta,
+                        "sede_distribucion": temp.sede_distribucion,
+                        "proveedor": temp.proveedor,
+                        "enero": temp.enero,
+                        "febrero": temp.febrero,
+                        "marzo": temp.marzo,
+                        "abril": temp.abril,
+                        "mayo": temp.mayo,  
+                        "junio": temp.junio,
+                        "julio": temp.julio,
+                        "agosto": temp.agosto,
+                        "septiembre": temp.septiembre,
+                        "octubre": temp.octubre,
+                        "noviembre": temp.noviembre,
+                        "diciembre": temp.diciembre,
+                        "total": temp.total,
+                        "comentario": temp.comentario,
+                        "version": nueva_version,
+                        "fecha": fecha_hoy,
+                    }
+                )
+        return JsonResponse({
+            "success": True,    
+            "msg": f"Presupuesto ocupacional actualizado ✅ (versión {nueva_version})"
+        })
+    return JsonResponse({
+        "success": False,
+        "msg": "Método no permitido"
+    }, status=405)
     
+def guardar_ocupacional_temp(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
+            }
+
+            # Limpiar la tabla antes de guardar
+            PresupuestoOcupacionalAux.objects.all().delete()
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoOcupacionalAux(**row_filtrado))
+
+            # Inserción masiva optimizada
+            PresupuestoOcupacionalAux.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+def obtener_ocupacional_temp(request):
+    data = list(PresupuestoOcupacionalAux.objects.values())
+    return JsonResponse(data, safe=False)
+
+def cargar_ocupacional_base(request):
+    # limpio tabla auxiliar de ocupacional antes de recalcular
+    PresupuestoOcupacionalAux.objects.all().delete()
+    base_data = Plantillagastos2025.objects.values(
+       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+    )
+    # filtrar por responsable = 'LUIS FERNANDO VARGAS'
+    base_data = base_data.filter(responsable__iexact="WILLIAM")
+    
+    for row in base_data:
+        PresupuestoOcupacionalAux.objects.create(
+            centro_tra=row["centro_tra"],
+            nombre_cen=row["nombre_cen"],
+            codcosto=row["codcosto"],
+            responsable=row["responsable"],
+            cuenta=row["cuenta"],
+            cuenta_mayor=row["cuenta_mayor"],
+            detalle_cuenta=row["detalle_cuenta"],
+            sede_distribucion=row["sede_distribucion"],
+            proveedor=row["proveedor"],
+            enero=row["enero"],
+            febrero=row["febrero"],
+            marzo=row["marzo"],
+            abril=row["abril"],
+            mayo=row["mayo"],
+            junio=row["junio"],
+            julio=row["julio"], 
+            agosto=row["agosto"],
+            septiembre=row["septiembre"],
+            octubre=row["octubre"],
+            noviembre=row["noviembre"],
+            diciembre=row["diciembre"],
+            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
+            comentario = ""
+        )
+    
+    return JsonResponse({"status": "ok"})
+
+@csrf_exempt
+def borrar_presupuesto_ocupacional(request):
+    if request.method == "POST":
+        PresupuestoOcupacional.objects.all().delete()
+        # 📌 Fecha límite (cámbiala según lo que necesites)
+        fecha_limite = datetime.date(2025, 10, 30) 
+        # borrar también la tabla aprobada si la fecha limite no ha pasado
+        if timezone.now().date() <= fecha_limite:
+            PresupuestoOcupacionalAprobado.objects.all().delete()
+        return JsonResponse({"status": "ok", "message": "Presupuesto ocupacional eliminado"})
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
