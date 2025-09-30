@@ -348,7 +348,7 @@
     <table id="tempTable" class="display">
         <thead>
             <tr>
-                <th>Selección IPC</th>
+                <th><input type="checkbox" id="checkAllIPC" title="Seleccionar todo"></th>
                 <th>Acciones</th>
                 
                 <th>Nombre asignación del gasto</th>
@@ -536,6 +536,44 @@
         }
 
         let editingCell = null;
+
+        // ✅ Checkbox maestro para seleccionar/deseleccionar todos
+        $('#checkAllIPC').on('change', function() {
+            let checked = $(this).is(':checked');
+            $('.row-check').prop('checked', checked);
+        });
+
+        // ✅ Si se desmarca una sola fila, se desmarca el "Seleccionar todo"
+        $('#tempTable').on('change', '.row-check', function() {
+            if (!$(this).is(':checked')) {
+                $('#checkAllIPC').prop('checked', false);
+            } else if ($('.row-check:checked').length === $('.row-check').length) {
+                $('#checkAllIPC').prop('checked', true);
+            }
+        });
+        // ✅ Si se desmarca una sola fila → se desmarca el "Seleccionar todo"
+        $('#tempTable').on('change', '.row-check', function() {
+            if (!$(this).is(':checked')) {
+                $('#checkAllIPC').prop('checked', false);
+            } else if ($('.row-check:checked').length === $('.row-check').length) {
+                $('#checkAllIPC').prop('checked', true);
+            }
+        });
+
+        // ✅ Sincronizar checkbox maestro al recargar la tabla (por Ajax o redraw)
+        table.on('draw', function() {
+            let total = $('.row-check').length;
+            let marcados = $('.row-check:checked').length;
+
+            if (marcados === 0) {
+                $('#checkAllIPC').prop('checked', false).prop('indeterminate', false);
+            } else if (marcados === total) {
+                $('#checkAllIPC').prop('checked', true).prop('indeterminate', false);
+            } else {
+                $('#checkAllIPC').prop('checked', false).prop('indeterminate', true);
+            }
+        });
+
 
         // duplicar fila
         $('#tempTable').on('click', '.duplicarFila', function() {
