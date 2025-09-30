@@ -942,6 +942,7 @@ def cargar_presupuesto_centro_ventas(request):
     
     df_total = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
     df_centro_operacion = df_total.groupby(['nombre_centro_de_operacion', 'lapso'])['suma'].sum().reset_index()
+    df_centro_operacion = df_centro_operacion.rename(columns={"nombre_centro_de_operacion": "nombre_centro_operacion"})
     
     # Extraer año y mes
     df_centro_operacion['year'] = df_centro_operacion['lapso'] // 100
@@ -949,7 +950,7 @@ def cargar_presupuesto_centro_ventas(request):
     # Lista para almacenar predicciones por centro de operacion
     predicciones_2025_centro = []
     # Hacer predicción para cada centro de operacion y mes
-    for centro, grupo in df_centro_operacion.groupby('nombre_centro_de_operacion'):
+    for centro, grupo in df_centro_operacion.groupby('nombre_centro_operacion'):
         for mes in range(1, 13):
             datos_mes = grupo[grupo['mes'] == mes]
             
@@ -960,19 +961,19 @@ def cargar_presupuesto_centro_ventas(request):
             if len(x) >= 2:  # Se necesita al menos 2 puntos para ajustar una recta
                 a, b = np.polyfit(x, y, 1)  # Ajuste lineal
                 y_pred = a * year_siguiente + b
-                predicciones_2025_centro.append({'nombre_centro_de_operacion': centro, 'lapso': year_siguiente * 100 + mes, 'suma': round(y_pred)})
+                predicciones_2025_centro.append({'nombre_centro_operacion': centro, 'lapso': year_siguiente * 100 + mes, 'suma': round(y_pred)})
     # Crear DataFrame con predicciones
     df_pred_2025_centro = pd.DataFrame(predicciones_2025_centro)
     # (Opcional) Unir con el DataFrame original y ordenar por lapso y centro de operacion
-    df_proyeccion_centro_operacion = pd.concat([df_centro_operacion[['nombre_centro_de_operacion', 'lapso', 'suma']], df_pred_2025_centro], ignore_index=True)
-    df_proyeccion_centro_operacion = df_proyeccion_centro_operacion.sort_values(['nombre_centro_de_operacion', 'lapso']).reset_index(drop=True)
+    df_proyeccion_centro_operacion = pd.concat([df_centro_operacion[['nombre_centro_operacion', 'lapso', 'suma']], df_pred_2025_centro], ignore_index=True)
+    df_proyeccion_centro_operacion = df_proyeccion_centro_operacion.sort_values(['nombre_centro_operacion', 'lapso']).reset_index(drop=True)
     # extraer año y mes
     df_proyeccion_centro_operacion['year'] = df_proyeccion_centro_operacion['lapso'] // 100
     df_proyeccion_centro_operacion['mes'] = df_proyeccion_centro_operacion['lapso'] % 100
     
     # calcular el coeficiente de correlación R2 para la proyección por centro de operacion y lapso -----------
     correlaciones_centro = []   
-    for centro, grupo in df_proyeccion_centro_operacion.groupby('nombre_centro_de_operacion'):
+    for centro, grupo in df_proyeccion_centro_operacion.groupby('nombre_centro_operacion'):
         for mes in range(1, 13):
             datos_mes = grupo[grupo["mes"] == mes]
 
@@ -982,26 +983,26 @@ def cargar_presupuesto_centro_ventas(request):
                 coef = np.nan  # si no hay variación, correlación indefinida
 
             correlaciones_centro.append({
-                "nombre_centro_de_operacion": centro,
+                "nombre_centro_operacion": centro,
                 "mes": mes,
                 "coef_correlacion": (round(coef, 4))*100 if not np.isnan(coef) else None
             })
     df_correl_por_mes_centro = pd.DataFrame(correlaciones_centro)
     # unir con el df_proyeccion_centro_operacion
-    df_proyeccion_centro_operacion = pd.merge(df_proyeccion_centro_operacion, df_correl_por_mes_centro, on=['nombre_centro_de_operacion', 'mes'], how='left')
+    df_proyeccion_centro_operacion = pd.merge(df_proyeccion_centro_operacion, df_correl_por_mes_centro, on=['nombre_centro_operacion', 'mes'], how='left')
     df_proyeccion_centro_operacion['suma'] = df_proyeccion_centro_operacion['suma'].round().astype(int)   
     
     # ================= TOTAL_YEAR POR CENTRO ===================
     df_total_year_centro = (
         df_proyeccion_centro_operacion
-        .groupby(['nombre_centro_de_operacion', 'year'])['suma']
+        .groupby(['nombre_centro_operacion', 'year'])['suma']
         .sum()
         .reset_index()
         .rename(columns={'suma': 'total_year'})
     )
     # Calcular variaciones por centro
-    df_total_year_centro['variacion_pesos'] = df_total_year_centro.groupby('nombre_centro_de_operacion')['total_year'].diff().round().astype('Int64')
-    df_total_year_centro['variacion_pct'] = (df_total_year_centro.groupby('nombre_centro_de_operacion')['total_year'].pct_change() * 100).round(2)
+    df_total_year_centro['variacion_pesos'] = df_total_year_centro.groupby('nombre_centro_operacion')['total_year'].diff().round().astype('Int64')
+    df_total_year_centro['variacion_pct'] = (df_total_year_centro.groupby('nombre_centro_operacion')['total_year'].pct_change() * 100).round(2)
 
     # Rellenar NaN en la primera fila de cada grupo
     df_total_year_centro[['variacion_pesos', 'variacion_pct']] = df_total_year_centro[['variacion_pesos', 'variacion_pct']].fillna(0)
@@ -1014,13 +1015,12 @@ def cargar_presupuesto_centro_ventas(request):
     df_total_year_centro = pd.merge(
         df_total_year_centro,
         df_costos,
-        left_on=["nombre_centro_de_operacion", "year"],
-        right_on=["nombre_centro_operacion", "year"],
+        on=["nombre_centro_operacion", "year"],
         how="left"
-    ).drop(columns=["nombre_centro_operacion"])  # evitar columna duplicada
+    )
     
     # merge de df_proyeccion_centro_operacion con df_por_año para agregar las columnas de total, variacion_pesos y variacion_pct
-    df_proyeccion_centro_operacion = pd.merge(df_proyeccion_centro_operacion, df_total_year_centro[['nombre_centro_de_operacion','year', 'total_year', 'total_year_costos','variacion_pesos', 'variacion_pct']], on=["nombre_centro_de_operacion", "year"], how='left')
+    df_proyeccion_centro_operacion = pd.merge(df_proyeccion_centro_operacion, df_total_year_centro[['nombre_centro_operacion','year', 'total_year', 'total_year_costos','variacion_pesos', 'variacion_pct']], on=["nombre_centro_operacion", "year"], how='left')
     
     # calcular utilidad por año, 1 - (costos / ventas), el costo está en el df_proyeccion_general y se encuentra en la columna total_year_costos, y las ventas están en la columna total
     df_proyeccion_centro_operacion['utilidad_pct'] = (1 - (df_proyeccion_centro_operacion['total_year_costos'] / df_proyeccion_centro_operacion['total_year'])) * 100
@@ -1036,7 +1036,7 @@ def cargar_presupuesto_centro_ventas(request):
     for _, row in df_proyeccion_centro_operacion.iterrows():
         registros.append(
             PresupuestoCentroOperacionVentas(
-                nombre_centro_operacion=row['nombre_centro_de_operacion'],
+                nombre_centro_operacion=row['nombre_centro_operacion'],
                 year=int(row['year']),
                 mes=int(row['mes']),
                 total=int(row['suma']),

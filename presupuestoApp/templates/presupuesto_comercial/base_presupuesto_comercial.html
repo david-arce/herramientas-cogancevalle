@@ -237,7 +237,7 @@
             <span class="btn-texto">Presupuesto centro operacion-segmento ventas</span>
             <span class="spinner" style="display: none;"></span>
         </button>
-        <button id="btnVista4" class="btn-cargar" onclick="cargarVista('{% url 'presupuestoGeneralCostos' %}', this)">
+        {% comment %} <button id="btnVista4" class="btn-cargar" onclick="cargarVista('{% url 'presupuestoGeneralCostos' %}', this)">
             <span class="btn-texto">Presupuesto general costos</span>
             <span class="spinner" style="display: none;"></span>
         </button>
@@ -248,7 +248,7 @@
         <button id="btnVista6" class="btn-cargar" onclick="cargarVista('{% url 'presupuestoCentroSegmentoCostos' %}', this)">
             <span class="btn-texto">Presupuesto centro operacion-segmento costos</span>
             <span class="spinner" style="display: none;"></span>
-        </button>
+        </button> {% endcomment %}
         <button id="btnVista7" class="btn-cargar" onclick="cargarVista('{% url 'presupuestoComercial' %}', this)">
             <span class="btn-texto">Presupuesto comercial</span>
             <span class="spinner" style="display: none;"></span>
