@@ -172,7 +172,6 @@ class BdVentas2025(models.Model):
         managed = False
         db_table = 'bd_ventas_2025'
 
-
 class Plantillagastos2025(models.Model):
     centro_tra = models.CharField(db_column='CENTRO_TRA', blank=True, null=True)  # Field name made lowercase.
     nombre_cen = models.CharField(db_column='NOMBRE_CEN', blank=True, null=True)  # Field name made lowercase.
