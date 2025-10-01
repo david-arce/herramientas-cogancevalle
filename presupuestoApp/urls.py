@@ -260,5 +260,17 @@ urlpatterns = [
     path('guardar-servicios-tecnicos-temp/', views.guardar_servicios_tecnicos_temp, name='guardar_servicios_tecnicos_temp'),
     path('subir-presupuesto-servicios-tecnicos/', views.subir_presupuesto_servicios_tecnicos, name='subir_presupuesto_servicios_tecnicos'),
     path('borrar_presupuesto_servicios_tecnicos/', views.borrar_presupuesto_servicios_tecnicos, name='borrar_presupuesto_servicios_tecnicos'),
+    
+    #------PRESUPUESTO LOGISTICA---------------------------------
+    path('presupuesto-logistica/', views.presupuesto_logistica, name='presupuestoLogistica'), 
+    path('obtener-presupuesto-logistica/', views.obtener_presupuesto_logistica, name='obtener_presupuesto_logistica'),
+    path('presupuesto-aprobado-logistica/', views.presupuesto_aprobado_logistica, name='presupuestoAprobadoLogistica'), 
+    path('obtener-presupuesto-aprobado-logistica/', views.obtener_presupuesto_aprobado_logistica, name='obtener_presupuesto_aprobado_logistica'),
+    path('tabla-auxiliar-logistica/', views.tabla_auxiliar_logistica, name='tabla_auxiliar_logistica'), # ruta para la tabla temporal del presupuesto logistica
+    path('obtener-logistica-temp/', views.obtener_logistica_temp, name='obtener_logistica_temp'),
+    path('cargar-logistica-base/', views.cargar_logistica_base, name='cargar_logistica_base'),
+    path('guardar-logistica-temp/', views.guardar_logistica_temp, name='guardar_logistica_temp'),
+    path('subir-presupuesto-logistica/', views.subir_presupuesto_logistica, name='subir_presupuesto_logistica'),
+    path('borrar_presupuesto_logistica/', views.borrar_presupuesto_logistica, name='borrar_presupuesto_logistica'),
 
 ]

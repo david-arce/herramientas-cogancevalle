@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>Presupuesto Servicios técnicos</title>
+    <title>Presupuesto Logistica</title>
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <!-- DataTables Buttons CSS -->
@@ -165,7 +165,7 @@
     </style>
 </head>
 <body>
-    <h2>Presupuesto Servicios técnicos Proyectado</h2>
+    <h2>Presupuesto Logistica Proyectado</h2>
     <div class="toast-container" id="toastContainer"></div>
     
     <!-- Filtros -->
@@ -185,9 +185,9 @@
     <!-- Contenedor de botones -->
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
         <button id="btnTabla">Ir a tabla auxiliar de presupuesto</button>
-        <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
+        {% comment %} <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
             Borrar Presupuesto
-        </button>
+        </button> {% endcomment %}
     </div>
     <!-- Modal de confirmación -->
 <div id="deleteModal" class="modal" style="display:none;" aria-hidden="true">
@@ -241,7 +241,7 @@
             let versionActual = $("#versionSelect").val();
             let table = $('#presupuestoTable').DataTable({
                 ajax: {
-                    url: "{% url 'obtener_presupuesto_servicios_tecnicos' %}",
+                    url: "{% url 'obtener_presupuesto_logistica' %}",
                     data: function (d) {
                         d.version = versionActual;  // 🔥 enviar versión seleccionada al backend
                     }
@@ -279,7 +279,7 @@
                 {
                     extend: 'excelHtml5',
                     text: '📥 Exportar a Excel',
-                    filename: 'presupuesto_servicios_tecnicos',
+                    filename: 'presupuesto_logistica',
                     exportOptions: {
                         modifier: {
                             page: 'all',   // 🔥 Exporta todas las páginas
@@ -316,7 +316,7 @@ $("#cancelDelete").on("click", function () {
             $("#confirmDelete").on("click", function () {
 
                 $.ajax({
-                    url: "{% url 'borrar_presupuesto_servicios_tecnicos' %}",
+                    url: "{% url 'borrar_presupuesto_logistica' %}",
                     type: "POST",
                     headers: { "X-CSRFToken": $("meta[name='csrf-token']").attr("content") },
                     data: { version: versionSeleccionada }, // 🔥 enviar versión seleccionada
@@ -376,7 +376,7 @@ $(window).on("click", function (e) {
 
     // Botón Ir a la tabla de sueldos
     document.getElementById("btnTabla").addEventListener("click", function () {
-        window.location.href = "{% url 'tabla_auxiliar_servicios_tecnicos' %}";
+        window.location.href = "{% url 'tabla_auxiliar_logistica' %}";
     });
     </script>
     <!-- DataTables Buttons JS -->

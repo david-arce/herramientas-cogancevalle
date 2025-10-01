@@ -159,7 +159,7 @@
         transition: all 0.2s ease; 
         }
         .btn-section1 button:hover  { 
-            background: #e2e6ea; 
+            background: #9a9a9aff; 
             border-color: #bbb;
             color: black; 
         }
@@ -175,7 +175,7 @@
         transition: all 0.2s ease;
         }
         .btn-section2 button:hover  {
-            background: #e2e6ea;
+            background: #9a9a9aff;
             border-color: #bbb;
             color: black;
         }
@@ -191,7 +191,7 @@
         transition: all 0.2s ease;
         }
         .btn-section3 button:hover  {
-            background: #e2e6ea;
+            background: #9a9a9aff;
             border-color: #bbb;
             color: black;
         }
@@ -207,7 +207,7 @@
         transition: all 0.2s ease;
         }
         .btn-section4 button:hover  {
-            background: #e2e6ea;
+            background: #9a9a9aff;
             border-color: #bbb;
             color: black;
         }
@@ -284,11 +284,11 @@
     <div class="btn-group_bd">
     <!-- Grupo: Guardar / Subir presupuesto -->
     <div class="btn-section1">
-        {% comment %} <button id="cargarBase">📂 Cargar presupuesto anterior</button> {% endcomment %}
-        <button id="guardarTempBtn">💾 Guardar cambios</button>
+        <button id="cargarBase" >📂 Cargar presupuesto anterior <span class="spinner" style="display:none; margin-left:8px;"></span></button>
+        <button id="guardarTempBtn">💾 Guardar cambios <span class="spinner" style="display:none; margin-left:8px;"></span></button>
         <form id="subirPresupuestoForm" method="post" action="{% url 'subir_presupuesto_servicios_tecnicos' %}" style="display:inline;">
             {% csrf_token %}
-            <button type="submit" id="subirBtn">⬆️ Subir Presupuesto proyectado</button>
+            <button type="submit" id="subirBtn">⬆️ Subir Presupuesto proyectado <span class="spinner" style="display:none; margin-left:8px;"></span></button>
         </form>
     </div>
     
@@ -307,7 +307,7 @@
     <!-- Grupo: Otras acciones -->
     <div class="btn-section4">
         <button id="agregarFila" title="Agregar fila vacia al final de la tabla">➕ Agregar fila vacía</button>
-        <button onclick="document.getElementById('manualModal').style.display='block'">📘 Ver Manual</button>
+        <button onclick="document.getElementById('manualModal').style.display='block'">📘 Ver Manual de cuentas</button>
     </div>
 </div>
 
@@ -347,8 +347,6 @@
     </div>
   </div>
 </div>
-
-
 
     <div style="overflow-x:auto; max-width:100%;">
     <table id="tempTable" class="display">
@@ -460,6 +458,9 @@
                 { data: "total", render: numberFormat },
                 { data: "comentario" }
             ],
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            },
             createdRow: function(row, data, dataIndex) {
                 // marcar todas menos Acciones como editables
                 $('td', row).each(function(index) {
@@ -897,24 +898,24 @@
         });
 
         // Cargar datos base
-        $(document).on("click", "#cargarBase", function () {
-            let boton = $(this);
-            boton.prop("disabled", true).append('<span class="spinner"></span>');
-
-            $.ajax({
-            url: "{% url 'cargar_servicios_tecnicos_base' %}",
-            type: "GET",
-            success: function() {
+        $('#cargarBase').on('click', function() {
+            let $btn = $(this);
+            let $spinner = $btn.find(".spinner");
+            // Mostrar spinner y deshabilitar botón
+            $spinner.show();
+            $btn.prop("disabled", true);
+            $.get("{% url 'cargar_servicios_tecnicos_base' %}", function() {
                 table.ajax.reload();
-            },
-            error: function(err) {
-                showToast("Error al cargar datos ❌", "error");
-            },
-            complete: function() {
-                boton.prop("disabled", false).find(".spinner").remove();
                 showToast("Datos cargados desde plantilla gastos 📂", "success");
-            }
-        });
+            })
+            .fail(function() {
+                showToast("Error al cargar datos ❌", "error");
+            })
+            .always(function() {
+                // Ocultar spinner y reactivar botón
+                $spinner.hide();
+                $btn.prop("disabled", false);
+            });
         });
 
         // Configurar CSRF para AJAX

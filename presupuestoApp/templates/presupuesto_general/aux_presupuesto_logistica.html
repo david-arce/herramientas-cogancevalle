@@ -280,13 +280,13 @@
     </style>
 </head>
 <body>
-    <h2>Presupuesto Salud ocupacional</h2>
+    <h2>Presupuesto Logistica</h2>
     <div class="btn-group_bd">
     <!-- Grupo: Guardar / Subir presupuesto -->
     <div class="btn-section1">
         {% comment %} <button id="cargarBase">📂 Cargar presupuesto anterior</button> {% endcomment %}
         <button id="guardarTempBtn">💾 Guardar cambios</button>
-        <form id="subirPresupuestoForm" method="post" action="{% url 'subir_presupuesto_ocupacional' %}" style="display:inline;">
+        <form id="subirPresupuestoForm" method="post" action="{% url 'subir_presupuesto_logistica' %}" style="display:inline;">
             {% csrf_token %}
             <button type="submit" id="subirBtn">⬆️ Subir Presupuesto proyectado <span class="spinner" style="display:none; margin-left:8px;"></button>
         </form>
@@ -408,16 +408,16 @@
         
         // Botón Ir a la tabla presupuesto tecnología
         document.getElementById("btnTabla").addEventListener("click", function () {
-            window.location.href = "{% url 'presupuestoOcupacional' %}";
+            window.location.href = "{% url 'presupuestoLogistica' %}";
         });
         // Botón Ir a la tabla presupuesto tecnología aprovado
         document.getElementById("btnTablaAprovado").addEventListener("click", function () {
-            window.location.href = "{% url 'presupuestoAprobadoOcupacional' %}";
+            window.location.href = "{% url 'presupuestoAprobadoLogistica' %}";
         });
         cargarOpciones();
         let table = $('#tempTable').DataTable({
             ajax: {
-                url: "{% url 'obtener_ocupacional_temp' %}",
+                url: "{% url 'obtener_logistica_temp' %}",
                 dataSrc: ""
             },
             scrollX: true,   // 🔥 Activa scroll horizontal
@@ -854,7 +854,7 @@
             $spinner.show();
             $btn.prop("disabled", true);
 
-            $.post("{% url 'subir_presupuesto_ocupacional' %}", {
+            $.post("{% url 'subir_presupuesto_logistica' %}", {
                 csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val()
             }, function(response) {
                 if (response.success) {
@@ -926,7 +926,7 @@
             $spinner.show();
             $btn.prop("disabled", true);
 
-            $.get("{% url 'cargar_ocupacional_base' %}", function() {
+            $.get("{% url 'cargar_logistica_base' %}", function() {
                 table.ajax.reload();
                 showToast("Datos cargados desde plantilla gastos 📂", "success");
             })
@@ -964,7 +964,7 @@
             $btn.prop("disabled", true);
 
             $.ajax({
-                url: "{% url 'guardar_ocupacional_temp' %}",
+                url: "{% url 'guardar_logistica_temp' %}",
                 type: "POST",
                 data: JSON.stringify(data),
                 contentType: "application/json",
