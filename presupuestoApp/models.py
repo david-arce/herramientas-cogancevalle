@@ -1420,3 +1420,92 @@ class PresupuestoOcupacionalAprobado(models.Model):
     
     class Meta:
         db_table = 'presupuesto_ocupacional_aprobado'
+        
+# ----PRESUPUESTO SERVICIOS TECNICOS------------------------------
+class PresupuestoServiciosTecnicos(models.Model):
+    centro_tra = models.CharField(blank=True, null=True)  
+    nombre_cen = models.CharField(blank=True, null=True)  
+    codcosto = models.CharField(blank=True, null=True) 
+    responsable = models.CharField(blank=True, null=True)  
+    cuenta = models.BigIntegerField(blank=True, null=True) 
+    cuenta_mayor = models.CharField(blank=True, null=True)  
+    detalle_cuenta = models.CharField(blank=True, null=True)  
+    sede_distribucion = models.FloatField(blank=True, null=True)  
+    proveedor = models.CharField(blank=True, null=True)
+    enero = models.BigIntegerField(blank=True, null=True)
+    febrero = models.BigIntegerField(blank=True, null=True)
+    marzo = models.BigIntegerField(blank=True, null=True)
+    abril = models.BigIntegerField(blank=True, null=True)
+    mayo = models.BigIntegerField(blank=True, null=True)
+    junio = models.BigIntegerField(blank=True, null=True)
+    julio = models.BigIntegerField(blank=True, null=True)
+    agosto = models.BigIntegerField(blank=True, null=True)
+    septiembre = models.BigIntegerField(blank=True, null=True)
+    octubre = models.BigIntegerField(blank=True, null=True)
+    noviembre = models.BigIntegerField(blank=True, null=True)
+    diciembre = models.BigIntegerField(blank=True, null=True)
+    total = models.BigIntegerField(blank=True, null=True)
+    comentario = models.TextField(blank=True, null=True)
+    version = models.IntegerField(blank=True, null=True)
+    fecha = models.DateField(blank=True, null=True)
+    
+    class Meta:
+        db_table = 'presupuesto_servicios_tecnicos'
+        
+class PresupuestoServiciosTecnicosAux(models.Model):
+    centro_tra = models.CharField(blank=True, null=True)  
+    nombre_cen = models.CharField(blank=True, null=True)  
+    codcosto = models.CharField(blank=True, null=True) 
+    responsable = models.CharField(blank=True, null=True)  
+    cuenta = models.BigIntegerField(blank=True, null=True) 
+    cuenta_mayor = models.CharField(blank=True, null=True)  
+    detalle_cuenta = models.CharField(blank=True, null=True)  
+    sede_distribucion = models.FloatField(blank=True, null=True)  
+    proveedor = models.CharField(blank=True, null=True)
+    enero = models.BigIntegerField(blank=True, null=True)
+    febrero = models.BigIntegerField(blank=True, null=True)
+    marzo = models.BigIntegerField(blank=True, null=True)
+    abril = models.BigIntegerField(blank=True, null=True)
+    mayo = models.BigIntegerField(blank=True, null=True)
+    junio = models.BigIntegerField(blank=True, null=True)
+    julio = models.BigIntegerField(blank=True, null=True)
+    agosto = models.BigIntegerField(blank=True, null=True)
+    septiembre = models.BigIntegerField(blank=True, null=True)
+    octubre = models.BigIntegerField(blank=True, null=True)
+    noviembre = models.BigIntegerField(blank=True, null=True)
+    diciembre = models.BigIntegerField(blank=True, null=True)
+    total = models.BigIntegerField(blank=True, null=True)
+    comentario = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        db_table = 'presupuesto_servicios_tecnicos_auxiliar'
+        
+class PresupuestoServiciosTecnicosAprobado(models.Model):
+    centro_tra = models.CharField(blank=True, null=True)  
+    nombre_cen = models.CharField(blank=True, null=True)  
+    codcosto = models.CharField(blank=True, null=True) 
+    responsable = models.CharField(blank=True, null=True)  
+    cuenta = models.BigIntegerField(blank=True, null=True) 
+    cuenta_mayor = models.CharField(blank=True, null=True)  
+    detalle_cuenta = models.CharField(blank=True, null=True)  
+    sede_distribucion = models.FloatField(blank=True, null=True)  
+    proveedor = models.CharField(blank=True, null=True)
+    enero = models.BigIntegerField(blank=True, null=True)
+    febrero = models.BigIntegerField(blank=True, null=True)
+    marzo = models.BigIntegerField(blank=True, null=True)
+    abril = models.BigIntegerField(blank=True, null=True)
+    mayo = models.BigIntegerField(blank=True, null=True)
+    junio = models.BigIntegerField(blank=True, null=True)
+    julio = models.BigIntegerField(blank=True, null=True)
+    agosto = models.BigIntegerField(blank=True, null=True)
+    septiembre = models.BigIntegerField(blank=True, null=True)
+    octubre = models.BigIntegerField(blank=True, null=True)
+    noviembre = models.BigIntegerField(blank=True, null=True)
+    diciembre = models.BigIntegerField(blank=True, null=True)
+    total = models.BigIntegerField(blank=True, null=True)
+    comentario = models.TextField(blank=True, null=True)
+    version = models.IntegerField(blank=True, null=True)
+    fecha = models.DateField(blank=True, null=True)
+    
+    class Meta:
+        db_table = 'presupuesto_servicios_tecnicos_aprobado'

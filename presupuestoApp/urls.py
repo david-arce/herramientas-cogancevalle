@@ -248,5 +248,17 @@ urlpatterns = [
     path('guardar-ocupacional-temp/', views.guardar_ocupacional_temp, name='guardar_ocupacional_temp'),
     path('subir-presupuesto-ocupacional/', views.subir_presupuesto_ocupacional, name='subir_presupuesto_ocupacional'),
     path('borrar_presupuesto_ocupacional/', views.borrar_presupuesto_ocupacional, name='borrar_presupuesto_ocupacional'),
+    
+    #------PRESUPUESTO SERVICIOS TECNICOS---------------------------------
+    path('presupuesto-servicios-tecnicos/', views.presupuesto_servicios_tecnicos, name='presupuestoServiciosTecnicos'), 
+    path('obtener-presupuesto-servicios-tecnicos/', views.obtener_presupuesto_servicios_tecnicos, name='obtener_presupuesto_servicios_tecnicos'),
+    path('presupuesto-aprobado-servicios-tecnicos/', views.presupuesto_aprobado_servicios_tecnicos, name='presupuestoAprobadoServiciosTecnicos'), 
+    path('obtener-presupuesto-aprobado-servicios-tecnicos/', views.obtener_presupuesto_aprobado_servicios_tecnicos, name='obtener_presupuesto_aprobado_servicios_tecnicos'),
+    path('tabla-auxiliar-servicios-tecnicos/', views.tabla_auxiliar_servicios_tecnicos, name='tabla_auxiliar_servicios_tecnicos'), # ruta para la tabla temporal del presupuesto servicios tecnicos
+    path('obtener-servicios-tecnicos-temp/', views.obtener_servicios_tecnicos_temp, name='obtener_servicios_tecnicos_temp'),
+    path('cargar-servicios-tecnicos-base/', views.cargar_servicios_tecnicos_base, name='cargar_servicios_tecnicos_base'),
+    path('guardar-servicios-tecnicos-temp/', views.guardar_servicios_tecnicos_temp, name='guardar_servicios_tecnicos_temp'),
+    path('subir-presupuesto-servicios-tecnicos/', views.subir_presupuesto_servicios_tecnicos, name='subir_presupuesto_servicios_tecnicos'),
+    path('borrar_presupuesto_servicios_tecnicos/', views.borrar_presupuesto_servicios_tecnicos, name='borrar_presupuesto_servicios_tecnicos'),
 
 ]

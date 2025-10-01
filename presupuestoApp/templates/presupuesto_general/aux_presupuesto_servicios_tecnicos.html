@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>Presupuesto Salud Ocupacional</title>
+    <title>Presupuesto Servicios técnicos</title>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <!-- DataTables Buttons CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
@@ -53,16 +53,16 @@
         .toast.success { background-color: #28a745; }
         .toast.error { background-color: #dc3545; }
 
-        /* Spinner */
+         /* Spinner */
         .spinner {
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #fff;
-            border-right: 2px solid #fff;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #fff;
             border-radius: 50%;
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
             display: inline-block;
-            animation: spin 0.6s linear infinite;
+            margin-left: 10px;
             vertical-align: middle;
         }
         @keyframes spin {
@@ -280,13 +280,13 @@
     </style>
 </head>
 <body>
-    <h2>Presupuesto Salud ocupacional</h2>
+    <h2>Presupuesto Servicios técnicos</h2>
     <div class="btn-group_bd">
     <!-- Grupo: Guardar / Subir presupuesto -->
     <div class="btn-section1">
         {% comment %} <button id="cargarBase">📂 Cargar presupuesto anterior</button> {% endcomment %}
         <button id="guardarTempBtn">💾 Guardar cambios</button>
-        <form id="subirPresupuestoForm" method="post" action="{% url 'subir_presupuesto_ocupacional' %}" style="display:inline;">
+        <form id="subirPresupuestoForm" method="post" action="{% url 'subir_presupuesto_servicios_tecnicos' %}" style="display:inline;">
             {% csrf_token %}
             <button type="submit" id="subirBtn">⬆️ Subir Presupuesto proyectado</button>
         </form>
@@ -407,16 +407,16 @@
         let editando = false; // 🔥 Bandera global
         // Botón Ir a la tabla presupuesto tecnología
         document.getElementById("btnTabla").addEventListener("click", function () {
-            window.location.href = "{% url 'presupuestoOcupacional' %}";
+            window.location.href = "{% url 'presupuestoServiciosTecnicos' %}";
         });
         // Botón Ir a la tabla presupuesto tecnología aprovado
         document.getElementById("btnTablaAprovado").addEventListener("click", function () {
-            window.location.href = "{% url 'presupuestoAprobadoOcupacional' %}";
+            window.location.href = "{% url 'presupuestoAprobadoServiciosTecnicos' %}";
         });
         cargarOpciones();
         let table = $('#tempTable').DataTable({
             ajax: {
-                url: "{% url 'obtener_ocupacional_temp' %}",
+                url: "{% url 'obtener_servicios_tecnicos_temp' %}",
                 dataSrc: ""
             },
             scrollX: true,   // 🔥 Activa scroll horizontal
@@ -479,7 +479,7 @@
                 {
                     extend: 'excelHtml5',
                     text: '📥 Exportar a Excel',
-                    filename: 'presupuesto_tecnologia',
+                    filename: 'presupuesto_servicios_tecnicos',
                     exportOptions: {
                     columns: ':visible',
                         format: {
@@ -833,7 +833,7 @@
             $spinner.show();
             $btn.prop("disabled", true);
 
-            $.post("{% url 'subir_presupuesto_ocupacional' %}", {
+            $.post("{% url 'subir_presupuesto_servicios_tecnicos' %}", {
                 csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val()
             }, function(response) {
                 if (response.success) {
@@ -897,26 +897,24 @@
         });
 
         // Cargar datos base
-        $('#cargarBase').on('click', function() {
-            let $btn = $(this);
-            let $spinner = $btn.find(".spinner");
+        $(document).on("click", "#cargarBase", function () {
+            let boton = $(this);
+            boton.prop("disabled", true).append('<span class="spinner"></span>');
 
-            // Mostrar spinner y deshabilitar botón
-            $spinner.show();
-            $btn.prop("disabled", true);
-
-            $.get("{% url 'cargar_ocupacional_base' %}", function() {
+            $.ajax({
+            url: "{% url 'cargar_servicios_tecnicos_base' %}",
+            type: "GET",
+            success: function() {
                 table.ajax.reload();
-                showToast("Datos cargados desde plantilla gastos 📂", "success");
-            })
-            .fail(function() {
+            },
+            error: function(err) {
                 showToast("Error al cargar datos ❌", "error");
-            })
-            .always(function() {
-                // Ocultar spinner y reactivar botón
-                $spinner.hide();
-                $btn.prop("disabled", false);
-            });
+            },
+            complete: function() {
+                boton.prop("disabled", false).find(".spinner").remove();
+                showToast("Datos cargados desde plantilla gastos 📂", "success");
+            }
+        });
         });
 
         // Configurar CSRF para AJAX
@@ -943,7 +941,7 @@
             $btn.prop("disabled", true);
 
             $.ajax({
-                url: "{% url 'guardar_ocupacional_temp' %}",
+                url: "{% url 'guardar_servicios_tecnicos_temp' %}",
                 type: "POST",
                 data: JSON.stringify(data),
                 contentType: "application/json",

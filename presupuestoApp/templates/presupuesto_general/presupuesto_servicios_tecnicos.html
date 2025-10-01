@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Presupuesto Servicios técnicos</title>
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <!-- DataTables Buttons CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+        }
+        h2 {
+            text-align: center;
+        }
+        table.dataTable thead th {
+            background-color: #525252ff;
+            color: white;
+        }
+        .dataTables_wrapper {
+            width: 100% !important;
+            margin: 20px auto;
+        }
+        #btnTabla {
+            position: relative;
+            padding: 8px 16px;
+            border: none;
+            background-color: #646464ff;
+            color: white;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Spinner circular */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Contenedor general */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Estilo base */
+        .toast {
+            min-width: 250px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.5s ease-in-out;
+        }
+
+        /* Toast visible */
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* Colores */
+        .toast.success {
+            background-color: #28a745;
+        }
+        .toast.error {
+            background-color: #dc3545;
+        }
+
+
+    </style>
+</head>
+<body>
+    <h2>Presupuesto Servicios técnicos Proyectado</h2>
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <!-- Filtros -->
+    <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">
+        <div>
+            <label for="versionSelect"><b>Versión:</b></label>
+            <select id="versionSelect">
+                {% for v in versiones %}
+                    <option value="{{ v }}" {% if v == ultima_version %}selected{% endif %}>
+                        {{ v }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <!-- Contenedor de botones -->
+    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+        <button id="btnTabla">Ir a tabla auxiliar de presupuesto</button>
+        <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
+            Borrar Presupuesto
+        </button>
+    </div>
+    
+    <table id="presupuestoTable" class="display">
+        <thead>
+            <tr>
+                <th>Centro trabajo</th>
+                <th>Nombre centro</th>
+                <th>Código costo</th>
+                <th>Responsable</th>
+                <th>Cuenta</th>
+                <th>Cuenta Mayor</th>
+                <th>Detalle Cuenta</th>
+                <th>Sede distribucción</th>
+                <th>Proveedor</th>
+                <th>Enero</th>
+                <th>Febrero</th>
+                <th>Marzo</th>
+                <th>Abril</th>
+                <th>Mayo</th>
+                <th>Junio</th>
+                <th>Julio</th>
+                <th>Agosto</th>
+                <th>Septiembre</th>
+                <th>Octubre</th>
+                <th>Noviembre</th>
+                <th>Diciembre</th>
+                <th>Total</th>
+                <th>Comentario</th>
+            </tr>
+        </thead>
+    </table>
+
+    <script>
+       $(document).ready(function () {
+            let versionActual = $("#versionSelect").val();
+            let table = $('#presupuestoTable').DataTable({
+                ajax: {
+                    url: "{% url 'obtener_presupuesto_servicios_tecnicos' %}",
+                    data: function (d) {
+                        d.version = versionActual;  // 🔥 enviar versión seleccionada al backend
+                    }
+                },
+                columns: [
+                { data: "centro_tra" },
+                { data: "nombre_cen" },
+                { data: "codcosto" },
+                { data: "responsable" },
+                { data: "cuenta" },
+                { data: "cuenta_mayor" },
+                { data: "detalle_cuenta" },
+                { data: "sede_distribucion" },
+                { data: "proveedor" },
+                { data: "enero", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "febrero", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "marzo",  render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "abril", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "mayo", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "junio", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "julio", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "agosto", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "septiembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "octubre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "noviembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "diciembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "total", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                { data: "comentario" }
+                ],
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+                },
+                dom: 'Bfltip', // 🔥 agrega botones arriba de la tabla
+            buttons: [
+                {
+                    extend: 'excelHtml5',
+                    text: '📥 Exportar a Excel',
+                    filename: 'presupuesto_servicios_tecnicos',
+                    exportOptions: {
+                        modifier: {
+                            page: 'all',   // 🔥 Exporta todas las páginas
+                            search: 'applied',
+                            order: 'applied'
+                        },
+                        columns: ':not(:first-child)' // 🔥 excluye columna "Acciones"
+                    }
+                }
+            ]
+                
+            });
+            // 🔥 Recargar tabla al cambiar versión
+            $("#versionSelect").on("change", function () {
+                versionActual = $(this).val();
+                table.ajax.reload();
+            });
+        
+            // 🔴 Botón para borrar PresupuestoNomina
+            $("#btnBorrar").on("click", function () {
+                if (!confirm("⚠️ ¿Estás seguro de borrar todo el presupuesto? Esta acción no se puede deshacer.")) {
+                    return;
+                }
+
+                $.ajax({
+                    url: "{% url 'borrar_presupuesto_servicios_tecnicos' %}", // 🔥 Nueva vista Django
+                    type: "POST",
+                    headers: { "X-CSRFToken": $("meta[name='csrf-token']").attr("content") },
+                    success: function (response) {
+                        showToast("Presupuesto eliminado correctamente ✅", "success");
+                        table.ajax.reload(null, false); // recarga sin perder paginación
+                    },
+                    error: function (xhr) {
+                        showToast("Error al borrar ❌: " + xhr.responseText, "error");
+                    }
+                });
+            });
+        });
+
+    // Función para mostrar toasts
+    function showToast(message, type = "success", duration = 3000) {
+        let container = document.getElementById("toastContainer");
+
+        // Crear toast
+        let toast = document.createElement("div");
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+
+        // Insertar en el contenedor
+        container.appendChild(toast);
+
+        // Forzar reflow para animación
+        setTimeout(() => toast.classList.add("show"), 50);
+
+        // Ocultar y eliminar después de "duration"
+        setTimeout(() => {
+            toast.classList.remove("show");
+            setTimeout(() => toast.remove(), 500); // eliminar después de animación
+        }, duration);
+    }
+
+    // Botón Ir a la tabla de sueldos
+    document.getElementById("btnTabla").addEventListener("click", function () {
+        window.location.href = "{% url 'tabla_auxiliar_servicios_tecnicos' %}";
+    });
+    </script>
+    <!-- DataTables Buttons JS -->
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</body>
+</html>
