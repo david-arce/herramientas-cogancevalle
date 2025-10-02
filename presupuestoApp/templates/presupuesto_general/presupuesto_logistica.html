@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>Presupuesto Logistica</title>
+    <title>Presupuesto Logística</title>
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <!-- DataTables Buttons CSS -->
@@ -12,7 +12,10 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-
+    <!-- CSS de FixedHeader -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
+    <!-- JS de FixedHeader -->
+    <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -22,7 +25,7 @@
             text-align: center;
         }
         table.dataTable thead th {
-            background-color: #525252ff;
+            background-color: #1F3A93;
             color: white;
         }
         .dataTables_wrapper {
@@ -165,7 +168,7 @@
     </style>
 </head>
 <body>
-    <h2>Presupuesto Logistica Proyectado</h2>
+    <h2>Presupuesto Logística Proyectado</h2>
     <div class="toast-container" id="toastContainer"></div>
     
     <!-- Filtros -->
@@ -275,22 +278,23 @@
                     url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
                 },
                 dom: 'Bfltip', // 🔥 agrega botones arriba de la tabla
-            buttons: [
-                {
-                    extend: 'excelHtml5',
-                    text: '📥 Exportar a Excel',
-                    filename: 'presupuesto_logistica',
-                    exportOptions: {
-                        modifier: {
-                            page: 'all',   // 🔥 Exporta todas las páginas
-                            search: 'applied',
-                            order: 'applied'
-                        },
-                        columns: ':not(:first-child)' // 🔥 excluye columna "Acciones"
+                buttons: [
+                    {
+                        extend: 'excelHtml5',
+                        text: '📥 Exportar a Excel',
+                        filename: 'presupuesto_logistica',
+                        exportOptions: {
+                            modifier: {
+                                page: 'all',   // 🔥 Exporta todas las páginas
+                                search: 'applied',
+                                order: 'applied'
+                            },
+                            columns: ':not(:first-child)' // 🔥 excluye columna "Acciones"
+                        }
                     }
-                }
-            ]
-                
+                ],
+                fixedHeader: true,
+                scrollX: true,
             });
             // 🔥 Recargar tabla al cambiar versión
             $("#versionSelect").on("change", function () {

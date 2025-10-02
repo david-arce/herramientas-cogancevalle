@@ -18,7 +18,7 @@
         td.editable { background: #f8f9fa; cursor: pointer; }
         button { margin: 10px; }
         table.dataTable thead th {
-            background-color: #525252ff;
+            background-color: #1F3A93;
             color: white;
         }
 
@@ -148,50 +148,50 @@
 
         /*botones section*/
         .btn-section1 button { 
-        margin: 3px; 
-        padding: 3px 12px; 
-        border: 1px solid #ffffffff; 
-        border-radius: 6px; 
-        cursor: pointer; 
-        font-size: 14px; 
-        background: #5e5e5eff; 
-        color: #ffffffff; 
-        transition: all 0.2s ease; 
+            margin: 3px; 
+            padding: 3px 12px; 
+            border: 1px solid #ffffffff; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 14px; 
+            background: #5e5e5eff; 
+            color: #ffffffff; 
+            transition: all 0.2s ease; 
         }
         .btn-section1 button:hover  { 
-            background: #e2e6ea; 
+            background: #8b8b8bff; 
             border-color: #bbb;
             color: black; 
         }
         .btn-section2 button {
-        margin: 3px;
-        padding: 3px 12px;
-        border: 1px solid #ffffffff; 
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        background: #5e5e5eff;
-        color: #ffffffff;
-        transition: all 0.2s ease;
+            margin: 3px;
+            padding: 3px 12px;
+            border: 1px solid #ffffffff; 
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            background: #5e5e5eff;
+            color: #ffffffff;
+            transition: all 0.2s ease;
         }
         .btn-section2 button:hover  {
-            background: #e2e6ea;
+            background: #a3a3a3ff;
             border-color: #bbb;
             color: black;
         }
         .btn-section3 button {
-        margin: 3px;
-        padding: 3px 12px;
-        border: 1px solid #ffffffff; 
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        background: #5e5e5eff;
-        color: #ffffffff;
-        transition: all 0.2s ease;
+            margin: 3px;
+            padding: 3px 12px;
+            border: 1px solid #ffffffff; 
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            background: #5e5e5eff;
+            color: #ffffffff;
+            transition: all 0.2s ease;
         }
         .btn-section3 button:hover  {
-            background: #e2e6ea;
+            background: #a3a3a3ff;
             border-color: #bbb;
             color: black;
         }
@@ -207,7 +207,7 @@
         transition: all 0.2s ease;
         }
         .btn-section4 button:hover  {
-            background: #e2e6ea;
+            background: #a3a3a3ff;
             border-color: #bbb;
             color: black;
         }
@@ -276,7 +276,12 @@
             background: #0069d9;
         }
 
-
+        #subirBtn:disabled {
+            background-color: #ccc;   /* gris */
+            color: #666;              /* texto apagado */
+            cursor: not-allowed;      /* cursor bloqueado */
+            opacity: 0.7;             /* un poco transparente */
+        }
     </style>
 </head>
 <body>
@@ -286,10 +291,8 @@
     <div class="btn-section1">
         {% comment %} <button id="cargarBase">📂 Cargar presupuesto anterior</button> {% endcomment %}
         <button id="guardarTempBtn">💾 Guardar cambios</button>
-        <form id="subirPresupuestoForm" method="post" action="{% url 'subir_presupuesto_ocupacional' %}" style="display:inline;">
-            {% csrf_token %}
-            <button type="submit" id="subirBtn">⬆️ Subir Presupuesto proyectado <span class="spinner" style="display:none; margin-left:8px;"></button>
-        </form>
+        <button type="button" id="subirBtn">⬆️ Subir Presupuesto proyectado <span class="spinner" style="display:none; margin-left:8px;"></span></button>
+
     </div>
     
     <!-- Grupo: Navegación -->
@@ -307,7 +310,7 @@
     <!-- Grupo: Otras acciones -->
     <div class="btn-section4">
         <button id="agregarFila" title="Agregar fila vacia al final de la tabla">➕ Agregar fila vacía</button>
-        <button onclick="document.getElementById('manualModal').style.display='block'">📘 Ver Manual</button>
+        <button onclick="document.getElementById('manualModal').style.display='block'">📘 Ver Manual de Cuentas</button>
     </div>
 </div>
 
@@ -340,7 +343,7 @@
 <div id="modalSubir" class="modal" style="display:none;" aria-hidden="true">
   <div class="modal-content">
     <div class="modal-header">📤 Confirmar subida</div>
-    <p>¿Quieres subir el presupuesto proyectado?</p>
+    <p>Recuerda guardar los cambios antes de subir el presupuesto proyectado. ¿Quieres continuar?</p>
     <div class="modal-footer">
       <button type="button" class="btn-cancel" data-modal="modalSubir">Cancelar</button>
       <button type="button" class="btn-confirm-upload" id="confirmSubir">Subir</button>
@@ -348,6 +351,17 @@
   </div>
 </div>
 
+<!-- Modal Confirmación ir a tabla presupuesto proyectado -->
+<div id="modalIrTabla" class="modal" style="display:none;" aria-hidden="true">
+    <div class="modal-content">
+      <div class="modal-header">📤 Confirmar acción</div>
+      <p>Recuerda guardar los cambios antes de salir. ¿Quieres continuar?</p>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" data-modal="modalIrTabla">Cancelar</button>
+        <button type="button" class="btn-confirm-upload" id="confirmIrTabla">Continuar</button>
+      </div>
+    </div>
+</div>
 
 
     <div style="overflow-x:auto; max-width:100%;">
@@ -405,25 +419,35 @@
     $(document).ready(function() {
         let persistentToast = null; // 🔥 guardamos referencia al toast de advertencia
         let editando = false; // 🔥 Bandera global
-        
-        // Botón Ir a la tabla presupuesto tecnología
-        document.getElementById("btnTabla").addEventListener("click", function () {
-            window.location.href = "{% url 'presupuestoOcupacional' %}";
+        function abrirModal(id) {
+            document.getElementById(id).style.display = "block";
+        }
+        function cerrarModal(id) {
+            document.getElementById(id).style.display = "none";
+        }
+
+        // confirmacion ir a tabla presupuesto proyectado
+        document.getElementById("btnTabla").addEventListener("click", function() {
+            abrirModal("modalIrTabla");
+            document.getElementById("confirmIrTabla").onclick = function() {
+                window.location.href = "{% url 'presupuestoOcupacional' %}";
+            };
         });
+
         // Botón Ir a la tabla presupuesto tecnología aprovado
-        document.getElementById("btnTablaAprovado").addEventListener("click", function () {
-            window.location.href = "{% url 'presupuestoAprobadoOcupacional' %}";
+        document.getElementById("btnTablaAprovado").addEventListener("click", function() {
+            abrirModal("modalIrTabla");
+            document.getElementById("confirmIrTabla").onclick = function() {
+                window.location.href = "{% url 'presupuestoAprobadoOcupacional' %}";
+            };
         });
+
         cargarOpciones();
         let table = $('#tempTable').DataTable({
             ajax: {
                 url: "{% url 'obtener_ocupacional_temp' %}",
                 dataSrc: ""
             },
-            scrollX: true,   // 🔥 Activa scroll horizontal
-            scrollY: "500px",   // altura de la tabla
-            scrollCollapse: true,
-            paging: false,      // opcional: sin paginación
             columns: [
                 {   // 🔥 Columna de selección
                     data: null,
@@ -482,7 +506,7 @@
                     text: '📥 Exportar a Excel',
                     filename: 'presupuesto_sst',
                     exportOptions: {
-                    columns: ':visible',
+                    columns: ':visible:not(:lt(2))',
                         format: {
                             body: function (data, row, column, node) {
                             // Helper: quitar etiquetas HTML y trim
@@ -495,7 +519,7 @@
                             var txt = stripHtml(data);
 
                             // Índices de tus columnas numéricas según tu DataTable (0-based)
-                            var moneyCols = [6,7,8,9,10,11,12,13,14,15,16,17,18];
+                            var moneyCols = [4,5,6,7,8,9,10,11,12,13,14,15,16];
                             
 
                             // Si es columna de dinero: quitar separadores de miles, símbolo y ajustar decimal
@@ -516,6 +540,10 @@
                     }
                 }
             ],
+            scrollX: true,   // 🔥 Activa scroll horizontal
+            scrollY: "500px",   // altura de la tabla
+            scrollCollapse: true, // si hay pocas filas, la tabla se ajusta
+            paging: false,      // opcional: sin paginación
             fixedHeader: true   // 🔥 Aquí activamos el header fijo
         });
         // función para recalcular total de una fila
@@ -825,12 +853,6 @@
 
         let filaAEliminar = null; // 🔥 Guardar la fila temporal
 
-        function abrirModal(id) {
-            document.getElementById(id).style.display = "block";
-        }
-        function cerrarModal(id) {
-            document.getElementById(id).style.display = "none";
-        }
         // Botones cancelar de cualquier modal
         $('.btn-cancel').on('click', function() {
             let modalId = $(this).data('modal'); // viene del atributo data-modal="..."
@@ -838,11 +860,11 @@
         });
 
         // ⬆️ Confirmación de subir presupuesto
-        $('#subirPresupuestoForm').on('submit', function(e) {
+        $('#subirBtn').on('click', function(e) {
             e.preventDefault(); // Evita submit inmediato
             abrirModal('modalSubir');
         });
-
+        
         // Acción al confirmar subida
         $('#confirmSubir').on('click', function() {
             cerrarModal('modalSubir');

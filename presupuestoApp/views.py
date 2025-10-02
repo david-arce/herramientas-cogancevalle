@@ -6,7 +6,7 @@ from pyexpat.errors import messages
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 import pandas as pd
-from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoAuxilioMovilidad, PresupuestoAuxilioMovilidadAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado, PresupuestoServiciosTecnicos, PresupuestoServiciosTecnicosAux, PresupuestoServiciosTecnicosAprobado, PresupuestoLogistica, PresupuestoLogisticaAux, PresupuestoLogisticaAprobado
+from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoAuxilioMovilidad, PresupuestoAuxilioMovilidadAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado, PresupuestoServiciosTecnicos, PresupuestoServiciosTecnicosAux, PresupuestoServiciosTecnicosAprobado, PresupuestoLogistica, PresupuestoLogisticaAux, PresupuestoLogisticaAprobado, PresupuestoGestionRiesgos, PresupuestoGestionRiesgosAux, PresupuestoGestionRiesgosAprobado, PresupuestoGH, PresupuestoGHAux, PresupuestoGHAprobado, PresupuestoAlmacenTulua, PresupuestoAlmacenTuluaAux, PresupuestoAlmacenTuluaAprobado
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.db.models.functions import Concat
 from django.db.models import Sum, Max
@@ -6198,4 +6198,440 @@ def borrar_presupuesto_logistica(request):
         return JsonResponse({"status": "ok", "message": "Presupuesto de logística eliminado"})
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
-                
+
+#---------PRESUPUESTO GESTION DE RIESGOS-----------------------------
+@login_required
+def presupuesto_gestion_riesgos(request):
+    usuarios_permitidos = ['admin', 'GESTION_RIESGOS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    # 🔹 obtener versiones disponibles
+    versiones = (
+        PresupuestoGestionRiesgos.objects
+        .values_list("version", flat=True)
+        .distinct()
+        .order_by("version")
+    )
+    ultima_version = max(versiones) if versiones else 1
+    return render(request, "presupuesto_general/presupuesto_gestion_riesgos.html", {"versiones": versiones, "ultima_version": ultima_version})
+
+def obtener_presupuesto_gestion_riesgos(request):
+    version = request.GET.get("version")  # 🔥 versión recibida
+    qs = PresupuestoGestionRiesgos.objects.all()
+    if version:
+        qs = qs.filter(version=version)
+
+    data = list(qs.values())
+    return JsonResponse({"data": data}, safe=False)
+
+def presupuesto_aprobado_gestion_riesgos(request):
+    return render(request, "presupuesto_general/presupuesto_aprobado_gestion_riesgos.html")
+
+def obtener_presupuesto_aprobado_gestion_riesgos(request):
+    gestion_riesgos_aprobado = list(PresupuestoGestionRiesgosAprobado.objects.values())
+    return JsonResponse({"data": gestion_riesgos_aprobado}, safe=False)
+
+def tabla_auxiliar_gestion_riesgos(request):
+    # 📌 Definir fecha límite
+    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
+    hoy = datetime.date.today()
+    # 🚫 Si ya pasó la fecha, negar acceso
+    if hoy > fecha_limite:
+        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
+                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
+    # ✅ Si aún no llega la fecha, mostrar vista normal
+    return render(request, "presupuesto_general/aux_presupuesto_gestion_riesgos.html")
+
+def subir_presupuesto_gestion_riesgos(request):
+    if request.method == "POST":
+        temporales = PresupuestoGestionRiesgosAux.objects.all()
+        fecha_limite = datetime.date(2025, 10, 30)
+        if not temporales.exists():
+            return JsonResponse({
+                "success": False,
+                "msg": "No hay datos temporales para subir ❌"
+            }, status=400)
+        # 📌 Fecha actual
+        fecha_hoy = timezone.now().date()
+        # 📌 Obtener versión global (tomando la última registrada en la tabla 
+        ultima_version = PresupuestoGestionRiesgos.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
+        nueva_version = ultima_version + 1
+        for temp in temporales:
+            # --- Guardar en tabla principal ---
+            obj, created = PresupuestoGestionRiesgos.objects.update_or_create(
+                id=temp.id,
+                defaults={
+                    "centro_tra": temp.centro_tra,
+                    "nombre_cen": temp.nombre_cen,
+                    "codcosto": temp.codcosto,
+                    "responsable": temp.responsable,
+                    "cuenta": temp.cuenta,  
+                    "cuenta_mayor": temp.cuenta_mayor,
+                    "detalle_cuenta": temp.detalle_cuenta,
+                    "sede_distribucion": temp.sede_distribucion,
+                    "proveedor": temp.proveedor,
+                    "enero": temp.enero,
+                    "febrero": temp.febrero,
+                    "marzo": temp.marzo,
+                    "abril": temp.abril,
+                    "mayo": temp.mayo,
+                    "junio": temp.junio,
+                    "julio": temp.julio,
+                    "agosto": temp.agosto,
+                    "septiembre": temp.septiembre,
+                    "octubre": temp.octubre,
+                    "noviembre": temp.noviembre,
+                    "diciembre": temp.diciembre,
+                    "total": temp.total,
+                    "comentario": temp.comentario,
+                    "version": nueva_version,
+                    "fecha": fecha_hoy,
+                }
+            )
+            # --- Guardar en tabla aprobada si aplica ---
+            if fecha_hoy <= fecha_limite:
+                PresupuestoGestionRiesgosAprobado.objects.update_or_create(
+                    id=temp.id,
+                    defaults={
+                        "centro_tra": temp.centro_tra,
+                        "nombre_cen": temp.nombre_cen,
+                        "codcosto": temp.codcosto,
+                        "responsable": temp.responsable,
+                        "cuenta": temp.cuenta,  
+                        "cuenta_mayor": temp.cuenta_mayor,
+                        "detalle_cuenta": temp.detalle_cuenta,
+                        "sede_distribucion": temp.sede_distribucion,
+                        "proveedor": temp.proveedor,
+                        "enero": temp.enero,
+                        "febrero": temp.febrero,
+                        "marzo": temp.marzo,
+                        "abril": temp.abril,
+                        "mayo": temp.mayo,
+                        "junio": temp.junio,
+                        "julio": temp.julio,
+                        "agosto": temp.agosto,
+                        "septiembre": temp.septiembre,
+                        "octubre": temp.octubre,
+                        "noviembre": temp.noviembre,
+                        "diciembre": temp.diciembre,
+                        "total": temp.total,
+                        "comentario": temp.comentario,
+                        "version": nueva_version,
+                        "fecha": fecha_hoy,
+                    }
+                )
+        return JsonResponse({
+            "success": True,
+            "msg": f"Presupuesto de gestion de riesgos actualizado ✅ (versión {nueva_version})"
+        })
+    return JsonResponse({
+        "success": False,
+        "msg": "Método no permitido"
+    }, status=405)
+    
+def guardar_gestion_riesgos(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
+            }
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+                registros.append(PresupuestoGestionRiesgosAux(**row_filtrado))
+            # ✅ Transacción atómica → si algo falla, no se borra nada
+            with transaction.atomic():
+                # limpio toda la tabla auxiliar antes de insertar
+                PresupuestoGestionRiesgosAux.objects.all().delete()
+                PresupuestoGestionRiesgosAux.objects.bulk_create(registros)
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+def obtener_gestion_riesgos_temp(request):
+    data = list(PresupuestoGestionRiesgosAux.objects.values())
+    return JsonResponse(data, safe=False)
+
+def cargar_gestion_riesgos_base(request):
+    # limpio tabla auxiliar de gestion de riesgos antes de recalcular
+    PresupuestoGestionRiesgosAux.objects.all().delete()
+    base_data = Plantillagastos2025.objects.values(
+       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+    )
+    # filtrar por responsable = 'LUIS FERNANDO VARGAS'
+    base_data = base_data.filter(responsable__iexact="LINA RICARDO")
+    
+    for row in base_data:
+        PresupuestoGestionRiesgosAux.objects.create(
+            centro_tra=row["centro_tra"],
+            nombre_cen=row["nombre_cen"],
+            codcosto=row["codcosto"],
+            responsable=row["responsable"],
+            cuenta=row["cuenta"],
+            cuenta_mayor=row["cuenta_mayor"],
+            detalle_cuenta=row["detalle_cuenta"],
+            sede_distribucion=row["sede_distribucion"],
+            proveedor=row["proveedor"],
+            enero=row["enero"],
+            febrero=row["febrero"],
+            marzo=row["marzo"],
+            abril=row["abril"],
+            mayo=row["mayo"],
+            junio=row["junio"],
+            julio=row["julio"], 
+            agosto=row["agosto"],
+            septiembre=row["septiembre"],
+            octubre=row["octubre"],
+            noviembre=row["noviembre"],
+            diciembre=row["diciembre"],
+            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
+            comentario = ""
+        )
+    
+    return JsonResponse({"status": "ok"})
+
+@csrf_exempt
+def borrar_presupuesto_gestion_riesgos(request):
+    if request.method == "POST":
+        version = request.POST.get("version")  # 🔥 versión enviada desde el frontend
+
+        if not version:
+            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
+
+        # borrar solo la versión seleccionada
+        PresupuestoGestionRiesgos.objects.filter(version=version).delete()
+
+        # 📌 Fecha límite
+        fecha_limite = datetime.date(2025, 10, 30)
+        if timezone.now().date() <= fecha_limite:
+            PresupuestoGestionRiesgosAprobado.objects.filter(version=version).delete()
+        return JsonResponse({"status": "ok", "message": "Presupuesto de gestión de riesgos eliminado"})
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+
+#--------PRESUPUESTO GH------------------
+@login_required
+def presupuesto_gh(request):
+    usuarios_permitidos = ['admin', 'GESTION_HUMANA']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    # 🔹 obtener versiones disponibles
+    versiones = (
+        PresupuestoGH.objects
+        .values_list("version", flat=True)
+        .distinct()
+        .order_by("version")
+    )
+    ultima_version = max(versiones) if versiones else 1
+    return render(request, "presupuesto_general/presupuesto_gh.html", {"versiones": versiones, "ultima_version": ultima_version})
+
+def obtener_presupuesto_gh(request):
+    version = request.GET.get("version")  #🔥 versión recibida
+    qs = PresupuestoGH.objects.all()
+    if version:
+        qs = qs.filter(version=version)
+    
+    data = list(qs.values())
+    return JsonResponse({"data": data}, safe=False)
+
+def presupuesto_aprobado_gh(request):
+    return render(request, "presupuesto_general/presupuesto_aprobado_gh.html")
+
+def obtener_presupuesto_aprobado_gh(request):
+    gh_aprobado = list(PresupuestoGHAprobado.objects.values())
+    return JsonResponse({"data": gh_aprobado}, safe=False)
+
+def tabla_auxiliar_gh(request):
+    # 📌 Definir fecha límite
+    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
+    hoy = datetime.date.today()
+    # 🚫 Si ya pasó la fecha, negar acceso
+    if hoy > fecha_limite:
+        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado despueś del "
+                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
+    # ✅ Si aún no llega la fecha, mostrar vista normal
+    return render(request, "presupuesto_general/aux_presupuesto_gh.html")
+
+def subir_presupuesto_gh(request):
+    if request.method == "POST":
+        temporales = PresupuestoGHAux.objects.all()
+        fecha_limite = datetime.date(2025, 10, 30)
+        if not temporales.exists():
+            return JsonResponse({
+                "success": False,
+                "msg": "No hay datos temporales para subir ❌"
+            }, status=400)
+        # 📌 Fecha actual
+        fecha_hoy = timezone.now().date()
+        # 📌 Obtener versión global (tomando la última registrada en la tabla
+        ultima_version = PresupuestoGH.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
+        nueva_version = ultima_version + 1
+        for temp in temporales:
+            # --- Guardar en tabla principal ---
+            obj, created = PresupuestoGH.objects.update_or_create(
+                id=temp.id,
+                defaults={
+                    "centro_tra": temp.centro_tra,
+                    "nombre_cen": temp.nombre_cen,
+                    "codcosto": temp.codcosto,
+                    "responsable": temp.responsable,
+                    "cuenta": temp.cuenta,  
+                    "cuenta_mayor": temp.cuenta_mayor,
+                    "detalle_cuenta": temp.detalle_cuenta,
+                    "sede_distribucion": temp.sede_distribucion,
+                    "proveedor": temp.proveedor,
+                    "enero": temp.enero,
+                    "febrero": temp.febrero,
+                    "marzo": temp.marzo,
+                    "abril": temp.abril,
+                    "mayo": temp.mayo,
+                    "junio": temp.junio,
+                    "julio": temp.julio,
+                    "agosto": temp.agosto,
+                    "septiembre": temp.septiembre,
+                    "octubre": temp.octubre,
+                    "noviembre": temp.noviembre,
+                    "diciembre": temp.diciembre,
+                    "total": temp.total,
+                    "comentario": temp.comentario,
+                    "version": nueva_version,
+                    "fecha": fecha_hoy,
+                }
+            )
+            # --- Guardar en tabla aprobada si aplica ---
+            if fecha_hoy <= fecha_limite:
+                PresupuestoGHAprobado.objects.update_or_create(
+                    id=temp.id,
+                    defaults={
+                        "centro_tra": temp.centro_tra,
+                        "nombre_cen": temp.nombre_cen,
+                        "codcosto": temp.codcosto,
+                        "responsable": temp.responsable,
+                        "cuenta": temp.cuenta,  
+                        "cuenta_mayor": temp.cuenta_mayor,
+                        "detalle_cuenta": temp.detalle_cuenta,
+                        "sede_distribucion": temp.sede_distribucion,
+                        "proveedor": temp.proveedor,
+                        "enero": temp.enero,
+                        "febrero": temp.febrero,
+                        "marzo": temp.marzo,
+                        "abril": temp.abril,
+                        "mayo": temp.mayo,
+                        "junio": temp.junio,
+                        "julio": temp.julio,
+                        "agosto": temp.agosto,
+                        "septiembre": temp.septiembre,
+                        "octubre": temp.octubre,
+                        "noviembre": temp.noviembre,
+                        "diciembre": temp.diciembre,
+                        "total": temp.total,
+                        "comentario": temp.comentario,
+                        "version": nueva_version,
+                        "fecha": fecha_hoy,
+                    }
+                )
+        return JsonResponse({
+            "success": True,
+            "msg": f"Presupuesto de GH actualizado ✅ (versión {nueva_version})"
+        })
+    return JsonResponse({
+        "success": False,
+        "msg": "Método no permitido"
+    }, status=405)
+
+def guardar_gh_temp(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
+            }
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+                registros.append(PresupuestoGHAux(**row_filtrado))
+            # ✅ Transacción atómica → si algo falla, no se borra nada
+            with transaction.atomic():
+                # limpio toda la tabla auxiliar antes de insertar
+                PresupuestoGHAux.objects.all().delete()
+                PresupuestoGHAux.objects.bulk_create(registros)
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+def obtener_gh_temp(request):
+    data = list(PresupuestoGHAux.objects.values())
+    return JsonResponse(data, safe=False)
+
+def cargar_gh_base(request):
+    # limpio tabla auxiliar de gh antes de recalcular
+    PresupuestoGHAux.objects.all().delete()
+    base_data = Plantillagastos2025.objects.values(
+       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+    )
+    # filtrar por responsable = 'LUIS FERNANDO VARGAS'
+    base_data = base_data.filter(responsable__iexact="MARTHA GH")
+    
+    for row in base_data:
+        PresupuestoGHAux.objects.create(
+            centro_tra=row["centro_tra"],
+            nombre_cen=row["nombre_cen"],
+            codcosto=row["codcosto"],
+            responsable=row["responsable"],
+            cuenta=row["cuenta"],
+            cuenta_mayor=row["cuenta_mayor"],
+            detalle_cuenta=row["detalle_cuenta"],
+            sede_distribucion=row["sede_distribucion"],
+            proveedor=row["proveedor"],
+            enero=row["enero"],
+            febrero=row["febrero"],
+            marzo=row["marzo"],
+            abril=row["abril"],
+            mayo=row["mayo"],
+            junio=row["junio"],
+            julio=row["julio"], 
+            agosto=row["agosto"],
+            septiembre=row["septiembre"],
+            octubre=row["octubre"],
+            noviembre=row["noviembre"],
+            diciembre=row["diciembre"],
+            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
+            comentario = ""
+        )
+    return JsonResponse({"status": "ok"})
+
+@csrf_exempt
+def borrar_presupuesto_gh(request):
+    if request.method == "POST":
+        version = request.POST.get("version")  # 🔥 versión
+        if not version:
+            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
+        # borrar solo la versión seleccionada
+        PresupuestoGH.objects.filter(version=version).delete()
+        # 📌 Fecha límite
+        fecha_limite = datetime.date(2025, 10, 30)
+        if timezone.now().date() <= fecha_limite:
+            PresupuestoGHAprobado.objects.filter(version=version).delete()
+        return JsonResponse({"status": "ok", "message": f"Presupuesto de GH versión {version} eliminado"})
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)

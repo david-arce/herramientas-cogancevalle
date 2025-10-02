@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>Presupuesto Salud Ocupacional</title>
+    <title>Presupuesto Logística</title>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <!-- DataTables Buttons CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
@@ -18,11 +18,10 @@
         td.editable { background: #f8f9fa; cursor: pointer; }
         button { margin: 10px; }
         table.dataTable thead th {
-            background-color: #525252ff;
+            background-color: #1F3A93;
             color: white;
         }
 
-        
         /* Contenedor de toasts */
         .toast-container {
             position: fixed;
@@ -275,21 +274,24 @@
         .btn-confirm-upload:hover {
             background: #0069d9;
         }
-
+        #subirBtn:disabled {
+            background-color: #ccc;   /* gris */
+            color: #666;              /* texto apagado */
+            cursor: not-allowed;      /* cursor bloqueado */
+            opacity: 0.7;             /* un poco transparente */
+        }
 
     </style>
 </head>
 <body>
-    <h2>Presupuesto Logistica</h2>
+    <h2>Presupuesto Logística</h2>
     <div class="btn-group_bd">
     <!-- Grupo: Guardar / Subir presupuesto -->
     <div class="btn-section1">
         {% comment %} <button id="cargarBase">📂 Cargar presupuesto anterior</button> {% endcomment %}
         <button id="guardarTempBtn">💾 Guardar cambios</button>
-        <form id="subirPresupuestoForm" method="post" action="{% url 'subir_presupuesto_logistica' %}" style="display:inline;">
-            {% csrf_token %}
-            <button type="submit" id="subirBtn">⬆️ Subir Presupuesto proyectado <span class="spinner" style="display:none; margin-left:8px;"></button>
-        </form>
+        <button type="button" id="subirBtn">⬆️ Subir Presupuesto proyectado <span class="spinner" style="display:none; margin-left:8px;"></span></button>
+     
     </div>
     
     <!-- Grupo: Navegación -->
@@ -307,7 +309,7 @@
     <!-- Grupo: Otras acciones -->
     <div class="btn-section4">
         <button id="agregarFila" title="Agregar fila vacia al final de la tabla">➕ Agregar fila vacía</button>
-        <button onclick="document.getElementById('manualModal').style.display='block'">📘 Ver Manual</button>
+        <button onclick="document.getElementById('manualModal').style.display='block'">📘 Ver Manual de Cuentas</button>
     </div>
 </div>
 
@@ -340,7 +342,7 @@
 <div id="modalSubir" class="modal" style="display:none;" aria-hidden="true">
   <div class="modal-content">
     <div class="modal-header">📤 Confirmar subida</div>
-    <p>¿Quieres subir el presupuesto proyectado?</p>
+    <p>Recuerda guardar los cambios antes de subir el presupuesto proyectado. ¿Quieres continuar?</p>
     <div class="modal-footer">
       <button type="button" class="btn-cancel" data-modal="modalSubir">Cancelar</button>
       <button type="button" class="btn-confirm-upload" id="confirmSubir">Subir</button>
@@ -348,6 +350,17 @@
   </div>
 </div>
 
+<!-- Modal Confirmación ir a tabla presupuesto proyectado -->
+<div id="modalIrTabla" class="modal" style="display:none;" aria-hidden="true">
+    <div class="modal-content">
+      <div class="modal-header">📤 Confirmar acción</div>
+      <p>Recuerda guardar los cambios antes de salir. ¿Quieres continuar?</p>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" data-modal="modalIrTabla">Cancelar</button>
+        <button type="button" class="btn-confirm-upload" id="confirmIrTabla">Continuar</button>
+      </div>
+    </div>
+</div>
 
 
     <div style="overflow-x:auto; max-width:100%;">
@@ -406,13 +419,26 @@
         let persistentToast = null; // 🔥 guardamos referencia al toast de advertencia
         let editando = false; // 🔥 Bandera global
         
-        // Botón Ir a la tabla presupuesto tecnología
+        function abrirModal(id) {
+            document.getElementById(id).style.display = "block";
+        }
+        function cerrarModal(id) {
+            document.getElementById(id).style.display = "none";
+        }
+        // confirmar ir a tabla presupuesto proyectado
         document.getElementById("btnTabla").addEventListener("click", function () {
-            window.location.href = "{% url 'presupuestoLogistica' %}";
+            abrirModal('modalIrTabla');
+            document.getElementById("confirmIrTabla").onclick = function() {
+                window.location.href = "{% url 'presupuestoLogistica' %}";
+            };
         });
+            
         // Botón Ir a la tabla presupuesto tecnología aprovado
         document.getElementById("btnTablaAprovado").addEventListener("click", function () {
-            window.location.href = "{% url 'presupuestoAprobadoLogistica' %}";
+            abrirModal('modalIrTabla');
+            document.getElementById("confirmIrTabla").onclick = function() {
+                window.location.href = "{% url 'presupuestoAprobadoLogistica' %}";
+            };
         });
         cargarOpciones();
         let table = $('#tempTable').DataTable({
@@ -461,6 +487,9 @@
                 { data: "total", render: numberFormat },
                 { data: "comentario" }
             ],
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            },
             createdRow: function(row, data, dataIndex) {
                 // marcar todas menos Acciones como editables
                 $('td', row).each(function(index) {
@@ -482,7 +511,7 @@
                     text: '📥 Exportar a Excel',
                     filename: 'presupuesto_sst',
                     exportOptions: {
-                    columns: ':visible',
+                    columns: ':visible:not(:lt(2))',
                         format: {
                             body: function (data, row, column, node) {
                             // Helper: quitar etiquetas HTML y trim
@@ -495,7 +524,7 @@
                             var txt = stripHtml(data);
 
                             // Índices de tus columnas numéricas según tu DataTable (0-based)
-                            var moneyCols = [6,7,8,9,10,11,12,13,14,15,16,17,18];
+                            var moneyCols = [4,5,6,7,8,9,10,11,12,13,14,15,16];
                             
 
                             // Si es columna de dinero: quitar separadores de miles, símbolo y ajustar decimal
@@ -838,7 +867,7 @@
         });
 
         // ⬆️ Confirmación de subir presupuesto
-        $('#subirPresupuestoForm').on('submit', function(e) {
+        $('#subirBtn').on('click', function(e) {
             e.preventDefault(); // Evita submit inmediato
             abrirModal('modalSubir');
         });
@@ -847,7 +876,7 @@
         $('#confirmSubir').on('click', function() {
             cerrarModal('modalSubir');
 
-            let $btn = $("#subirBtn");
+            let $btn = $(this);
             let $spinner = $btn.find(".spinner");
 
             // Mostrar spinner y deshabilitar botón

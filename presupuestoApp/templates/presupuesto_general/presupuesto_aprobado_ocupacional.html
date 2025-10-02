@@ -10,7 +10,10 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-
+    <!-- CSS de FixedHeader -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
+    <!-- JS de FixedHeader -->
+    <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -20,7 +23,7 @@
             text-align: center;
         }
         table.dataTable thead th {
-            background-color: #525252ff;
+            background-color: #1F3A93;
             color: white;
         }
         .dataTables_wrapper {
@@ -102,7 +105,6 @@
     <!-- Contenedor de botones -->
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
         <button id="btnTabla">Ir a tabla auxiliar de presupuesto</button>
-        
     </div>
     <table id="presupuestoTable" class="display">
         <thead>
@@ -164,8 +166,10 @@
                 { data: "comentario" }
                 ],
                 language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
                 },
+                scrollX: true,   // 🔥 Activa scroll horizontal
+                fixedHeader: true   // 🔥 Aquí activamos el header fijo
             });
         
         });
