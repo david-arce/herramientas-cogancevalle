@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>Presupuesto Salud Ocupacional</title>
+    <title>Presupuesto Gestión Riesgos</title>
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <!-- jQuery -->
@@ -100,7 +100,7 @@
     </style>
 </head>
 <body>
-    <h2>Presupuesto Salud Ocupacional Aprobado</h2>
+    <h2>Presupuesto Tecnología Aprobado</h2>
     <div class="toast-container" id="toastContainer"></div>
     <!-- Contenedor de botones -->
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
@@ -139,7 +139,7 @@
     <script>
        $(document).ready(function () {
             let table = $('#presupuestoTable').DataTable({
-                ajax: "{% url 'obtener_presupuesto_aprobado_ocupacional' %}",
+                ajax: "{% url 'obtener_presupuesto_aprobado_gestion_riesgos' %}",
                 columns: [
                 { data: "centro_tra" },
                 { data: "nombre_cen" },
@@ -198,7 +198,7 @@
 
     // Botón Ir a la tabla de sueldos
     document.getElementById("btnTabla").addEventListener("click", function () {
-        window.location.href = "{% url 'tabla_auxiliar_ocupacional' %}";
+        window.location.href = "{% url 'tabla_auxiliar_gestion_riesgos' %}";
     });
     </script>
 </body>

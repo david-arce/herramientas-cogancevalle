@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>Presupuesto Servicios técnicos</title>
+    <title>Presupuesto Gestion Riesgos</title>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <!-- DataTables Buttons CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
@@ -21,6 +21,7 @@
             background-color: #1F3A93;
             color: white;
         }
+
         
         /* Contenedor de toasts */
         .toast-container {
@@ -52,16 +53,16 @@
         .toast.success { background-color: #28a745; }
         .toast.error { background-color: #dc3545; }
 
-         /* Spinner */
+        /* Spinner */
         .spinner {
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top: 3px solid #fff;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #fff;
+            border-right: 2px solid #fff;
             border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            animation: spin 1s linear infinite;
+            width: 14px;
+            height: 14px;
             display: inline-block;
-            margin-left: 10px;
+            animation: spin 0.6s linear infinite;
             vertical-align: middle;
         }
         @keyframes spin {
@@ -147,15 +148,15 @@
 
         /*botones section*/
         .btn-section1 button { 
-        margin: 3px; 
-        padding: 3px 12px; 
-        border: 1px solid #ffffffff; 
-        border-radius: 6px; 
-        cursor: pointer; 
-        font-size: 14px; 
-        background: #5e5e5eff; 
-        color: #ffffffff; 
-        transition: all 0.2s ease; 
+            margin: 3px; 
+            padding: 3px 12px; 
+            border: 1px solid #ffffffff; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 14px; 
+            background: #5e5e5eff; 
+            color: #ffffffff; 
+            transition: all 0.2s ease; 
         }
         .btn-section1 button:hover  { 
             background: #8b8b8bff; 
@@ -163,34 +164,34 @@
             color: black; 
         }
         .btn-section2 button {
-        margin: 3px;
-        padding: 3px 12px;
-        border: 1px solid #ffffffff; 
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        background: #5e5e5eff;
-        color: #ffffffff;
-        transition: all 0.2s ease;
+            margin: 3px;
+            padding: 3px 12px;
+            border: 1px solid #ffffffff; 
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            background: #5e5e5eff;
+            color: #ffffffff;
+            transition: all 0.2s ease;
         }
         .btn-section2 button:hover  {
-            background: #8b8b8bff;
+            background: #a3a3a3ff;
             border-color: #bbb;
             color: black;
         }
         .btn-section3 button {
-        margin: 3px;
-        padding: 3px 12px;
-        border: 1px solid #ffffffff; 
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        background: #5e5e5eff;
-        color: #ffffffff;
-        transition: all 0.2s ease;
+            margin: 3px;
+            padding: 3px 12px;
+            border: 1px solid #ffffffff; 
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            background: #5e5e5eff;
+            color: #ffffffff;
+            transition: all 0.2s ease;
         }
         .btn-section3 button:hover  {
-            background: #8b8b8bff;
+            background: #a3a3a3ff;
             border-color: #bbb;
             color: black;
         }
@@ -206,7 +207,7 @@
         transition: all 0.2s ease;
         }
         .btn-section4 button:hover  {
-            background: #8b8b8bff;
+            background: #a3a3a3ff;
             border-color: #bbb;
             color: black;
         }
@@ -274,24 +275,24 @@
         .btn-confirm-upload:hover {
             background: #0069d9;
         }
+
         #subirBtn:disabled {
             background-color: #ccc;   /* gris */
             color: #666;              /* texto apagado */
             cursor: not-allowed;      /* cursor bloqueado */
             opacity: 0.7;             /* un poco transparente */
         }
-
     </style>
 </head>
 <body>
-    <h2>Presupuesto Servicios técnicos</h2>
+    <h2>Presupuesto Gestion Riesgos</h2>
     <div class="btn-group_bd">
     <!-- Grupo: Guardar / Subir presupuesto -->
     <div class="btn-section1">
-        {% comment %} <button id="cargarBase" >📂 Cargar presupuesto anterior <span class="spinner" style="display:none; margin-left:8px;"></span></button> {% endcomment %}
-        <button id="guardarTempBtn">💾 Guardar cambios <span class="spinner" style="display:none; margin-left:8px;"></span></button>
+        {% comment %} <button id="cargarBase">📂 Cargar presupuesto anterior</button> {% endcomment %}
+        <button id="guardarTempBtn">💾 Guardar cambios</button>
         <button type="button" id="subirBtn">⬆️ Subir Presupuesto proyectado <span class="spinner" style="display:none; margin-left:8px;"></span></button>
-      
+
     </div>
     
     <!-- Grupo: Navegación -->
@@ -309,7 +310,7 @@
     <!-- Grupo: Otras acciones -->
     <div class="btn-section4">
         <button id="agregarFila" title="Agregar fila vacia al final de la tabla">➕ Agregar fila vacía</button>
-        <button onclick="document.getElementById('manualModal').style.display='block'">📘 Ver Manual de cuentas</button>
+        <button onclick="document.getElementById('manualModal').style.display='block'">📘 Ver Manual de Cuentas</button>
     </div>
 </div>
 
@@ -361,6 +362,8 @@
       </div>
     </div>
 </div>
+
+
     <div style="overflow-x:auto; max-width:100%;">
     <table id="tempTable" class="display">
         <thead>
@@ -422,32 +425,29 @@
         function cerrarModal(id) {
             document.getElementById(id).style.display = "none";
         }
-        // confirmar ir a tabla presupuesto proyectado
-        document.getElementById("btnTabla").addEventListener("click", function () {
-            abrirModal('modalIrTabla');
+
+        // confirmacion ir a tabla presupuesto proyectado
+        document.getElementById("btnTabla").addEventListener("click", function() {
+            abrirModal("modalIrTabla");
             document.getElementById("confirmIrTabla").onclick = function() {
-                window.location.href = "{% url 'presupuestoServiciosTecnicos' %}";
+                window.location.href = "{% url 'presupuestoGestionRiesgos' %}";
             };
         });
-            
+
         // Botón Ir a la tabla presupuesto tecnología aprovado
-        document.getElementById("btnTablaAprovado").addEventListener("click", function () {
-            abrirModal('modalIrTabla');
+        document.getElementById("btnTablaAprovado").addEventListener("click", function() {
+            abrirModal("modalIrTabla");
             document.getElementById("confirmIrTabla").onclick = function() {
-                window.location.href = "{% url 'presupuestoAprobadoServiciosTecnicos' %}";
+                window.location.href = "{% url 'presupuestoAprobadoGestionRiesgos' %}";
             };
         });
 
         cargarOpciones();
         let table = $('#tempTable').DataTable({
             ajax: {
-                url: "{% url 'obtener_servicios_tecnicos_temp' %}",
+                url: "{% url 'obtener_gestion_riesgos_temp' %}",
                 dataSrc: ""
             },
-            scrollX: true,   // 🔥 Activa scroll horizontal
-            scrollY: "500px",   // altura de la tabla
-            scrollCollapse: true,
-            paging: false,      // opcional: sin paginación
             columns: [
                 {   // 🔥 Columna de selección
                     data: null,
@@ -485,9 +485,6 @@
                 { data: "total", render: numberFormat },
                 { data: "comentario" }
             ],
-            language: {
-                url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
-            },
             createdRow: function(row, data, dataIndex) {
                 // marcar todas menos Acciones como editables
                 $('td', row).each(function(index) {
@@ -507,9 +504,9 @@
                 {
                     extend: 'excelHtml5',
                     text: '📥 Exportar a Excel',
-                    filename: 'presupuesto_servicios_tecnicos',
+                    filename: 'presupuesto_sst',
                     exportOptions: {
-                    columns: ':visible:not(:lt(2))', // exportar todas menos las 2 primeras
+                    columns: ':visible:not(:lt(2))',
                         format: {
                             body: function (data, row, column, node) {
                             // Helper: quitar etiquetas HTML y trim
@@ -543,6 +540,10 @@
                     }
                 }
             ],
+            scrollX: true,   // 🔥 Activa scroll horizontal
+            scrollY: "500px",   // altura de la tabla
+            scrollCollapse: true, // si hay pocas filas, la tabla se ajusta
+            paging: false,      // opcional: sin paginación
             fixedHeader: true   // 🔥 Aquí activamos el header fijo
         });
         // función para recalcular total de una fila
@@ -558,6 +559,10 @@
         }
         // cerrar edición y guardar valor
         function cerrarEdicion(cell, newValue) {
+            if (!table) {
+                console.error("Error, Revise que no tenga campos en edición abiertos.");
+                return;
+            }
             let row = table.row($(cell).closest("tr"));
             let rowData = row.data();
 
@@ -612,6 +617,7 @@
                 $('#checkAllIPC').prop('checked', false).prop('indeterminate', true);
             }
         });
+
 
         // duplicar fila
         $('#tempTable').on('click', '.duplicarFila', function() {
@@ -736,6 +742,7 @@
                         rowData["codcosto"] = "020201";
                     }
 
+
                     row.data(rowData).draw(false);
                     editingCell = null;
                 });
@@ -788,10 +795,22 @@
                 // seleccionar todo el contenido
                 $input[0].setSelectionRange(0, $input.val().length);
                 
-                // 🔥 convertir a mayúsculas mientras escribe
-                $input.on("input", function() {
-                    this.value = this.value.toUpperCase();
+                // 🔹 Validación: si la columna es un mes, solo permitir números enteros
+                const mesesCols = ["enero","febrero","marzo","abril","mayo","junio",
+                       "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+                if (mesesCols.includes(colName)) {
+                    // Solo permitir dígitos
+                    $input.on("input", function() {
+                        this.value = this.value.replace(/[^0-9]/g, ""); 
                 });
+                } else{
+                    // 🔥 convertir a mayúsculas mientras escribe (para comentarios u otros textos)
+                    $input.on("input", function() {
+                        this.value = this.value.toUpperCase();
+                    });
+                }
+    
                 // manejar Enter, Escape y flechas
                 $input.on("keydown", function(e) {
                     if (e.key === "Enter") {
@@ -833,6 +852,7 @@
         });
 
         let filaAEliminar = null; // 🔥 Guardar la fila temporal
+
         // Botones cancelar de cualquier modal
         $('.btn-cancel').on('click', function() {
             let modalId = $(this).data('modal'); // viene del atributo data-modal="..."
@@ -844,7 +864,7 @@
             e.preventDefault(); // Evita submit inmediato
             abrirModal('modalSubir');
         });
-
+        
         // Acción al confirmar subida
         $('#confirmSubir').on('click', function() {
             cerrarModal('modalSubir');
@@ -856,7 +876,7 @@
             $spinner.show();
             $btn.prop("disabled", true);
 
-            $.post("{% url 'subir_presupuesto_servicios_tecnicos' %}", {
+            $.post("{% url 'subir_presupuesto_gestion_riesgos' %}", {
                 csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val()
             }, function(response) {
                 if (response.success) {
@@ -923,10 +943,12 @@
         $('#cargarBase').on('click', function() {
             let $btn = $(this);
             let $spinner = $btn.find(".spinner");
+
             // Mostrar spinner y deshabilitar botón
             $spinner.show();
             $btn.prop("disabled", true);
-            $.get("{% url 'cargar_servicios_tecnicos_base' %}", function() {
+
+            $.get("{% url 'cargar_gestion_riesgos_base' %}", function() {
                 table.ajax.reload();
                 showToast("Datos cargados desde plantilla gastos 📂", "success");
             })
@@ -964,7 +986,7 @@
             $btn.prop("disabled", true);
 
             $.ajax({
-                url: "{% url 'guardar_servicios_tecnicos_temp' %}",
+                url: "{% url 'guardar_gestion_riesgos_temp' %}",
                 type: "POST",
                 data: JSON.stringify(data),
                 contentType: "application/json",

@@ -224,7 +224,7 @@ urlpatterns = [
     #-----------------------------PRESUPUESTO GENERAL--------------------------------
     #----CUENTAS CONTABLES---------
     path('seleccion-cuentas-contables/', views.seleccion_cuentas_contables, name='seleccionCuentasContables'),
-    
+     
     #----------PRESUPUESTO TECNOLOGIA---------
     path('presupuesto-tecnologia/', views.presupuesto_tecnologia, name='presupuestoTecnologia'),
     path('obtener-presupuesto-tecnologia/', views.obtener_presupuesto_tecnologia, name='obtener_presupuesto_tecnologia'),
@@ -272,5 +272,28 @@ urlpatterns = [
     path('guardar-logistica-temp/', views.guardar_logistica_temp, name='guardar_logistica_temp'),
     path('subir-presupuesto-logistica/', views.subir_presupuesto_logistica, name='subir_presupuesto_logistica'),
     path('borrar_presupuesto_logistica/', views.borrar_presupuesto_logistica, name='borrar_presupuesto_logistica'),
-
+ 
+    #----------PRESUPUESTO GESTION DE RIESGOS---------
+    path('presupuesto-gestion-riesgos/', views.presupuesto_gestion_riesgos, name='presupuestoGestionRiesgos'), 
+    path('obtener-presupuesto-gestion-riesgos/', views.obtener_presupuesto_gestion_riesgos, name='obtener_presupuesto_gestion_riesgos'),
+    path('presupuesto-aprobado-gestion-riesgos/', views.presupuesto_aprobado_gestion_riesgos, name='presupuestoAprobadoGestionRiesgos'), 
+    path('obtener-presupuesto-aprobado-gestion-riesgos/', views.obtener_presupuesto_aprobado_gestion_riesgos, name='obtener_presupuesto_aprobado_gestion_riesgos'),
+    path('tabla-auxiliar-gestion-riesgos/', views.tabla_auxiliar_gestion_riesgos, name='tabla_auxiliar_gestion_riesgos'), # ruta para la tabla temporal de la gestion de riesgos
+    path('obtener-gestion-riesgos-temp/', views.obtener_gestion_riesgos_temp, name='obtener_gestion_riesgos_temp'),
+    path('cargar-gestion-riesgos-base/', views.cargar_gestion_riesgos_base, name='cargar_gestion_riesgos_base'),
+    path('guardar-gestion-riesgos-temp/', views.guardar_gestion_riesgos_temp, name='guardar_gestion_riesgos_temp'),
+    path('subir-presupuesto-gestion-riesgos/', views.subir_presupuesto_gestion_riesgos, name='subir_presupuesto_gestion_riesgos'),
+    path('borrar_presupuesto_gestion_riesgos/', views.borrar_presupuesto_gestion_riesgos, name='borrar_presupuesto_gestion_riesgos'),
+     
+    #-----------PRESUPUESTO GH----------------
+    path('presupuesto-gh/', views.presupuesto_gh, name='presupuestoGH'), 
+    path('obtener-presupuesto-gh/', views.obtener_presupuesto_gh, name='obtener_presupuesto_gh'),
+    path('presupuesto-aprobado-gh/', views.presupuesto_aprobado_gh, name='presupuestoAprobadoGH'), 
+    path('obtener-presupuesto-aprobado-gh/', views.obtener_presupuesto_aprobado_gh, name='obtener_presupuesto_aprobado_gh'),
+    path('tabla-auxiliar-gh/', views.tabla_auxiliar_gh, name='tabla_auxiliar_gh'), # ruta para la tabla temporal del presupuesto gh
+    path('obtener-gh-temp/', views.obtener_gh_temp, name='obtener_gh_temp'),
+    path('cargar-gh-base/', views.cargar_gh_base, name='cargar_gh_base'),
+    path('guardar-gh-temp/', views.guardar_gh_temp, name='guardar_gh_temp'),
+    path('subir-presupuesto-gh/', views.subir_presupuesto_gh, name='subir_presupuesto_gh'),
+    path('borrar_presupuesto_gh/', views.borrar_presupuesto_gh, name='borrar_presupuesto_gh'),
 ]
