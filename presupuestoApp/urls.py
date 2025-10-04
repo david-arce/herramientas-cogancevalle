@@ -296,4 +296,101 @@ urlpatterns = [
     path('guardar-gh-temp/', views.guardar_gh_temp, name='guardar_gh_temp'),
     path('subir-presupuesto-gh/', views.subir_presupuesto_gh, name='subir_presupuesto_gh'),
     path('borrar_presupuesto_gh/', views.borrar_presupuesto_gh, name='borrar_presupuesto_gh'),
+    
+    #-------------PRESUPUESTO ALMACEN TULUA----------------
+    path('presupuesto-almacen-tulua/', views.presupuesto_almacen_tulua, name='presupuestoAlmacenTulua'), 
+    path('obtener-presupuesto-almacen-tulua/', views.obtener_presupuesto_almacen_tulua, name='obtener_presupuesto_almacen_tulua'),
+    path('presupuesto-aprobado-almacen-tulua/', views.presupuesto_aprobado_almacen_tulua, name='presupuestoAprobadoAlmacenTulua'), 
+    path('obtener-presupuesto-aprobado-almacen-tulua/', views.obtener_presupuesto_aprobado_almacen_tulua, name='obtener_presupuesto_aprobado_almacen_tulua'),
+    path('tabla-auxiliar-almacen-tulua/', views.tabla_auxiliar_almacen_tulua, name='tabla_auxiliar_almacen_tulua'), # ruta para la tabla temporal del presupuesto almacen tulua
+    path('obtener-almacen-tulua-temp/', views.obtener_almacen_tulua_temp, name='obtener_almacen_tulua_temp'),
+    path('cargar-almacen-tulua-base/', views.cargar_almacen_tulua_base, name='cargar_almacen_tulua_base'),
+    path('guardar-almacen-tulua-temp/', views.guardar_almacen_tulua_temp, name='guardar_almacen_tulua_temp'),
+    path('subir-presupuesto-almacen-tulua/', views.subir_presupuesto_almacen_tulua, name='subir_presupuesto_almacen_tulua'),
+    path('borrar_presupuesto_almacen_tulua/', views.borrar_presupuesto_almacen_tulua, name='borrar_presupuesto_almacen_tulua'),
+    
+    #-------------PRESUPUESTO ALMACEN BUGA----------------
+    path('presupuesto-almacen-buga/', views.presupuesto_almacen_buga, name='presupuestoAlmacenBuga'), 
+    path('obtener-presupuesto-almacen-buga/', views.obtener_presupuesto_almacen_buga, name='obtener_presupuesto_almacen_buga'),
+    path('presupuesto-aprobado-almacen-buga/', views.presupuesto_aprobado_almacen_buga, name='presupuestoAprobadoAlmacenBuga'), 
+    path('obtener-presupuesto-aprobado-almacen-buga/', views.obtener_presupuesto_aprobado_almacen_buga, name='obtener_presupuesto_aprobado_almacen_buga'),
+    path('tabla-auxiliar-almacen-buga/', views.tabla_auxiliar_almacen_buga, name='tabla_auxiliar_almacen_buga'), # ruta para la tabla temporal del presupuesto almacen buga
+    path('obtener-almacen-buga-temp/', views.obtener_almacen_buga_temp, name='obtener_almacen_buga_temp'),
+    path('cargar-almacen-buga-base/', views.cargar_almacen_buga_base, name='cargar_almacen_buga_base'),
+    path('guardar-almacen-buga-temp/', views.guardar_almacen_buga_temp, name='guardar_almacen_buga_temp'),
+    path('subir-presupuesto-almacen-buga/', views.subir_presupuesto_almacen_buga, name='subir_presupuesto_almacen_buga'),
+    path('borrar_presupuesto_almacen_buga/', views.borrar_presupuesto_almacen_buga, name='borrar_presupuesto_almacen_buga'),
+    
+    #-------------PRESUPUESTO ALMACEN CARTAGO----------------
+    path('presupuesto-almacen-cartago/', views.presupuesto_almacen_cartago, name='presupuestoAlmacenCartago'), 
+    path('obtener-presupuesto-almacen-cartago/', views.obtener_presupuesto_almacen_cartago, name='obtener_presupuesto_almacen_cartago'),
+    path('presupuesto-aprobado-almacen-cartago/', views.presupuesto_aprobado_almacen_cartago, name='presupuestoAprobadoAlmacenCartago'), 
+    path('obtener-presupuesto-aprobado-almacen-cartago/', views.obtener_presupuesto_aprobado_almacen_cartago, name='obtener_presupuesto_aprobado_almacen_cartago'),
+    path('tabla-auxiliar-almacen-cartago/', views.tabla_auxiliar_almacen_cartago, name='tabla_auxiliar_almacen_cartago'), # ruta para la tabla temporal del presupuesto almacen cartago
+    path('obtener-almacen-cartago-temp/', views.obtener_almacen_cartago_temp, name='obtener_almacen_cartago_temp'),
+    path('cargar-almacen-cartago-base/', views.cargar_almacen_cartago_base, name='cargar_almacen_cartago_base'),
+    path('guardar-almacen-cartago-temp/', views.guardar_almacen_cartago_temp, name='guardar_almacen_cartago_temp'),
+    path('subir-presupuesto-almacen-cartago/', views.subir_presupuesto_almacen_cartago, name='subir_presupuesto_almacen_cartago'),
+    path('borrar_presupuesto_almacen_cartago/', views.borrar_presupuesto_almacen_cartago, name='borrar_presupuesto_almacen_cartago'),
+    
+    #-------------PRESUPUESTO ALMACEN CALI----------------
+    path('presupuesto-almacen-cali/', views.presupuesto_almacen_cali, name='presupuestoAlmacenCali'), 
+    path('obtener-presupuesto-almacen-cali/', views.obtener_presupuesto_almacen_cali, name='obtener_presupuesto_almacen_cali'),
+    path('presupuesto-aprobado-almacen-cali/', views.presupuesto_aprobado_almacen_cali, name='presupuestoAprobadoAlmacenCali'), 
+    path('obtener-presupuesto-aprobado-almacen-cali/', views.obtener_presupuesto_aprobado_almacen_cali, name='obtener_presupuesto_aprobado_almacen_cali'),
+    path('tabla-auxiliar-almacen-cali/', views.tabla_auxiliar_almacen_cali, name='tabla_auxiliar_almacen_cali'), # ruta para la tabla temporal del presupuesto almacen cali
+    path('obtener-almacen-cali-temp/', views.obtener_almacen_cali_temp, name='obtener_almacen_cali_temp'),
+    path('cargar-almacen-cali-base/', views.cargar_almacen_cali_base, name='cargar_almacen_cali_base'),
+    path('guardar-almacen-cali-temp/', views.guardar_almacen_cali_temp, name='guardar_almacen_cali_temp'),
+    path('subir-presupuesto-almacen-cali/', views.subir_presupuesto_almacen_cali, name='subir_presupuesto_almacen_cali'),
+    path('borrar_presupuesto_almacen_cali/', views.borrar_presupuesto_almacen_cali, name='borrar_presupuesto_almacen_cali'),
+    
+    #-------------PRESUPUESTO COMUNICACIONES----------------
+    path('presupuesto-comunicaciones/', views.presupuesto_comunicaciones, name='presupuestoComunicaciones'), 
+    path('obtener-presupuesto-comunicaciones/', views.obtener_presupuesto_comunicaciones, name='obtener_presupuesto_comunicaciones'),
+    path('presupuesto-aprobado-comunicaciones/', views.presupuesto_aprobado_comunicaciones, name='presupuestoAprobadoComunicaciones'), 
+    path('obtener-presupuesto-aprobado-comunicaciones/', views.obtener_presupuesto_aprobado_comunicaciones, name='obtener_presupuesto_aprobado_comunicaciones'),
+    path('tabla-auxiliar-comunicaciones/', views.tabla_auxiliar_comunicaciones, name='tabla_auxiliar_comunicaciones'), # ruta para la tabla temporal del presupuesto comunicaciones
+    path('obtener-comunicaciones-temp/', views.obtener_comunicaciones_temp, name='obtener_comunicaciones_temp'),
+    path('cargar-comunicaciones-base/', views.cargar_comunicaciones_base, name='cargar_comunicaciones_base'),
+    path('guardar-comunicaciones-temp/', views.guardar_comunicaciones_temp, name='guardar_comunicaciones_temp'),
+    path('subir-presupuesto-comunicaciones/', views.subir_presupuesto_comunicaciones, name='subir_presupuesto_comunicaciones'),
+    path('borrar_presupuesto_comunicaciones/', views.borrar_presupuesto_comunicaciones, name='borrar_presupuesto_comunicaciones'),
+    
+    #-----------PRESUPUESTO COMERCIAL COSTOS----------------
+    path('presupuesto-comercial-costos/', views.presupuesto_comercial_costos, name='presupuestoComercialCostos'),
+    path('obtener-presupuesto-comercial-costos/', views.obtener_presupuesto_comercial_costos, name='obtener_presupuesto_comercial_costos'),
+    path('presupuesto-aprobado-comercial-costos/', views.presupuesto_aprobado_comercial_costos, name='presupuestoAprobadoComercialCostos'), 
+    path('obtener-presupuesto-aprobado-comercial-costos/', views.obtener_presupuesto_aprobado_comercial_costos, name='obtener_presupuesto_aprobado_comercial_costos'),
+    path('tabla-auxiliar-comercial-costos/', views.tabla_auxiliar_comercial_costos, name='tabla_auxiliar_comercial_costos'), # ruta para la tabla temporal del presupuesto comercial costos
+    path('obtener-comercial-costos-temp/', views.obtener_comercial_costos_temp, name='obtener_comercial_costos_temp'),
+    path('cargar-comercial-costos-base/', views.cargar_comercial_costos_base, name='cargar_comercial_costos_base'),
+    path('guardar-comercial-costos-temp/', views.guardar_comercial_costos_temp, name='guardar_comercial_costos_temp'),
+    path('subir-presupuesto-comercial-costos/', views.subir_presupuesto_comercial_costos, name='subir_presupuesto_comercial_costos'),
+    path('borrar_presupuesto_comercial_costos/', views.borrar_presupuesto_comercial_costos, name='borrar_presupuesto_comercial_costos'),
+    
+    #--------------------PRESUPUESTO CONTABILIDAD---------------------------
+    path('presupuesto-contabilidad/', views.presupuesto_contabilidad, name='presupuestoContabilidad'), 
+    path('obtener-presupuesto-contabilidad/', views.obtener_presupuesto_contabilidad, name='obtener_presupuesto_contabilidad'),
+    path('presupuesto-aprobado-contabilidad/', views.presupuesto_aprobado_contabilidad, name='presupuestoAprobadoContabilidad'), 
+    path('obtener-presupuesto-aprobado-contabilidad/', views.obtener_presupuesto_aprobado_contabilidad, name='obtener_presupuesto_aprobado_contabilidad'),
+    path('tabla-auxiliar-contabilidad/', views.tabla_auxiliar_contabilidad, name='tabla_auxiliar_contabilidad'), # ruta para la tabla temporal del presupuesto contabilidad
+    path('obtener-contabilidad-temp/', views.obtener_contabilidad_temp, name='obtener_contabilidad_temp'),
+    path('cargar-contabilidad-base/', views.cargar_contabilidad_base, name='cargar_contabilidad_base'),
+    path('guardar-contabilidad-temp/', views.guardar_contabilidad_temp, name='guardar_contabilidad_temp'),
+    path('subir-presupuesto-contabilidad/', views.subir_presupuesto_contabilidad, name='subir_presupuesto_contabilidad'),
+    path('borrar_presupuesto_contabilidad/', views.borrar_presupuesto_contabilidad, name='borrar_presupuesto_contabilidad'),
+    
+    #-------------------PRESUPUESTO GERENCIA----------------------------
+    path('presupuesto-gerencia/', views.presupuesto_gerencia, name='presupuestoGerencia'),
+    path('obtener-presupuesto-gerencia/', views.obtener_presupuesto_gerencia, name='obtener_presupuesto_gerencia'), 
+    path('presupuesto-aprobado-gerencia/', views.presupuesto_aprobado_gerencia, name='presupuestoAprobadoGerencia'), 
+    path('obtener-presupuesto-aprobado-gerencia/', views.obtener_presupuesto_aprobado_gerencia, name='obtener_presupuesto_aprobado_gerencia'),
+    path('tabla-auxiliar-gerencia/', views.tabla_auxiliar_gerencia, name='tabla_auxiliar_gerencia'), # ruta para la tabla temporal del presupuesto gerencia
+    path('obtener-gerencia-temp/', views.obtener_gerencia_temp, name='obtener_gerencia_temp'),
+    path('cargar-gerencia-base/', views.cargar_gerencia_base, name='cargar_gerencia_base'),
+    path('guardar-gerencia-temp/', views.guardar_gerencia_temp, name='guardar_gerencia_temp'),
+    path('subir-presupuesto-gerencia/', views.subir_presupuesto_gerencia, name='subir_presupuesto_gerencia'),
+    path('borrar_presupuesto_gerencia/', views.borrar_presupuesto_gerencia, name='borrar_presupuesto_gerencia'),
+    
 ]

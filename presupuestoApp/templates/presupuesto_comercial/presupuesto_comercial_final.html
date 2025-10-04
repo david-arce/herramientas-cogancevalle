@@ -2,7 +2,7 @@
     <h2>📊 Proyección presupuesto general</h2>
 
     <div class="btn-group">
-        {% comment %} <button type="button" id="cargarBtnGeneral" class="btn-accion">🔄 Cargar desde histórico</button> {% endcomment %}
+        <button type="button" id="cargarBtnGeneral" class="btn-accion">🔄 Cargar desde histórico</button>
         <button type="button" id="guardarBtnGeneral" class="btn-accion btn-guardar">💾 Guardar cambios</button>
     </div>
 
@@ -67,42 +67,42 @@
 </div>
 
 <style>
-.dropdown {
-  display: inline-block;
-  position: relative;
-}
-.dropdown summary {
-  cursor: pointer;
-  padding: 4px 8px;
-  border: 1px solid #ccc;
-  background: #fff;
-  border-radius: 4px;
-}
-.dropdown[open] summary {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-}
-.opciones {
-  position: absolute;
-  background: #fff;
-  border: 1px solid #ccc;
-  max-height: 220px;
-  overflow-y: auto;
-  padding: 6px;
-  border-radius: 0 0 4px 4px;
-  z-index: 10;
-  min-width: 180px;
-}
-.opciones input[type="text"] {
-  width: 95%;
-  padding: 3px;
-  margin-bottom: 6px;
-  font-size: 12px;
-}
-.opciones label {
-  display: block;
-  font-size: 13px;
-}
+    .dropdown {
+    display: inline-block;
+    position: relative;
+    }
+    .dropdown summary {
+    cursor: pointer;
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    background: #fff;
+    border-radius: 4px;
+    }
+    .dropdown[open] summary {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    }
+    .opciones {
+    position: absolute;
+    background: #fff;
+    border: 1px solid #ccc;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 6px;
+    border-radius: 0 0 4px 4px;
+    z-index: 10;
+    min-width: 180px;
+    }
+    .opciones input[type="text"] {
+    width: 95%;
+    padding: 3px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    }
+    .opciones label {
+    display: block;
+    font-size: 13px;
+    }
 </style>
 <script>
 function numberFormat(data, type, row) {
@@ -167,7 +167,10 @@ $(function () {   // ⚡ $(function() {}) == $(document).ready()
             { data: "variacion_proyectada_porcentual" },
             { data: "variacion_proyectada_valor" } // 23
         ],
-        dom: 'Bltip',
+        language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+        },
+        dom: 'Bfltip',
         buttons: [
             {
                 extend: 'excelHtml5',
@@ -219,6 +222,8 @@ $(function () {   // ⚡ $(function() {}) == $(document).ready()
                 }
             }
         ],
+        scrollX: true,
+        fixedHeader: true,
         columnDefs: [
             // 💵 columnas con dinero
         { targets: [4, 5, 8, 9, 10, 11, 12, 13, 15, 17, 19, 21, 23], render: moneyFormat, className: "dt-right" },
@@ -312,15 +317,15 @@ $(function () {   // ⚡ $(function() {}) == $(document).ready()
 
     
     let editingCell = null;
-    // Doble clic para editar solo 2025 en columna crecimiento
+    // Doble clic para editar solo año actual en columna crecimiento
     $('#presupuestoTable').on('dblclick', 'td.editable', function () {
         if (editingCell) return;
-
+        const year_actual = new Date().getFullYear();
         let cell = table.cell(this);
         let row = table.row(this);
         let rowData = row.data();  // obtiene toda la fila
 
-        if (rowData.year != 2026) {
+        if (rowData.year != year_actual) {
             return;
         }
 

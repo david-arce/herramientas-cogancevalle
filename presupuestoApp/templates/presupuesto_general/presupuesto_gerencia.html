@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>Presupuesto Logistica- Tabla</title>
+    <title>Presupuesto Gerencia</title>
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <!-- DataTables Buttons CSS -->
@@ -102,13 +102,31 @@
     </style>
 </head>
 <body>
-    <h2>Presupuesto Logistica Aprobado</h2>
+    <h2>Presupuesto Gerencia Proyectado</h2>
     <div class="toast-container" id="toastContainer"></div>
+    
+    <!-- Filtros -->
+    <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">
+        <div>
+            <label for="versionSelect"><b>Versión:</b></label>
+            <select id="versionSelect">
+                {% for v in versiones %}
+                    <option value="{{ v }}" {% if v == ultima_version %}selected{% endif %}>
+                        {{ v }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
     <!-- Contenedor de botones -->
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
         <button id="btnTabla">Ir a tabla auxiliar de presupuesto</button>
-        
+        {% comment %} <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
+            Borrar Presupuesto
+        </button> {% endcomment %}
     </div>
+    
     <table id="presupuestoTable" class="display">
         <thead>
             <tr>
@@ -141,10 +159,10 @@
 
     <script>
        $(document).ready(function () {
-            let versionActual = "{{ ultima_version }}";
+            let versionActual = $("#versionSelect").val();
             let table = $('#presupuestoTable').DataTable({
                 ajax: {
-                    url: "{% url 'obtener_presupuesto_aprobado_logistica' %}",
+                    url: "{% url 'obtener_presupuesto_gerencia' %}",
                     data: function (d) {
                         d.version = versionActual;  // 🔥 enviar versión seleccionada al backend
                     }
@@ -175,53 +193,78 @@
                 { data: "comentario" }
                 ],
                 language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
                 },
                 dom: 'Bfltip', // 🔥 agrega botones arriba de la tabla
                 buttons: [
-                    {
-                        extend: 'excelHtml5',
-                        text: '📥 Exportar a Excel',
-                        filename: 'presupuesto_logistica_aprobado',
-                        exportOptions: {
-                        columns: ':visible',
-                            format: {
-                                body: function (data, row, column, node) {
-                                // Helper: quitar etiquetas HTML y trim
-                                function stripHtml(input) {
-                                    if (input === null || input === undefined) return '';
-                                    if (typeof input !== 'string') return input;
-                                    return input.replace(/<\/?[^>]+(>|$)/g, "").trim();
-                                }
+                {
+                    extend: 'excelHtml5',
+                    text: '📥 Exportar a Excel',
+                    filename: 'presupuesto_sst_proyectado',
+                    exportOptions: {
+                    columns: ':visible',
+                        format: {
+                            body: function (data, row, column, node) {
+                            // Helper: quitar etiquetas HTML y trim
+                            function stripHtml(input) {
+                                if (input === null || input === undefined) return '';
+                                if (typeof input !== 'string') return input;
+                                return input.replace(/<\/?[^>]+(>|$)/g, "").trim();
+                            }
 
-                                var txt = stripHtml(data);
+                            var txt = stripHtml(data);
 
-                                // Índices de tus columnas numéricas según tu DataTable (0-based)
-                                var moneyCols = [9,10,11,12,13,14,15,16,17,18,19,20,21];
-                                
+                            // Índices de tus columnas numéricas según tu DataTable (0-based)
+                            var moneyCols = [9,10,11,12,13,14,15,16,17,18,19,20,21];
+                            
 
-                                // Si es columna de dinero: quitar separadores de miles, símbolo y ajustar decimal
-                                if (moneyCols.indexOf(column) !== -1) {
-                                    txt = String(txt)
-                                            .replace(/\s/g,'')    // quita espacios
-                                            .replace(/\$/g,'')    // quita signo peso (si lo hubiera)
-                                            .replace(/\./g,'')    // quita separador de miles
-                                            .replace(/,/g,'.')    // cambia coma decimal por punto
-                                            .replace(/[^0-9.-]/g,''); // deja sólo números, punto y signo
-                                    return txt === '' ? 0 : txt;
-                                }
+                            // Si es columna de dinero: quitar separadores de miles, símbolo y ajustar decimal
+                            if (moneyCols.indexOf(column) !== -1) {
+                                txt = String(txt)
+                                        .replace(/\s/g,'')    // quita espacios
+                                        .replace(/\$/g,'')    // quita signo peso (si lo hubiera)
+                                        .replace(/\./g,'')    // quita separador de miles
+                                        .replace(/,/g,'.')    // cambia coma decimal por punto
+                                        .replace(/[^0-9.-]/g,''); // deja sólo números, punto y signo
+                                return txt === '' ? 0 : txt;
+                            }
 
-                                // Columnas de texto: devolver el texto limpio (sin HTML)
-                                return txt;
-                                }
+                            // Columnas de texto: devolver el texto limpio (sin HTML)
+                            return txt;
                             }
                         }
                     }
-                ],
-                fixedHeader: true,
-                scrollX: true,
+                }
+            ],
+                scrollX: true,   // 🔥 Activa scroll horizontal
+                fixedHeader: true   // 🔥 Aquí activamos el header fijo
+                
             });
-            
+            // 🔥 Recargar tabla al cambiar versión
+            $("#versionSelect").on("change", function () {
+                versionActual = $(this).val();
+                table.ajax.reload();
+        });
+        
+            // 🔴 Botón para borrar PresupuestoNomina
+            $("#btnBorrar").on("click", function () {
+                if (!confirm("⚠️ ¿Estás seguro de borrar todo el presupuesto? Esta acción no se puede deshacer.")) {
+                    return;
+                }
+
+                $.ajax({
+                    url: "{% url 'borrar_presupuesto_gerencia' %}", // 🔥 Nueva vista Django
+                    type: "POST",
+                    headers: { "X-CSRFToken": $("meta[name='csrf-token']").attr("content") },
+                    success: function (response) {
+                        showToast("Presupuesto eliminado correctamente ✅", "success");
+                        table.ajax.reload(null, false); // recarga sin perder paginación
+                    },
+                    error: function (xhr) {
+                        showToast("Error al borrar ❌: " + xhr.responseText, "error");
+                    }
+                });
+            });
         });
 
     // Función para mostrar toasts
@@ -248,12 +291,12 @@
 
     // Botón Ir a la tabla de sueldos
     document.getElementById("btnTabla").addEventListener("click", function () {
-        window.location.href = "{% url 'tabla_auxiliar_logistica' %}";
+        window.location.href = "{% url 'tabla_auxiliar_gerencia' %}";
     });
     </script>
+    <!-- DataTables Buttons JS -->
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-
 </body>
 </html>

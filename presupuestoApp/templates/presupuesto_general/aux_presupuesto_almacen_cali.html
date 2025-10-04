@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>Presupuesto Salud Ocupacional</title>
+    <title>Presupuesto Almacen Cali</title>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <!-- DataTables Buttons CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
@@ -285,7 +285,7 @@
     </style>
 </head>
 <body>
-    <h2>Presupuesto Salud ocupacional</h2>
+    <h2>Presupuesto Almacen Cali</h2>
     <div class="btn-group_bd">
     <!-- Grupo: Guardar / Subir presupuesto -->
     <div class="btn-section1">
@@ -430,7 +430,7 @@
         document.getElementById("btnTabla").addEventListener("click", function() {
             abrirModal("modalIrTabla");
             document.getElementById("confirmIrTabla").onclick = function() {
-                window.location.href = "{% url 'presupuestoOcupacional' %}";
+                window.location.href = "{% url 'presupuestoAlmacenCali' %}";
             };
         });
 
@@ -438,14 +438,14 @@
         document.getElementById("btnTablaAprovado").addEventListener("click", function() {
             abrirModal("modalIrTabla");
             document.getElementById("confirmIrTabla").onclick = function() {
-                window.location.href = "{% url 'presupuestoAprobadoOcupacional' %}";
+                window.location.href = "{% url 'presupuestoAprobadoAlmacenCali' %}";
             };
         });
 
         cargarOpciones();
         let table = $('#tempTable').DataTable({
             ajax: {
-                url: "{% url 'obtener_ocupacional_temp' %}",
+                url: "{% url 'obtener_almacen_cali_temp' %}",
                 dataSrc: ""
             },
             columns: [
@@ -879,7 +879,7 @@
             $spinner.show();
             $btn.prop("disabled", true);
 
-            $.post("{% url 'subir_presupuesto_ocupacional' %}", {
+            $.post("{% url 'subir_presupuesto_almacen_cali' %}", {
                 csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val()
             }, function(response) {
                 if (response.success) {
@@ -951,7 +951,7 @@
             $spinner.show();
             $btn.prop("disabled", true);
 
-            $.get("{% url 'cargar_ocupacional_base' %}", function() {
+            $.get("{% url 'cargar_almacen_cali_base' %}", function() {
                 table.ajax.reload();
                 showToast("Datos cargados desde plantilla gastos 📂", "success");
             })
@@ -989,7 +989,7 @@
             $btn.prop("disabled", true);
 
             $.ajax({
-                url: "{% url 'guardar_ocupacional_temp' %}",
+                url: "{% url 'guardar_almacen_cali_temp' %}",
                 type: "POST",
                 data: JSON.stringify(data),
                 contentType: "application/json",

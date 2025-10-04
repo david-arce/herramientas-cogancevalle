@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>Presupuesto Logistica- Tabla</title>
+    <title>Presupuesto Almacen Tuluá</title>
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <!-- DataTables Buttons CSS -->
@@ -102,12 +102,11 @@
     </style>
 </head>
 <body>
-    <h2>Presupuesto Logistica Aprobado</h2>
+    <h2>Presupuesto Almacen Tuluá Aprobado</h2>
     <div class="toast-container" id="toastContainer"></div>
     <!-- Contenedor de botones -->
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
         <button id="btnTabla">Ir a tabla auxiliar de presupuesto</button>
-        
     </div>
     <table id="presupuestoTable" class="display">
         <thead>
@@ -141,10 +140,10 @@
 
     <script>
        $(document).ready(function () {
-            let versionActual = "{{ ultima_version }}";
+            let versionActual = "{{ ultima_version }}";  // 🔥 viene directo del backend
             let table = $('#presupuestoTable').DataTable({
                 ajax: {
-                    url: "{% url 'obtener_presupuesto_aprobado_logistica' %}",
+                    url: "{% url 'obtener_presupuesto_aprobado_almacen_tulua' %}",
                     data: function (d) {
                         d.version = versionActual;  // 🔥 enviar versión seleccionada al backend
                     }
@@ -175,14 +174,14 @@
                 { data: "comentario" }
                 ],
                 language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
                 },
                 dom: 'Bfltip', // 🔥 agrega botones arriba de la tabla
                 buttons: [
                     {
                         extend: 'excelHtml5',
                         text: '📥 Exportar a Excel',
-                        filename: 'presupuesto_logistica_aprobado',
+                        filename: 'presupuesto_sst_aprobado',
                         exportOptions: {
                         columns: ':visible',
                             format: {
@@ -218,42 +217,42 @@
                         }
                     }
                 ],
-                fixedHeader: true,
-                scrollX: true,
+                scrollX: true,   // 🔥 Activa scroll horizontal
+                fixedHeader: true   // 🔥 Aquí activamos el header fijo
             });
-            
+        
         });
 
-    // Función para mostrar toasts
-    function showToast(message, type = "success", duration = 3000) {
-        let container = document.getElementById("toastContainer");
 
-        // Crear toast
-        let toast = document.createElement("div");
-        toast.className = `toast ${type}`;
-        toast.textContent = message;
+        // Función para mostrar toasts
+        function showToast(message, type = "success", duration = 3000) {
+            let container = document.getElementById("toastContainer");
 
-        // Insertar en el contenedor
-        container.appendChild(toast);
+            // Crear toast
+            let toast = document.createElement("div");
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
 
-        // Forzar reflow para animación
-        setTimeout(() => toast.classList.add("show"), 50);
+            // Insertar en el contenedor
+            container.appendChild(toast);
 
-        // Ocultar y eliminar después de "duration"
-        setTimeout(() => {
-            toast.classList.remove("show");
-            setTimeout(() => toast.remove(), 500); // eliminar después de animación
-        }, duration);
-    }
+            // Forzar reflow para animación
+            setTimeout(() => toast.classList.add("show"), 50);
 
-    // Botón Ir a la tabla de sueldos
-    document.getElementById("btnTabla").addEventListener("click", function () {
-        window.location.href = "{% url 'tabla_auxiliar_logistica' %}";
-    });
+            // Ocultar y eliminar después de "duration"
+            setTimeout(() => {
+                toast.classList.remove("show");
+                setTimeout(() => toast.remove(), 500); // eliminar después de animación
+            }, duration);
+        }
+
+        // Botón Ir a la tabla de sueldos
+        document.getElementById("btnTabla").addEventListener("click", function () {
+            window.location.href = "{% url 'tabla_auxiliar_almacen_tulua' %}";
+        });
     </script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-
 </body>
 </html>

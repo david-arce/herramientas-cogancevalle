@@ -17,7 +17,11 @@
   <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
   <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    
+  <!-- CSS de FixedHeader -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
+  <!-- JS de FixedHeader -->
+  <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
+  
   <!--custom css-->
   {% block css %}
   <style>
@@ -152,7 +156,7 @@
   /* Estilo especial para guardar */
   .btn-guardar {
       background-color: #28a745; /* amarillo */
-      color: #212529;
+      color: #ffffffff;
   }
 
   .btn-guardar:hover:not(:disabled) {

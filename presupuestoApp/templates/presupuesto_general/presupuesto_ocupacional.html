@@ -197,20 +197,45 @@
                 },
                 dom: 'Bfltip', // 🔥 agrega botones arriba de la tabla
                 buttons: [
-                    {
-                        extend: 'excelHtml5',
-                        text: '📥 Exportar a Excel',
-                        filename: 'presupuesto_tecnologia',
-                        exportOptions: {
-                            modifier: {
-                                page: 'all',   // 🔥 Exporta todas las páginas
-                                search: 'applied',
-                                order: 'applied'
-                            },
-                            columns: ':not(:first-child)' // 🔥 excluye columna "Acciones"
+                {
+                    extend: 'excelHtml5',
+                    text: '📥 Exportar a Excel',
+                    filename: 'presupuesto_sst_proyectado',
+                    exportOptions: {
+                    columns: ':visible',
+                        format: {
+                            body: function (data, row, column, node) {
+                            // Helper: quitar etiquetas HTML y trim
+                            function stripHtml(input) {
+                                if (input === null || input === undefined) return '';
+                                if (typeof input !== 'string') return input;
+                                return input.replace(/<\/?[^>]+(>|$)/g, "").trim();
+                            }
+
+                            var txt = stripHtml(data);
+
+                            // Índices de tus columnas numéricas según tu DataTable (0-based)
+                            var moneyCols = [9,10,11,12,13,14,15,16,17,18,19,20,21];
+                            
+
+                            // Si es columna de dinero: quitar separadores de miles, símbolo y ajustar decimal
+                            if (moneyCols.indexOf(column) !== -1) {
+                                txt = String(txt)
+                                        .replace(/\s/g,'')    // quita espacios
+                                        .replace(/\$/g,'')    // quita signo peso (si lo hubiera)
+                                        .replace(/\./g,'')    // quita separador de miles
+                                        .replace(/,/g,'.')    // cambia coma decimal por punto
+                                        .replace(/[^0-9.-]/g,''); // deja sólo números, punto y signo
+                                return txt === '' ? 0 : txt;
+                            }
+
+                            // Columnas de texto: devolver el texto limpio (sin HTML)
+                            return txt;
+                            }
                         }
                     }
-                ],
+                }
+            ],
                 scrollX: true,   // 🔥 Activa scroll horizontal
                 fixedHeader: true   // 🔥 Aquí activamos el header fijo
                 
@@ -219,7 +244,7 @@
             $("#versionSelect").on("change", function () {
                 versionActual = $(this).val();
                 table.ajax.reload();
-            });
+        });
         
             // 🔴 Botón para borrar PresupuestoNomina
             $("#btnBorrar").on("click", function () {

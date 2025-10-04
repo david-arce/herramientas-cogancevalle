@@ -105,19 +105,6 @@
 <body>
     <h2>Presupuesto Servicios técnicos Aprobado</h2>
     <div class="toast-container" id="toastContainer"></div>
-    <!-- Filtros -->
-    <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">
-        <div>
-            <label for="versionSelect"><b>Versión:</b></label>
-            <select id="versionSelect">
-                {% for v in versiones %}
-                    <option value="{{ v }}" {% if v == ultima_version %}selected{% endif %}>
-                        {{ v }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-    </div>
     <!-- Contenedor de botones -->
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
         <button id="btnTabla">Ir a tabla auxiliar de presupuesto</button>
@@ -155,7 +142,7 @@
 
     <script>
        $(document).ready(function () {
-            let versionActual = $("#versionSelect").val();
+            let versionActual = "{{ ultima_version }}"; 
             let table = $('#presupuestoTable').DataTable({
                 ajax: {
                     url: "{% url 'obtener_presupuesto_aprobado_servicios_tecnicos' %}",
@@ -188,12 +175,45 @@
                 { data: "total", render: $.fn.dataTable.render.number('.', ',', 0, '') },
                 { data: "comentario" }
                 ],
-                dom: 'Bfrtip', // 🔥 agrega botones arriba de la tabla
+                dom: 'Bfltip', // 🔥 agrega botones arriba de la tabla
                 buttons: [
                     {
                         extend: 'excelHtml5',
-                        text: '📊 Exportar a Excel',
-                        title: 'Presupuesto_Servicios_Tecnicos'
+                        text: '📥 Exportar a Excel',
+                        filename: 'presupuesto_servicios_tecnicos_aprobado',
+                        exportOptions: {
+                        columns: ':visible',
+                            format: {
+                                body: function (data, row, column, node) {
+                                // Helper: quitar etiquetas HTML y trim
+                                function stripHtml(input) {
+                                    if (input === null || input === undefined) return '';
+                                    if (typeof input !== 'string') return input;
+                                    return input.replace(/<\/?[^>]+(>|$)/g, "").trim();
+                                }
+
+                                var txt = stripHtml(data);
+
+                                // Índices de tus columnas numéricas según tu DataTable (0-based)
+                                var moneyCols = [9,10,11,12,13,14,15,16,17,18,19,20,21];
+                                
+
+                                // Si es columna de dinero: quitar separadores de miles, símbolo y ajustar decimal
+                                if (moneyCols.indexOf(column) !== -1) {
+                                    txt = String(txt)
+                                            .replace(/\s/g,'')    // quita espacios
+                                            .replace(/\$/g,'')    // quita signo peso (si lo hubiera)
+                                            .replace(/\./g,'')    // quita separador de miles
+                                            .replace(/,/g,'.')    // cambia coma decimal por punto
+                                            .replace(/[^0-9.-]/g,''); // deja sólo números, punto y signo
+                                    return txt === '' ? 0 : txt;
+                                }
+
+                                // Columnas de texto: devolver el texto limpio (sin HTML)
+                                return txt;
+                                }
+                            }
+                        }
                     }
                 ],
                 language: {
@@ -203,12 +223,6 @@
         
         });
     
-        // 🔥 Recargar tabla al cambiar versión
-            $("#versionSelect").on("change", function () {
-                versionActual = $(this).val();
-                table.ajax.reload();
-            });
-
         // Función para mostrar toasts
         function showToast(message, type = "success", duration = 3000) {
             let container = document.getElementById("toastContainer");
@@ -236,5 +250,8 @@
             window.location.href = "{% url 'tabla_auxiliar_servicios_tecnicos' %}";
         });
     </script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </body>
 </html>
