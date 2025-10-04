@@ -27,10 +27,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-)6)&ci1^y^-tkw5y&c^e6(z%#1+c+t-yph_3*nu0j570ie8279'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ['*']
-CRFS_TRUSTED_ORIGINS = ['https://herramientas-cogancevalle.up.railway.app']
+ALLOWED_HOSTS = ['192.168.30.6','190.14.241.186','127.0.0.1', 'localhost', 'herramientas-cogancevalle.up.railway.app']
+CRFS_TRUSTED_ORIGINS = ['herramientas-cogancevalle.up.railway.app']
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') # Para que Django detecte que la conexión es segura en producción
 
 # Application definition
@@ -141,24 +141,6 @@ LOGIN_REDIRECT_URL = 'dashboard'
 LOGIN_URL = 'login'
 LOGOUT_URL = 'logout'
 LOGOUT_REDIRECT_URL = 'login'
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'file': {
-            'level': 'ERROR',
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'error.log',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['file'],
-            'level': 'ERROR',
-            'propagate': True,
-        },
-    },
-}
 
 # Opcional: Expirar la sesión cuando el navegador se cierra
 # SESSION_EXPIRE_AT_BROWSER_CLOSE = True
