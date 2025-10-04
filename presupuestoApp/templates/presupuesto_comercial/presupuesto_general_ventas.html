@@ -2,7 +2,7 @@
     <h2>📊 Proyección presupuesto general - Ventas</h2>
 
     <div class="btn-group">
-        <button type="button" id="cargarBtn" class="btn-accion">🔄 Cargar desde histórico</button>
+        {% comment %} <button type="button" id="cargarBtnGeneralVentas" class="btn-accion">🔄 Cargar desde histórico</button> {% endcomment %}
         {% comment %} <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button> {% endcomment %}
     </div>
 
@@ -124,7 +124,6 @@ $(function () {
             columns: columns,
             paging: false,
             scrollX: true,
-            fixedHeader: true,
             dom: 'Bltip',
             buttons: [
                 {
@@ -194,16 +193,17 @@ $(function () {
         });
 
         // Mover botón Excel
-        let wrapper = $(table.table().container()); 
-        wrapper.find(".dt-buttons").appendTo(wrapper.closest(".bloque-vista").find(".btn-group"));
+        {% comment %} let wrapper = $(table.table().container()); 
+        wrapper.find(".dt-buttons").appendTo(wrapper.closest(".bloque-vista").find(".btn-group")); {% endcomment %}
 
         // Filtro en columna Año
         table.columns().every(function (index) {
             if (index === 0) {
                 let column = this;
-                
+
                 // Botón en el header
-                let button = $('<button id="excel-filter-btn-ventas" class="excel-filter-btn">Año ⬇</button>').appendTo($(column.header()).empty());
+                let button = $('<button id="excel-filter-btn-ventas" class="excel-filter-btn">Año ⬇</button>')
+                    .appendTo($(column.header()).empty());
 
                 // Contenedor del menú
                 let menu = $('<div id="excel-filter-ventas" class="excel-filter"></div>').appendTo('body');
@@ -211,8 +211,12 @@ $(function () {
                 // Input de búsqueda
                 let searchBox = $('<input type="text" placeholder="Buscar...">').appendTo(menu);
 
+                // Seleccionar todo / deseleccionar todo
+                let selectAllDiv = $('<div class="select-all-container"></div>').appendTo(menu);
+                selectAllDiv.append('<label><input type="checkbox" id="selectAllYears" checked> <strong>Seleccionar todo</strong></label><br/>');
+
                 // Lista de checkboxes
-                let list = $('<div></div>').appendTo(menu);
+                let list = $('<div class="checkbox-list"></div>').appendTo(menu);
 
                 // Agregar opciones únicas como checkboxes
                 column.data().unique().sort().each(function (d) {
@@ -221,27 +225,58 @@ $(function () {
                     }
                 });
 
-                // Función aplicar filtro
+                // Función aplicar filtro (si no hay seleccionados -> no mostrar filas)
                 function applyFilter() {
                     let selected = [];
-                    menu.find('input[type="checkbox"]:checked').each(function () {
+                    menu.find('.checkbox-list input[type="checkbox"]:checked').each(function () {
                         selected.push('^' + $.fn.dataTable.util.escapeRegex($(this).val()) + '$');
                     });
-                    column.search(selected.length ? selected.join('|') : '', true, false).draw();
+
+                    if (selected.length === 0) {
+                        // Ningún año seleccionado -> forzar resultado vacío
+                        column.search('^$', true, false).draw();
+                    } else {
+                        column.search(selected.join('|'), true, false).draw();
+                    }
                 }
 
-                // Evento checkbox
-                list.on('change', 'input[type="checkbox"]', applyFilter);
+                // Evento seleccionar/deseleccionar todo (actúa sobre elementos visibles primero)
+                menu.on('change', '#selectAllYears', function () {
+                    let checked = $(this).is(':checked');
+                    let visibleItems = list.find('label:visible input[type="checkbox"]');
+                    if (visibleItems.length) visibleItems.prop('checked', checked);
+                    else list.find('input[type="checkbox"]').prop('checked', checked);
+                    applyFilter();
+                });
 
-                // Evento búsqueda dentro del menú
+                // Evento individual checkbox
+                list.on('change', 'input[type="checkbox"]', function () {
+                    let totalVisible = list.find('label:visible input[type="checkbox"]').length;
+                    let checkedVisible = list.find('label:visible input[type="checkbox"]:checked').length;
+
+                    if (totalVisible === 0) {
+                        totalVisible = list.find('input[type="checkbox"]').length;
+                        checkedVisible = list.find('input[type="checkbox"]:checked').length;
+                    }
+
+                    $('#selectAllYears').prop('checked', totalVisible === checkedVisible);
+                    applyFilter();
+                });
+
+                // Búsqueda dentro del menú (oculta/ muestra checkboxes)
                 searchBox.on('keyup', function () {
                     let val = $(this).val().toLowerCase();
                     list.find("label").each(function () {
                         $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
                     });
+
+                    // actualizar estado de "Seleccionar todo" según elementos visibles
+                    let totalVisible = list.find('label:visible input[type="checkbox"]').length;
+                    let checkedVisible = list.find('label:visible input[type="checkbox"]:checked').length;
+                    $('#selectAllYears').prop('checked', totalVisible > 0 && totalVisible === checkedVisible);
                 });
 
-                // Mostrar/ocultar menú
+                // Mostrar/ocultar menú (posicionar)
                 button.on('click', function (e) {
                     e.stopPropagation();
                     let offset = $(this).offset();
@@ -252,9 +287,9 @@ $(function () {
                     }).toggle();
                 });
 
-                // Cerrar menú al hacer clic fuera
+                // Cerrar menú al hacer clic fuera (específico para este botón/menú)
                 $(document).on('click', function (e) {
-                    if (!$(e.target).closest('#excel-filter-ventas, button').length) {
+                    if (!$(e.target).closest('#excel-filter-ventas, #excel-filter-btn-ventas').length) {
                         menu.hide();
                     }
                 });
@@ -296,7 +331,7 @@ $(function () {
     }
 
     // 🔄 Cargar desde histórico
-    $(document).on("click", "#cargarBtn", function () {
+    $(document).on("click", "#cargarBtnGeneralVentas", function () {
         let boton = $(this);
         boton.prop("disabled", true).append('<span class="spinner"></span>');
 
@@ -359,4 +394,26 @@ $(function () {
 
 <style>
 .fila-r2 { background-color: #f4f4f4; font-weight: bold; }
+.excel-filter {
+    background: white;
+    border: 1px solid #ccc;
+    padding: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    position: absolute;
+    display: none;
+    z-index: 9999;
+    max-height: 300px;
+    overflow-y: auto;
+}
+.excel-filter input[type="text"] {
+    width: 95%;
+    margin-bottom: 6px;
+    padding: 3px;
+}
+.select-all-container {
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+}
+
 </style>

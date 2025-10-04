@@ -136,7 +136,7 @@ def cargar_presupuesto_general_ventas(request):
     # convertir a dataframe
     # df_pred_2025_general = pd.DataFrame(predicciones_2026_general)
     # unir con df_por_year_mes
-    df_proyeccion_general = pd.concat([df_lapso_total[['lapso', 'suma']].rename(columns={'suma_pred': 'suma'})], ignore_index=True)
+    df_proyeccion_general = pd.concat([df_lapso_total[['lapso', 'suma']]], ignore_index=True)
     
     df_proyeccion_general['year'] = df_proyeccion_general['lapso'] // 100
     df_por_año = df_proyeccion_general.groupby("year")["suma"].sum().reset_index()
@@ -189,6 +189,22 @@ def cargar_presupuesto_general_ventas(request):
     df_proyeccion_general['utilidad_valor'] = df_proyeccion_general['total'] - df_proyeccion_general['total_year_costos']
     df_proyeccion_general['utilidad_valor'] = df_proyeccion_general['utilidad_valor'].round().astype(int)
     
+    # 🔹 AGREGAR LOS 12 MESES DE 2026 CON VALORES EN CERO
+    meses_2026 = pd.DataFrame([{
+        "lapso": 202600 + m,
+        "year": 2026,
+        "mes": m,
+        "suma": 0,
+        "coef_correlacion": 0,
+        "total": 0,
+        "total_year_costos": 0,
+        "variacion_pesos": 0,
+        "variacion_pct": 0,
+        "utilidad_pct": 0,
+        "utilidad_valor": 0
+    } for m in range(1, 13)])
+    # unir con df_proyeccion_general
+    df_proyeccion_general = pd.concat([df_proyeccion_general, meses_2026], ignore_index=True)
     # ----------- GUARDAR EN LA BD ------------
     registros = []
     for _, row in df_proyeccion_general.iterrows():
@@ -390,7 +406,31 @@ def cargar_presupuesto_centro_ventas(request):
     df_proyeccion_centro_operacion['utilidad_valor'] = df_proyeccion_centro_operacion['total_year'] - df_proyeccion_centro_operacion['total_year_costos']
     df_proyeccion_centro_operacion['utilidad_valor'] = df_proyeccion_centro_operacion['utilidad_valor'].round().astype(int)
     
-    # guardar en la bd
+    # 🔹 AGREGAR LOS 12 MESES DE 2026 CON VALORES EN CERO POR CADA CENTRO
+    centros_existentes = df_proyeccion_centro_operacion["nombre_centro_operacion"].dropna().unique()
+    filas_2026 = []
+
+    for centro in centros_existentes:
+        for mes in range(1, 13):
+            filas_2026.append({
+                "lapso": 202600 + mes,
+                "nombre_centro_operacion": centro,
+                "year": 2026,
+                "mes": mes,
+                "suma": 0,
+                "coef_correlacion": 0,
+                "total_year": 0,
+                "total_year_costos": 0,
+                "variacion_pesos": 0,
+                "variacion_pct": 0,
+                "utilidad_pct": 0,
+                "utilidad_valor": 0
+            })
+
+    df_2026 = pd.DataFrame(filas_2026)
+    # unir con df_proyeccion_centro_operacion
+    df_proyeccion_centro_operacion = pd.concat([df_proyeccion_centro_operacion, df_2026], ignore_index=True)
+    # ----------- GUARDAR EN LA BD ------------
     registros = []
     for _, row in df_proyeccion_centro_operacion.iterrows():
         registros.append(
@@ -610,9 +650,35 @@ def cargar_presupuesto_centro_segmento_ventas(request):
         df_proyeccion_centro_operacion_segmento['total_year'] - df_proyeccion_centro_operacion_segmento['total_year_costos']
     )
     df_proyeccion_centro_operacion_segmento['utilidad_valor'] = df_proyeccion_centro_operacion_segmento['utilidad_valor'].round().astype(int)
+    
+    # 🔹 AGREGAR LOS 12 MESES DE 2026 CON VALORES EN CERO POR CADA CENTRO + SEGMENTO
+    centros_existentes = df_proyeccion_centro_operacion_segmento["nombre_centro_de_operacion"].dropna().unique()
+    segmentos_existentes = df_proyeccion_centro_operacion_segmento["nombre_clase_cliente"].dropna().unique()
+    filas_2026 = []
+    for centro in centros_existentes:
+        for segmento in segmentos_existentes:
+            for mes in range(1, 13):
+                filas_2026.append({
+                    "lapso": 202600 + mes,
+                    "nombre_centro_de_operacion": centro,
+                    "nombre_clase_cliente": segmento,
+                    "year": 2026,
+                    "mes": mes,
+                    "suma": 0,
+                    "coef_correlacion": 0,
+                    "total_year": 0,
+                    "total_year_costos": 0,
+                    "variacion_pesos": 0,
+                    "variacion_pct": 0,
+                    "utilidad_pct": 0,
+                    "utilidad_valor": 0
+                })
+    df_2026 = pd.DataFrame(filas_2026)
+    # unir con df_proyeccion_centro_operacion_segmento
+    df_proyeccion_centro_operacion_segmento = pd.concat([df_proyeccion_centro_operacion_segmento, df_2026], ignore_index=True)
 
 
-    # guardar en la bd
+    # Guardar en la BD -----------------
     registros = []
     for _, row in df_proyeccion_centro_operacion_segmento.iterrows():
         registros.append(
@@ -632,9 +698,10 @@ def cargar_presupuesto_centro_segmento_ventas(request):
             )
         )
     
-    # Opcional: limpiar tabla antes de insertar para evitar duplicados
-    PresupuestoCentroSegmentoVentas.objects.all().delete()
-    PresupuestoCentroSegmentoVentas.objects.bulk_create(registros)
+    with transaction.atomic():
+        # Opcional: limpiar tabla antes de insertar para evitar duplicados
+        PresupuestoCentroSegmentoVentas.objects.all().delete()
+        PresupuestoCentroSegmentoVentas.objects.bulk_create(registros)
     
     data = list(PresupuestoCentroSegmentoVentas.objects.values())
     return JsonResponse(data, safe=False)
@@ -1832,38 +1899,38 @@ def guardar_presupuesto_comercial(request):
             year_actual = timezone.now().year
             year_siguiente = timezone.now().year + 1
             # ================== 🔄 Actualizar PresupuestoGeneralVentas con total_proyectado ==================
-            total_2026 = PresupuestoComercial.objects.filter(year=year_siguiente).aggregate(
+            total_2026 = PresupuestoComercial.objects.filter(year=year_actual).aggregate(
                 total_proyectado=Sum("proyeccion_ventas")
             )["total_proyectado"] or 0
-
+           
             PresupuestoGeneralVentas.objects.filter(year=year_siguiente).update(
                 total_proyectado=total_2026
             )
             
             # ================== 🔄 Actualizar PresupuestoCentroOperacionVentas con total_proyectado ==================
             proyecciones = (
-                PresupuestoComercial.objects.filter(year=year_siguiente)
+                PresupuestoComercial.objects.filter(year=year_actual)
                 .values("year", "nombre_centro_de_operacion")
                 .annotate(total_proyectado=Sum("proyeccion_ventas"))
             )
-
+           
             for item in proyecciones:
                 year = item["year"]
                 centro = item["nombre_centro_de_operacion"]
                 total_proyectado = item["total_proyectado"] or 0
 
                 PresupuestoCentroOperacionVentas.objects.filter(
-                    year=year,
+                    year=year_siguiente,
                     nombre_centro_operacion=centro
                 ).update(total_proyectado=total_proyectado)
             
             # ================== 🔄 Actualizar total_proyectado por año, centro y clase cliente ==================
             proyecciones_seg_centro = (
-                PresupuestoComercial.objects.filter(year=2026)
+                PresupuestoComercial.objects.filter(year=year_actual)
                 .values("year", "nombre_centro_de_operacion", "nombre_clase_cliente")
                 .annotate(total_proyectado=Sum("proyeccion_ventas"))
             )
-
+            
             for item in proyecciones_seg_centro:
                 year = item["year"]
                 centro = item["nombre_centro_de_operacion"]
@@ -1871,7 +1938,7 @@ def guardar_presupuesto_comercial(request):
                 total_proyectado = item["total_proyectado"] or 0
 
                 PresupuestoCentroSegmentoVentas.objects.filter(
-                    year=year,
+                    year=year_siguiente,
                     nombre_centro_operacion=centro,
                     segmento=clase  # 👈 aquí "segmento" representa la clase cliente
                 ).update(total_proyectado=total_proyectado)
