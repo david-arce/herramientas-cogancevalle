@@ -6087,7 +6087,7 @@ def borrar_presupuesto_gh(request):
 #-------------PRESUPUESTO ALMACEN TULUA----------------
 @login_required
 def presupuesto_almacen_tulua(request):
-    usuarios_permitidos = ['admin', 'JEFEALMACENTULUA']
+    usuarios_permitidos = ['admin', 'JEFEALMACENTULUA', 'DBENITEZ']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     # 🔹 obtener versiones disponibles
@@ -6319,7 +6319,7 @@ def borrar_presupuesto_almacen_tulua(request):
 #-------------PRESUPUESTO ALMACEN BUGA----------------
 @login_required
 def presupuesto_almacen_buga(request):
-    usuarios_permitidos = ['admin', 'JEFEALMACENBUGA']
+    usuarios_permitidos = ['admin', 'JEFEALMACENBUGA', 'FDUQUE']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     # 🔹 obtener versiones disponibles
@@ -6552,7 +6552,7 @@ def borrar_presupuesto_almacen_buga(request):
 #--------PRESUPUESTO ALMACEN CARTAGO----------------
 @login_required
 def presupuesto_almacen_cartago(request):
-    usuarios_permitidos = ['admin', 'JEFEALMACENCARTAGO']
+    usuarios_permitidos = ['admin', 'JEFEALMACENCARTAGO', 'CHINCAPI']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     # 🔹 obtener versiones disponibles
@@ -6785,7 +6785,7 @@ def borrar_presupuesto_almacen_cartago(request):
 #----------PRESUPUESTO ALMACEN CALI----------------
 @login_required
 def presupuesto_almacen_cali(request):
-    usuarios_permitidos = ['admin', 'JEFEALMACENCALI']
+    usuarios_permitidos = ['admin', 'JEFEALMACENCALI', 'LAMAYA']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     # 🔹 obtener versiones disponibles
