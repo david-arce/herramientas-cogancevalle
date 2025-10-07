@@ -3,14 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>Presupuesto - Tabla</title>
+    <title>Presupuesto Tecnología</title>
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <!-- DataTables Buttons CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-
+    <!-- CSS de FixedHeader -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
+    <!-- JS de FixedHeader -->
+    <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -20,7 +25,7 @@
             text-align: center;
         }
         table.dataTable thead th {
-            background-color: #525252ff;
+            background-color: #1F3A93;
             color: white;
         }
         .dataTables_wrapper {
@@ -102,7 +107,6 @@
     <!-- Contenedor de botones -->
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
         <button id="btnTabla">Ir a tabla auxiliar de presupuesto</button>
-        
     </div>
     <table id="presupuestoTable" class="display">
         <thead>
@@ -136,8 +140,14 @@
 
     <script>
        $(document).ready(function () {
+            let versionActual = "{{ ultima_version }}";  // 🔥 viene directo del backend
             let table = $('#presupuestoTable').DataTable({
-                ajax: "{% url 'obtener_presupuesto_aprobado_tecnologia' %}",
+                ajax: {
+                    url: "{% url 'obtener_presupuesto_aprobado_tecnologia' %}",
+                    data: function (d) {
+                        d.version = versionActual;  // 🔥 enviar versión seleccionada al backend
+                    }
+                },
                 columns: [
                 { data: "centro_tra" },
                 { data: "nombre_cen" },
@@ -164,38 +174,85 @@
                 { data: "comentario" }
                 ],
                 language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
                 },
+                dom: 'Bfltip', // 🔥 agrega botones arriba de la tabla
+                buttons: [
+                    {
+                        extend: 'excelHtml5',
+                        text: '📥 Exportar a Excel',
+                        filename: 'presupuesto_sst_aprobado',
+                        exportOptions: {
+                        columns: ':visible',
+                            format: {
+                                body: function (data, row, column, node) {
+                                // Helper: quitar etiquetas HTML y trim
+                                function stripHtml(input) {
+                                    if (input === null || input === undefined) return '';
+                                    if (typeof input !== 'string') return input;
+                                    return input.replace(/<\/?[^>]+(>|$)/g, "").trim();
+                                }
+
+                                var txt = stripHtml(data);
+
+                                // Índices de tus columnas numéricas según tu DataTable (0-based)
+                                var moneyCols = [9,10,11,12,13,14,15,16,17,18,19,20,21];
+                                
+
+                                // Si es columna de dinero: quitar separadores de miles, símbolo y ajustar decimal
+                                if (moneyCols.indexOf(column) !== -1) {
+                                    txt = String(txt)
+                                            .replace(/\s/g,'')    // quita espacios
+                                            .replace(/\$/g,'')    // quita signo peso (si lo hubiera)
+                                            .replace(/\./g,'')    // quita separador de miles
+                                            .replace(/,/g,'.')    // cambia coma decimal por punto
+                                            .replace(/[^0-9.-]/g,''); // deja sólo números, punto y signo
+                                    return txt === '' ? 0 : txt;
+                                }
+
+                                // Columnas de texto: devolver el texto limpio (sin HTML)
+                                return txt;
+                                }
+                            }
+                        }
+                    }
+                ],
+                scrollX: true,   // 🔥 Activa scroll horizontal
+                fixedHeader: true   // 🔥 Aquí activamos el header fijo
             });
         
         });
 
-    // Función para mostrar toasts
-    function showToast(message, type = "success", duration = 3000) {
-        let container = document.getElementById("toastContainer");
 
-        // Crear toast
-        let toast = document.createElement("div");
-        toast.className = `toast ${type}`;
-        toast.textContent = message;
+        // Función para mostrar toasts
+        function showToast(message, type = "success", duration = 3000) {
+            let container = document.getElementById("toastContainer");
 
-        // Insertar en el contenedor
-        container.appendChild(toast);
+            // Crear toast
+            let toast = document.createElement("div");
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
 
-        // Forzar reflow para animación
-        setTimeout(() => toast.classList.add("show"), 50);
+            // Insertar en el contenedor
+            container.appendChild(toast);
 
-        // Ocultar y eliminar después de "duration"
-        setTimeout(() => {
-            toast.classList.remove("show");
-            setTimeout(() => toast.remove(), 500); // eliminar después de animación
-        }, duration);
-    }
+            // Forzar reflow para animación
+            setTimeout(() => toast.classList.add("show"), 50);
 
-    // Botón Ir a la tabla de sueldos
-    document.getElementById("btnTabla").addEventListener("click", function () {
-        window.location.href = "{% url 'tabla_auxiliar_tecnologia' %}";
-    });
+            // Ocultar y eliminar después de "duration"
+            setTimeout(() => {
+                toast.classList.remove("show");
+                setTimeout(() => toast.remove(), 500); // eliminar después de animación
+            }, duration);
+        }
+
+        // Botón Ir a la tabla de sueldos
+        document.getElementById("btnTabla").addEventListener("click", function () {
+            window.location.href = "{% url 'tabla_auxiliar_tecnologia' %}";
+        });
     </script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </body>
 </html>

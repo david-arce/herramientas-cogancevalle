@@ -15,6 +15,7 @@ import numpy as np
 import json
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
+from django.db import models
 
 def exportar_excel_presupuestos(request):
     # Obtener datos de cada tabla
@@ -4722,7 +4723,11 @@ def seleccion_cuentas_contables(request):
     return JsonResponse({"cuentas": cuentas, "nom_cuentas": nom_cuentas, "cuentas_dict": cuentas_dict}, safe=False)
 
 # -PRESUPUESTO TECNOLOGIA--------------------------------
+@login_required
 def presupuesto_tecnologia(request):
+    usuarios_permitidos = ['admin', 'TECNOLOGIA']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permiso para acceder a esta página.")
     # 🔹 obtener versiones disponibles
     versiones = (
         PresupuestoTecnologia.objects
@@ -4744,25 +4749,39 @@ def obtener_presupuesto_tecnologia(request):
     return JsonResponse({"data": data}, safe=False)
 
 def presupuesto_aprobado_tecnologia(request):
-    return render(request, "presupuesto_general/presupuesto_aprobado_tecnologia.html")
+    # obtener la última versión aprobada
+    versiones = (
+        PresupuestotecnologiaAprobado.objects
+        .values_list("version", flat=True)
+        .distinct()
+    )
+    ultima_version = max(versiones) if versiones else 1
+    return render(request, "presupuesto_general/presupuesto_aprobado_tecnologia.html", {"ultima_version": ultima_version})
 
 def obtener_presupuesto_aprobado_tecnologia(request):
-    tecnologia_aprobado = list(PresupuestotecnologiaAprobado.objects.values())
+    # siempre filtrar por la última versión
+    versiones = (
+        PresupuestotecnologiaAprobado.objects
+        .values_list("version", flat=True)
+        .distinct()
+    )
+    ultima_version = max(versiones) if versiones else 1
+    qs = PresupuestotecnologiaAprobado.objects.filter(version=ultima_version)
+    tecnologia_aprobado = list(qs.values())
     return JsonResponse({"data": tecnologia_aprobado}, safe=False)
 
 def tabla_auxiliar_tecnologia(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 9, 30)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
 
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
+        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado desde el "
                                      f"{fecha_limite.strftime('%d/%m/%Y')}")
 
     # ✅ Si aún no llega la fecha, mostrar vista normal
     return render(request, "presupuesto_general/aux_presupuesto_tecnologia.html")
-from django.db import models
 
 def subir_presupuesto_tecnologia(request):
     if request.method == "POST":

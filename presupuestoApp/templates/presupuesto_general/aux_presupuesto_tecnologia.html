@@ -9,13 +9,19 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <!-- CSS de FixedHeader -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
+    <!-- JS de FixedHeader -->
+    <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
+
     <style>
         td.editable { background: #f8f9fa; cursor: pointer; }
         button { margin: 10px; }
         table.dataTable thead th {
-            background-color: #525252ff;
+            background-color: #1F3A93;
             color: white;
         }
+
         
         /* Contenedor de toasts */
         .toast-container {
@@ -25,14 +31,17 @@
             z-index: 9999;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 12px;
         }
+        /* Toast más grande y visible */
         .toast {
-            min-width: 250px;
-            padding: 12px 20px;
-            border-radius: 8px;
+            min-width: 350px;       /* antes 250px */
+            max-width: 500px;       /* opcional para limitar el ancho */
+            padding: 18px 28px;     /* antes 12px 20px */
+            border-radius: 12px;    /* bordes más redondeados */
             color: #fff;
-            font-size: 14px;
+            font-size: 18px;        /* antes 14px */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2); /* sombra para destacarlo */
             opacity: 0;
             transform: translateX(100%);
             transition: all 0.5s ease-in-out;
@@ -139,50 +148,50 @@
 
         /*botones section*/
         .btn-section1 button { 
-        margin: 3px; 
-        padding: 3px 12px; 
-        border: 1px solid #ffffffff; 
-        border-radius: 6px; 
-        cursor: pointer; 
-        font-size: 14px; 
-        background: #5e5e5eff; 
-        color: #ffffffff; 
-        transition: all 0.2s ease; 
+            margin: 3px; 
+            padding: 3px 12px; 
+            border: 1px solid #ffffffff; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 14px; 
+            background: #5e5e5eff; 
+            color: #ffffffff; 
+            transition: all 0.2s ease; 
         }
         .btn-section1 button:hover  { 
-            background: #e2e6ea; 
+            background: #8b8b8bff; 
             border-color: #bbb;
             color: black; 
         }
         .btn-section2 button {
-        margin: 3px;
-        padding: 3px 12px;
-        border: 1px solid #ffffffff; 
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        background: #5e5e5eff;
-        color: #ffffffff;
-        transition: all 0.2s ease;
+            margin: 3px;
+            padding: 3px 12px;
+            border: 1px solid #ffffffff; 
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            background: #5e5e5eff;
+            color: #ffffffff;
+            transition: all 0.2s ease;
         }
         .btn-section2 button:hover  {
-            background: #e2e6ea;
+            background: #a3a3a3ff;
             border-color: #bbb;
             color: black;
         }
         .btn-section3 button {
-        margin: 3px;
-        padding: 3px 12px;
-        border: 1px solid #ffffffff; 
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        background: #5e5e5eff;
-        color: #ffffffff;
-        transition: all 0.2s ease;
+            margin: 3px;
+            padding: 3px 12px;
+            border: 1px solid #ffffffff; 
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            background: #5e5e5eff;
+            color: #ffffffff;
+            transition: all 0.2s ease;
         }
         .btn-section3 button:hover  {
-            background: #e2e6ea;
+            background: #a3a3a3ff;
             border-color: #bbb;
             color: black;
         }
@@ -198,7 +207,7 @@
         transition: all 0.2s ease;
         }
         .btn-section4 button:hover  {
-            background: #e2e6ea;
+            background: #a3a3a3ff;
             border-color: #bbb;
             color: black;
         }
@@ -267,20 +276,23 @@
             background: #0069d9;
         }
 
-
+        #subirBtn:disabled {
+            background-color: #ccc;   /* gris */
+            color: #666;              /* texto apagado */
+            cursor: not-allowed;      /* cursor bloqueado */
+            opacity: 0.7;             /* un poco transparente */
+        }
     </style>
 </head>
 <body>
-    <h2>Presupuesto Tecnología Año actual</h2>
+    <h2>Presupuesto Tecnología</h2>
     <div class="btn-group_bd">
     <!-- Grupo: Guardar / Subir presupuesto -->
     <div class="btn-section1">
         {% comment %} <button id="cargarBase">📂 Cargar presupuesto anterior</button> {% endcomment %}
         <button id="guardarTempBtn">💾 Guardar cambios</button>
-        <form id="subirPresupuestoForm" method="post" action="{% url 'subir_presupuesto_tecnologia' %}" style="display:inline;">
-            {% csrf_token %}
-            <button type="submit" id="subirBtn">⬆️ Subir Presupuesto proyectado</button>
-        </form>
+        <button type="button" id="subirBtn">⬆️ Subir Presupuesto proyectado <span class="spinner" style="display:none; margin-left:8px;"></span></button>
+
     </div>
     
     <!-- Grupo: Navegación -->
@@ -298,9 +310,11 @@
     <!-- Grupo: Otras acciones -->
     <div class="btn-section4">
         <button id="agregarFila" title="Agregar fila vacia al final de la tabla">➕ Agregar fila vacía</button>
-        <button onclick="document.getElementById('manualModal').style.display='block'">📘 Ver Manual</button>
+        <button onclick="document.getElementById('manualModal').style.display='block'">📘 Ver Manual de Cuentas</button>
     </div>
 </div>
+
+
 
 <!-- Modal -->
 <div id="manualModal" style="display:none; position:fixed; top:0; left:0; 
@@ -329,7 +343,7 @@
 <div id="modalSubir" class="modal" style="display:none;" aria-hidden="true">
   <div class="modal-content">
     <div class="modal-header">📤 Confirmar subida</div>
-    <p>¿Quieres subir el presupuesto proyectado?</p>
+    <p>Recuerda guardar los cambios antes de subir el presupuesto proyectado. ¿Quieres continuar?</p>
     <div class="modal-footer">
       <button type="button" class="btn-cancel" data-modal="modalSubir">Cancelar</button>
       <button type="button" class="btn-confirm-upload" id="confirmSubir">Subir</button>
@@ -337,11 +351,24 @@
   </div>
 </div>
 
+<!-- Modal Confirmación ir a tabla presupuesto proyectado -->
+<div id="modalIrTabla" class="modal" style="display:none;" aria-hidden="true">
+    <div class="modal-content">
+      <div class="modal-header">📤 Confirmar acción</div>
+      <p>Recuerda guardar los cambios antes de salir. ¿Quieres continuar?</p>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" data-modal="modalIrTabla">Cancelar</button>
+        <button type="button" class="btn-confirm-upload" id="confirmIrTabla">Continuar</button>
+      </div>
+    </div>
+</div>
+
+
     <div style="overflow-x:auto; max-width:100%;">
     <table id="tempTable" class="display">
         <thead>
             <tr>
-                <th>Selección IPC</th>
+                <th><input type="checkbox" id="checkAllIPC" title="Seleccionar todo"></th>
                 <th>Acciones</th>
                 
                 <th>Nombre asignación del gasto</th>
@@ -392,14 +419,29 @@
     $(document).ready(function() {
         let persistentToast = null; // 🔥 guardamos referencia al toast de advertencia
         let editando = false; // 🔥 Bandera global
-        // Botón Ir a la tabla presupuesto tecnología
-        document.getElementById("btnTabla").addEventListener("click", function () {
-            window.location.href = "{% url 'presupuestoTecnologia' %}";
+        function abrirModal(id) {
+            document.getElementById(id).style.display = "block";
+        }
+        function cerrarModal(id) {
+            document.getElementById(id).style.display = "none";
+        }
+
+        // confirmacion ir a tabla presupuesto proyectado
+        document.getElementById("btnTabla").addEventListener("click", function() {
+            abrirModal("modalIrTabla");
+            document.getElementById("confirmIrTabla").onclick = function() {
+                window.location.href = "{% url 'presupuestoTecnologia' %}";
+            };
         });
+
         // Botón Ir a la tabla presupuesto tecnología aprovado
-        document.getElementById("btnTablaAprovado").addEventListener("click", function () {
-            window.location.href = "{% url 'presupuestoAprobadoTecnologia' %}";
+        document.getElementById("btnTablaAprovado").addEventListener("click", function() {
+            abrirModal("modalIrTabla");
+            document.getElementById("confirmIrTabla").onclick = function() {
+                window.location.href = "{% url 'presupuestoAprobadoTecnologia' %}";
+            };
         });
+
         cargarOpciones();
         let table = $('#tempTable').DataTable({
             ajax: {
@@ -443,6 +485,9 @@
                 { data: "total", render: numberFormat },
                 { data: "comentario" }
             ],
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            },
             createdRow: function(row, data, dataIndex) {
                 // marcar todas menos Acciones como editables
                 $('td', row).each(function(index) {
@@ -462,17 +507,47 @@
                 {
                     extend: 'excelHtml5',
                     text: '📥 Exportar a Excel',
-                    filename: 'presupuesto_tecnologia',
+                    filename: 'presupuesto_sst_auxiliar',
                     exportOptions: {
-                        modifier: {
-                            page: 'all',   // 🔥 Exporta todas las páginas
-                            search: 'applied',
-                            order: 'applied'
-                        },
-                        columns: ':not(:lt(2))' // 🔥 excluye las dos primeras columnas (índice 0 y 1)
+                    columns: ':visible:not(:lt(2))',
+                        format: {
+                            body: function (data, row, column, node) {
+                            // Helper: quitar etiquetas HTML y trim
+                            function stripHtml(input) {
+                                if (input === null || input === undefined) return '';
+                                if (typeof input !== 'string') return input;
+                                return input.replace(/<\/?[^>]+(>|$)/g, "").trim();
+                            }
+
+                            var txt = stripHtml(data);
+
+                            // Índices de tus columnas numéricas según tu DataTable (0-based)
+                            var moneyCols = [4,5,6,7,8,9,10,11,12,13,14,15,16];
+                            
+
+                            // Si es columna de dinero: quitar separadores de miles, símbolo y ajustar decimal
+                            if (moneyCols.indexOf(column) !== -1) {
+                                txt = String(txt)
+                                        .replace(/\s/g,'')    // quita espacios
+                                        .replace(/\$/g,'')    // quita signo peso (si lo hubiera)
+                                        .replace(/\./g,'')    // quita separador de miles
+                                        .replace(/,/g,'.')    // cambia coma decimal por punto
+                                        .replace(/[^0-9.-]/g,''); // deja sólo números, punto y signo
+                                return txt === '' ? 0 : txt;
+                            }
+
+                            // Columnas de texto: devolver el texto limpio (sin HTML)
+                            return txt;
+                            }
+                        }
                     }
                 }
-            ]
+            ],
+            scrollX: true,   // 🔥 Activa scroll horizontal
+            scrollY: "500px",   // altura de la tabla
+            scrollCollapse: true, // si hay pocas filas, la tabla se ajusta
+            paging: false,      // opcional: sin paginación
+            fixedHeader: true   // 🔥 Aquí activamos el header fijo
         });
         // función para recalcular total de una fila
         function recalcularTotal(rowData) {
@@ -487,6 +562,10 @@
         }
         // cerrar edición y guardar valor
         function cerrarEdicion(cell, newValue) {
+            if (!table) {
+                console.error("Error, Revise que no tenga campos en edición abiertos.");
+                return;
+            }
             let row = table.row($(cell).closest("tr"));
             let rowData = row.data();
 
@@ -504,6 +583,44 @@
         }
 
         let editingCell = null;
+
+        // ✅ Checkbox maestro para seleccionar/deseleccionar todos
+        $('#checkAllIPC').on('change', function() {
+            let checked = $(this).is(':checked');
+            $('.row-check').prop('checked', checked);
+        });
+
+        // ✅ Si se desmarca una sola fila, se desmarca el "Seleccionar todo"
+        $('#tempTable').on('change', '.row-check', function() {
+            if (!$(this).is(':checked')) {
+                $('#checkAllIPC').prop('checked', false);
+            } else if ($('.row-check:checked').length === $('.row-check').length) {
+                $('#checkAllIPC').prop('checked', true);
+            }
+        });
+        // ✅ Si se desmarca una sola fila → se desmarca el "Seleccionar todo"
+        $('#tempTable').on('change', '.row-check', function() {
+            if (!$(this).is(':checked')) {
+                $('#checkAllIPC').prop('checked', false);
+            } else if ($('.row-check:checked').length === $('.row-check').length) {
+                $('#checkAllIPC').prop('checked', true);
+            }
+        });
+
+        // ✅ Sincronizar checkbox maestro al recargar la tabla (por Ajax o redraw)
+        table.on('draw', function() {
+            let total = $('.row-check').length;
+            let marcados = $('.row-check:checked').length;
+
+            if (marcados === 0) {
+                $('#checkAllIPC').prop('checked', false).prop('indeterminate', false);
+            } else if (marcados === total) {
+                $('#checkAllIPC').prop('checked', true).prop('indeterminate', false);
+            } else {
+                $('#checkAllIPC').prop('checked', false).prop('indeterminate', true);
+            }
+        });
+
 
         // duplicar fila
         $('#tempTable').on('click', '.duplicarFila', function() {
@@ -559,12 +676,10 @@
 
         // doble clic para editar
         $('#tempTable').on('dblclick', 'td.editable', function() {
-            // ⚠️ Mostrar advertencia la primera vez que se edite
             if (!editando) {
                 showToast("⚠️ Estás editando la tabla. Recuerda guardar los cambios.", "error", 0, true);
                 editando = true;
             }
-
             let cell = table.cell(this);
             let oldValue = cell.data();
             let colIdx = table.cell(this).index().column;
@@ -584,6 +699,16 @@
             // si es columna con desplegable
             if (colName === "cuenta_mayor") {
                 let opciones = Object.keys(mapaCuentaMayor); // 🔥 ahora son las claves (códigos)
+                let row = table.row($(this).closest("tr"));
+                let rowData = row.data();
+                
+                // 🔥 Si el nombre_cen es ADMINISTRACIÓN → solo mostrar claves que empiezan con 51
+                if (rowData["nombre_cen"] && rowData["nombre_cen"].toUpperCase() === "ADMINISTRACIÓN") {
+                    opciones = opciones.filter(o => o.startsWith("51"));
+                }else{
+                    // 🔥 Si no es administración → excluir todas las que empiezan con 51
+                    opciones = opciones.filter(o => !o.startsWith("51"));
+                }
 
                 // 🔥 Lista de códigos a excluir exactamente
                 const excluir = [
@@ -610,15 +735,16 @@
                 $select.on("change blur", function() {
                     let nuevoValor = $(this).val();
                     
-                    // 🔥 Actualizar columna cuenta en la misma fila
-                    let row = table.row($(editingCell).closest("tr"));
-                    let rowData = row.data();
                     rowData["cuenta_mayor"] = mapaCuentaMayor[nuevoValor] || "";
                     rowData["cuenta"] = nuevoValor;
                     // 🔥 Condición especial: si es capacitación o salud ocupacional → codcosto = 0101
                     if (nuevoValor === "510531" || nuevoValor === "51059503") {
                         rowData["codcosto"] = "0101";
                     }
+                    if (nuevoValor === "540531" || nuevoValor === "54059503") {
+                        rowData["codcosto"] = "020201";
+                    }
+
 
                     row.data(rowData).draw(false);
                     editingCell = null;
@@ -650,7 +776,7 @@
                     rowData["nombre_cen"] = nuevoValor;
                     rowData["codcosto"] = opcionesNombreCentro[nuevoValor]?.codigoCosto || "";
                     rowData["centro_tra"] = opcionesNombreCentro[nuevoValor]?.centro || "";
-
+                    
                     row.data(rowData).draw(false);
                     editingCell = null;
                 });
@@ -672,10 +798,22 @@
                 // seleccionar todo el contenido
                 $input[0].setSelectionRange(0, $input.val().length);
                 
-                // 🔥 convertir a mayúsculas mientras escribe
-                $input.on("input", function() {
-                    this.value = this.value.toUpperCase();
+                // 🔹 Validación: si la columna es un mes, solo permitir números enteros
+                const mesesCols = ["enero","febrero","marzo","abril","mayo","junio",
+                       "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+                if (mesesCols.includes(colName)) {
+                    // Solo permitir dígitos
+                    $input.on("input", function() {
+                        this.value = this.value.replace(/[^0-9]/g, ""); 
                 });
+                } else{
+                    // 🔥 convertir a mayúsculas mientras escribe (para comentarios u otros textos)
+                    $input.on("input", function() {
+                        this.value = this.value.toUpperCase();
+                    });
+                }
+    
                 // manejar Enter, Escape y flechas
                 $input.on("keydown", function(e) {
                     if (e.key === "Enter") {
@@ -710,7 +848,7 @@
             if (editingCell) {
                 let $cell = $(editingCell);
                 let $input = $cell.find("input");
-                if ($input.length && !$(e.target).closest("#tempTable").length) {
+                if ($input.length) {
                     cerrarEdicion(editingCell, $input.val());
                 }
             }
@@ -718,12 +856,6 @@
 
         let filaAEliminar = null; // 🔥 Guardar la fila temporal
 
-        function abrirModal(id) {
-            document.getElementById(id).style.display = "block";
-        }
-        function cerrarModal(id) {
-            document.getElementById(id).style.display = "none";
-        }
         // Botones cancelar de cualquier modal
         $('.btn-cancel').on('click', function() {
             let modalId = $(this).data('modal'); // viene del atributo data-modal="..."
@@ -731,11 +863,11 @@
         });
 
         // ⬆️ Confirmación de subir presupuesto
-        $('#subirPresupuestoForm').on('submit', function(e) {
+        $('#subirBtn').on('click', function(e) {
             e.preventDefault(); // Evita submit inmediato
             abrirModal('modalSubir');
         });
-
+        
         // Acción al confirmar subida
         $('#confirmSubir').on('click', function() {
             cerrarModal('modalSubir');
@@ -772,10 +904,10 @@
                 nombre_cen: "",
                 codcosto: "",
                 responsable: "",
-                cuenta: "",
+                cuenta: 0,
                 cuenta_mayor: "",
                 detalle_cuenta: "",
-                sede_distribucion: "",
+                sede_distribucion: 0,
                 proveedor: "",
                 enero: 0,
                 febrero: 0,
@@ -870,7 +1002,6 @@
                         persistentToast = null;
                     }
                     editando = false;
-
                 },
                 error: function() {
                     showToast("Error al guardar ❌", "error");
