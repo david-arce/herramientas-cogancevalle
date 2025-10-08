@@ -424,7 +424,11 @@
         </article>
       </section>
 
-      <button id="btnTablaAprovado" class="btn-main">✅ Ir a presupuesto aprobado</button>
+      <a href="{% url 'presupuestoAprobadoTecnologia' %}" 
+        style="float: right; background-color:blue; color:white; padding:8px 16px; 
+                border-radius:6px; text-decoration:none;">
+          ver Presupuesto Aprobado Tecnología
+      </a>
 
       {% comment %} <section aria-label="Notas recientes" class="recent-notes">
         <h2>Notas recientes</h2>
@@ -480,11 +484,7 @@
   </button>
 
   <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      document.getElementById("btnTablaAprovado").addEventListener("click", function() {
-          window.location.href = "{% url 'presupuestoAprobadoTecnologia' %}";
-      });
-    });
+    
 
     (function () {
       const sidebar = document.getElementById('sidebar');

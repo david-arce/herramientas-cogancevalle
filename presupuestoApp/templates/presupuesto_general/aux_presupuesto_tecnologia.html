@@ -419,6 +419,7 @@
     $(document).ready(function() {
         let persistentToast = null; // 🔥 guardamos referencia al toast de advertencia
         let editando = false; // 🔥 Bandera global
+        
         function abrirModal(id) {
             document.getElementById(id).style.display = "block";
         }
@@ -560,29 +561,6 @@
             rowData.total = total;
             return rowData;
         }
-        // cerrar edición y guardar valor
-        function cerrarEdicion(cell, newValue) {
-            if (!table) {
-                console.error("Error, Revise que no tenga campos en edición abiertos.");
-                return;
-            }
-            let row = table.row($(cell).closest("tr"));
-            let rowData = row.data();
-
-            // actualizar la celda
-            let colIdx = table.cell(cell).index().column;
-            let colName = table.column(colIdx).dataSrc();
-
-            rowData[colName] = newValue;
-
-            // recalcular total dinámicamente
-            rowData = recalcularTotal(rowData);
-
-            row.data(rowData).draw(false);
-            editingCell = null;
-        }
-
-        let editingCell = null;
 
         // ✅ Checkbox maestro para seleccionar/deseleccionar todos
         $('#checkAllIPC').on('change', function() {
@@ -621,6 +599,28 @@
             }
         });
 
+        let editingCell = null;
+        // cerrar edición y guardar valor
+        function cerrarEdicion(cell, newValue) {
+            if (!table) {
+                console.error("Error, Revise que no tenga campos en edición abiertos.");
+                return;
+            }
+            let row = table.row($(cell).closest("tr"));
+            let rowData = row.data();
+
+            // actualizar la celda
+            let colIdx = table.cell(cell).index().column;
+            let colName = table.column(colIdx).dataSrc();
+
+            rowData[colName] = newValue;
+
+            // recalcular total dinámicamente
+            rowData = recalcularTotal(rowData);
+
+            row.data(rowData).draw(false);
+            editingCell = null;
+        }
 
         // duplicar fila
         $('#tempTable').on('click', '.duplicarFila', function() {
@@ -843,13 +843,20 @@
                 });
             }
         });
-        // 🔥 Guardar al hacer clic fuera de la tabla
+        // 🔥 Guardar automáticamente cuando se hace clic FUERA de la celda en edición
         $(document).on("click", function(e) {
             if (editingCell) {
-                let $cell = $(editingCell);
-                let $input = $cell.find("input");
-                if ($input.length) {
-                    cerrarEdicion(editingCell, $input.val());
+                const $cell = $(editingCell);
+                const $inputOrSelect = $cell.find("input, select");
+
+                // ✅ Si el clic fue dentro de la celda que se está editando, NO cerrar la edición
+                if ($cell.is(e.target) || $.contains($cell[0], e.target)) {
+                    return; // como Excel: permite seguir interactuando con el campo
+                }
+
+                // ✅ Si se hace clic fuera, cerrar edición y guardar
+                if ($inputOrSelect.length) {
+                    cerrarEdicion(editingCell, $inputOrSelect.val());
                 }
             }
         });
