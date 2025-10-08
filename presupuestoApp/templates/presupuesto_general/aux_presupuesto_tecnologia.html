@@ -450,6 +450,14 @@
         function cerrarModal(id) {
             document.getElementById(id).style.display = "none";
         }
+        function preservarScroll(callback) {
+            let scrollBody = $('.dataTables_scrollBody');
+            let scrollPos = scrollBody.scrollTop();
+            callback(); // ejecuta la acción (duplicar, eliminar, editar, etc.)
+            // restaurar posición después de un pequeño retardo para asegurar el redibujado
+            setTimeout(() => scrollBody.scrollTop(scrollPos), 50);
+        }
+
 
         // confirmacion ir a tabla presupuesto proyectado
         document.getElementById("btnTabla").addEventListener("click", function() {
@@ -739,30 +747,33 @@
             // total en 0
             newRow.total = 0;
 
-            // obtener todos los datos de la tabla
-            let allData = table.rows().data().toArray();
+            // índice visual actual (dentro del filtrado actual)
+            let currentRowNode = row.node();
+            let currentIdx = table.row(currentRowNode).index();
 
-            // insertar justo después de la fila actual
-            let currentIndex = row.index();
-            allData.splice(currentIndex + 1, 0, newRow);
+            // insertar nueva fila justo después de la actual sin perder orden/estado
+            let newRowNode = table.row.add(newRow).draw(false).node();
 
-            // recargar tabla con el nuevo orden
-            table.clear().rows.add(allData).draw(false);
+            // mover la nueva fila justo después de la actual en el DOM visible
+            $(newRowNode).insertAfter($(currentRowNode));
 
-            // volver a ubicar la fila duplicada
-            let $newRowNode = $('#tempTable tbody tr').eq(currentIndex + 1);
+            // animar
+            $(newRowNode).addClass("blink");
+            setTimeout(() => $(newRowNode).removeClass("blink"), 3000);
 
-            // 🔥 Parpadeo visual
-            $newRowNode.addClass("blink");
-            setTimeout(() => $newRowNode.removeClass("blink"), 3000);
+            // mantener scroll (si la tabla es grande)
+            let scrollBody = $('.dataTables_scrollBody');
+            let scrollPos = scrollBody.scrollTop();
+            setTimeout(() => scrollBody.scrollTop(scrollPos), 50);
 
             // abrir edición en la primera celda editable
-            let $firstEditable = $newRowNode.find("td.editable").first();
+            let $firstEditable = $(newRowNode).find("td.editable").first();
             if ($firstEditable.length) {
                 $firstEditable.dblclick();
             }
 
             showToast("Fila duplicada 📑", "success");
+
         });
 
         // lista desplegable para columna nombre centro
