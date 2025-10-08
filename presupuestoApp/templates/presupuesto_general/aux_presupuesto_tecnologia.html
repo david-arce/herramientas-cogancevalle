@@ -282,6 +282,12 @@
             cursor: not-allowed;      /* cursor bloqueado */
             opacity: 0.7;             /* un poco transparente */
         }
+        #resizeHandle:hover {
+            background: #999;
+        }
+        #expandTableBtn:hover {
+            background: #0056b3;
+        }
     </style>
 </head>
 <body>
@@ -313,8 +319,6 @@
         <button onclick="document.getElementById('manualModal').style.display='block'">📘 Ver Manual de Cuentas</button>
     </div>
 </div>
-
-
 
 <!-- Modal -->
 <div id="manualModal" style="display:none; position:fixed; top:0; left:0; 
@@ -364,38 +368,63 @@
 </div>
 
 
-    <div style="overflow-x:auto; max-width:100%;">
-    <table id="tempTable" class="display">
-        <thead>
-            <tr>
-                <th><input type="checkbox" id="checkAllIPC" title="Seleccionar todo"></th>
-                <th>Acciones</th>
-                
-                <th>Nombre asignación del gasto</th>
-                
-                
-                <th>Cuenta</th>
-                <th>Cuenta Mayor</th>
-                <th>Detalle Cuenta</th>
-                
-                <th>Enero</th>
-                <th>Febrero</th>
-                <th>Marzo</th>
-                <th>Abril</th>
-                <th>Mayo</th>
-                <th>Junio</th>
-                <th>Julio</th>
-                <th>Agosto</th>
-                <th>Septiembre</th>
-                <th>Octubre</th>
-                <th>Noviembre</th>
-                <th>Diciembre</th>
-                <th>Total</th>
-                <th>Comentario</th>
-            </tr>
-        </thead>
-    </table>
+    <div id="tableContainer" style="overflow-x:auto; overflow-y:auto; max-width:100%; max-height:80vh;">
+        <table id="tempTable" class="display">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="checkAllIPC" title="Seleccionar todo"></th>
+                    <th>Acciones</th>
+                    
+                    <th>Nombre asignación del gasto</th>
+                    
+                    
+                    <th>Cuenta</th>
+                    <th>Cuenta Mayor</th>
+                    <th>Detalle Cuenta</th>
+                    
+                    <th>Enero</th>
+                    <th>Febrero</th>
+                    <th>Marzo</th>
+                    <th>Abril</th>
+                    <th>Mayo</th>
+                    <th>Junio</th>
+                    <th>Julio</th>
+                    <th>Agosto</th>
+                    <th>Septiembre</th>
+                    <th>Octubre</th>
+                    <th>Noviembre</th>
+                    <th>Diciembre</th>
+                    <th>Total</th>
+                    <th>Comentario</th>
+                </tr>
+            </thead>
+        </table>
     </div>
+
+    <!-- 🔹 Barra de agarre para redimensionar -->
+    <div id="resizeHandle" style="
+        height:10px;
+        background:#ccc;
+        cursor: ns-resize;
+        text-align:center;
+        color:#555;
+        user-select:none;
+    ">⬍</div>
+    <!-- 🔹 Botón flotante para expandir -->
+    <button id="expandTableBtn" style="
+        position:fixed;
+        bottom:15px;
+        left:15px;
+        background:#007bff;
+        color:#fff;
+        border:none;
+        border-radius:20px;
+        padding:10px 18px;
+        cursor:pointer;
+        font-weight:bold;
+        box-shadow:0 2px 8px rgba(0,0,0,0.3);
+        z-index:9999;
+    ">Expandir</button>
     <!-- Contenedor de toasts -->
     <div class="toast-container" id="toastContainer"></div>
 
@@ -508,7 +537,7 @@
                 {
                     extend: 'excelHtml5',
                     text: '📥 Exportar a Excel',
-                    filename: 'presupuesto_sst_auxiliar',
+                    filename: 'presupuesto_tecnología_auxiliar',
                     exportOptions: {
                     columns: ':visible:not(:lt(2))',
                         format: {
@@ -545,11 +574,88 @@
                 }
             ],
             scrollX: true,   // 🔥 Activa scroll horizontal
-            scrollY: "500px",   // altura de la tabla
+            scrollY: "65vh",   // altura de la tabla
             scrollCollapse: true, // si hay pocas filas, la tabla se ajusta
             paging: false,      // opcional: sin paginación
             fixedHeader: true   // 🔥 Aquí activamos el header fijo
         });
+
+        // 🔹 Permitir redimensionar verticalmente el contenedor del DataTable
+        const container = document.getElementById('tableContainer');
+        const handle = document.getElementById('resizeHandle');
+
+        let isResizing = false;
+        let startY, startHeight;
+
+        handle.addEventListener('mousedown', function(e) {
+            isResizing = true;
+            startY = e.clientY;
+            startHeight = parseInt(window.getComputedStyle(container).height, 10);
+            document.body.style.cursor = 'ns-resize';
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!isResizing) return;
+            const newHeight = startHeight + (e.clientY - startY);
+
+            // 🔸 Si el usuario arrastra hacia arriba, reducimos hasta un mínimo.
+            // 🔸 Si arrastra hacia abajo, expandimos sin límite (hasta mostrar todo el contenido).
+            if (newHeight > 150) {
+                container.style.height = `${newHeight}px`;
+
+                // Si supera el 90% de la ventana, mostramos todo el contenido (sin scroll interno)
+                if (newHeight > window.innerHeight * 0.9) {
+                    container.style.overflowY = "visible";
+                    table.settings()[0].oScroll.sY = "";
+                } else {
+                    container.style.overflowY = "auto";
+                    table.settings()[0].oScroll.sY = `${newHeight}px`;
+                }
+
+                table.draw(false);
+            }
+        });
+
+        document.addEventListener('mouseup', function() {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
+        });
+        // fin redimensionar
+
+        // ====== 🔹 Botón flotante para expandir o colapsar ======
+        const expandBtn = document.getElementById('expandTableBtn');
+        let expanded = false;
+        let previousHeight = container.style.height;
+
+        expandBtn.addEventListener('click', function() {
+            if (!expanded) {
+                // Guardar altura actual antes de expandir
+                previousHeight = container.style.height;
+
+                // Expandir al máximo y mostrar todo el contenido
+                container.style.height = "auto";
+                container.style.overflowY = "visible";
+                table.settings()[0].oScroll.sY = "";
+                table.draw(false);
+
+                expandBtn.textContent = "Colapsar";
+                expanded = true;
+            } else {
+                // Restaurar altura anterior
+                container.style.height = previousHeight;
+                container.style.overflowY = "auto";
+                table.settings()[0].oScroll.sY = previousHeight;
+                table.draw(false);
+
+                expandBtn.textContent = "Expandir";
+                expanded = false;
+            }
+        });
+
         // función para recalcular total de una fila
         function recalcularTotal(rowData) {
             let meses = ["enero","febrero","marzo","abril","mayo","junio",
