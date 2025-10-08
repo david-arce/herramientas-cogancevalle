@@ -4867,7 +4867,7 @@ def obtener_presupuesto_aprobado_tecnologia(request):
 
 def tabla_auxiliar_tecnologia(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 7)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
 
     # 🚫 Si ya pasó la fecha, negar acceso

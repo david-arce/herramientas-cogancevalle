@@ -458,7 +458,6 @@
             setTimeout(() => scrollBody.scrollTop(scrollPos), 50);
         }
 
-
         // confirmacion ir a tabla presupuesto proyectado
         document.getElementById("btnTabla").addEventListener("click", function() {
             abrirModal("modalIrTabla");
@@ -493,12 +492,11 @@
                         <button class="duplicarFila" title="Duplicar fila">📑</button>
                         <button class="eliminarFila" title="Eliminar fila">❌</button>
                     `,
-                    orderable: false
+                    orderable: false,
+                    width: "60px"
                 },
                 
                 { data: "nombre_cen" },
-                
-                
                 { data: "cuenta" },
                 { data: "cuenta_mayor" },
                 { data: "detalle_cuenta" },
@@ -582,6 +580,25 @@
             paging: false,      // opcional: sin paginación
             fixedHeader: true   // 🔥 Aquí activamos el header fijo
         });
+
+        // ======== 🔹 GESTIÓN DE FILA ACTIVA (solo color) ========
+        function seleccionarFila($row) {
+            // Quitar selección previa
+            $('#tempTable tbody tr').removeClass('fila-activa');
+            // Marcar la nueva fila
+            $row.addClass('fila-activa');
+        }
+
+        // Seleccionar fila cuando se hace clic
+        $('#tempTable').on('click', 'tbody tr', function() {
+            seleccionarFila($(this));
+        });
+
+        // Seleccionar fila automáticamente al editar
+        $('#tempTable').on('dblclick', 'td.editable', function() {
+            seleccionarFila($(this).closest('tr'));
+        });
+
 
         // 🔹 Permitir redimensionar verticalmente el contenedor del DataTable
         const container = document.getElementById('tableContainer');
