@@ -75,10 +75,108 @@ def exportar_excel_presupuestos(request):
 
     return response
 
+def dashboard(request):
+    return render(request, 'dashboard.html')
+
+def exportar_excel_todo(request):
+    # Obtener datos de cada tabla
+    tecnologia = PresupuestoTecnologia.objects.values()
+    servicios_tecnicos = PresupuestoServiciosTecnicos.objects.values()
+    logistica = list(PresupuestoLogistica.objects.values())
+    gestion_riesgos = list(PresupuestoGestionRiesgos.objects.values())
+    gh = list(PresupuestoGH.objects.values())
+    almacen_tulua = list(PresupuestoAlmacenTulua.objects.values())
+    almacen_buga = list(PresupuestoAlmacenBuga.objects.values())
+    almacen_cartago = list(PresupuestoAlmacenCartago.objects.values())
+    almacen_cali = list(PresupuestoAlmacenCali.objects.values())
+    comunicaciones = list(PresupuestoComunicaciones.objects.values())
+    comercial_costos = list(PresupuestoComercialCostos.objects.values())
+    contabilidad = list(PresupuestoContabilidad.objects.values())
+    gerencia = list(PresupuestoGerencia.objects.values())
+    
+    # filtrar por ultima version todas las tablas
+    # tecnologia = tecnologia.filter(version=tecnologia.aggregate(Max('version'))['version__max'])
+    # servicios_tecnicos = servicios_tecnicos.filter(version=servicios_tecnicos.aggregate(Max('version'))['version__max'])
+    # logistica = logistica.filter(version=logistica.aggregate(Max('version'))['version__max'])
+    # gestion_riesgos = gestion_riesgos.filter(version=gestion_riesgos.aggregate(Max('version'))['version__max'])
+    # gh = gh.filter(version=gh.aggregate(Max('version'))['version__max'])
+    # almacen_tulua = almacen_tulua.filter(version=almacen_tulua.aggregate(Max('version'))['version__max'])
+    # almacen_buga = almacen_buga.filter(version=almacen_buga.aggregate(Max('version'))['version__max'])
+    # almacen_cartago = almacen_cartago.filter(version=almacen_cartago.aggregate(Max('version'))['version__max'])
+    # almacen_cali = almacen_cali.filter(version=almacen_cali.aggregate(Max('version'))['version__max'])
+    # comunicaciones = comunicaciones.filter(version=comunicaciones.aggregate(Max('version'))['version__max'])
+    # comercial_costos = comercial_costos.filter(version=comercial_costos.aggregate(Max('version'))['version__max'])
+    # contabilidad = contabilidad.filter(version=contabilidad.aggregate(Max('version'))['version__max'])
+    # gerencia = gerencia.filter(version=gerencia.aggregate(Max('version'))['version__max'])
+    
+    # Crear DataFrames con columna de origen
+    def prepare_df(data, origen):
+        df = pd.DataFrame(data)
+        if not df.empty:
+            df["origen"] = origen # Agregar columna de origen
+        return df
+    df_tecnologia = prepare_df(tecnologia, "Tecnología")
+    df_servicios_tecnicos = prepare_df(servicios_tecnicos, "Servicios Técnicos")
+    df_logistica = prepare_df(logistica, "Logística")
+    df_gestion_riesgos = prepare_df(gestion_riesgos, "Gestión de Riesgos")
+    df_gh = prepare_df(gh, "GH")
+    df_almacen_tulua = prepare_df(almacen_tulua, "Almacén Tuluá")
+    df_almacen_buga = prepare_df(almacen_buga, "Almacén Buga")
+    df_almacen_cartago = prepare_df(almacen_cartago, "Almacén Cartago")
+    df_almacen_cali = prepare_df(almacen_cali, "Almacén Cali")
+    df_comunicaciones = prepare_df(comunicaciones, "Comunicaciones")
+    df_comercial_costos = prepare_df(comercial_costos, "Comercial Costos")
+    df_contabilidad = prepare_df(contabilidad, "Contabilidad") 
+    df_gerencia = prepare_df(gerencia, "Gerencia")
+    
+    # Concatenar todos en un solo DataFrame
+    df_final = pd.concat(
+        [df_tecnologia, df_servicios_tecnicos, df_logistica, df_gestion_riesgos, df_gh, df_almacen_tulua, df_almacen_buga, df_almacen_cartago, df_almacen_cali, df_comunicaciones, df_comercial_costos, df_contabilidad, df_gerencia],
+        ignore_index=True
+    )
+    
+    # pivot de columnas que son meses a filas (enero, febrero, marzo, abril, mayo, junio, julio, agosto, septiembre, octubre, noviembre, diciembre) 
+    meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+    df_final = df_final.melt(id_vars=[col for col in df_final.columns if col not in meses], value_vars=meses, var_name='mes', value_name='valor')
+    
+    # Crear la respuesta HTTP para Excel
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = 'attachment; filename="Presupuestos_Todo.xlsx"'
+    # Exportar a una sola hoja
+    with pd.ExcelWriter(response, engine="openpyxl") as writer:
+        df_final.to_excel(writer, sheet_name="Presupuestos", index=False)
+    return response
+
+def df_horizontal_a_vertical(request):
+    registros = PresupuestoTecnologia.objects.all().values()
+    # filtrar por ultima version
+    registros = registros.filter(version=registros.aggregate(Max('version'))['version__max'])
+    df = pd.DataFrame(list(registros))
+
+    meses = [
+        'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+        'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ]
+
+    # Convertir de formato ancho → largo (vertical)
+    df_vertical = df.melt(
+        id_vars=[col for col in df.columns if col not in meses],
+        value_vars=meses,
+        var_name='mes',
+        value_name='valor'
+    )
+    # ordenar
+    # df_vertical = df_vertical.sort_values(by=['detalle_cuenta']).reset_index(drop=True)
+    print(df_vertical)
+    df_vertical.to_excel('df_vertical.xlsx', index=False)
+    return df_vertical
+
 @login_required
 def base_comercial(request):
     # ✅ Permitir solo a ciertos usuarios por username
-    usuarios_permitidos = ['admin', 'AGRAJALE', 'EVALENCIA', 'SCORTEZ']
+    usuarios_permitidos = ['admin', 'AGRAJALE', 'EVALENCIA', 'SCORTES']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     return render(request, 'presupuesto_comercial/base_presupuesto_comercial.html')
@@ -1332,9 +1430,6 @@ def obtener_presupuesto_centro_segmento_costos(request):
 
 def vista_presupuesto_centro_segmento_costos(request):
     return render(request, 'presupuesto_comercial/presupuesto_centro_segmento_costos.html')
-
-def dashboard(request):
-    return render(request, 'presupuestoApp/dashboard.html')
 
 #----------------PRESUPUESTO COMERCIAL-----------------------
 def aux_presupuesto_comercial_costos():
@@ -7337,7 +7432,7 @@ def borrar_presupuesto_comunicaciones(request):
 #---------------PRESUPUESTO COMERCIAL COSTOS-------------------
 @login_required
 def presupuesto_comercial_costos(request):
-    usuarios_permitidos = ['admin', 'COMERCIALCOSTOS']
+    usuarios_permitidos = ['admin', 'COMERCIALCOSTOS', 'EVALENCIA', 'SCORTES']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     # 🔹 obtener versiones disponibles
@@ -8035,3 +8130,5 @@ def borrar_presupuesto_gerencia(request):
             PresupuestoGerenciaAprobado.objects.filter(version=version).delete()
         return JsonResponse({"status": "ok", "message": "Presupuesto de gerencia eliminado"})
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+

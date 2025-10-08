@@ -401,13 +401,12 @@
       </header>
 
       <section aria-label="Resumen de datos" class="dashboard-summary">
-        <a  href="{% url 'presupuesto' %}">
         <article class="card" tabindex="0" aria-labelledby="totalNotesLabel" role="region">
           <span class="material-icons card-icon" aria-hidden="true">note</span>
           <h3 id="totalNotesLabel" class="card-title">Usuario1</h3>
           <p class="card-number">Haz clic para ver el presupuesto</p>
         </article>
-        </a>
+        
         <article class="card" tabindex="0" aria-labelledby="foldersLabel" role="region" style="background:#009688;">
           <span class="material-icons card-icon" aria-hidden="true">folder_open</span>
           <h3 id="foldersLabel" class="card-title">Usuario 2</h3>
@@ -424,6 +423,8 @@
           <p class="card-number">Haz clic para ver el presupuesto</p>
         </article>
       </section>
+
+      <button id="btnTablaAprovado" class="btn-main">✅ Ir a presupuesto aprobado</button>
 
       {% comment %} <section aria-label="Notas recientes" class="recent-notes">
         <h2>Notas recientes</h2>
@@ -479,6 +480,12 @@
   </button>
 
   <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      document.getElementById("btnTablaAprovado").addEventListener("click", function() {
+          window.location.href = "{% url 'presupuestoAprobadoTecnologia' %}";
+      });
+    });
+
     (function () {
       const sidebar = document.getElementById('sidebar');
       const sidebarToggle = document.getElementById('sidebarToggle');

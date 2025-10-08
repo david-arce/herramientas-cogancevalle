@@ -2,11 +2,13 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.dashboard, name='dashboardPresupuesto'), 
+    path('dashboard', views.dashboard, name='dashboardPresupuesto'), 
+    path('exportar-excel-todo/', views.exportar_excel_todo, name='exportar_excel_todo'),
+    path('ver_df/', views.df_horizontal_a_vertical, name='ver_df'),
+    
     path("exportar-excel/", views.exportar_excel_presupuestos, name="exportar_excel"),
     
     path('presupuesto-ventas/', views.base_comercial, name='baseComercial'), 
-    # path('presupuesto-ventas/', views.presupuesto_comercial, name='baseComercial'), 
     
     # Presupuesto general ventas
     path('presupuesto-general-ventas/', views.vista_presupuesto_general_ventas, name='presupuestoGeneralVentas'), 
@@ -224,7 +226,7 @@ urlpatterns = [
     #-----------------------------PRESUPUESTO GENERAL--------------------------------
     #----CUENTAS CONTABLES---------
     path('seleccion-cuentas-contables/', views.seleccion_cuentas_contables, name='seleccionCuentasContables'),
-     
+    
     #----------PRESUPUESTO TECNOLOGIA---------
     path('presupuesto-tecnologia/', views.presupuesto_tecnologia, name='presupuestoTecnologia'),
     path('obtener-presupuesto-tecnologia/', views.obtener_presupuesto_tecnologia, name='obtener_presupuesto_tecnologia'),

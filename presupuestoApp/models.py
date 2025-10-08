@@ -1599,6 +1599,7 @@ class PresupuestoLogisticaAprobado(models.Model):
     class Meta:
         db_table = 'presupuesto_logistica_aprobado'
 
+# -----PRESUPUESTO GESTION DE RIESGOS------------------------------
 class PresupuestoGestionRiesgos(models.Model):
     centro_tra = models.CharField(blank=True, null=True)  
     nombre_cen = models.CharField(blank=True, null=True)  
@@ -1686,7 +1687,8 @@ class PresupuestoGestionRiesgosAprobado(models.Model):
     
     class Meta:
         db_table = 'presupuesto_gestion_riesgos_aprobado'
-        
+
+# -----PRESUPUESTO GESTION HUMANA------------------------------
 class PresupuestoGH(models.Model):
     centro_tra = models.CharField(blank=True, null=True)  
     nombre_cen = models.CharField(blank=True, null=True)  
@@ -1774,7 +1776,8 @@ class PresupuestoGHAprobado(models.Model):
     
     class Meta:
         db_table = 'presupuesto_gh_aprobado'
-        
+
+# -----PRESUPUESTO ALMACEN TULUA------------------------------
 class PresupuestoAlmacenTulua(models.Model):
     centro_tra = models.CharField(blank=True, null=True)  
     nombre_cen = models.CharField(blank=True, null=True)  
@@ -1862,7 +1865,8 @@ class PresupuestoAlmacenTuluaAprobado(models.Model):
     
     class Meta:
         db_table = 'presupuesto_almacen_tulua_aprobado'
-        
+
+# -----PRESUPUESTO ALMACEN BUGA------------------------------ 
 class PresupuestoAlmacenBuga(models.Model):
     centro_tra = models.CharField(blank=True, null=True)  
     nombre_cen = models.CharField(blank=True, null=True)  
@@ -1950,7 +1954,8 @@ class PresupuestoAlmacenBugaAprobado(models.Model):
     
     class Meta:
         db_table = 'presupuesto_almacen_buga_aprobado'
-        
+
+# -----PRESUPUESTO ALMACEN CARTAGO------------------------------
 class PresupuestoAlmacenCartago(models.Model):
     centro_tra = models.CharField(blank=True, null=True)  
     nombre_cen = models.CharField(blank=True, null=True)  
@@ -2038,7 +2043,8 @@ class PresupuestoAlmacenCartagoAprobado(models.Model):
     
     class Meta:
         db_table = 'presupuesto_almacen_cartago_aprobado'
-        
+
+# -----PRESUPUESTO ALMACEN CALI------------------------------ 
 class PresupuestoAlmacenCali(models.Model):
     centro_tra = models.CharField(blank=True, null=True)  
     nombre_cen = models.CharField(blank=True, null=True)  
@@ -2127,6 +2133,7 @@ class PresupuestoAlmacenCaliAprobado(models.Model):
     class Meta:
         db_table = 'presupuesto_almacen_cali_aprobado'
 
+# -----PRESUPUESTO COMUNICACIONES------------------------------
 class PresupuestoComunicaciones(models.Model):
     centro_tra = models.CharField(blank=True, null=True)  
     nombre_cen = models.CharField(blank=True, null=True)  
@@ -2215,6 +2222,7 @@ class PresupuestoComunicacionesAprobado(models.Model):
     class Meta:
         db_table = 'presupuesto_comunicaciones_aprobado'
         
+#---------Presupuesto comerciales costos------------------------------
 class PresupuestoComercialCostos(models.Model):
     centro_tra = models.CharField(blank=True, null=True)  
     nombre_cen = models.CharField(blank=True, null=True)  
@@ -2302,7 +2310,8 @@ class PresupuestoComercialCostosAprobado(models.Model):
     
     class Meta:
         db_table = 'presupuesto_comercial_costos_aprobado'
-        
+
+# -----PRESUPUESTO CONTABILIDAD------------------------------
 class PresupuestoContabilidad(models.Model):
     centro_tra = models.CharField(blank=True, null=True)  
     nombre_cen = models.CharField(blank=True, null=True)  
@@ -2390,7 +2399,8 @@ class PresupuestoContabilidadAprobado(models.Model):
     
     class Meta:
         db_table = 'presupuesto_contabilidad_aprobado'
-        
+    
+#------PRESUPUESTO GERENCIA------------------------------
 class PresupuestoGerencia(models.Model):
     centro_tra = models.CharField(blank=True, null=True)  
     nombre_cen = models.CharField(blank=True, null=True)  
