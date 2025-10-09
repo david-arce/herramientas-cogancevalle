@@ -4867,7 +4867,7 @@ def obtener_presupuesto_aprobado_tecnologia(request):
 
 def tabla_auxiliar_tecnologia(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 7)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
 
     # 🚫 Si ya pasó la fecha, negar acceso
@@ -7245,8 +7245,11 @@ def obtener_presupuesto_aprobado_comunicaciones(request):
     return JsonResponse({"data": data}, safe=False)
 
 def tabla_auxiliar_comunicaciones(request):
+    usuarios_permitidos = ['admin', 'COMUNICACIONES']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 8)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
@@ -7479,7 +7482,7 @@ def obtener_presupuesto_aprobado_comercial_costos(request):
 
 def tabla_auxiliar_comercial_costos(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 8)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:

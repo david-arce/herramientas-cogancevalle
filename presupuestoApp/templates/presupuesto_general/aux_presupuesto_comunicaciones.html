@@ -560,6 +560,15 @@
             rowData.total = total;
             return rowData;
         }
+        let editingCell = null;
+        let selectedCell = null;
+        // 🔹 Selección con un clic
+        $('#tempTable').on('click', 'td.editable', function (e) {
+            if (editingCell) return; // si está editando, no cambiar selección
+            $('#tempTable td').removeClass('selected');
+            $(this).addClass('selected');
+            selectedCell = this;
+        });
         // cerrar edición y guardar valor
         function cerrarEdicion(cell, newValue) {
             if (!table) {
@@ -581,8 +590,6 @@
             row.data(rowData).draw(false);
             editingCell = null;
         }
-
-        let editingCell = null;
 
         // ✅ Checkbox maestro para seleccionar/deseleccionar todos
         $('#checkAllIPC').on('change', function() {
@@ -843,13 +850,20 @@
                 });
             }
         });
-        // 🔥 Guardar al hacer clic fuera de la tabla
+        // 🔥 Guardar automáticamente cuando se hace clic FUERA de la celda en edición
         $(document).on("click", function(e) {
             if (editingCell) {
-                let $cell = $(editingCell);
-                let $input = $cell.find("input");
-                if ($input.length) {
-                    cerrarEdicion(editingCell, $input.val());
+                const $cell = $(editingCell);
+                const $inputOrSelect = $cell.find("input, select");
+
+                // ✅ Si el clic fue dentro de la celda que se está editando, NO cerrar la edición
+                if ($cell.is(e.target) || $.contains($cell[0], e.target)) {
+                    return; // como Excel: permite seguir interactuando con el campo
+                }
+
+                // ✅ Si se hace clic fuera, cerrar edición y guardar
+                if ($inputOrSelect.length) {
+                    cerrarEdicion(editingCell, $inputOrSelect.val());
                 }
             }
         });
@@ -935,7 +949,15 @@
 
         $('#confirmEliminar').on('click', function() {
             if (filaAEliminar) {
-                filaAEliminar.remove().draw();
+                // 🔹 Guardar posición actual del scroll
+                let scrollPos = $('.dataTables_scrollBody').scrollTop();
+
+                // 🔹 Eliminar fila sin reiniciar la posición
+                filaAEliminar.remove().draw(false);
+
+                // 🔹 Restaurar scroll después del redibujado
+                $('.dataTables_scrollBody').scrollTop(scrollPos);
+
                 showToast("Fila eliminada ❌", "error");
                 filaAEliminar = null;
             }

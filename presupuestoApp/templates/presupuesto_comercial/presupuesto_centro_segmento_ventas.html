@@ -85,16 +85,21 @@
                     year: row.year, 
                     nombre_centro_operacion: row.nombre_centro_operacion, 
                     segmento: row.segmento, 
-                    total_year: row.total_year, 
-                    total_year_costos: row.total_year_costos,
-                    variacion_valor: row.variacion_valor, 
-                    variacion_pct: row.variacion_pct,
-                    utilidad_pct: row.utilidad_pct,
-                    utilidad_valor: row.utilidad_valor,
-                    total_proyectado: row.total_proyectado
+                    total_year: row.total_year || 0, 
+                    total_year_costos: row.total_year_costos || 0,
+                    variacion_valor: row.variacion_valor || 0, 
+                    variacion_pct: row.variacion_pct || 0,
+                    utilidad_pct: row.utilidad_pct || 0,
+                    utilidad_valor: row.utilidad_valor || 0,
+                    total_proyectado: row.total_proyectado || 0
                 };
+                // 🔹 Inicializa todos los meses con 0 o ""
+                Object.values(meses).forEach(m => { pivot[key][m] = 0; });
             } 
-            pivot[key][meses[row.mes]] = row.total; 
+            // 🔹 Asigna el valor del mes real si existe
+            if (meses[row.mes]) {
+                pivot[key][meses[row.mes]] = row.total || 0;
+            } 
 
             {% comment %} let r2Key = 'R2_' + row.nombre_centro_operacion + '_' + row.segmento;
             if (!pivot[r2Key]) pivot[r2Key] = { year: "R2", nombre_centro_operacion: row.nombre_centro_operacion, segmento: row.segmento, total_year: 0, variacion_valor: 0, variacion_pct: 0 }; 

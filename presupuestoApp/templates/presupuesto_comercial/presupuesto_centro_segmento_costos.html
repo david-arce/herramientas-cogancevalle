@@ -55,7 +55,15 @@
 
         data.forEach(row => {
             let key = row.year + '_' + row.nombre_centro_operacion + '_' + row.segmento;
-            if (!pivot[key]) pivot[key] = { year: row.year, nombre_centro_operacion: row.nombre_centro_operacion, segmento: row.segmento, total_year: row.total_year, variacion_valor: row.variacion_valor, variacion_pct: row.variacion_pct }; 
+            if (!pivot[key]) {
+                pivot[key] = { 
+                    year: row.year, 
+                    nombre_centro_operacion: row.nombre_centro_operacion, 
+                    segmento: row.segmento, total_year: row.total_year, 
+                    variacion_valor: row.variacion_valor, 
+                    variacion_pct: row.variacion_pct 
+                };
+            } 
             pivot[key][meses[row.mes]] = row.total; 
 
             {% comment %} let r2Key = 'R2_' + row.nombre_centro_operacion + '_' + row.segmento;

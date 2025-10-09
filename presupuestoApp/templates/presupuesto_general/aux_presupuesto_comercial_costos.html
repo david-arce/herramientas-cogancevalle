@@ -621,7 +621,6 @@
             }
         });
 
-
         // duplicar fila
         $('#tempTable').on('click', '.duplicarFila', function() {
             let row = table.row($(this).parents('tr'));
@@ -638,30 +637,33 @@
             // total en 0
             newRow.total = 0;
 
-            // obtener todos los datos de la tabla
-            let allData = table.rows().data().toArray();
+            // índice visual actual (dentro del filtrado actual)
+            let currentRowNode = row.node();
+            let currentIdx = table.row(currentRowNode).index();
 
-            // insertar justo después de la fila actual
-            let currentIndex = row.index();
-            allData.splice(currentIndex + 1, 0, newRow);
+            // insertar nueva fila justo después de la actual sin perder orden/estado
+            let newRowNode = table.row.add(newRow).draw(false).node();
 
-            // recargar tabla con el nuevo orden
-            table.clear().rows.add(allData).draw(false);
+            // mover la nueva fila justo después de la actual en el DOM visible
+            $(newRowNode).insertAfter($(currentRowNode));
 
-            // volver a ubicar la fila duplicada
-            let $newRowNode = $('#tempTable tbody tr').eq(currentIndex + 1);
+            // animar
+            $(newRowNode).addClass("blink");
+            setTimeout(() => $(newRowNode).removeClass("blink"), 3000);
 
-            // 🔥 Parpadeo visual
-            $newRowNode.addClass("blink");
-            setTimeout(() => $newRowNode.removeClass("blink"), 3000);
+            // mantener scroll (si la tabla es grande)
+            let scrollBody = $('.dataTables_scrollBody');
+            let scrollPos = scrollBody.scrollTop();
+            setTimeout(() => scrollBody.scrollTop(scrollPos), 50);
 
             // abrir edición en la primera celda editable
-            let $firstEditable = $newRowNode.find("td.editable").first();
+            let $firstEditable = $(newRowNode).find("td.editable").first();
             if ($firstEditable.length) {
                 $firstEditable.dblclick();
             }
 
             showToast("Fila duplicada 📑", "success");
+
         });
 
         // lista desplegable para columna nombre centro
@@ -843,13 +845,20 @@
                 });
             }
         });
-        // 🔥 Guardar al hacer clic fuera de la tabla
+        // 🔥 Guardar automáticamente cuando se hace clic FUERA de la celda en edición
         $(document).on("click", function(e) {
             if (editingCell) {
-                let $cell = $(editingCell);
-                let $input = $cell.find("input");
-                if ($input.length) {
-                    cerrarEdicion(editingCell, $input.val());
+                const $cell = $(editingCell);
+                const $inputOrSelect = $cell.find("input, select");
+
+                // ✅ Si el clic fue dentro de la celda que se está editando, NO cerrar la edición
+                if ($cell.is(e.target) || $.contains($cell[0], e.target)) {
+                    return; // como Excel: permite seguir interactuando con el campo
+                }
+
+                // ✅ Si se hace clic fuera, cerrar edición y guardar
+                if ($inputOrSelect.length) {
+                    cerrarEdicion(editingCell, $inputOrSelect.val());
                 }
             }
         });
@@ -935,7 +944,15 @@
 
         $('#confirmEliminar').on('click', function() {
             if (filaAEliminar) {
-                filaAEliminar.remove().draw();
+                // 🔹 Guardar posición actual del scroll
+                let scrollPos = $('.dataTables_scrollBody').scrollTop();
+
+                // 🔹 Eliminar fila sin reiniciar la posición
+                filaAEliminar.remove().draw(false);
+
+                // 🔹 Restaurar scroll después del redibujado
+                $('.dataTables_scrollBody').scrollTop(scrollPos);
+
                 showToast("Fila eliminada ❌", "error");
                 filaAEliminar = null;
             }
