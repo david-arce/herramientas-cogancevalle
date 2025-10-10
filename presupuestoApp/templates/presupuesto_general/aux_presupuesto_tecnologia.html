@@ -444,6 +444,7 @@
         box-shadow:0 2px 8px rgba(0,0,0,0.3);
         z-index:9999;
     ">Expandir</button>
+    
     <!-- Contenedor de toasts -->
     <div class="toast-container" id="toastContainer"></div>
 
@@ -598,6 +599,40 @@
             fixedHeader: true   // 🔥 Aquí activamos el header fijo
         });
 
+        // función para recalcular total de una fila
+        function recalcularTotal(rowData) {
+            let meses = ["enero","febrero","marzo","abril","mayo","junio",
+                        "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+            let total = 0;
+            meses.forEach(m => {
+                total += parseFloat(rowData[m]) || 0;
+            });
+            rowData.total = total;
+            return rowData;
+        }
+
+        // cerrar edición y guardar valor
+        function cerrarEdicion(cell, newValue) {
+            if (!table) {
+                console.error("Error, Revise que no tenga campos en edición abiertos.");
+                return;
+            }
+            let row = table.row($(cell).closest("tr"));
+            let rowData = row.data();
+
+            // actualizar la celda
+            let colIdx = table.cell(cell).index().column;
+            let colName = table.column(colIdx).dataSrc();
+
+            rowData[colName] = newValue;
+
+            // recalcular total dinámicamente
+            rowData = recalcularTotal(rowData);
+
+            row.data(rowData).draw(false);
+            editingCell = null;
+        }
+
         // ======== 🔹 GESTIÓN DE FILA ACTIVA (solo color) ========
         function seleccionarFila($row) {
             // Quitar selección previa
@@ -692,18 +727,6 @@
             }
         });
 
-        // función para recalcular total de una fila
-        function recalcularTotal(rowData) {
-            let meses = ["enero","febrero","marzo","abril","mayo","junio",
-                        "julio","agosto","septiembre","octubre","noviembre","diciembre"];
-            let total = 0;
-            meses.forEach(m => {
-                total += parseFloat(rowData[m]) || 0;
-            });
-            rowData.total = total;
-            return rowData;
-        }
-
         // ✅ Checkbox maestro para seleccionar/deseleccionar todos
         $('#checkAllIPC').on('change', function() {
             let checked = $(this).is(':checked');
@@ -743,28 +766,6 @@
         let filaAEliminar = null; // 🔥 Guardar la fila temporal
         let editingCell = null;
         
-        // cerrar edición y guardar valor
-        function cerrarEdicion(cell, newValue) {
-            if (!table) {
-                console.error("Error, Revise que no tenga campos en edición abiertos.");
-                return;
-            }
-            let row = table.row($(cell).closest("tr"));
-            let rowData = row.data();
-
-            // actualizar la celda
-            let colIdx = table.cell(cell).index().column;
-            let colName = table.column(colIdx).dataSrc();
-
-            rowData[colName] = newValue;
-
-            // recalcular total dinámicamente
-            rowData = recalcularTotal(rowData);
-
-            row.data(rowData).draw(false);
-            editingCell = null;
-        }
-
         // duplicar fila
         $('#tempTable').on('click', '.duplicarFila', function() {
             let row = table.row($(this).parents('tr'));
@@ -1095,41 +1096,6 @@
             cerrarModal(modalId);
         });
 
-        // ⬆️ Confirmación de subir presupuesto
-        $('#subirBtn').on('click', function(e) {
-            e.preventDefault(); // Evita submit inmediato
-            abrirModal('modalSubir');
-        });
-        
-        // Acción al confirmar subida
-        $('#confirmSubir').on('click', function() {
-            cerrarModal('modalSubir');
-
-            let $btn = $("#subirBtn");
-            let $spinner = $btn.find(".spinner");
-
-            // Mostrar spinner y deshabilitar botón
-            $spinner.show();
-            $btn.prop("disabled", true);
-
-            $.post("{% url 'subir_presupuesto_tecnologia' %}", {
-                csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val()
-            }, function(response) {
-                if (response.success) {
-                    showToast(response.msg, "success");
-                } else {
-                    showToast(response.msg, "error");
-                }
-            })
-            .fail(function() {
-                showToast("Error en la subida ❌", "error");
-            })
-            .always(function() {
-                $spinner.hide();
-                $btn.prop("disabled", false);
-            });
-        });
-
         // agregar fila vacía
         $('#agregarFila').on('click', function() {
             table.row.add({
@@ -1190,6 +1156,41 @@
                 filaAEliminar = null;
             }
             cerrarModal('modalEliminar');
+        });
+
+        //--------------fin copiado-----------------
+        // ⬆️ Confirmación de subir presupuesto
+        $('#subirBtn').on('click', function(e) {
+            e.preventDefault(); // Evita submit inmediato
+            abrirModal('modalSubir');
+        });
+        // Acción al confirmar subida
+        $('#confirmSubir').on('click', function() {
+            cerrarModal('modalSubir');
+
+            let $btn = $("#subirBtn");
+            let $spinner = $btn.find(".spinner");
+
+            // Mostrar spinner y deshabilitar botón
+            $spinner.show();
+            $btn.prop("disabled", true);
+
+            $.post("{% url 'subir_presupuesto_tecnologia' %}", {
+                csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val()
+            }, function(response) {
+                if (response.success) {
+                    showToast(response.msg, "success");
+                } else {
+                    showToast(response.msg, "error");
+                }
+            })
+            .fail(function() {
+                showToast("Error en la subida ❌", "error");
+            })
+            .always(function() {
+                $spinner.hide();
+                $btn.prop("disabled", false);
+            });
         });
 
         // Cargar datos base
