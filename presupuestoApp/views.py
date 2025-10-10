@@ -8135,3 +8135,21 @@ def borrar_presupuesto_gerencia(request):
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
 
+#--------------------PRESUPUESTO CONSOLIDADO-----------------------
+@login_required
+def presupuesto_consolidado(request, area):
+    USUARIOS_PERMITIDOS= ['admin', 'NICOLAS']
+    if request.user.username not in USUARIOS_PERMITIDOS:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+
+    templates = {
+        'almacen-buga': 'presupuesto_consolidado/presupuesto_almacen_buga.html',
+        'almacen-cali': 'presupuesto_consolidado/presupuesto_almacen_cali.html',
+        'tecnologia': 'presupuesto_consolidado/presupuesto_tecnologia.html',
+    }
+
+    template = templates.get(area)
+    if not template:
+        return HttpResponseForbidden("⛔ Área no válida.")
+
+    return render(request, template)

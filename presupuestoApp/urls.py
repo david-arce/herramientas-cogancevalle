@@ -395,4 +395,7 @@ urlpatterns = [
     path('subir-presupuesto-gerencia/', views.subir_presupuesto_gerencia, name='subir_presupuesto_gerencia'),
     path('borrar_presupuesto_gerencia/', views.borrar_presupuesto_gerencia, name='borrar_presupuesto_gerencia'),
     
+    #------------------PRESUPUESTO CONSOLIDADO---------------------------
+    path('<str:area>/', views.presupuesto_consolidado, name='presupuesto_consolidado'),
+    
 ]

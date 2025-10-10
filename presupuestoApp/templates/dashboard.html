@@ -396,23 +396,27 @@
         </div>
         <div class="user-profile" tabindex="0" aria-label="Perfil de usuario">
           <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/a5df9cd9-ddcf-4863-9290-dff3ca408c6b.png" alt="Avatar del usuario" />
-          <span class="user-name">Juan Pérez</span>
+          <span class="user-name">Nicolas</span>
         </div>
       </header>
 
       <section aria-label="Resumen de datos" class="dashboard-summary">
-        <article class="card" tabindex="0" aria-labelledby="totalNotesLabel" role="region">
-          <span class="material-icons card-icon" aria-hidden="true">note</span>
-          <h3 id="totalNotesLabel" class="card-title">Usuario1</h3>
-          <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
+        <a href="{% url 'presupuesto_consolidado' 'tecnologia' %}" target="_blank" rel="noopener noreferrer">
+          <article class="card" tabindex="0" aria-labelledby="totalNotesLabel" role="region">
+            <span class="material-icons card-icon" aria-hidden="true">note</span>
+            <h3 id="totalNotesLabel" class="card-title">Tecnología</h3>
+            <p class="card-number">Haz clic para ver el presupuesto</p>
+          </article>
+        </a>
         
-        <article class="card" tabindex="0" aria-labelledby="foldersLabel" role="region" style="background:#009688;">
-          <span class="material-icons card-icon" aria-hidden="true">folder_open</span>
-          <h3 id="foldersLabel" class="card-title">Usuario 2</h3>
-          <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
-        <article class="card" tabindex="0" aria-labelledby="tagsLabel" role="region" style="background:#f57c00;">
+        <a href="{% url 'presupuesto_consolidado' 'almacen-buga' %}" target="_blank" rel="noopener noreferrer">
+          <article class="card" tabindex="0" aria-labelledby="foldersLabel" role="region" style="background:#009688;">
+            <span class="material-icons card-icon" aria-hidden="true">folder_open</span>
+            <h3 id="foldersLabel" class="card-title">Almacen Buga</h3>
+            <p class="card-number">Haz clic para ver el presupuesto</p>
+          </article>
+        </a>
+        {% comment %} <article class="card" tabindex="0" aria-labelledby="tagsLabel" role="region" style="background:#f57c00;">
           <span class="material-icons card-icon" aria-hidden="true">label_outline</span>
           <h3 id="tagsLabel" class="card-title">Usuario 3</h3>
           <p class="card-number">Haz clic para ver el presupuesto</p>
@@ -421,14 +425,8 @@
           <span class="material-icons card-icon" aria-hidden="true">update</span>
           <h3 id="recentActivityLabel" class="card-title">Usuario 4</h3>
           <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
+        </article> {% endcomment %}
       </section>
-
-      <a href="{% url 'presupuestoAprobadoTecnologia' %}" 
-        style="float: right; background-color:blue; color:white; padding:8px 16px; 
-                border-radius:6px; text-decoration:none;">
-          ver Presupuesto Proyectado Tecnología
-      </a>
 
       {% comment %} <section aria-label="Notas recientes" class="recent-notes">
         <h2>Notas recientes</h2>
