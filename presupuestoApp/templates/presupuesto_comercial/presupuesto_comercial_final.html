@@ -103,6 +103,15 @@
     display: block;
     font-size: 13px;
     }
+    .btn-colvis {
+    background-color: #f0f0f0 !important;
+    border: 1px solid #ccc !important;
+    color: #333 !important;
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-left: 8px;
+}
+
 </style>
 <script>
 function numberFormat(data, type, row) {
@@ -170,7 +179,7 @@ $(function () {   // ⚡ $(function() {}) == $(document).ready()
         language: {
                 url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
         },
-        dom: 'Bfltip',
+        dom: 'Bfrtip',
         buttons: [
             {
                 extend: 'excelHtml5',
@@ -220,6 +229,14 @@ $(function () {   // ⚡ $(function() {}) == $(document).ready()
                     }
                 }
                 }
+            },
+            {
+                extend: 'colvis',              // 👈 nuevo botón de visibilidad de columnas
+                text: '👁️ Mostrar / Ocultar columnas',
+                titleAttr: 'Selecciona las columnas a mostrar u ocultar',
+                postfixButtons: ['colvisRestore'], // agrega botón para restaurar visibilidad
+                collectionLayout: 'fixed two-column', // menú en 2 columnas
+                className: 'btn-colvis'
             }
         ],
         scrollX: true,
