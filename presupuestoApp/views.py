@@ -75,7 +75,11 @@ def exportar_excel_presupuestos(request):
 
     return response
 
+@login_required
 def dashboard(request):
+    USUARIOS_PERMITIDOS= ['admin', 'NICOLAS']
+    if request.user.username not in USUARIOS_PERMITIDOS:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     return render(request, 'dashboard.html')
 
 def exportar_excel_todo(request):
@@ -5313,7 +5317,7 @@ def borrar_presupuesto_ocupacional(request):
 #----PRESUPUESTO SERVICIOS TECNICOS-----------------------------
 @login_required
 def presupuesto_servicios_tecnicos(request):
-    usuarios_permitidos = ['admin', 'SERVICIOS_TECNICOS']
+    usuarios_permitidos = ['admin', 'SERVICIOSTECNICOS']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     # 🔹 obtener versiones disponibles
@@ -8136,16 +8140,14 @@ def borrar_presupuesto_gerencia(request):
 
 
 #--------------------PRESUPUESTO CONSOLIDADO-----------------------
-@login_required
 def presupuesto_consolidado(request, area):
-    USUARIOS_PERMITIDOS= ['admin', 'NICOLAS']
-    if request.user.username not in USUARIOS_PERMITIDOS:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-
     templates = {
         'almacen-buga': 'presupuesto_consolidado/presupuesto_almacen_buga.html',
         'almacen-cali': 'presupuesto_consolidado/presupuesto_almacen_cali.html',
+        'almacen-cartago': 'presupuesto_consolidado/presupuesto_almacen_cartago.html',
+        'almace-tulua': 'presupuesto_consolidado/presupuesto_almacen_tulua.html',
         'tecnologia': 'presupuesto_consolidado/presupuesto_tecnologia.html',
+        
     }
 
     template = templates.get(area)
