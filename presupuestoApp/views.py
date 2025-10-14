@@ -6040,7 +6040,7 @@ def borrar_presupuesto_gestion_riesgos(request):
 #--------PRESUPUESTO GH------------------
 @login_required
 def presupuesto_gh(request):
-    usuarios_permitidos = ['admin', 'GESTION_HUMANA']
+    usuarios_permitidos = ['admin', 'GESTIONHUMANA']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     # 🔹 obtener versiones disponibles
@@ -8145,7 +8145,16 @@ def presupuesto_consolidado(request, area):
         'almacen-buga': 'presupuesto_consolidado/presupuesto_almacen_buga.html',
         'almacen-cali': 'presupuesto_consolidado/presupuesto_almacen_cali.html',
         'almacen-cartago': 'presupuesto_consolidado/presupuesto_almacen_cartago.html',
-        'almace-tulua': 'presupuesto_consolidado/presupuesto_almacen_tulua.html',
+        'almacen-tulua': 'presupuesto_consolidado/presupuesto_almacen_tulua.html',
+        'comercial-costos': 'presupuesto_consolidado/presupuesto_comercial_costos.html',
+        'comunicaciones': 'presupuesto_consolidado/presupuesto_comunicaciones.html',
+        'contabilidad': 'presupuesto_consolidado/presupuesto_contabilidad.html',
+        'gerencia': 'presupuesto_consolidado/presupuesto_gerencia.html',
+        'gestion-riesgos': 'presupuesto_consolidado/presupuesto_gestion_riesgos.html',
+        'gh': 'presupuesto_consolidado/presupuesto_GH.html',
+        'logistica': 'presupuesto_consolidado/presupuesto_logistica.html',
+        'ocupacional': 'presupuesto_consolidado/presupuesto_ocupacional.html',
+        'servicios-tecnicos': 'presupuesto_consolidado/presupuesto_servicios_tecnicos.html',
         'tecnologia': 'presupuesto_consolidado/presupuesto_tecnologia.html',
         
     }
@@ -8155,3 +8164,4 @@ def presupuesto_consolidado(request, area):
         return HttpResponseForbidden("⛔ Área no válida.")
 
     return render(request, template)
+

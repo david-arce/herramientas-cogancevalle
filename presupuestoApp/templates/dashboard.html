@@ -400,15 +400,7 @@
         </div>
       </header>
 
-      <section aria-label="Resumen de datos" class="dashboard-summary">
-        <a href="{% url 'presupuesto_consolidado' 'tecnologia' %}" target="_blank" rel="noopener noreferrer">
-          <article class="card" tabindex="0" aria-labelledby="totalNotesLabel" role="region">
-            <span class="material-icons card-icon" aria-hidden="true">note</span>
-            <h3 id="totalNotesLabel" class="card-title">Tecnología</h3>
-            <p class="card-number">Haz clic para ver el presupuesto</p>
-          </article>
-        </a>
-        
+      <section aria-label="Resumen de datos" class="dashboard-summary">        
         <a href="{% url 'presupuesto_consolidado' 'almacen-buga' %}" target="_blank" rel="noopener noreferrer">
           <article class="card" tabindex="0" aria-labelledby="foldersLabel" role="region" style="background:#009688;">
             <span class="material-icons card-icon" aria-hidden="true">folder_open</span>
@@ -416,16 +408,98 @@
             <p class="card-number">Haz clic para ver el presupuesto</p>
           </article>
         </a>
-        {% comment %} <article class="card" tabindex="0" aria-labelledby="tagsLabel" role="region" style="background:#f57c00;">
-          <span class="material-icons card-icon" aria-hidden="true">label_outline</span>
-          <h3 id="tagsLabel" class="card-title">Usuario 3</h3>
-          <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
-        <article class="card" tabindex="0" aria-labelledby="recentActivityLabel" role="region" style="background:#673ab7;">
-          <span class="material-icons card-icon" aria-hidden="true">update</span>
-          <h3 id="recentActivityLabel" class="card-title">Usuario 4</h3>
-          <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article> {% endcomment %}
+        <a href="{% url 'presupuesto_consolidado' 'almacen-cali' %}" target="_blank" rel="noopener noreferrer">
+          <article class="card" tabindex="0" aria-labelledby="notesLabel" role="region" style="background:#2196f3;">
+            <span class="material-icons card-icon" aria-hidden="true">note_alt</span>
+            <h3 id="notesLabel" class="card-title">Almacen Cali</h3>
+            <p class="card-number">Haz clic para ver el presupuesto</p>
+          </article>
+        </a>
+        <a href="{% url 'presupuesto_consolidado' 'almacen-cartago' %}" target="_blank" rel="noopener noreferrer">
+          <article class="card" tabindex="0" aria-labelledby="tagsLabel" role="region" style="background:#ff5722;">
+            <span class="material-icons card-icon" aria-hidden="true">label</span>
+            <h3 id="tagsLabel" class="card-title">Almacen Cartago</h3>
+            <p class="card-number">Haz clic para ver el presupuesto</p>
+          </article>
+        </a>
+        <a href="{% url 'presupuesto_consolidado' 'almacen-tulua' %}" target="_blank" rel="noopener noreferrer">
+          <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#673ab7;">
+            <span class="material-icons card-icon" aria-hidden="true">group</span>
+            <h3 id="usersLabel" class="card-title">Almacen Tulua</h3>
+            <p class="card-number">Haz clic para ver el presupuesto</p>
+          </article>
+        </a>
+        <a href="{% url 'presupuesto_consolidado' 'comercial-costos' %}" target="_blank" rel="noopener noreferrer">
+          <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#e91e63;">
+            <span class="material-icons card-icon" aria-hidden="true">group</span>
+            <h3 id="usersLabel" class="card-title">Comercial Costos</h3>
+            <p class="card-number">Haz clic para ver el presupuesto</p>
+          </article>
+        </a>
+        <a href="{% url 'presupuesto_consolidado' 'comunicaciones' %}" target="_blank" rel="noopener noreferrer">
+          <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#ff9800;">
+            <span class="material-icons card-icon" aria-hidden="true">group</span>
+            <h3 id="usersLabel" class="card-title">Comunicaciones</h3>
+            <p class="card-number">Haz clic para ver el presupuesto</p>
+          </article>
+        </a>
+        <a href="{% url 'presupuesto_consolidado' 'contabilidad' %}" target="_blank" rel="noopener noreferrer">
+          <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#4caf50;">
+            <span class="material-icons card-icon" aria-hidden="true">group</span>
+            <h3 id="usersLabel" class="card-title">Contabilidad</h3>
+            <p class="card-number">Haz clic para ver el presupuesto</p>
+          </article>
+        </a>
+        <a href="{% url 'presupuesto_consolidado' 'gerencia' %}" target="_blank" rel="noopener noreferrer">
+          <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#795548;">
+            <span class="material-icons card-icon" aria-hidden="true">group</span>
+            <h3 id="usersLabel" class="card-title">Gerencia</h3>
+            <p class="card-number">Haz clic para ver el presupuesto</p>
+          </article>
+        </a>
+        <a href="{% url 'presupuesto_consolidado' 'gestion-riesgos' %}" target="_blank" rel="noopener noreferrer">
+          <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#9c27b0;">
+            <span class="material-icons card-icon" aria-hidden="true">group</span>
+            <h3 id="usersLabel" class="card-title">Gestión riesgos</h3>
+            <p class="card-number">Haz clic para ver el presupuesto</p>
+          </article>
+        </a>
+        <a href="{% url 'presupuesto_consolidado' 'gh' %}" target="_blank" rel="noopener noreferrer">
+          <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#f44336;">
+            <span class="material-icons card-icon" aria-hidden="true">group</span>
+            <h3 id="usersLabel" class="card-title">Gestión humana</h3>
+            <p class="card-number">Haz clic para ver el presupuesto</p>
+          </article>
+        </a>
+        <a href="{% url 'presupuesto_consolidado' 'logistica' %}" target="_blank" rel="noopener noreferrer">
+          <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#607d8b;">
+            <span class="material-icons card-icon" aria-hidden="true">group</span>
+            <h3 id="usersLabel" class="card-title">Logística</h3>
+            <p class="card-number">Haz clic para ver el presupuesto</p>
+          </article>
+        </a>
+        <a href="{% url 'presupuesto_consolidado' 'ocupacional' %}" target="_blank" rel="noopener noreferrer">
+          <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#3f51b5;">
+            <span class="material-icons card-icon" aria-hidden="true">group</span>
+            <h3 id="usersLabel" class="card-title">Ocupacional</h3>
+            <p class="card-number">Haz clic para ver el presupuesto</p>
+          </article>
+        </a>
+        <a href="{% url 'presupuesto_consolidado' 'servicios-tecnicos' %}" target="_blank" rel="noopener noreferrer">
+          <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#2196f3;">
+            <span class="material-icons card-icon" aria-hidden="true">group</span>
+            <h3 id="usersLabel" class="card-title">Servicios técnicos</h3>
+            <p class="card-number">Haz clic para ver el presupuesto</p>
+          </article>
+        </a>
+        <a href="{% url 'presupuesto_consolidado' 'tecnologia' %}" target="_blank" rel="noopener noreferrer">
+          <article class="card" tabindex="0" aria-labelledby="totalNotesLabel" role="region">
+            <span class="material-icons card-icon" aria-hidden="true">note</span>
+            <h3 id="totalNotesLabel" class="card-title">Tecnología</h3>
+            <p class="card-number">Haz clic para ver el presupuesto</p>
+          </article>
+        </a>
+
       </section>
 
       {% comment %} <section aria-label="Notas recientes" class="recent-notes">
