@@ -623,25 +623,59 @@
 
         // cerrar edición y guardar valor
         function cerrarEdicion(cell, newValue) {
-            if (!table) {
-                console.error("Error, Revise que no tenga campos en edición abiertos.");
-                return;
+            try {
+                if (!table) {
+                    {% comment %} console.error("Error: la tabla no está inicializada."); {% endcomment %}
+                    return;
+                }
+
+                // Asegurarse de que la celda aún existe en el DOM
+                if (!cell || !$.contains(document, cell)) {
+                    {% comment %} console.warn("La celda ya no existe en el DOM. Cancelando edición."); {% endcomment %}
+                    editingCell = null;
+                    return;
+                }
+
+                const dtCell = table.cell(cell);
+                if (!dtCell || dtCell.index() === undefined) {
+                    {% comment %} console.warn("La celda de DataTables ya no es válida."); {% endcomment %}
+                    editingCell = null;
+                    return;
+                }
+
+                const colIdx = dtCell.index().column;
+                const row = table.row($(cell).closest("tr"));
+                const rowData = row.data();
+
+                if (!rowData) {
+                    {% comment %} console.warn("No se pudo obtener la fila asociada a la celda."); {% endcomment %}
+                    editingCell = null;
+                    return;
+                }
+
+                const colName = table.column(colIdx).dataSrc();
+                if (!colName) {
+                    {% comment %} console.warn("No se encontró la columna para índice:", colIdx); {% endcomment %}
+                    editingCell = null;
+                    return;
+                }
+
+                // Actualizar el valor en los datos de la fila
+                rowData[colName] = newValue;
+
+                // Recalcular total dinámicamente (según tu lógica)
+                const newRowData = recalcularTotal(rowData);
+
+                // Actualizar la fila sin redibujar completamente
+                row.data(newRowData).draw(false);
+
+            } catch (err) {
+                console.error("Error en cerrarEdicion:", err);
+            } finally {
+                editingCell = null;
             }
-            let row = table.row($(cell).closest("tr"));
-            let rowData = row.data();
-
-            // actualizar la celda
-            let colIdx = table.cell(cell).index().column;
-            let colName = table.column(colIdx).dataSrc();
-
-            rowData[colName] = newValue;
-
-            // recalcular total dinámicamente
-            rowData = recalcularTotal(rowData);
-
-            row.data(rowData).draw(false);
-            editingCell = null;
         }
+
 
         // ======== 🔹 GESTIÓN DE FILA ACTIVA (solo color) ========
         function seleccionarFila($row) {
@@ -805,16 +839,17 @@
 
             table.clear().rows.add(allData).draw(false);
 
-            // 🔹 restaurar scroll
-            setTimeout(() => scrollBody.scrollTop(scrollPos), 50);
+            setTimeout(() => {
+                scrollBody.scrollTop(scrollPos);
 
-            // 🔹 seleccionar y animar la nueva fila
-            let $newRowNode = $('#tempTable tbody tr').eq(currentIndex + 1);
-            seleccionarFila($newRowNode);
-            $newRowNode.addClass("blink");
-            setTimeout(() => $newRowNode.removeClass("blink"), 2000);
+                // buscar la nueva fila duplicada
+                let $newRowNode = $('#tempTable tbody tr').eq(currentIndex + 1);
 
-            if ($firstEditable.length) $firstEditable.dblclick();
+                // seleccionar y animar
+                seleccionarFila($newRowNode);
+                $newRowNode.addClass("blink");
+                setTimeout(() => $newRowNode.removeClass("blink"), 2000);
+            }, 50);
             showToast("Fila duplicada 📑", "success");
         });
 
@@ -904,8 +939,11 @@
                     }
 
 
-                    row.data(rowData).draw(false);
-                    editingCell = null;
+                     // 🔥 Esperar al siguiente ciclo de ejecución para evitar error del blur
+                    setTimeout(() => {
+                        row.data(rowData).draw(false);
+                        editingCell = null;
+                    }, 0);
                 });
 
 
@@ -935,8 +973,11 @@
                     rowData["codcosto"] = opcionesNombreCentro[nuevoValor]?.codigoCosto || "";
                     rowData["centro_tra"] = opcionesNombreCentro[nuevoValor]?.centro || "";
                     
-                    row.data(rowData).draw(false);
-                    editingCell = null;
+                     // 🔥 Esperar al siguiente ciclo de ejecución para evitar error del blur
+                    setTimeout(() => {
+                        row.data(rowData).draw(false);
+                        editingCell = null;
+                    }, 0);
                 });
 
                 $select.on("keydown", function(e) {
@@ -1259,8 +1300,12 @@
                     // ✅ Ocultar advertencia al guardar
                     if (persistentToast) {
                         persistentToast.classList.remove("show");
-                        setTimeout(() => persistentToast.remove(), 500);
-                        persistentToast = null;
+                        setTimeout(() => {
+                            if (persistentToast && document.body.contains(persistentToast)) {
+                                persistentToast.remove();
+                            }
+                            persistentToast = null;
+                        }, 500);
                     }
                     editando = false;
                 },
