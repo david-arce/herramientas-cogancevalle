@@ -8165,3 +8165,96 @@ def presupuesto_consolidado(request, area):
 
     return render(request, template)
 
+def obtener_presupuesto_consolidado(request, area):
+    modelos = {
+        'almacen-buga': PresupuestoAlmacenBugaAprobado, 
+        'almacen-cali': PresupuestoAlmacenCaliAprobado,
+        'almacen-cartago': PresupuestoAlmacenCartagoAprobado,
+        'almacen-tulua': PresupuestoAlmacenTuluaAprobado,
+        'comercial-costos': PresupuestoComercialCostosAprobado,
+        'comunicaciones': PresupuestoComunicacionesAprobado,    
+        'contabilidad': PresupuestoContabilidadAprobado,
+        'gerencia': PresupuestoGerenciaAprobado,
+        'gestion-riesgos': PresupuestoGestionRiesgosAprobado,
+        'gh': PresupuestoGHAprobado,
+        'logistica': PresupuestoLogisticaAprobado,
+        'ocupacional': PresupuestoOcupacionalAprobado,
+        'servicios-tecnicos': PresupuestoServiciosTecnicosAprobado,
+        'tecnologia': PresupuestotecnologiaAprobado,
+    }
+    modelo = modelos.get(area)
+    if not modelo:
+        return HttpResponseForbidden("⛔ Área no válida.")
+    # filtrar por la última versión
+    versiones = (
+        modelo.objects
+        .values_list("version", flat=True)
+        .distinct()
+    )
+    ultima_version = max(versiones) if versiones else 1
+    qs = modelo.objects.filter(version=ultima_version)
+    data = list(qs.values())
+    return JsonResponse({"data": data}, safe=False)
+
+def guardar_presupuesto_consolidado(request, area):
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+    try:
+        # Cargar datos enviados
+        data = json.loads(request.body.decode("utf-8"))
+
+        # Campos comunes válidos
+        campos_validos = {
+            "centro_tra", "nombre_cen", "codcosto", "responsable",
+            "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", 
+            "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", 
+            "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", 
+            "total", "comentario"
+        }
+
+        # Diccionario: área → modelo correspondiente
+        modelos = {
+            'almacen-buga': PresupuestoAlmacenBugaAprobado, 
+            'almacen-cali': PresupuestoAlmacenCaliAprobado,
+            'almacen-cartago': PresupuestoAlmacenCartagoAprobado,
+            'almacen-tulua': PresupuestoAlmacenTuluaAprobado,
+            'comercial-costos': PresupuestoComercialCostosAprobado,
+            'comunicaciones': PresupuestoComunicacionesAprobado,
+            'contabilidad': PresupuestoContabilidadAprobado,
+            'gerencia': PresupuestoGerenciaAprobado,
+            'gestion-riesgos': PresupuestoGestionRiesgosAprobado,
+            'gh': PresupuestoGHAprobado,
+            'logistica': PresupuestoLogisticaAprobado,
+            'ocupacional': PresupuestoOcupacionalAprobado,
+            'servicios-tecnicos': PresupuestoServiciosTecnicosAprobado,
+            'tecnologia': PresupuestotecnologiaAprobado,
+        }
+
+        modelo = modelos.get(area)
+        if not modelo:
+            return HttpResponseForbidden("⛔ Área no válida.")
+
+        registros = []
+        for row in data:
+            row_filtrado = {k: row.get(k) for k in campos_validos}
+
+            # Reemplazar None o vacío por 0 en numéricos
+            for mes in [
+                "enero", "febrero", "marzo", "abril", "mayo", "junio",
+                "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            ]:
+                if row_filtrado.get(mes) in [None, ""]:
+                    row_filtrado[mes] = 0
+
+            registros.append(modelo(**row_filtrado))
+
+        # Guardar dentro de una transacción
+        with transaction.atomic():
+            modelo.objects.all().delete()  # Limpia tabla auxiliar del área
+            modelo.objects.bulk_create(registros)
+
+        return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)

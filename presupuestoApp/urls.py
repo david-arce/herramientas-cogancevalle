@@ -397,5 +397,7 @@ urlpatterns = [
     
     #------------------PRESUPUESTO CONSOLIDADO---------------------------
     path('<str:area>/', views.presupuesto_consolidado, name='presupuesto_consolidado'),
+    path('<str:area>/obtener-presupuesto-consolidado/', views.obtener_presupuesto_consolidado, name='obtener_presupuesto_consolidado'),
+    path('<str:area>/guardar/', views.guardar_presupuesto_consolidado, name='guardar_presupuesto_consolidado'),
     
 ]

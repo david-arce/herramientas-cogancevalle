@@ -316,7 +316,7 @@
         <!-- Grupo: Guardar / Subir presupuesto -->
         <div class="btn-section1">
             {% comment %} <button id="cargarBase">📂 Cargar presupuesto anterior</button> {% endcomment %}
-            {% comment %} <button id="guardarTempBtn">💾 Guardar cambios</button> {% endcomment %}
+            <button id="guardarTempBtn">💾 Guardar cambios</button>
             {% comment %} <button type="button" id="subirBtn">⬆️ Subir Presupuesto proyectado <span class="spinner" style="display:none; margin-left:8px;"></span></button> {% endcomment %}
         </div>
 
@@ -473,8 +473,8 @@
         cargarOpciones();
         let table = $('#tempTable').DataTable({
             ajax: {
-                url: "{% url 'obtener_tecnologia_temp' %}",
-                dataSrc: ""
+                url: "{% url 'obtener_presupuesto_consolidado' 'tecnologia' %}",
+                
             },
             columns: [
                 {   // 🔥 Columna de selección
@@ -1218,17 +1218,21 @@
             $btn.prop("disabled", true);
 
             $.ajax({
-                url: "{% url 'guardar_tecnologia_temp' %}",
+                url: "{% url 'guardar_presupuesto_consolidado' 'tecnologia' %}",
                 type: "POST",
                 data: JSON.stringify(data),
                 contentType: "application/json",
                 success: function() {
-                    showToast("Datos guardados en tabla temporal ✅", "success");
+                    showToast("Datos guardados en presupuesto tecnologia ✅", "success");
                     // ✅ Ocultar advertencia al guardar
                     if (persistentToast) {
                         persistentToast.classList.remove("show");
-                        setTimeout(() => persistentToast.remove(), 500);
-                        persistentToast = null;
+                        setTimeout(() => {
+                            if (persistentToast && document.body.contains(persistentToast)) {
+                                persistentToast.remove();
+                            }
+                            persistentToast = null;
+                        }, 500);
                     }
                     editando = false;
                 },

@@ -327,7 +327,7 @@
     <!-- Grupo: Guardar / Subir presupuesto -->
     <div class="btn-section1">
         {% comment %} <button id="cargarBase">📂 Cargar presupuesto anterior</button> {% endcomment %}
-        {% comment %} <button id="guardarTempBtn">💾 Guardar cambios</button> {% endcomment %}
+        <button id="guardarTempBtn">💾 Guardar cambios</button>
         {% comment %} <button type="button" id="subirBtn">⬆️ Subir Presupuesto proyectado <span class="spinner" style="display:none; margin-left:8px;"></span></button> {% endcomment %}
     </div>
 
@@ -480,8 +480,7 @@
         cargarOpciones();
         let table = $('#tempTable').DataTable({
             ajax: {
-                url: "{% url 'obtener_almacen_buga_temp' %}",
-                dataSrc: ""
+                url: "{% url 'obtener_presupuesto_consolidado' 'almacen-buga'%}",
             },
             columns: [
                 {   // 🔥 Columna de selección
@@ -1225,17 +1224,22 @@
             $btn.prop("disabled", true);
 
             $.ajax({
-                url: "{% url 'guardar_almacen_buga_temp' %}",
+                url: "{% url 'guardar_presupuesto_consolidado' 'almacen-buga'%}",
                 type: "POST",
                 data: JSON.stringify(data),
                 contentType: "application/json",
                 success: function() {
-                    showToast("Datos guardados en tabla temporal ✅", "success");
+                    showToast("Datos guardados en presupuesto almacen buga ✅", "success");
                     // ✅ Ocultar advertencia al guardar
                     if (persistentToast) {
                         persistentToast.classList.remove("show");
-                        setTimeout(() => persistentToast.remove(), 500);
-                        persistentToast = null;
+                        // 🔹 Verificamos que aún esté en el DOM antes de eliminarlo
+                        setTimeout(() => {
+                            if (persistentToast && document.body.contains(persistentToast)) {
+                                persistentToast.remove();
+                            }
+                            persistentToast = null;
+                        }, 500);
                     }
                     editando = false;
                 },

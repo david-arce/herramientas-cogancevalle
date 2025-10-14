@@ -328,14 +328,8 @@
     <div class="btn-section1">
         {% comment %} <button id="cargarBase">📂 Cargar presupuesto anterior</button> {% endcomment %}
         <button id="guardarTempBtn">💾 Guardar cambios</button>
-        <button type="button" id="subirBtn">⬆️ Subir Presupuesto proyectado <span class="spinner" style="display:none; margin-left:8px;"></span></button>
+        {% comment %} <button type="button" id="subirBtn">⬆️ Subir Presupuesto proyectado <span class="spinner" style="display:none; margin-left:8px;"></span></button> {% endcomment %}
 
-    </div>
-    
-    <!-- Grupo: Navegación -->
-    <div class="btn-section3">
-        <button id="btnTabla" class="btn-main">📊 Ir a tabla principal</button>
-        <button id="btnTablaAprovado" class="btn-main">✅ Ir a presupuesto aprobado</button>
     </div>
 
     <!-- Grupo: Calcular IPC -->
@@ -489,27 +483,11 @@
             document.getElementById(id).style.display = "none";
         }
 
-        // confirmacion ir a tabla presupuesto proyectado
-        document.getElementById("btnTabla").addEventListener("click", function() {
-            abrirModal("modalIrTabla");
-            document.getElementById("confirmIrTabla").onclick = function() {
-                window.location.href = "{% url 'presupuestoGH' %}";
-            };
-        });
-
-        // Botón Ir a la tabla presupuesto gh aprovado
-        document.getElementById("btnTablaAprovado").addEventListener("click", function() {
-            abrirModal("modalIrTabla");
-            document.getElementById("confirmIrTabla").onclick = function() {
-                window.location.href = "{% url 'presupuestoAprobadoGH' %}";
-            };
-        });
-
         cargarOpciones();
         let table = $('#tempTable').DataTable({
             ajax: {
-                url: "{% url 'obtener_gh_temp' %}",
-                dataSrc: ""
+                url: "{% url 'obtener_presupuesto_consolidado' 'gh' %}",
+               
             },
             columns: [
                 {   // 🔥 Columna de selección
@@ -1253,17 +1231,21 @@
             $btn.prop("disabled", true);
 
             $.ajax({
-                url: "{% url 'guardar_gh_temp' %}",
+                url: "{% url 'guardar_presupuesto_consolidado' 'gh' %}",
                 type: "POST",
                 data: JSON.stringify(data),
                 contentType: "application/json",
                 success: function() {
-                    showToast("Datos guardados en tabla temporal ✅", "success");
+                    showToast("Datos guardados en presupuesto gestión humana ✅", "success");
                     // ✅ Ocultar advertencia al guardar
                     if (persistentToast) {
                         persistentToast.classList.remove("show");
-                        setTimeout(() => persistentToast.remove(), 500);
-                        persistentToast = null;
+                        setTimeout(() => {
+                            if (persistentToast && document.body.contains(persistentToast)) {
+                                persistentToast.remove();
+                            }
+                            persistentToast = null;
+                        }, 500);
                     }
                     editando = false;
                 },
