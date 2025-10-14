@@ -377,10 +377,12 @@
     <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
       <div class="logo" tabindex="0">PRESUPUESTO</div>
       <nav class="sidebar-nav" role="navigation" aria-label="Menú principal">
-        <a href="#" class="active" tabindex="0"><span class="material-icons" aria-hidden="true">note_alt</span><span class="text">Notas</span></a>
-        <a href="#" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Carpetas</span></a>
+        <a href="#" class="active" tabindex="0"><span class="material-icons" aria-hidden="true">note_alt</span><span class="text">Presupuestos</span></a>
+        {% comment %} botón para exportar a excel {% endcomment %}
+        <a href="{% url 'exportar_excel_presupuestos' %}" tabindex="0" ><span class="material-icons" aria-hidden="true">file_download</span><span class="text">Exportar a Excel Presupuestos Proyectados</span></a>
+        {% comment %} <a href="#" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Carpetas</span></a>
         <a href="#" tabindex="0"><span class="material-icons" aria-hidden="true">search</span><span class="text">Buscar</span></a>
-        <a href="#" tabindex="0"><span class="material-icons" aria-hidden="true">settings</span><span class="text">Configuración</span></a>
+        <a href="#" tabindex="0"><span class="material-icons" aria-hidden="true">settings</span><span class="text">Configuración</span></a> {% endcomment %}
       </nav>
       <button aria-label="Colapsar barra lateral" class="sidebar-toggle" id="sidebarToggle">
         <span class="material-icons" aria-hidden="true">chevron_left</span>

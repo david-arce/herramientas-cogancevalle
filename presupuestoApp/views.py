@@ -17,7 +17,7 @@ from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.db import models
 
-def exportar_excel_presupuestos(request):
+def exportar_excel_nomina(request):
     # Obtener datos de cada tabla
     nomina = list(PresupuestoSueldos.objects.values())
     comisiones = list(PresupuestoComisiones.objects.values())
@@ -82,36 +82,36 @@ def dashboard(request):
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     return render(request, 'dashboard.html')
 
-def exportar_excel_todo(request):
+def exportar_excel_presupuestos(request):
     # Obtener datos de cada tabla
     tecnologia = PresupuestoTecnologia.objects.values()
     servicios_tecnicos = PresupuestoServiciosTecnicos.objects.values()
-    logistica = list(PresupuestoLogistica.objects.values())
-    gestion_riesgos = list(PresupuestoGestionRiesgos.objects.values())
-    gh = list(PresupuestoGH.objects.values())
-    almacen_tulua = list(PresupuestoAlmacenTulua.objects.values())
-    almacen_buga = list(PresupuestoAlmacenBuga.objects.values())
-    almacen_cartago = list(PresupuestoAlmacenCartago.objects.values())
-    almacen_cali = list(PresupuestoAlmacenCali.objects.values())
-    comunicaciones = list(PresupuestoComunicaciones.objects.values())
-    comercial_costos = list(PresupuestoComercialCostos.objects.values())
-    contabilidad = list(PresupuestoContabilidad.objects.values())
-    gerencia = list(PresupuestoGerencia.objects.values())
+    logistica = PresupuestoLogistica.objects.values()
+    gestion_riesgos = PresupuestoGestionRiesgos.objects.values()
+    gh = PresupuestoGH.objects.values()
+    almacen_tulua = PresupuestoAlmacenTulua.objects.values()
+    almacen_buga = PresupuestoAlmacenBuga.objects.values()
+    almacen_cartago = PresupuestoAlmacenCartago.objects.values()
+    almacen_cali = PresupuestoAlmacenCali.objects.values()
+    comunicaciones = PresupuestoComunicaciones.objects.values()
+    comercial_costos = PresupuestoComercialCostos.objects.values()
+    contabilidad = PresupuestoContabilidad.objects.values()
+    gerencia = PresupuestoGerencia.objects.values()
     
     # filtrar por ultima version todas las tablas
-    # tecnologia = tecnologia.filter(version=tecnologia.aggregate(Max('version'))['version__max'])
-    # servicios_tecnicos = servicios_tecnicos.filter(version=servicios_tecnicos.aggregate(Max('version'))['version__max'])
-    # logistica = logistica.filter(version=logistica.aggregate(Max('version'))['version__max'])
-    # gestion_riesgos = gestion_riesgos.filter(version=gestion_riesgos.aggregate(Max('version'))['version__max'])
-    # gh = gh.filter(version=gh.aggregate(Max('version'))['version__max'])
-    # almacen_tulua = almacen_tulua.filter(version=almacen_tulua.aggregate(Max('version'))['version__max'])
-    # almacen_buga = almacen_buga.filter(version=almacen_buga.aggregate(Max('version'))['version__max'])
-    # almacen_cartago = almacen_cartago.filter(version=almacen_cartago.aggregate(Max('version'))['version__max'])
-    # almacen_cali = almacen_cali.filter(version=almacen_cali.aggregate(Max('version'))['version__max'])
-    # comunicaciones = comunicaciones.filter(version=comunicaciones.aggregate(Max('version'))['version__max'])
-    # comercial_costos = comercial_costos.filter(version=comercial_costos.aggregate(Max('version'))['version__max'])
-    # contabilidad = contabilidad.filter(version=contabilidad.aggregate(Max('version'))['version__max'])
-    # gerencia = gerencia.filter(version=gerencia.aggregate(Max('version'))['version__max'])
+    tecnologia = tecnologia.filter(version=tecnologia.aggregate(Max('version'))['version__max'])
+    servicios_tecnicos = servicios_tecnicos.filter(version=servicios_tecnicos.aggregate(Max('version'))['version__max'])
+    logistica = logistica.filter(version=logistica.aggregate(Max('version'))['version__max'])
+    gestion_riesgos = gestion_riesgos.filter(version=gestion_riesgos.aggregate(Max('version'))['version__max'])
+    gh = gh.filter(version=gh.aggregate(Max('version'))['version__max'])
+    almacen_tulua = almacen_tulua.filter(version=almacen_tulua.aggregate(Max('version'))['version__max'])
+    almacen_buga = almacen_buga.filter(version=almacen_buga.aggregate(Max('version'))['version__max'])
+    almacen_cartago = almacen_cartago.filter(version=almacen_cartago.aggregate(Max('version'))['version__max'])
+    almacen_cali = almacen_cali.filter(version=almacen_cali.aggregate(Max('version'))['version__max'])
+    comunicaciones = comunicaciones.filter(version=comunicaciones.aggregate(Max('version'))['version__max'])
+    comercial_costos = comercial_costos.filter(version=comercial_costos.aggregate(Max('version'))['version__max'])
+    contabilidad = contabilidad.filter(version=contabilidad.aggregate(Max('version'))['version__max'])
+    gerencia = gerencia.filter(version=gerencia.aggregate(Max('version'))['version__max'])
     
     # Crear DataFrames con columna de origen
     def prepare_df(data, origen):
@@ -4837,7 +4837,6 @@ def presupuesto_tecnologia(request):
     ultima_version = max(versiones) if versiones else 1
     return render(request, "presupuesto_general/presupuesto_tecnologia.html", {"versiones": versiones, "ultima_version": ultima_version})
 
-
 def obtener_presupuesto_tecnologia(request):
     version = request.GET.get("version")  # 🔥 versión recibida
     qs = PresupuestoTecnologia.objects.all()
@@ -4871,7 +4870,7 @@ def obtener_presupuesto_aprobado_tecnologia(request):
 
 def tabla_auxiliar_tecnologia(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 14)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
 
     # 🚫 Si ya pasó la fecha, negar acceso
@@ -5119,7 +5118,7 @@ def obtener_presupuesto_aprobado_ocupacional(request):
 
 def tabla_auxiliar_ocupacional(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
 
     # 🚫 Si ya pasó la fecha, negar acceso
@@ -5363,7 +5362,7 @@ def obtener_presupuesto_aprobado_servicios_tecnicos(request):
 
 def tabla_auxiliar_servicios_tecnicos(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
 
     # 🚫 Si ya pasó la fecha, negar acceso
@@ -5614,7 +5613,7 @@ def obtener_presupuesto_aprobado_logistica(request):
 
 def tabla_auxiliar_logistica(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
@@ -5850,7 +5849,7 @@ def obtener_presupuesto_aprobado_gestion_riesgos(request):
 
 def tabla_auxiliar_gestion_riesgos(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
@@ -6086,7 +6085,7 @@ def obtener_presupuesto_aprobado_gh(request):
 
 def tabla_auxiliar_gh(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 23)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
@@ -6262,7 +6261,7 @@ def borrar_presupuesto_gh(request):
         # borrar solo la versión seleccionada
         PresupuestoGH.objects.filter(version=version).delete()
         # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 30)
+        fecha_limite = datetime.date(2025, 10, 23)
         if timezone.now().date() <= fecha_limite:
             PresupuestoGHAprobado.objects.filter(version=version).delete()
         return JsonResponse({"status": "ok", "message": f"Presupuesto de GH versión {version} eliminado"})
@@ -6317,7 +6316,7 @@ def obtener_presupuesto_aprobado_almacen_tulua(request):
 
 def tabla_auxiliar_almacen_tulua(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
@@ -6551,7 +6550,7 @@ def obtener_presupuesto_aprobado_almacen_buga(request):
 
 def tabla_auxiliar_almacen_buga(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
@@ -6784,7 +6783,7 @@ def obtener_presupuesto_aprobado_almacen_cartago(request):
 
 def tabla_auxiliar_almacen_cartago(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
@@ -7017,7 +7016,7 @@ def obtener_presupuesto_aprobado_almacen_cali(request):
 
 def tabla_auxiliar_almacen_cali(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
@@ -7722,7 +7721,7 @@ def obtener_presupuesto_aprobado_contabilidad(request):
 
 def tabla_auxiliar_contabilidad(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
@@ -7955,7 +7954,7 @@ def obtener_presupuesto_aprobado_gerencia(request):
 
 def tabla_auxiliar_gerencia(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
