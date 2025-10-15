@@ -82,76 +82,76 @@ def dashboard(request):
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     return render(request, 'dashboard.html')
 
-# def exportar_excel_presupuestos(request):
-#     # Obtener datos de cada tabla
-#     tecnologia = PresupuestoTecnologia.objects.values()
-#     servicios_tecnicos = PresupuestoServiciosTecnicos.objects.values()
-#     logistica = PresupuestoLogistica.objects.values()
-#     gestion_riesgos = PresupuestoGestionRiesgos.objects.values()
-#     gh = PresupuestoGH.objects.values()
-#     almacen_tulua = PresupuestoAlmacenTulua.objects.values()
-#     almacen_buga = PresupuestoAlmacenBuga.objects.values()
-#     almacen_cartago = PresupuestoAlmacenCartago.objects.values()
-#     almacen_cali = PresupuestoAlmacenCali.objects.values()
-#     comunicaciones = PresupuestoComunicaciones.objects.values()
-#     comercial_costos = PresupuestoComercialCostos.objects.values()
-#     contabilidad = PresupuestoContabilidad.objects.values()
-#     gerencia = PresupuestoGerencia.objects.values()
+def exportar_excel_presupuestos(request):
+    # Obtener datos de cada tabla
+    tecnologia = PresupuestoTecnologia.objects.values()
+    servicios_tecnicos = PresupuestoServiciosTecnicos.objects.values()
+    logistica = PresupuestoLogistica.objects.values()
+    gestion_riesgos = PresupuestoGestionRiesgos.objects.values()
+    gh = PresupuestoGH.objects.values()
+    almacen_tulua = PresupuestoAlmacenTulua.objects.values()
+    almacen_buga = PresupuestoAlmacenBuga.objects.values()
+    almacen_cartago = PresupuestoAlmacenCartago.objects.values()
+    almacen_cali = PresupuestoAlmacenCali.objects.values()
+    comunicaciones = PresupuestoComunicaciones.objects.values()
+    comercial_costos = PresupuestoComercialCostos.objects.values()
+    contabilidad = PresupuestoContabilidad.objects.values()
+    gerencia = PresupuestoGerencia.objects.values()
     
-#     # filtrar por ultima version todas las tablas
-#     tecnologia = tecnologia.filter(version=tecnologia.aggregate(Max('version'))['version__max'])
-#     servicios_tecnicos = servicios_tecnicos.filter(version=servicios_tecnicos.aggregate(Max('version'))['version__max'])
-#     logistica = logistica.filter(version=logistica.aggregate(Max('version'))['version__max'])
-#     gestion_riesgos = gestion_riesgos.filter(version=gestion_riesgos.aggregate(Max('version'))['version__max'])
-#     gh = gh.filter(version=gh.aggregate(Max('version'))['version__max'])
-#     almacen_tulua = almacen_tulua.filter(version=almacen_tulua.aggregate(Max('version'))['version__max'])
-#     almacen_buga = almacen_buga.filter(version=almacen_buga.aggregate(Max('version'))['version__max'])
-#     almacen_cartago = almacen_cartago.filter(version=almacen_cartago.aggregate(Max('version'))['version__max'])
-#     almacen_cali = almacen_cali.filter(version=almacen_cali.aggregate(Max('version'))['version__max'])
-#     comunicaciones = comunicaciones.filter(version=comunicaciones.aggregate(Max('version'))['version__max'])
-#     comercial_costos = comercial_costos.filter(version=comercial_costos.aggregate(Max('version'))['version__max'])
-#     contabilidad = contabilidad.filter(version=contabilidad.aggregate(Max('version'))['version__max'])
-#     gerencia = gerencia.filter(version=gerencia.aggregate(Max('version'))['version__max'])
+    # filtrar por ultima version todas las tablas
+    tecnologia = tecnologia.filter(version=tecnologia.aggregate(Max('version'))['version__max'])
+    servicios_tecnicos = servicios_tecnicos.filter(version=servicios_tecnicos.aggregate(Max('version'))['version__max'])
+    logistica = logistica.filter(version=logistica.aggregate(Max('version'))['version__max'])
+    gestion_riesgos = gestion_riesgos.filter(version=gestion_riesgos.aggregate(Max('version'))['version__max'])
+    gh = gh.filter(version=gh.aggregate(Max('version'))['version__max'])
+    almacen_tulua = almacen_tulua.filter(version=almacen_tulua.aggregate(Max('version'))['version__max'])
+    almacen_buga = almacen_buga.filter(version=almacen_buga.aggregate(Max('version'))['version__max'])
+    almacen_cartago = almacen_cartago.filter(version=almacen_cartago.aggregate(Max('version'))['version__max'])
+    almacen_cali = almacen_cali.filter(version=almacen_cali.aggregate(Max('version'))['version__max'])
+    comunicaciones = comunicaciones.filter(version=comunicaciones.aggregate(Max('version'))['version__max'])
+    comercial_costos = comercial_costos.filter(version=comercial_costos.aggregate(Max('version'))['version__max'])
+    contabilidad = contabilidad.filter(version=contabilidad.aggregate(Max('version'))['version__max'])
+    gerencia = gerencia.filter(version=gerencia.aggregate(Max('version'))['version__max'])
     
-#     # Crear DataFrames con columna de origen
-#     def prepare_df(data, origen):
-#         df = pd.DataFrame(data)
-#         if not df.empty:
-#             df["origen"] = origen # Agregar columna de origen
-#         return df
-#     df_tecnologia = prepare_df(tecnologia, "Tecnología")
-#     df_servicios_tecnicos = prepare_df(servicios_tecnicos, "Servicios Técnicos")
-#     df_logistica = prepare_df(logistica, "Logística")
-#     df_gestion_riesgos = prepare_df(gestion_riesgos, "Gestión de Riesgos")
-#     df_gh = prepare_df(gh, "GH")
-#     df_almacen_tulua = prepare_df(almacen_tulua, "Almacén Tuluá")
-#     df_almacen_buga = prepare_df(almacen_buga, "Almacén Buga")
-#     df_almacen_cartago = prepare_df(almacen_cartago, "Almacén Cartago")
-#     df_almacen_cali = prepare_df(almacen_cali, "Almacén Cali")
-#     df_comunicaciones = prepare_df(comunicaciones, "Comunicaciones")
-#     df_comercial_costos = prepare_df(comercial_costos, "Comercial Costos")
-#     df_contabilidad = prepare_df(contabilidad, "Contabilidad") 
-#     df_gerencia = prepare_df(gerencia, "Gerencia")
+    # Crear DataFrames con columna de origen
+    def prepare_df(data, origen):
+        df = pd.DataFrame(data)
+        if not df.empty:
+            df["origen"] = origen # Agregar columna de origen
+        return df
+    df_tecnologia = prepare_df(tecnologia, "Tecnología")
+    df_servicios_tecnicos = prepare_df(servicios_tecnicos, "Servicios Técnicos")
+    df_logistica = prepare_df(logistica, "Logística")
+    df_gestion_riesgos = prepare_df(gestion_riesgos, "Gestión de Riesgos")
+    df_gh = prepare_df(gh, "GH")
+    df_almacen_tulua = prepare_df(almacen_tulua, "Almacén Tuluá")
+    df_almacen_buga = prepare_df(almacen_buga, "Almacén Buga")
+    df_almacen_cartago = prepare_df(almacen_cartago, "Almacén Cartago")
+    df_almacen_cali = prepare_df(almacen_cali, "Almacén Cali")
+    df_comunicaciones = prepare_df(comunicaciones, "Comunicaciones")
+    df_comercial_costos = prepare_df(comercial_costos, "Comercial Costos")
+    df_contabilidad = prepare_df(contabilidad, "Contabilidad") 
+    df_gerencia = prepare_df(gerencia, "Gerencia")
     
-#     # Concatenar todos en un solo DataFrame
-#     df_final = pd.concat(
-#         [df_tecnologia, df_servicios_tecnicos, df_logistica, df_gestion_riesgos, df_gh, df_almacen_tulua, df_almacen_buga, df_almacen_cartago, df_almacen_cali, df_comunicaciones, df_comercial_costos, df_contabilidad, df_gerencia],
-#         ignore_index=True
-#     )
+    # Concatenar todos en un solo DataFrame
+    df_final = pd.concat(
+        [df_tecnologia, df_servicios_tecnicos, df_logistica, df_gestion_riesgos, df_gh, df_almacen_tulua, df_almacen_buga, df_almacen_cartago, df_almacen_cali, df_comunicaciones, df_comercial_costos, df_contabilidad, df_gerencia],
+        ignore_index=True
+    )
     
-#     # pivot de columna que son meses a filas (enero, febrero, marzo, abril, mayo, junio, julio, agosto, septiembre, octubre, noviembre, diciembre) 
-#     meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-#     df_final = df_final.melt(id_vars=[col for col in df_final.columns if col not in meses], value_vars=meses, var_name='mes', value_name='valor')
+    # pivot de columna que son meses a filas (enero, febrero, marzo, abril, mayo, junio, julio, agosto, septiembre, octubre, noviembre, diciembre) 
+    meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+    df_final = df_final.melt(id_vars=[col for col in df_final.columns if col not in meses], value_vars=meses, var_name='mes', value_name='valor')
     
-#     # Crear la respuesta HTTP para Excel
-#     response = HttpResponse(
-#         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-#     )
-#     response["Content-Disposition"] = 'attachment; filename="Presupuestos_Todo.xlsx"'
-#     # Exportar a una sola hoja
-#     with pd.ExcelWriter(response, engine="openpyxl") as writer:
-#         df_final.to_excel(writer, sheet_name="Presupuestos", index=False)
-#     return response
+    # Crear la respuesta HTTP para Excel
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = 'attachment; filename="Presupuestos_Todo.xlsx"'
+    # Exportar a una sola hoja
+    with pd.ExcelWriter(response, engine="openpyxl") as writer:
+        df_final.to_excel(writer, sheet_name="Presupuestos", index=False)
+    return response
 
 def df_horizontal_a_vertical(request):
     registros = PresupuestoTecnologia.objects.all().values()
