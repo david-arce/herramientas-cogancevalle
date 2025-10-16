@@ -5615,7 +5615,7 @@ def obtener_presupuesto_aprobado_logistica(request):
 
 def tabla_auxiliar_logistica(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 17)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
