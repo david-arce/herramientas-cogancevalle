@@ -251,6 +251,39 @@ class ParametrosPresupuestos(models.Model):
     class Meta:
         db_table = 'parametros_presupuestos'
 
+class Cuenta5(models.Model):
+    mcncuenta = models.BigIntegerField(db_column='MCNCUENTA', blank=True, null=True)  # Field name made lowercase.
+    mcnfecha = models.FloatField(db_column='MCNFECHA', blank=True, null=True)  # Field name made lowercase.
+    mcntipodoc = models.CharField(db_column='MCNTIPODOC', blank=True, null=True)  # Field name made lowercase.
+    mcnnumedoc = models.BigIntegerField(db_column='MCNNUMEDOC', blank=True, null=True)  # Field name made lowercase.
+    mcnvincula = models.FloatField(db_column='MCNVINCULA', blank=True, null=True)  # Field name made lowercase.
+    vinnombre = models.CharField(db_column='VINNOMBRE', blank=True, null=True)  # Field name made lowercase.
+    mcnsucvin = models.CharField(db_column='MCNSUCVIN', blank=True, null=True)  # Field name made lowercase.
+    saldoant = models.BigIntegerField(db_column='SALDOANT', blank=True, null=True)  # Field name made lowercase.
+    mcnvaldebi = models.FloatField(db_column='MCNVALDEBI', blank=True, null=True)  # Field name made lowercase.
+    mcnvalcred = models.FloatField(db_column='MCNVALCRED', blank=True, null=True)  # Field name made lowercase.
+    saldonew = models.FloatField(db_column='SALDONEW', blank=True, null=True)  # Field name made lowercase.
+    mcnsucurs = models.CharField(db_column='MCNSUCURS', blank=True, null=True)  # Field name made lowercase.
+    mcnccosto = models.CharField(db_column='MCNCCOSTO', blank=True, null=True)  # Field name made lowercase.
+    mcndestino = models.CharField(db_column='MCNDESTINO', blank=True, null=True)  # Field name made lowercase.
+    mcndetalle = models.CharField(db_column='MCNDETALLE', blank=True, null=True)  # Field name made lowercase.
+    mcnzona = models.CharField(db_column='MCNZONA', blank=True, null=True)  # Field name made lowercase.
+    cconombre = models.CharField(db_column='CCONOMBRE', blank=True, null=True)  # Field name made lowercase.
+    dnonombre = models.CharField(db_column='DNONOMBRE', blank=True, null=True)  # Field name made lowercase.
+    zonnombre = models.CharField(db_column='ZONNOMBRE', blank=True, null=True)  # Field name made lowercase.
+    mcnempresa = models.FloatField(db_column='MCNEMPRESA', blank=True, null=True)  # Field name made lowercase.
+    mcnclase = models.CharField(db_column='MCNCLASE', blank=True, null=True)  # Field name made lowercase.
+    mcnvinkey = models.CharField(db_column='MCNVINKEY', blank=True, null=True)  # Field name made lowercase.
+    tpreg = models.BigIntegerField(db_column='TPREG', blank=True, null=True)  # Field name made lowercase.
+    ctanombre = models.CharField(db_column='CTANOMBRE', blank=True, null=True)  # Field name made lowercase.
+    docdetalle = models.CharField(db_column='DOCDETALLE', blank=True, null=True)  # Field name made lowercase.
+    infdetalle = models.CharField(db_column='INFDETALLE', blank=True, null=True)  # Field name made lowercase.
+
+    class Meta:
+        managed = False
+        db_table = 'cuenta5'
+
+#----------------------------------------------------------------------------
 class PresupuestoSueldos(models.Model):
     cedula = models.IntegerField()
     nombre = models.CharField(max_length=255)

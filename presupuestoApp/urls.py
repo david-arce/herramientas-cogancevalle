@@ -3,6 +3,8 @@ from . import views
 
 urlpatterns = [
     path('dashboard', views.dashboard_home, name='dashboardPresupuesto'), 
+    path('cuenta5/', views.cuenta5, name='cuenta5'),
+    
     path('exportar-excel-presupuestos/', views.exportar_excel_presupuestos, name='exportar_excel_presupuestos'),
     path('ver_df/', views.df_horizontal_a_vertical, name='ver_df'),
     

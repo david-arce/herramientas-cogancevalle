@@ -82,7 +82,11 @@ def dashboard_home(request):
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     return render(request, 'presupuesto_consolidado/base_dashboard_before.html')
 
-
+def cuenta5(request):
+    USUARIOS_PERMITIDOS= ['admin', 'NICOLAS']
+    if request.user.username not in USUARIOS_PERMITIDOS:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, 'presupuesto_consolidado/cuenta5.html')
 
 def exportar_excel_presupuestos(request):
     # Obtener datos de cada tabla
@@ -6318,7 +6322,7 @@ def obtener_presupuesto_aprobado_almacen_tulua(request):
 
 def tabla_auxiliar_almacen_tulua(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
