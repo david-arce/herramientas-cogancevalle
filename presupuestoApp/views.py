@@ -5803,7 +5803,7 @@ def borrar_presupuesto_logistica(request):
 #---------PRESUPUESTO GESTION DE RIESGOS-----------------------------
 @login_required
 def presupuesto_gestion_riesgos(request):
-    usuarios_permitidos = ['admin', 'GESTION_RIESGOS']
+    usuarios_permitidos = ['admin', 'GESTIONRIESGOS']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     # 🔹 obtener versiones disponibles
@@ -5849,7 +5849,7 @@ def obtener_presupuesto_aprobado_gestion_riesgos(request):
 
 def tabla_auxiliar_gestion_riesgos(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 17)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
