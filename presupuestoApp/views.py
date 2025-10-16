@@ -5362,7 +5362,7 @@ def obtener_presupuesto_aprobado_servicios_tecnicos(request):
 
 def tabla_auxiliar_servicios_tecnicos(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
 
     # 🚫 Si ya pasó la fecha, negar acceso
@@ -5613,7 +5613,7 @@ def obtener_presupuesto_aprobado_logistica(request):
 
 def tabla_auxiliar_logistica(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
@@ -5849,7 +5849,7 @@ def obtener_presupuesto_aprobado_gestion_riesgos(request):
 
 def tabla_auxiliar_gestion_riesgos(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 17)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
@@ -6085,7 +6085,7 @@ def obtener_presupuesto_aprobado_gh(request):
 
 def tabla_auxiliar_gh(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 23)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 22)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
@@ -6316,7 +6316,7 @@ def obtener_presupuesto_aprobado_almacen_tulua(request):
 
 def tabla_auxiliar_almacen_tulua(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
@@ -6550,7 +6550,7 @@ def obtener_presupuesto_aprobado_almacen_buga(request):
 
 def tabla_auxiliar_almacen_buga(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
@@ -6783,7 +6783,7 @@ def obtener_presupuesto_aprobado_almacen_cartago(request):
 
 def tabla_auxiliar_almacen_cartago(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
@@ -7016,7 +7016,7 @@ def obtener_presupuesto_aprobado_almacen_cali(request):
 
 def tabla_auxiliar_almacen_cali(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
