@@ -6322,7 +6322,7 @@ def obtener_presupuesto_aprobado_almacen_tulua(request):
 
 def tabla_auxiliar_almacen_tulua(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
