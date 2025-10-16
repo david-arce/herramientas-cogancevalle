@@ -2,7 +2,7 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('dashboard', views.dashboard, name='dashboardPresupuesto'), 
+    path('dashboard', views.dashboard_home, name='dashboardPresupuesto'), 
     path('exportar-excel-presupuestos/', views.exportar_excel_presupuestos, name='exportar_excel_presupuestos'),
     path('ver_df/', views.df_horizontal_a_vertical, name='ver_df'),
     

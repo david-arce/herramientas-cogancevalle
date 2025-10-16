@@ -76,11 +76,13 @@ def exportar_excel_nomina(request):
     return response
 
 @login_required
-def dashboard(request):
+def dashboard_home(request):
     USUARIOS_PERMITIDOS= ['admin', 'NICOLAS']
     if request.user.username not in USUARIOS_PERMITIDOS:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, 'dashboard.html')
+    return render(request, 'presupuesto_consolidado/base_dashboard_before.html')
+
+
 
 def exportar_excel_presupuestos(request):
     # Obtener datos de cada tabla
