@@ -439,7 +439,7 @@ $(document).ready(function() {
     // Calcular solo las filas seleccionadas
     function calcular() {
         // 🔹 Obtener incrementoSalarial desde el contexto Django
-        const auxilioTransporte = parseFloat("{{ auxilioTransporte|default:0 }}") || 0;
+        const auxilioTransporte = parseFloat("{{ auxilioTransporte }}".replace(",", "."));
         // 🔹 Iterar solo sobre filas seleccionadas (checkbox marcados)
         $('#tempTable tbody tr').each(function() {
             let $row = $(this);

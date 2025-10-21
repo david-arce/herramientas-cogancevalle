@@ -502,8 +502,8 @@ $(document).ready(function() {
     // Calcular solo las filas seleccionadas
     function calcular() {
         // 🔹 Obtener incrementoSalarial y salarioMinimo desde el contexto Django
-        const incrementoSalarial = parseFloat("{{ incrementoSalarial|default:0 }}") || 0;
-        const salarioMinimo = parseFloat("{{ salarioMinimo|default:0 }}") || 0;
+        const incrementoSalarial = parseFloat("{{ incrementoSalarial }}".replace(",", "."));
+        const salarioMinimo = parseFloat("{{ salarioMinimo }}".replace(",", "."));
 
         // 🔹 Iterar solo sobre filas seleccionadas (checkbox marcados)
         $('#tempTable tbody tr').each(function() {

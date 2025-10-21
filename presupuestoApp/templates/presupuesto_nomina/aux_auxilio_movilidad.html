@@ -433,7 +433,7 @@ $(document).ready(function() {
     // Calcular solo las filas seleccionadas
     function calcular() {
         // 🔹 Obtener incrementoSalarial desde el contexto Django
-        const incrementoIPC = parseFloat("{{ incrementoIPC|default:0 }}") || 0;
+        const incrementoIPC = parseFloat("{{ incrementoIPC }}".replace(",", "."));
          // 🔹 Iterar solo sobre filas seleccionadas (checkbox marcados)
         $('#tempTable tbody tr').each(function() {
             let $row = $(this);

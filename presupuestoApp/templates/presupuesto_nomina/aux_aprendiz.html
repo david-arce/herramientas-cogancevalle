@@ -444,8 +444,8 @@ $(document).ready(function() {
     });
     // Calcular
     function calcular() {
-        const incrementoSalarial = parseFloat("{{ incrementoSalarial|default:0 }}") || 0;
-
+        const incrementoSalarial = parseFloat("{{ incrementoSalarial }}".replace(",", "."));
+        console.log("Incremento salarial:", incrementoSalarial);
         // 🔹 Iterar solo sobre filas seleccionadas (checkbox marcados)
         $('#tempTable tbody tr').each(function() {
             let $row = $(this);
