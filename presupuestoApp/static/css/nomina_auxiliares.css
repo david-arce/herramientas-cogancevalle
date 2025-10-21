@@ -1,0 +1,74 @@
+td.editable { background: #e6e6e6ff; cursor: pointer; }
+button { margin: 10px; }
+table.dataTable thead th {
+    background-color: #1F3A93;
+    color: white;
+}
+/* Contenedor de toasts */
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.toast {
+    min-width: 250px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.5s ease-in-out;
+}
+.toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+.toast.success { background-color: #28a745; }
+.toast.error { background-color: #dc3545; }
+
+/* Spinner */
+.spinner {
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #fff;
+    border-right: 2px solid #fff;
+    border-radius: 50%;
+    width: 14px;
+    height: 14px;
+    display: inline-block;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+#btnTabla {
+    position: relative;
+    padding: 8px 16px;
+    border: none;
+    background-color: #646464ff;
+    color: white;
+    font-size: 14px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+/* Checkboxes de la tabla */
+#tempTable input[type="checkbox"],
+#checkAllIPC {
+    width: 15px;
+    height: 15px;
+    transform: scale(1.3);
+    cursor: pointer;
+}
+
+/* Centrar visualmente los checks en las celdas */
+#tempTable td:first-child, 
+#tempTable th:first-child {
+    text-align: center;
+    vertical-align: middle;
+}

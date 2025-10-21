@@ -1,30 +1,149 @@
-<table border="1">
-    <thead>
-        <tr>
-            <th>#</th>
-            <th>Cuenta</th>
-            <th>Descripción</th>
-            <th>Valor</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>1</td>
-            <td>5001</td>
-            <td>Ingresos Operacionales</td>
-            <td>$10,000,000</td>
-        </tr>
-        <tr>
-            <td>2</td>
-            <td>5002</td>
-            <td>Gastos Administrativos</td>
-            <td>$2,500,000</td>
-        </tr>
-        <tr>
-            <td>3</td>
-            <td>5003</td>
-            <td>Gastos de Ventas</td>
-            <td>$1,200,000</td>
-        </tr>
-    </tbody>
-</table>
+{% extends 'presupuesto_consolidado/base_dashboard.html' %}
+{% load static %}
+
+{% block css%}
+<!-- CSS de FixedHeader -->
+<meta name="csrf-token" content="{{ csrf_token }}">
+<link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<!-- DataTables Buttons CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+<link rel="stylesheet" href="{% static 'css/cuenta5.css' %}">
+{% endblock %}
+{% block content %}
+<section class="cuenta5-container">
+    <div class="btn-group_bd">
+        <!-- Grupo: Guardar / Subir presupuesto -->
+        <div class="btn-section1">
+            <button id="cargarBase">📂 Cargar presupuesto anterior</button>
+            <button id="guardarTempBtn">💾 Guardar cambios</button>
+        </div>
+        
+        <!-- Grupo: Calcular IPC -->
+        <div class="btn-section2">
+            <input type="number" id="ipcInput" placeholder="Ingrese IPC %" step="0.01" style="width:120px;">
+            <button id="calcularIPC" title="calcular ipc de las filas seleccionadas">📈 Calcular IPC</button>
+        </div>
+        
+        <!-- Grupo: Otras acciones -->
+        <div class="btn-section4">
+            <button id="agregarFila" title="Agregar fila vacia al final de la tabla">➕ Agregar fila vacía</button>
+            <button onclick="document.getElementById('manualModal').style.display='block'">📘 Ver Manual de Cuentas</button>
+            <!-- 🔹 Nuevo botón -->
+            <button id="exportarPlantillaBtn" title="Descargar plantilla Excel vacía">📄 Exportar plantilla Excel</button>
+            <!-- NUEVO: Cargar archivo Excel -->
+            <input type="file" id="inputExcel" accept=".xlsx, .xls" style="display: none;">
+            <button id="btnCargarExcel" title="Subir archivo Excel">⬆️ Cargar Excel</button>
+            <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
+            Borrar Cuenta 5 Base
+            </button>
+        </div>
+    </div>
+
+    <div id="tableContainer" style="overflow-x:auto; max-width:100%;">
+        <table id="tempTable" class="display">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="checkAllIPC" title="Seleccionar todo"></th>
+                    <th>Acciones</th>
+                    <th>MCNCUENTA</th>
+                    <th>MCNFECHA</th>
+                    <th>MCNTIPODOC</th>
+                    <th>MCNNUMEDOC</th>
+                    <th>MCNVINCULA</th>
+                    <th>VINNOMBRE</th>
+                    <th>MCNSUCVIN</th>
+                    <th>SALDOANT</th>
+                    <th>MCNVALDEBI</th>
+                    <th>MCNVALCRED</th>
+                    <th>SALDONEW</th>
+                    <th>MCNSUCURS</th>
+                    <th>MCNCCOSTO</th>
+                    <th>MCNDESTINO</th>
+                    <th>MCNDETALLE</th>
+                    <th>MCNZONA</th>
+                    <th>CCONOMBRE</th>
+                    <th>DNONOMBRE</th>
+                    <th>ZONNOMBRE</th>
+                    <th>MCNEMPRESA</th>
+                    <th>MCNCLASE</th>
+                    <th>MCNVINKEY</th>
+                    <th>TPREG</th>
+                    <th>CTANOMBRE</th>
+                    <th>DOCDETALLE</th>
+                    <th>INFDETALLE</th>
+                </tr>
+            </thead>
+        </table>
+        <!-- 🔹 Barra de agarre para redimensionar -->
+        <div id="resizeHandle" style="
+            height:10px;
+            background:#ccc;
+            cursor: ns-resize;
+            text-align:center;
+            color:#555;
+            user-select:none;
+        ">⬍</div>
+       
+    </div>
+    <!-- Contenedor de toasts -->
+    <div class="toast-container" id="toastContainer"></div>
+</section>
+    <!-- Modal -->
+    <div id="manualModal" style="display:none; position:fixed; top:0; left:0; 
+        width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999;">
+        <div style="background:#fff; width:80%; height:80%; margin:50px auto; padding:10px; position:relative;">
+            <span style="position:absolute; top:10px; right:15px; cursor:pointer; font-size:20px;" 
+                onclick="document.getElementById('manualModal').style.display='none'">❌</span>
+            
+            <iframe src="/static/manuales/PUC.pdf" width="100%" height="100%"></iframe>
+        </div>
+    </div>
+    <!-- Modal Confirmación Eliminar -->
+    <div id="modalEliminar" class="modal" style="display:none;" aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-header">⚠️ Confirmar eliminación</div>
+            <p>¿Estás seguro de eliminar esta fila?</p>
+            <div class="modal-footer">
+            <button type="button" class="btn-cancel" data-modal="modalEliminar">Cancelar</button>
+            <button type="button" class="btn-confirm" id="confirmEliminar">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmación Subir Presupuesto -->
+    <div id="modalSubir" class="modal" style="display:none;" aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-header">📤 Confirmar subida</div>
+            <p>Recuerda guardar los cambios antes de subir el presupuesto proyectado. ¿Quieres continuar?</p>
+            <div class="modal-footer">
+            <button type="button" class="btn-cancel" data-modal="modalSubir">Cancelar</button>
+            <button type="button" class="btn-confirm-upload" id="confirmSubir">Subir</button>
+            </div>
+        </div>
+    </div>
+    
+    {% block js%}
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <!-- JS de FixedHeader -->
+    <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
+    <!-- DataTables Buttons JS -->
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+
+    
+    <script>
+        const url_obtener_cuenta5_base = "{% url 'obtener_cuenta5_base' %}";
+        const url_seleccionCuentasContables = "{% url 'seleccionCuentasContables' %}";
+        const url_borrar_cuenta5_base = "{% url 'borrar_cuenta5_base' %}";
+    </script>
+    <script src="{% static 'js/cuenta5.js' %}"></>
+    {% endblock %}
+
+{% endblock %}

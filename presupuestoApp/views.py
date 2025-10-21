@@ -6,7 +6,7 @@ from pyexpat.errors import messages
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 import pandas as pd
-from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoAuxilioMovilidad, PresupuestoAuxilioMovilidadAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado, PresupuestoServiciosTecnicos, PresupuestoServiciosTecnicosAux, PresupuestoServiciosTecnicosAprobado, PresupuestoLogistica, PresupuestoLogisticaAux, PresupuestoLogisticaAprobado, PresupuestoGestionRiesgos, PresupuestoGestionRiesgosAux, PresupuestoGestionRiesgosAprobado, PresupuestoGH, PresupuestoGHAux, PresupuestoGHAprobado, PresupuestoAlmacenTulua, PresupuestoAlmacenTuluaAux, PresupuestoAlmacenTuluaAprobado, PresupuestoAlmacenBuga, PresupuestoAlmacenBugaAux, PresupuestoAlmacenBugaAprobado, PresupuestoAlmacenCartago, PresupuestoAlmacenCartagoAux, PresupuestoAlmacenCartagoAprobado, PresupuestoAlmacenCali, PresupuestoAlmacenCaliAux, PresupuestoAlmacenCaliAprobado, PresupuestoComunicaciones, PresupuestoComunicacionesAux, PresupuestoComunicacionesAprobado, PresupuestoComercialCostos, PresupuestoComercialCostosAux, PresupuestoComercialCostosAprobado, PresupuestoContabilidad, PresupuestoContabilidadAux, PresupuestoContabilidadAprobado, PresupuestoGerencia, PresupuestoGerenciaAux, PresupuestoGerenciaAprobado
+from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoAuxilioMovilidad, PresupuestoAuxilioMovilidadAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado, PresupuestoServiciosTecnicos, PresupuestoServiciosTecnicosAux, PresupuestoServiciosTecnicosAprobado, PresupuestoLogistica, PresupuestoLogisticaAux, PresupuestoLogisticaAprobado, PresupuestoGestionRiesgos, PresupuestoGestionRiesgosAux, PresupuestoGestionRiesgosAprobado, PresupuestoGH, PresupuestoGHAux, PresupuestoGHAprobado, PresupuestoAlmacenTulua, PresupuestoAlmacenTuluaAux, PresupuestoAlmacenTuluaAprobado, PresupuestoAlmacenBuga, PresupuestoAlmacenBugaAux, PresupuestoAlmacenBugaAprobado, PresupuestoAlmacenCartago, PresupuestoAlmacenCartagoAux, PresupuestoAlmacenCartagoAprobado, PresupuestoAlmacenCali, PresupuestoAlmacenCaliAux, PresupuestoAlmacenCaliAprobado, PresupuestoComunicaciones, PresupuestoComunicacionesAux, PresupuestoComunicacionesAprobado, PresupuestoComercialCostos, PresupuestoComercialCostosAux, PresupuestoComercialCostosAprobado, PresupuestoContabilidad, PresupuestoContabilidadAux, PresupuestoContabilidadAprobado, PresupuestoGerencia, PresupuestoGerenciaAux, PresupuestoGerenciaAprobado, Cuenta5, Cuenta5Base
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.db.models.functions import Concat
 from django.db.models import Sum, Max, Q
@@ -16,6 +16,7 @@ import json
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.db import models
+from django.core.paginator import Paginator
 
 def exportar_excel_nomina(request):
     # Obtener datos de cada tabla
@@ -80,13 +81,7 @@ def dashboard_home(request):
     USUARIOS_PERMITIDOS= ['admin', 'NICOLAS']
     if request.user.username not in USUARIOS_PERMITIDOS:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, 'presupuesto_consolidado/base_dashboard_before.html')
-
-def cuenta5(request):
-    USUARIOS_PERMITIDOS= ['admin', 'NICOLAS']
-    if request.user.username not in USUARIOS_PERMITIDOS:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, 'presupuesto_consolidado/cuenta5.html')
+    return render(request, 'presupuesto_consolidado/dashboard_presupuestos.html')
 
 def exportar_excel_presupuestos(request):
     # Obtener datos de cada tabla
@@ -4420,7 +4415,6 @@ def obtener_bonificaciones_foco_temp(request):
     return JsonResponse(data, safe=False)
 
 # para la carga de bonificaciones foco se el valor total del mes de la tabla comisiones y se agrega al mes correspondiente en la tabla temporal de bonificaciones foco
-
 def cargar_bonificaciones_foco_base(request):
     # limpio tabla auxiliar de bonificaciones antes de recalcular
     PresupuestoBonificacionesFocoAux.objects.all().delete()
@@ -4876,7 +4870,7 @@ def obtener_presupuesto_aprobado_tecnologia(request):
 
 def tabla_auxiliar_tecnologia(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 14)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
 
     # 🚫 Si ya pasó la fecha, negar acceso
@@ -8263,3 +8257,135 @@ def guardar_presupuesto_consolidado(request, area):
 
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    
+
+#---------------------Obtener, editar y guardar cuanta 5--------------
+@login_required
+def cuenta5(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuesto_consolidado/cuenta5.html")
+
+def obtener_cuenta5_base(request):
+    draw = int(request.GET.get('draw', 1))
+    start = int(request.GET.get('start', 0))
+    length = int(request.GET.get('length', 50))
+
+    # Filtrar y ordenar si lo deseas (por ejemplo, por fecha)
+    queryset = Cuenta5Base.objects.all()
+
+    total = queryset.count()
+
+    # Paginar los resultados
+    paginator = Paginator(queryset, length)
+    page_number = start // length + 1
+    page = paginator.get_page(page_number)
+
+    data = list(page.object_list.values())
+    return JsonResponse({
+        'draw': draw,
+        'recordsTotal': total,
+        'recordsFiltered': total,
+        'data': data
+    })
+
+def cargar_cuenta5_base(request):
+    # limpio tabla cuenta 5 antes de recalcular
+    Cuenta5Base.objects.all().delete()
+    base_data = Cuenta5.objects.values("mcncuenta", "mcnfecha", "mcntipodoc", "mcnnumedoc", "mcnvincula", "vinnombre", "mcnvaldebi", "mcnvalcred", "saldonew", "mcnsucurs", "mcnccosto", "mcndestino", "mcndetalle", "mcnzona", "cconombre", "dnonombre", "zonnombre", "mcnempresa", "mcnclase", "mcnvinkey", "tpreg", "ctanombre", "docdetalle", "infdetalle")
+    for row in base_data:   
+        Cuenta5Base.objects.create(
+            mcncuenta=row["mcncuenta"],
+            mcnfecha=row["mcnfecha"],
+            mcntipodoc=row["mcntipodoc"],
+            mcnnumedoc=row["mcnnumedoc"],
+            mcnvincula=row["mcnvincula"],
+            vinnombre=row["vinnombre"],
+            mcnvaldebi=row["mcnvaldebi"],
+            mcnvalcred=row["mcnvalcred"],
+            saldonew=row["saldonew"],
+            mcnsucurs=row["mcnsucurs"],
+            mcnccosto=row["mcnccosto"],
+            mcndestino=row["mcndestino"],
+            mcndetalle=row["mcndetalle"],
+            mcnzona=row["mcnzona"],
+            cconombre=row["cconombre"],
+            dnonombre=row["dnonombre"],
+            zonnombre=row["zonnombre"],
+            mcnempresa=row["mcnempresa"],
+            mcnclase=row["mcnclase"],
+            mcnvinkey=row["mcnvinkey"],
+            tpreg=row["tpreg"],
+            ctanombre=row["ctanombre"],
+            docdetalle=row["docdetalle"],
+            infdetalle=row["infdetalle"],
+        )
+    return JsonResponse({"status": "ok", "msg": f"{base_data.count()} filas cargadas desde la base ✅"})
+
+def guardar_cuenta5(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+            registros = []
+            for row in data:
+                registros.append(Cuenta5Base(
+                    mcncuenta=row.get("mcncuenta"),
+                    mcnfecha=row.get("mcnfecha"),
+                    mcntipodoc=row.get("mcntipodoc"),
+                    mcnnumedoc=row.get("mcnnumedoc"),
+                    mcnvincula=row.get("mcnvincula"),
+                    vinnombre=row.get("vinnombre"),
+                    mcnvaldebi=row.get("mcnvaldebi") or 0,
+                    mcnvalcred=row.get("mcnvalcred") or 0,
+                    saldonew=row.get("saldonew") or 0,
+                    mcnsucurs=row.get("mcnsucurs"),
+                    mcncosto=row.get("mcncosto"),
+                    mcndestino=row.get("mcndestino"),
+                    mcndetalle=row.get("mcndetalle"),
+                    mcnzona=row.get("mcnzona"),
+                    cconombre=row.get("cconombre"),
+                    dnonombre=row.get("dnonombre"),
+                    zonnombre=row.get("zonnombre"),
+                    mcnempresa=row.get("mcnempresa"),
+                    mcnclase=row.get("mcnclase"),
+                    mcnvinkey=row.get("mcnvinkey"),
+                    tpreg=row.get("tpreg"),
+                    ctanombre=row.get("ctanombre"),
+                    docdetalle=row.get("docdetalle"),
+                    infdetalle=row.get("infdetalle"),
+                ))
+            # ✅ Transacción atómica → si algo falla, no se borra nada
+            with transaction.atomic():
+                Cuenta5Base.objects.all().delete()
+                Cuenta5Base.objects.bulk_create(registros)
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+@csrf_exempt
+def subir_excel_cuenta5(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            registros = data.get("registros", [])
+            insertados = 0
+
+            with transaction.atomic():
+                for r in registros:
+                    Cuenta5Base.objects.create(**r)
+                    insertados += 1
+
+            return JsonResponse({"status": "ok", "insertados": insertados})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    else:
+        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+@csrf_exempt
+def borrar_cuenta5_base(request):
+    if request.method == "POST":
+        Cuenta5Base.objects.all().delete()
+        return JsonResponse({"status": "ok", "message": "Datos de cuenta 5 eliminados"})
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)

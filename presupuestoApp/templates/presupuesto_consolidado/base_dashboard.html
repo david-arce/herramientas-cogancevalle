@@ -17,14 +17,14 @@
     <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
       <div class="logo" tabindex="0">PRESUPUESTO</div>
       <nav class="sidebar-nav" role="navigation" aria-label="Menú principal">
-        <a href="#" class="active" tabindex="0"><span class="material-icons" aria-hidden="true">note_alt</span><span class="text">Presupuestos</span></a>
+        <a href="{% url 'dashboardPresupuesto'%}" class="active" tabindex="0"><span class="material-icons" aria-hidden="true">note_alt</span><span class="text">Presupuestos</span></a>
         {% comment %} botón para exportar a excel {% endcomment %}
         <a href="{% url 'exportar_excel_presupuestos' %}" tabindex="0" ><span class="material-icons" aria-hidden="true">file_download</span><span class="text">Exportar a Excel Presupuestos Proyectados</span></a>
         <a href="{% url 'cuenta5' %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Cuenta 5</span></a>
         {% comment %} <a href="#" tabindex="0"><span class="material-icons" aria-hidden="true">search</span><span class="text">Buscar</span></a>
         <a href="#" tabindex="0"><span class="material-icons" aria-hidden="true">settings</span><span class="text">Configuración</span></a> {% endcomment %}
       </nav>
-      <button aria-label="Colapsar barra lateral" class="sidebar-toggle" id="sidebarToggle">
+      <button aria-label="Colapsar barra lateral" class="sidebar-toggle desktop" id="sidebarToggle">
         <span class="material-icons" aria-hidden="true">chevron_left</span>
       </button>
     </aside>
@@ -32,135 +32,69 @@
     <main class="main-content" id="main" tabindex="-1">
       <header class="app-header">
         <div class="breadcrumb" aria-label="Ruta actual de navegación">Dashboard / Notas</div>
-        <div class="search-container">
+        {% comment %} <div class="search-container">
           <input type="search" placeholder="Buscar usuarios..." aria-label="Buscar notas" id="searchInput" />
           <span class="material-icons search-icon" aria-hidden="true">search</span>
-        </div>
+        </div> {% endcomment %}
         <div class="user-profile" tabindex="0" aria-label="Perfil de usuario">
           <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/a5df9cd9-ddcf-4863-9290-dff3ca408c6b.png" alt="Avatar del usuario" />
           <span class="user-name">Nicolas</span>
         </div>
       </header>
-
+      
         {% block content %}{% endblock %}
-
-      {% comment %} <section aria-label="Notas recientes" class="recent-notes">
-        <h2>Notas recientes</h2>
-        <table class="notes-table" role="grid" aria-describedby="recentNotesDesc">
-          <caption id="recentNotesDesc" class="sr-only">Lista de las notas recientes con título, carpeta, etiquetas y fecha de última edición</caption>
-          <thead>
-            <tr>
-              <th scope="col">Título</th>
-              <th scope="col">Carpeta</th>
-              <th scope="col">Etiquetas</th>
-              <th scope="col">Última Edición</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr tabindex="0">
-              <td>Planificación de Proyecto</td>
-              <td>Trabajo</td>
-              <td>plan, proyecto, prioridad</td>
-              <td>2024-06-10</td>
-            </tr>
-            <tr tabindex="0">
-              <td>Recetas Favoritas</td>
-              <td>Personal</td>
-              <td>cocina, salud</td>
-              <td>2024-06-09</td>
-            </tr>
-            <tr tabindex="0">
-              <td>Ideas para Blog</td>
-              <td>Borradores</td>
-              <td>escritura, creatividad</td>
-              <td>2024-06-08</td>
-            </tr>
-            <tr tabindex="0">
-              <td>Meeting Notes</td>
-              <td>Trabajo</td>
-              <td>reunión, cliente</td>
-              <td>2024-06-07</td>
-            </tr>
-            <tr tabindex="0">
-              <td>Lista de Libros</td>
-              <td>Personal</td>
-              <td>lectura</td>
-              <td>2024-06-05</td>
-            </tr>
-          </tbody>
-        </table>
-      </section> {% endcomment %}
+      
     </main>
   </div>
-
-  <button aria-label="Abrir menu lateral" class="sidebar-toggle" id="sidebarToggleMobile" style="display:none; position: fixed; top:16px; left:16px; z-index:1100; background:#3f51b5; color:#fff; border:none; width:44px; height:44px; border-radius: 50%; box-shadow: 0 8px 20px rgba(63,81,181,0.4);">
+  
+   <!-- Botón menú móvil -->
+  <button aria-label="Abrir menú lateral" class="sidebar-toggle" id="sidebarToggleMobile"
+    style="display:none; position: fixed; top:16px; left:16px; z-index:1100; background:#3f51b5; color:#fff; border:none; width:44px; height:44px; border-radius:50%; box-shadow:0 8px 20px rgba(63,81,181,0.4);">
     <span class="material-icons" aria-hidden="true">menu</span>
   </button>
-
-  <script>
-
-
-    (function () {
+  
+<script>
+    
+    document.addEventListener('DOMContentLoaded', function () {
       const sidebar = document.getElementById('sidebar');
       const sidebarToggle = document.getElementById('sidebarToggle');
       const sidebarToggleMobile = document.getElementById('sidebarToggleMobile');
       const mqMobile = window.matchMedia("(max-width: 639px)");
 
-      // Toggle sidebar collapse on desktop/tablet
+      // ===== Toggle desktop =====
       sidebarToggle.addEventListener('click', () => {
-        if (window.innerWidth > 639) {
-          if(sidebar.style.gridTemplateColumns === '64px' || sidebar.classList.contains('collapsed')){
-            sidebar.classList.remove('collapsed');
-            sidebar.style.width = '280px';
-            sidebar.querySelector('.logo').style.display = 'block';
-            sidebar.querySelectorAll('nav.sidebar-nav a span.text').forEach(el => el.style.display = 'inline');
-            sidebarToggle.querySelector('.material-icons').textContent = 'chevron_left';
-            sidebar.classList.remove('collapsed');
-          } else {
-            sidebar.style.width = '64px';
-            sidebar.querySelector('.logo').style.display = 'none';
-            sidebar.querySelectorAll('nav.sidebar-nav a span.text').forEach(el => el.style.display = 'none');
-            sidebarToggle.querySelector('.material-icons').textContent = 'chevron_right';
-            sidebar.classList.add('collapsed');
-          }
-        }
+        sidebar.classList.toggle('collapsed');
+        document.querySelector('.app-container').classList.toggle('collapsed'); 
+        const icon = sidebarToggle.querySelector('.material-icons');
+        icon.textContent = sidebar.classList.contains('collapsed') ? 'chevron_right' : 'chevron_left';
+    
       });
 
-      // Mobile sidebar toggle
+      // ===== Toggle mobile =====
       function toggleMobileSidebar() {
-        if(sidebar.classList.contains('visible')){
-          sidebar.classList.remove('visible');
-          sidebarToggleMobile.style.display = 'block';
-        } else {
-          sidebar.classList.add('visible');
-          sidebarToggleMobile.style.display = 'none';
-        }
+        sidebar.classList.toggle('visible');
+        sidebarToggleMobile.style.display = sidebar.classList.contains('visible') ? 'none' : 'block';
       }
       sidebarToggleMobile.addEventListener('click', toggleMobileSidebar);
 
-      // Show/hide mobile toggle button
+      // ===== Responsive handler =====
       function handleResponsive() {
         if (mqMobile.matches) {
           sidebar.classList.remove('collapsed');
           sidebar.style.width = '240px';
           sidebarToggleMobile.style.display = 'block';
           sidebarToggle.style.display = 'none';
-          sidebar.querySelector('.logo').style.display = 'block';
-          sidebar.querySelectorAll('nav.sidebar-nav a span.text').forEach(el => el.style.display = 'inline');
         } else {
           sidebar.classList.remove('visible');
           sidebarToggleMobile.style.display = 'none';
           sidebarToggle.style.display = 'flex';
-          sidebar.style.width = '280px';
-          sidebar.querySelector('.logo').style.display = 'block';
-          sidebar.querySelectorAll('nav.sidebar-nav a span.text').forEach(el => el.style.display = 'inline');
+          sidebar.style.width = sidebar.classList.contains('collapsed') ? '64px' : '280px';
         }
       }
-
       window.addEventListener('resize', handleResponsive);
       handleResponsive();
 
-      // Keyboard accessibility for sidebar nav links
+      // ===== Keyboard accessibility =====
       const navLinks = document.querySelectorAll('nav.sidebar-nav a');
       navLinks.forEach(link => {
         link.addEventListener('keydown', e => {
@@ -171,26 +105,26 @@
         });
       });
 
-      // Focus main content when navigating
+      // ===== Focus main al navegar =====
       const mainContent = document.getElementById('main');
-      document.querySelectorAll('nav.sidebar-nav a').forEach(link => {
+      navLinks.forEach(link => {
         link.addEventListener('click', () => {
           setTimeout(() => mainContent.focus(), 100);
         });
       });
 
-      // Search input debounce and accessible label
+      // ===== Search debounce =====
       const searchInput = document.getElementById('searchInput');
       let searchTimeout;
       searchInput.addEventListener('input', () => {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
-          // Placeholder for search logic
           console.log('Buscar:', searchInput.value);
         }, 300);
       });
-    })();
+    });
   </script>
+
 </body>
 </html>
 

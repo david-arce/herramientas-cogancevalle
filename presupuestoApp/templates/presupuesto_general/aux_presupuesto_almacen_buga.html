@@ -783,14 +783,6 @@
                 $('#checkAllIPC').prop('checked', true);
             }
         });
-        // ✅ Si se desmarca una sola fila → se desmarca el "Seleccionar todo"
-        $('#tempTable').on('change', '.row-check', function() {
-            if (!$(this).is(':checked')) {
-                $('#checkAllIPC').prop('checked', false);
-            } else if ($('.row-check:checked').length === $('.row-check').length) {
-                $('#checkAllIPC').prop('checked', true);
-            }
-        });
 
         // ✅ Sincronizar checkbox maestro al recargar la tabla (por Ajax o redraw)
         table.on('draw', function() {

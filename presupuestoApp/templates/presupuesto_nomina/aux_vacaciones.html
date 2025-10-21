@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -9,65 +10,7 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <style>
-        td.editable { background: #f8f9fa; cursor: pointer; }
-        button { margin: 10px; }
-
-        /* Contenedor de toasts */
-        .toast-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .toast {
-            min-width: 250px;
-            padding: 12px 20px;
-            border-radius: 8px;
-            color: #fff;
-            font-size: 14px;
-            opacity: 0;
-            transform: translateX(100%);
-            transition: all 0.5s ease-in-out;
-        }
-        .toast.show {
-            opacity: 1;
-            transform: translateX(0);
-        }
-        .toast.success { background-color: #28a745; }
-        .toast.error { background-color: #dc3545; }
-
-        /* Spinner */
-        .spinner {
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #fff;
-            border-right: 2px solid #fff;
-            border-radius: 50%;
-            width: 14px;
-            height: 14px;
-            display: inline-block;
-            animation: spin 0.6s linear infinite;
-            vertical-align: middle;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        #btnTabla {
-            position: relative;
-            padding: 8px 16px;
-            border: none;
-            background-color: #646464ff;
-            color: white;
-            font-size: 14px;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-    </style>
+    <link rel="stylesheet" href="{% static 'css/nomina_auxiliares.css' %}">
 </head>
 <body>
     <h2>Presupuesto Nómina - Tabla auxiliar vacaciones</h2>
@@ -82,6 +25,7 @@
         <button id="guardarTempBtn">Guardar en BD (temporal)<span class="spinner" style="display:none; margin-left:8px;"></span>
         </button>
         <button id="btnTabla"> Ir a tabla principal</button>
+        <button id="btnHome"> Inicio</button>
     </div>
 
     <form id="subirPresupuestoForm" method="post" action="{% url 'subir_presupuesto_vacaciones' %}">
@@ -93,6 +37,7 @@
     <table id="tempTable" class="display">
         <thead>
             <tr>
+                <th><input type="checkbox" id="checkAllIPC" title="Seleccionar todo"></th>
                 <th>Cedula</th>
                 <th>Nombre</th>
                 <th>Centro</th>
@@ -126,12 +71,21 @@ $(document).ready(function() {
     document.getElementById("btnTabla").addEventListener("click", function () {
         window.location.href = "{% url 'vacaciones' %}";
     });
+    // Botón Ir al inicio
+    document.getElementById("btnHome").addEventListener("click", function () {
+        window.location.href = "{% url 'presupuestoNomina' %}";
+    });
     let table = $('#tempTable').DataTable({
         ajax: {
             url: "{% url 'obtener_vacaciones_temp' %}",
             dataSrc: ""
         },
         columns: [
+            { 
+                data: null,
+                defaultContent: '<input type="checkbox" class="row-check" title="Seleccionar fila">',
+                orderable: false
+            },
             { data: "cedula" },
             { data: "nombre" },
             { data: "centro" },
@@ -157,15 +111,18 @@ $(document).ready(function() {
                 orderable: false
             }
         ],
+        language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+        },
         createdRow: function(row, data, dataIndex) {
-            // marcar todas menos Acciones como editables
+            // marcar como editables sólo columnas relevantes (excluyendo columna 0 = checkbox)
             $('td', row).each(function(index) {
-                if (index < 20) { // hasta "total"
+                if (index > 0 && index < 20) { // >0 excluye checkbox, <20 hasta "total"
                     $(this).addClass("editable");
                 }
             });
         },
-        dom: 'Bfrtip',
+        dom: 'Bftip',
         buttons: [
         {
             extend: 'excelHtml5',
@@ -180,7 +137,21 @@ $(document).ready(function() {
                 columns: ':not(:last-child)' // 🔥 excluye columna "Acciones"
             }
         }
-    ]
+    ],
+    paging: false,
+    });
+    // ✅ Checkbox maestro para seleccionar/deseleccionar todos
+    $('#checkAllIPC').on('change', function() {
+        let checked = $(this).is(':checked');
+        $('.row-check').prop('checked', checked);
+    });
+    // ✅ Si se desmarca una sola fila → se desmarca el "Seleccionar todo"
+    $('#tempTable').on('change', '.row-check', function() {
+        if (!$(this).is(':checked')) {
+            $('#checkAllIPC').prop('checked', false);
+        } else if ($('.row-check:checked').length === $('.row-check').length) {
+            $('#checkAllIPC').prop('checked', true);
+        }
     });
     // función para recalcular total de una fila
     function recalcularTotal(rowData) {
@@ -343,63 +314,73 @@ $(document).ready(function() {
         });
     });
 
-    // Calcular
     $('#calcularBtn').on('click', function() {
+        calcular();
+    });
+        
+    // Calcular solo las filas seleccionadas
+    function calcular() {
         // 🔹 Obtener incrementoSalarial desde el contexto Django
         const vacaciones = parseFloat("{{ vacaciones|floatformat:2 }}".replace(",", ".")) || 0;
-        console.log(`vacaciones: ${vacaciones}%`);
-        table.rows().every(function() {
-            let data = this.data();
-            let enero = parseFloat(data.enero) || 0;
-            let febrero = parseFloat(data.febrero) || 0;
-            let marzo = parseFloat(data.marzo) || 0;
-            let abril = parseFloat(data.abril) || 0;
-            let mayo = parseFloat(data.mayo) || 0;
-            let junio = parseFloat(data.junio) || 0;
-            let julio = parseFloat(data.julio) || 0;
-            let agosto = parseFloat(data.agosto) || 0;
-            let septiembre = parseFloat(data.septiembre) || 0;
-            let octubre = parseFloat(data.octubre) || 0;
-            let noviembre = parseFloat(data.noviembre) || 0;
-            let diciembre = parseFloat(data.diciembre) || 0;
+        // 🔹 Iterar solo sobre filas seleccionadas (checkbox marcados)
+        $('#tempTable tbody tr').each(function() {
+            let $row = $(this);
+            let $checkbox = $row.find('.row-check');
 
-            let nuevaCesantiaEnero =(enero * vacaciones / 100);
-            let nuevaCesantiaFebrero = (febrero * vacaciones / 100);
-            let nuevaCesantiaMarzo =(marzo * vacaciones / 100);
-            let nuevaCesantiaAbril =(abril * vacaciones / 100);
-            let nuevaCesantiaMayo =(mayo * vacaciones / 100);
-            let nuevaCesantiaJunio = (junio * vacaciones / 100);
-            let nuevaCesantiaJulio = (julio * vacaciones / 100);
-            let nuevaCesantiaAgosto =  (agosto * vacaciones / 100);
-            let nuevaCesantiaSeptiembre = (septiembre * vacaciones / 100);
-            let nuevaCesantiaOctubre = (octubre * vacaciones / 100);
-            let nuevaCesantiaNoviembre = (noviembre * vacaciones / 100);
-            let nuevaCesantiaDiciembre = (diciembre * vacaciones / 100);
+            if ($checkbox.is(':checked')) {
+                // 🔹 Obtener objeto de datos de la fila desde DataTables
+                let row = table.row($row);
+                let data = row.data();
+                let enero = parseFloat(data.enero) || 0;
+                let febrero = parseFloat(data.febrero) || 0;
+                let marzo = parseFloat(data.marzo) || 0;
+                let abril = parseFloat(data.abril) || 0;
+                let mayo = parseFloat(data.mayo) || 0;
+                let junio = parseFloat(data.junio) || 0;
+                let julio = parseFloat(data.julio) || 0;
+                let agosto = parseFloat(data.agosto) || 0;
+                let septiembre = parseFloat(data.septiembre) || 0;
+                let octubre = parseFloat(data.octubre) || 0;
+                let noviembre = parseFloat(data.noviembre) || 0;
+                let diciembre = parseFloat(data.diciembre) || 0;
+
+                let nuevaCesantiaEnero =(enero * vacaciones / 100);
+                let nuevaCesantiaFebrero = (febrero * vacaciones / 100);
+                let nuevaCesantiaMarzo =(marzo * vacaciones / 100);
+                let nuevaCesantiaAbril =(abril * vacaciones / 100);
+                let nuevaCesantiaMayo =(mayo * vacaciones / 100);
+                let nuevaCesantiaJunio = (junio * vacaciones / 100);
+                let nuevaCesantiaJulio = (julio * vacaciones / 100);
+                let nuevaCesantiaAgosto =  (agosto * vacaciones / 100);
+                let nuevaCesantiaSeptiembre = (septiembre * vacaciones / 100);
+                let nuevaCesantiaOctubre = (octubre * vacaciones / 100);
+                let nuevaCesantiaNoviembre = (noviembre * vacaciones / 100);
+                let nuevaCesantiaDiciembre = (diciembre * vacaciones / 100);
+                
+                data.enero = Math.round(nuevaCesantiaEnero);
+                data.febrero = Math.round(nuevaCesantiaFebrero);
+                data.marzo = Math.round(nuevaCesantiaMarzo);
+                data.abril = Math.round(nuevaCesantiaAbril);
+                data.mayo = Math.round(nuevaCesantiaMayo);
+                data.junio = Math.round(nuevaCesantiaJunio);
+                data.julio = Math.round(nuevaCesantiaJulio);
+                data.agosto = Math.round(nuevaCesantiaAgosto);
+                data.septiembre = Math.round(nuevaCesantiaSeptiembre);
+                data.octubre = Math.round(nuevaCesantiaOctubre);
+                data.noviembre = Math.round(nuevaCesantiaNoviembre);
+                data.diciembre = Math.round(nuevaCesantiaDiciembre);
+
+                // Total
+                data.total = data.enero + data.febrero + data.marzo + data.abril +
+                                data.mayo + data.junio + data.julio + data.agosto +
+                                data.septiembre + data.octubre + data.noviembre + data.diciembre;
             
-            data.enero = Math.round(nuevaCesantiaEnero);
-            data.febrero = Math.round(nuevaCesantiaFebrero);
-            data.marzo = Math.round(nuevaCesantiaMarzo);
-            data.abril = Math.round(nuevaCesantiaAbril);
-            data.mayo = Math.round(nuevaCesantiaMayo);
-            data.junio = Math.round(nuevaCesantiaJunio);
-            data.julio = Math.round(nuevaCesantiaJulio);
-            data.agosto = Math.round(nuevaCesantiaAgosto);
-            data.septiembre = Math.round(nuevaCesantiaSeptiembre);
-            data.octubre = Math.round(nuevaCesantiaOctubre);
-            data.noviembre = Math.round(nuevaCesantiaNoviembre);
-            data.diciembre = Math.round(nuevaCesantiaDiciembre);
-
-            // Total
-            data.total = data.enero + data.febrero + data.marzo + data.abril +
-                            data.mayo + data.junio + data.julio + data.agosto +
-                            data.septiembre + data.octubre + data.noviembre + data.diciembre;
-        
-
-            this.data(data);
+                // 🔹 Actualizar la fila en DataTables
+                row.data(data).draw(false);
+            }
         });
-        table.draw();
         showToast("Cálculo aplicado correctamente ✅", "success");
-    });
+    }; 
 
     // Configurar CSRF para AJAX
     function getCSRFToken() {
