@@ -10,9 +10,19 @@
         }
         h2 {
             text-align: center;
+            margin-bottom: 10px;
+        }
+        a.exportar {
+            float: right;
+            background-color: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            margin-bottom: 20px;
         }
         .grid-acciones {
-            max-width: 800px;
+            max-width: 900px;
             margin: 20px auto;
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -33,10 +43,22 @@
             border: 1px solid #ccc;
             border-radius: 4px;
         }
-        .btn-group {
-            grid-column: 1 / -1;
+        .btn-section {
+            margin-top: 30px;
+            border-top: 2px solid #eee;
+            padding-top: 15px;
+        }
+        .btn-section h3 {
             text-align: center;
-            margin-top: 20px;
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
         }
         button {
             padding: 8px 16px;
@@ -45,7 +67,8 @@
             border: none;
             cursor: pointer;
             border-radius: 4px;
-            margin: 0 5px;
+            font-size: 14px;
+            transition: background 0.2s;
         }
         button:hover {
             background: #0056b3;
@@ -66,13 +89,10 @@
 </head>
 <body>
     <h2>Presupuesto Nómina - Parámetros</h2>
-    <a href="{% url 'exportar_excel' %}" 
-   style="float: right; background-color:#28a745; color:white; padding:8px 16px; 
-          border-radius:6px; text-decoration:none;">
-    📊 Exportar Todo a Excel
-</a>
 
-    <!-- Formulario solo para el botón Ir a la tabla -->
+    <a href="{% url 'exportar_excel' %}" class="exportar">📊 Exportar Todo a Excel</a>
+
+    <!-- Formulario -->
     <form id="formTabla" method="get">
         <div class="grid-acciones">
             <div class="acciones">
@@ -82,6 +102,10 @@
             <div class="acciones">
                 <label for="incrementoIPC">Incremento IPC (%):</label>
                 <input type="number" id="incrementoIPC" name="incrementoIPC" value="{{ parametros.incremento_ipc|default_if_none:''|cut:','}}" min="0" step="0.01">
+            </div>
+            <div class="acciones">
+                <label for="incrementoComisiones">Incremento comisiones (%):</label>
+                <input type="number" id="incrementoComisiones" name="incrementoComisiones" value="{{ parametros.incremento_comisiones|default_if_none:''|cut:','}}" min="0" step="0.01">
             </div>
             <div class="acciones">
                 <label for="auxilioTransporte">Auxilio de transporte (%):</label>
@@ -107,31 +131,48 @@
                 <label for="salarioMinimo">Salario mínimo:</label>
                 <input type="number" id="salarioMinimo" name="salarioMinimo" value="{{ parametros.salario_minimo|default_if_none:''|cut:','}}" min="0" step="0.01">
             </div>
-            <div class="acciones">
-                <label for="incrementoComisiones">Incremento comisiones (%):</label>
-                <input type="number" id="incrementoComisiones" name="incrementoComisiones" value="{{ parametros.incremento_comisiones|default_if_none:''|cut:','}}" min="0" step="0.01">
-            </div>
+        </div>
 
-            <!-- Botones -->
+        <!-- Botones -->
+        <div class="btn-section">
+            <h3>📋 Operaciones principales</h3>
             <div class="btn-group">
                 <button type="button" id="btnActualizar">Actualizar datos</button>
                 <button type="submit" id="btnTabla" formaction="{% url 'sueldos' %}">Sueldos</button>
                 <button type="submit" id="btnTabla" formaction="{% url 'comisiones' %}">Comisiones</button>
                 <button type="submit" id="btnTabla" formaction="{% url 'horas_extra' %}">Horas extras</button>
+            </div>
+        </div>
+
+        <div class="btn-section">
+            <h3>🚗 Transporte y auxilios</h3>
+            <div class="btn-group">
                 <button type="submit" id="btnTabla" formaction="{% url 'medios_transporte' %}">Medios de transporte</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'auxilio_transporte' %}">Auxilio de transporte</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'ayuda_transporte' %}">Ayuda al transporte</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'cesantias' %}">Cesantias</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'intereses_cesantias' %}">Intereses cesantias</button>
+                <button type="submit" id="btnTabla" formaction="{% url 'auxilio_transporte' %}">Auxilio transporte</button>
+                <button type="submit" id="btnTabla" formaction="{% url 'ayuda_transporte' %}">Ayuda transporte</button>
+                <button type="submit" id="btnTabla" formaction="{% url 'auxilio_movilidad' %}">Auxilio movilidad</button>
+                <button type="submit" id="btnTabla" formaction="{% url 'auxilio_educacion' %}">Auxilio educación</button>
+            </div>
+        </div>
+
+        <div class="btn-section">
+            <h3>💰 Prestaciones y bonos</h3>
+            <div class="btn-group">
+                <button type="submit" id="btnTabla" formaction="{% url 'cesantias' %}">Cesantías</button>
+                <button type="submit" id="btnTabla" formaction="{% url 'intereses_cesantias' %}">Intereses cesantías</button>
                 <button type="submit" id="btnTabla" formaction="{% url 'prima' %}">Prima</button>
                 <button type="submit" id="btnTabla" formaction="{% url 'vacaciones' %}">Vacaciones</button>
                 <button type="submit" id="btnTabla" formaction="{% url 'bonificaciones' %}">Bonificaciones</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'auxilio_movilidad' %}">Auxilio movilidad</button>
+                <button type="submit" id="btnTabla" formaction="{% url 'bonificaciones_foco' %}">Bonificaciones foco</button>
+                <button type="submit" id="btnTabla" formaction="{% url 'bonos_kyrovet' %}">Bonos Kyrovet</button>
+            </div>
+        </div>
+
+        <div class="btn-section">
+            <h3>👷 Seguridad y formación</h3>
+            <div class="btn-group">
                 <button type="submit" id="btnTabla" formaction="{% url 'seguridad_social' %}">Seguridad social</button>
                 <button type="submit" id="btnTabla" formaction="{% url 'aprendiz' %}">Aprendiz</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'bonificaciones_foco' %}">Bonificaciones foco</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'auxilio_educacion' %}">Auxilio educación</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'bonos_kyrovet' %}">Bonos kyrovet</button>
             </div>
         </div>
     </form>

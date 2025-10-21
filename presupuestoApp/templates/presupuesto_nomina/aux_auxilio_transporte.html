@@ -38,6 +38,7 @@
         <thead>
             <tr>
                 <th><input type="checkbox" id="checkAllIPC" title="Seleccionar todo"></th>
+                <th>Acciones</th>
                 <th>Cedula</th>
                 <th>Nombre</th>
                 <th>Centro</th>
@@ -58,7 +59,6 @@
                 <th>Noviembre</th>
                 <th>Diciembre</th>
                 <th>Total</th>
-                <th>Acciones</th>
             </tr>
         </thead>
     </table>
@@ -87,6 +87,14 @@ $(document).ready(function() {
                 defaultContent: '<input type="checkbox" class="row-check" title="Seleccionar fila">',
                 orderable: false
             },
+            { 
+                data: null,
+                defaultContent: `
+                        <button class="duplicarFila" title="Duplicar fila">📑</button>
+                        <button class="eliminarFila" title="Eliminar fila">❌</button>
+                    `,
+                orderable: false
+            },
             { data: "cedula" },
             { data: "nombre" },
             { data: "centro" },
@@ -107,11 +115,7 @@ $(document).ready(function() {
             { data: "noviembre" },
             { data: "diciembre" },
             { data: "total" },
-            { 
-                data: null,
-                defaultContent: '<button class="eliminarFila">❌</button>',
-                orderable: false
-            }
+           
         ],
         language: {
                 url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
@@ -119,7 +123,7 @@ $(document).ready(function() {
         createdRow: function(row, data, dataIndex) {
             // marcar como editables sólo columnas relevantes (excluyendo columna 0 = checkbox)
             $('td', row).each(function(index) {
-                if (index > 0 && index < 20) { // >0 excluye checkbox, <20 hasta "total"
+                if (index > 1 && index < 21) { // >0 excluye checkbox, <20 hasta "total"
                     $(this).addClass("editable");
                 }
             });
@@ -142,6 +146,61 @@ $(document).ready(function() {
     ],
     paging: false,
     });
+    function seleccionarFila($row) {
+            // Quitar selección previa
+            $('#tempTable tbody tr').removeClass('fila-activa');
+            // Marcar la nueva fila
+            $row.addClass('fila-activa');
+    }
+    // Seleccionar fila cuando se hace clic
+    $('#tempTable').on('click', 'tbody tr', function() {
+        seleccionarFila($(this));
+    });
+    // duplicar fila 
+    $('#tempTable').on('click', '.duplicarFila', function() {
+        let row = table.row($(this).parents('tr'));
+        let rowData = row.data();
+        let currentIndex = row.index();
+
+        // clonar datos
+        let newRow = { ...rowData };
+
+        // reiniciar meses
+        let meses = ["enero","febrero","marzo","abril","mayo","junio",
+                    "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+        meses.forEach(m => newRow[m] = 0);
+
+        // total en 0
+        newRow.total = 0;
+
+        // 🔹 obtener todos los datos actuales de la tabla
+        let allData = table.rows().data().toArray();
+
+        // 🔹 insertar justo después del índice actual
+        allData.splice(currentIndex + 1, 0, newRow);
+
+        // 🔹 limpiar y volver a cargar los datos sin alterar scroll
+        let scrollBody = $('.dataTables_scrollBody');
+        let scrollPos = scrollBody.scrollTop();
+
+        table.clear().rows.add(allData).draw(false);
+
+        // 🔹 restaurar scroll y mantener selección
+        setTimeout(() => {
+            scrollBody.scrollTop(scrollPos);
+
+            // buscar la nueva fila duplicada
+            let $newRowNode = $('#tempTable tbody tr').eq(currentIndex + 1);
+
+            // seleccionar y animar
+            seleccionarFila($newRowNode);
+            $newRowNode.addClass("blink");
+            setTimeout(() => $newRowNode.removeClass("blink"), 2000);
+        }, 50);
+
+        showToast("Fila duplicada 📑", "success");
+    });
+
     // ✅ Checkbox maestro para seleccionar/deseleccionar todos
     $('#checkAllIPC').on('change', function() {
         let checked = $(this).is(':checked');
@@ -201,8 +260,32 @@ $(document).ready(function() {
         // Si la misma celda está en edición, no volver a abrir
         if (editingCell === this) return;
 
-        $(this).html('<input type="text" class="cell-input" value="'+ oldValue +'"/>');
-        let $input = $(this).find("input").focus();
+       $(this).html('<input type="text" class="cell-input" value="'+ oldValue +'"/>');
+        let $input = $(this).find("input");
+        let $cell = $(this);
+
+        // 🔹 Función para ajustar el ancho del input según su texto
+        function ajustarAncho() {
+            let tempSpan = $('<span>').text($input.val() || '')
+                .css({
+                    visibility: 'hidden',
+                    position: 'absolute',
+                    whiteSpace: 'pre',
+                    font: $input.css('font')
+                })
+                .appendTo('body');
+
+            let textWidth = tempSpan.width() + 12; // padding adicional
+            tempSpan.remove();
+            $input.width(textWidth);
+        }
+
+        // Inicializar tamaño al abrir
+        ajustarAncho();
+        $input.focus();
+
+        // 🔹 Actualizar ancho mientras escribe
+        $input.on('input', ajustarAncho);
         editingCell = this;
 
         // seleccionar todo el contenido

@@ -51,12 +51,26 @@ table.dataTable thead th {
     position: relative;
     padding: 8px 16px;
     border: none;
-    background-color: #646464ff;
+    background-color: rgb(131, 131, 131);
     color: white;
     font-size: 14px;
     border-radius: 6px;
     cursor: pointer;
 }
+/* Input de edición: ajusta ancho al contenido */
+.cell-input {
+    font-size: 14px;
+    font-family: inherit;
+    border: 1px solid #999;
+    border-radius: 4px;
+    padding: 2px 4px;
+    width: auto;
+    min-width: 40px;
+    max-width: 100%;
+    background-color: #fff;
+    box-sizing: content-box;
+}
+
 /* Checkboxes de la tabla */
 #tempTable input[type="checkbox"],
 #checkAllIPC {
@@ -71,4 +85,35 @@ table.dataTable thead th {
 #tempTable th:first-child {
     text-align: center;
     vertical-align: middle;
+}
+/* 🔹 Fila activa (seleccionada o en edición) */
+.fila-activa {
+    background-color: #b6b6b6ff !important;
+    transition: background-color 0.3s ease;
+}
+/* 🔹 Mantener color también en las celdas editables */
+.fila-activa td {
+    background-color: #b6b6b6ff !important;
+}
+/* 🔹 Si hay inputs o selects dentro de la fila activa, también se colorean */
+.fila-activa input,
+.fila-activa select,
+.fila-activa textarea {
+    background-color: #b6b6b6ff !important;
+}
+/* Asegúrate de que esto esté después de la regla .fila-activa td */
+@keyframes blinkShadow {
+0%   { box-shadow: 0 0 0 8px #b6b6b6ff; }
+40%  { box-shadow: none; }
+60%  { box-shadow: 0 0 0 8px #b6b6b6ff; }
+100% { box-shadow: none; }
+}
+
+/* Aplicamos la animación a cada TD de la fila para evitar conflicto con reglas sobre TR */
+.blink td {
+    animation: blinkShadow 0.8s ease-in-out 3;
+    position: relative;  /* para que box-shadow se pinte correctamente */
+    z-index: 1;
+    /* override temporal del background para que el "flash" sea más claro */
+    background-color: #b6b6b6ff !important;
 }
