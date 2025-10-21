@@ -200,30 +200,30 @@ class Plantillagastos2025(models.Model):
         db_table = 'plantillagastos2025'
 
 class ConceptosFijosYVariables(models.Model):
-    centro_tra = models.IntegerField(db_column='CENTRO_TRA', blank=True, null=True)  # Field name made lowercase.
+    centro_tra = models.CharField(db_column='CENTRO_TRA', blank=True, null=True)  # Field name made lowercase.
     nombre_cen = models.CharField(db_column='NOMBRE_CEN', blank=True, null=True)  # Field name made lowercase.
-    codcosto = models.IntegerField(db_column='CODCOSTO', blank=True, null=True)  # Field name made lowercase.
+    codcosto = models.CharField(db_column='CODCOSTO', blank=True, null=True)  # Field name made lowercase.
     nomcosto = models.CharField(db_column='NOMCOSTO', blank=True, null=True)  # Field name made lowercase.
     tipocpto = models.CharField(db_column='TIPOCPTO', blank=True, null=True)  # Field name made lowercase.
-    cuenta = models.IntegerField(db_column='CUENTA', blank=True, null=True)  # Field name made lowercase.
+    cuenta = models.CharField(db_column='CUENTA', blank=True, null=True)  # Field name made lowercase.
     concepto = models.CharField(db_column='CONCEPTO', blank=True, null=True)  # Field name made lowercase.
     nombre_con = models.CharField(db_column='NOMBRE_CON', blank=True, null=True)  # Field name made lowercase.
-    cargo = models.IntegerField(db_column='CARGO', blank=True, null=True)  # Field name made lowercase.
+    cargo = models.CharField(db_column='CARGO', blank=True, null=True)  # Field name made lowercase.
     nombrecar = models.CharField(db_column='NOMBRECAR', blank=True, null=True)  # Field name made lowercase.
-    cedula = models.IntegerField(db_column='CEDULA', blank=True, null=True)  # Field name made lowercase.
+    cedula = models.BigIntegerField(db_column='CEDULA', blank=True, null=True)  # Field name made lowercase.
     nombre = models.CharField(db_column='NOMBRE', blank=True, null=True)  # Field name made lowercase.
     arlporc = models.FloatField(db_column='ARLPORC', blank=True, null=True)  # Field name made lowercase.
-    concepto_f = models.IntegerField(db_column='CONCEPTO_F', blank=True, null=True)  # Field name made lowercase.
-    enero = models.IntegerField(db_column='ENERO', blank=True, null=True)  # Field name made lowercase.
-    febrero = models.IntegerField(db_column='FEBRERO', blank=True, null=True)  # Field name made lowercase.
-    marzo = models.IntegerField(db_column='MARZO', blank=True, null=True)  # Field name made lowercase.
-    abril = models.IntegerField(db_column='ABRIL', blank=True, null=True)  # Field name made lowercase.
-    mayo = models.IntegerField(db_column='MAYO', blank=True, null=True)  # Field name made lowercase.
-    junio = models.IntegerField(db_column='JUNIO', blank=True, null=True)  # Field name made lowercase.
-    julio = models.IntegerField(db_column='JULIO', blank=True, null=True)  # Field name made lowercase.
-    agosto = models.IntegerField(db_column='AGOSTO', blank=True, null=True)  # Field name made lowercase.
-    septiembre = models.IntegerField(db_column='SEPTIEMBRE', blank=True, null=True)  # Field name made lowercase.
-    total = models.IntegerField(db_column='TOTAL', blank=True, null=True)  # Field name made lowercase.
+    concepto_f = models.BigIntegerField(db_column='CONCEPTO_F', blank=True, null=True)  # Field name made lowercase.
+    enero = models.BigIntegerField(db_column='ENERO', blank=True, null=True)  # Field name made lowercase.
+    febrero = models.BigIntegerField(db_column='FEBRERO', blank=True, null=True)  # Field name made lowercase.
+    marzo = models.BigIntegerField(db_column='MARZO', blank=True, null=True)  # Field name made lowercase.
+    abril = models.BigIntegerField(db_column='ABRIL', blank=True, null=True)  # Field name made lowercase.
+    mayo = models.BigIntegerField(db_column='MAYO', blank=True, null=True)  # Field name made lowercase.
+    junio = models.BigIntegerField(db_column='JUNIO', blank=True, null=True)  # Field name made lowercase.
+    julio = models.BigIntegerField(db_column='JULIO', blank=True, null=True)  # Field name made lowercase.
+    agosto = models.BigIntegerField(db_column='AGOSTO', blank=True, null=True)  # Field name made lowercase.
+    septiembre = models.BigIntegerField(db_column='SEPTIEMBRE', blank=True, null=True)  # Field name made lowercase.
+    total = models.BigIntegerField(db_column='TOTAL', blank=True, null=True)  # Field name made lowercase.
 
     class Meta:
         managed = False
