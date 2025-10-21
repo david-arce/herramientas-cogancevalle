@@ -2136,10 +2136,7 @@ def guardar_nomina_temp(request):
                 "junio", "julio", "agosto", "septiembre", "octubre",
                 "noviembre", "diciembre", "total"
             }
-
-            # Limpiar la tabla antes de guardar
-            PresupuestoSueldosAux.objects.all().delete()
-
+            
             registros = []
             for row in data:
                 # Filtrar solo los campos válidos
@@ -2157,7 +2154,9 @@ def guardar_nomina_temp(request):
                 registros.append(PresupuestoSueldosAux(**row_filtrado))
 
             # Inserción masiva optimizada
-            PresupuestoSueldosAux.objects.bulk_create(registros)
+            with transaction.atomic():
+                PresupuestoSueldosAux.objects.all().delete()
+                PresupuestoSueldosAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -2359,7 +2358,7 @@ def cargar_comisiones_base(request):
     PresupuestoComisionesAux.objects.all().delete()  # limpia tabla temporal
     base_data = ConceptosFijosYVariables.objects.values(
         "cedula","nombre","nombrecar","nomcosto","nombre_cen", "nombre_con", "enero", "febrero", "marzo", "abril", "mayo",
-        "junio", "julio", "agosto", "septiembre" "total"
+        "junio", "julio", "agosto", "septiembre", "total"
     )
 
     # filtrar solo concepto que sea igual a 389
@@ -2459,9 +2458,6 @@ def guardar_horas_extra_temp(request):
                 "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
             }
 
-            # Limpiar la tabla antes de guardar
-            PresupuestoHorasExtraAux.objects.all().delete()
-
             registros = []
             for row in data:
                 # Filtrar solo los campos válidos
@@ -2479,7 +2475,9 @@ def guardar_horas_extra_temp(request):
                 registros.append(PresupuestoHorasExtraAux(**row_filtrado))
 
             # Inserción masiva optimizada
-            PresupuestoHorasExtraAux.objects.bulk_create(registros)
+            with transaction.atomic():
+                PresupuestoHorasExtraAux.objects.all().delete()
+                PresupuestoHorasExtraAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -2613,9 +2611,6 @@ def guardar_medios_transporte_temp(request):
                 "cedula", "nombre", "centro", "area", "cargo", "concepto", "base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
             }
 
-            # Limpiar la tabla antes de guardar
-            PresupuestoMediosTransporteAux.objects.all().delete()
-
             registros = []
             for row in data:
                 # Filtrar solo los campos válidos
@@ -2633,7 +2628,9 @@ def guardar_medios_transporte_temp(request):
                 registros.append(PresupuestoMediosTransporteAux(**row_filtrado))
 
             # Inserción masiva optimizada
-            PresupuestoMediosTransporteAux.objects.bulk_create(registros)
+            with transaction.atomic():
+                PresupuestoMediosTransporteAux.objects.all().delete()
+                PresupuestoMediosTransporteAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -2745,9 +2742,6 @@ def guardar_auxilio_transporte_temp(request):
                 "cedula", "nombre", "centro", "area", "cargo", "concepto", "base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
             }
 
-            # Limpiar la tabla antes de guardar
-            PresupuestoAuxilioTransporteAux.objects.all().delete()
-
             registros = []
             for row in data:
                 # Filtrar solo los campos válidos
@@ -2765,7 +2759,9 @@ def guardar_auxilio_transporte_temp(request):
                 registros.append(PresupuestoAuxilioTransporteAux(**row_filtrado))
 
             # Inserción masiva optimizada
-            PresupuestoAuxilioTransporteAux.objects.bulk_create(registros)
+            with transaction.atomic():
+                PresupuestoAuxilioTransporteAux.objects.all().delete()
+                PresupuestoAuxilioTransporteAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -2918,9 +2914,6 @@ def guardar_ayuda_transporte_temp(request):
                 "cedula", "nombre", "centro", "area", "cargo", "concepto", "base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
             }
 
-            # Limpiar la tabla antes de guardar
-            PresupuestoAyudaTransporteAux.objects.all().delete()
-
             registros = []
             for row in data:
                 # Filtrar solo los campos válidos
@@ -2938,7 +2931,9 @@ def guardar_ayuda_transporte_temp(request):
                 registros.append(PresupuestoAyudaTransporteAux(**row_filtrado))
 
             # Inserción masiva optimizada
-            PresupuestoAyudaTransporteAux.objects.bulk_create(registros)
+            with transaction.atomic():
+                PresupuestoAyudaTransporteAux.objects.all().delete()
+                PresupuestoAyudaTransporteAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -3050,9 +3045,6 @@ def guardar_cesantias_temp(request):
                 "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
             }
 
-            # Limpiar la tabla antes de guardar
-            PresupuestoCesantiasAux.objects.all().delete()
-
             registros = []
             for row in data:
                 # Filtrar solo los campos válidos
@@ -3070,7 +3062,9 @@ def guardar_cesantias_temp(request):
                 registros.append(PresupuestoCesantiasAux(**row_filtrado))
 
             # Inserción masiva optimizada
-            PresupuestoCesantiasAux.objects.bulk_create(registros)
+            with transaction.atomic():
+                PresupuestoCesantiasAux.objects.all().delete()
+                PresupuestoCesantiasAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -3218,9 +3212,6 @@ def guardar_prima_temp(request):
                 "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
             }
 
-            # Limpiar la tabla antes de guardar
-            PresupuestoPrimaAux.objects.all().delete()
-
             registros = []
             for row in data:
                 # Filtrar solo los campos válidos
@@ -3238,7 +3229,9 @@ def guardar_prima_temp(request):
                 registros.append(PresupuestoPrimaAux(**row_filtrado))
 
             # Inserción masiva optimizada
-            PresupuestoPrimaAux.objects.bulk_create(registros)
+            with transaction.atomic():
+                PresupuestoPrimaAux.objects.all().delete()
+                PresupuestoPrimaAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -3383,9 +3376,6 @@ def guardar_vacaciones_temp(request):
                 "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
             }
 
-            # Limpiar la tabla antes de guardar
-            PresupuestoVacacionesAux.objects.all().delete()
-
             registros = []
             for row in data:
                 # Filtrar solo los campos válidos
@@ -3403,7 +3393,9 @@ def guardar_vacaciones_temp(request):
                 registros.append(PresupuestoVacacionesAux(**row_filtrado))
 
             # Inserción masiva optimizada
-            PresupuestoVacacionesAux.objects.bulk_create(registros)
+            with transaction.atomic():
+                PresupuestoVacacionesAux.objects.all().delete()
+                PresupuestoVacacionesAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -3533,9 +3525,6 @@ def guardar_bonificaciones_temp(request):
                 "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
             }
 
-            # Limpiar la tabla antes de guardar
-            PresupuestoBonificacionesAux.objects.all().delete()
-
             registros = []
             for row in data:
                 # Filtrar solo los campos válidos
@@ -3553,7 +3542,9 @@ def guardar_bonificaciones_temp(request):
                 registros.append(PresupuestoBonificacionesAux(**row_filtrado))
 
             # Inserción masiva optimizada
-            PresupuestoBonificacionesAux.objects.bulk_create(registros)
+            with transaction.atomic():
+                PresupuestoBonificacionesAux.objects.all().delete()
+                PresupuestoBonificacionesAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -3673,9 +3664,6 @@ def guardar_auxilio_movilidad_temp(request):
                 "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
             }
 
-            # Limpiar la tabla antes de guardar
-            PresupuestoAuxilioMovilidadAux.objects.all().delete()
-
             registros = []
             for row in data:
                 # Filtrar solo los campos válidos
@@ -3693,7 +3681,9 @@ def guardar_auxilio_movilidad_temp(request):
                 registros.append(PresupuestoAuxilioMovilidadAux(**row_filtrado))
 
             # Inserción masiva optimizada
-            PresupuestoAuxilioMovilidadAux.objects.bulk_create(registros)
+            with transaction.atomic():
+                PresupuestoAuxilioMovilidadAux.objects.all().delete()
+                PresupuestoAuxilioMovilidadAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -3804,9 +3794,6 @@ def guardar_seguridad_social_temp(request):
                 "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
             }
 
-            # Limpiar la tabla antes de guardar
-            PresupuestoSeguridadSocialAux.objects.all().delete()
-
             registros = []
             for row in data:
                 # Filtrar solo los campos válidos
@@ -3824,7 +3811,9 @@ def guardar_seguridad_social_temp(request):
                 registros.append(PresupuestoSeguridadSocialAux(**row_filtrado))
 
             # Inserción masiva optimizada
-            PresupuestoSeguridadSocialAux.objects.bulk_create(registros)
+            with transaction.atomic():
+                PresupuestoSeguridadSocialAux.objects.all().delete()
+                PresupuestoSeguridadSocialAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -4103,9 +4092,6 @@ def guardar_intereses_cesantias_temp(request):
                 "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
             }
 
-            # Limpiar la tabla antes de guardar
-            PresupuestoInteresesCesantiasAux.objects.all().delete()
-
             registros = []
             for row in data:
                 # Filtrar solo los campos válidos
@@ -4123,7 +4109,9 @@ def guardar_intereses_cesantias_temp(request):
                 registros.append(PresupuestoInteresesCesantiasAux(**row_filtrado))
 
             # Inserción masiva optimizada
-            PresupuestoInteresesCesantiasAux.objects.bulk_create(registros)
+            with transaction.atomic():
+                PresupuestoInteresesCesantiasAux.objects.all().delete()
+                PresupuestoInteresesCesantiasAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -4260,9 +4248,6 @@ def guardar_aprendiz_temp(request):
                 "cedula", "nombre", "centro", "area", "cargo", "concepto", "salario_base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
             }
 
-            # Limpiar la tabla antes de guardar
-            PresupuestoAprendizAux.objects.all().delete()
-
             registros = []
             for row in data:
                 # Filtrar solo los campos válidos
@@ -4280,7 +4265,9 @@ def guardar_aprendiz_temp(request):
                 registros.append(PresupuestoAprendizAux(**row_filtrado))
 
             # Inserción masiva optimizada
-            PresupuestoAprendizAux.objects.bulk_create(registros)
+            with transaction.atomic():
+                PresupuestoAprendizAux.objects.all().delete()
+                PresupuestoAprendizAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -4381,9 +4368,6 @@ def guardar_bonificaciones_foco_temp(request):
                 "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
             }
 
-            # Limpiar la tabla antes de guardar
-            PresupuestoBonificacionesFocoAux.objects.all().delete()
-
             registros = []
             for row in data:
                 # Filtrar solo los campos válidos
@@ -4401,7 +4385,9 @@ def guardar_bonificaciones_foco_temp(request):
                 registros.append(PresupuestoBonificacionesFocoAux(**row_filtrado))
 
             # Inserción masiva optimizada
-            PresupuestoBonificacionesFocoAux.objects.bulk_create(registros)
+            with transaction.atomic():
+                PresupuestoBonificacionesFocoAux.objects.all().delete()
+                PresupuestoBonificacionesFocoAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -4611,9 +4597,6 @@ def guardar_auxilio_educacion_temp(request):
                 "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
             }
 
-            # Limpiar la tabla antes de guardar
-            PresupuestoAuxilioEducacionAux.objects.all().delete()
-
             registros = []
             for row in data:
                 # Filtrar solo los campos válidos
@@ -4631,7 +4614,9 @@ def guardar_auxilio_educacion_temp(request):
                 registros.append(PresupuestoAuxilioEducacionAux(**row_filtrado))
 
             # Inserción masiva optimizada
-            PresupuestoAuxilioEducacionAux.objects.bulk_create(registros)
+            with transaction.atomic():
+                PresupuestoAuxilioEducacionAux.objects.all().delete()
+                PresupuestoAuxilioEducacionAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -4743,9 +4728,6 @@ def guardar_bonos_kyrovet_temp(request):
                 "cedula", "nombre", "centro", "area", "cargo", "concepto","base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
             }
 
-            # Limpiar la tabla antes de guardar
-            PresupuestoBonosKyrovetAux.objects.all().delete()
-
             registros = []
             for row in data:
                 # Filtrar solo los campos válidos
@@ -4763,7 +4745,9 @@ def guardar_bonos_kyrovet_temp(request):
                 registros.append(PresupuestoBonosKyrovetAux(**row_filtrado))
 
             # Inserción masiva optimizada
-            PresupuestoBonosKyrovetAux.objects.bulk_create(registros)
+            with transaction.atomic():
+                PresupuestoBonosKyrovetAux.objects.all().delete()
+                PresupuestoBonosKyrovetAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
