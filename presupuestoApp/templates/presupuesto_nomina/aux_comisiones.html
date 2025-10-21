@@ -544,8 +544,8 @@ $(document).ready(function() {
                 data.septiembre = Math.round(nuevaComisionSeptiembre);
 
                 // Septiembre a Diciembre = promedio Ene–Ago
-                let sumaEneAgo = enero + febrero + marzo + abril + mayo + junio + julio + agosto;
-                let promedio = Math.round(sumaEneAgo / 8);
+                let sumaEneAgo = enero + febrero + marzo + abril + mayo + junio + julio + agosto + septiembre;
+                let promedio = Math.round(sumaEneAgo / 9);
                 let promedioAjustado = promedio + (promedio * incrementoComisiones / 100);
 
                 data.octubre = Math.round(promedioAjustado);
