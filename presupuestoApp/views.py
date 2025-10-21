@@ -2320,9 +2320,6 @@ def guardar_comisiones_temp(request):
                 "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
             }
 
-            # Limpiar la tabla antes de guardar
-            PresupuestoComisionesAux.objects.all().delete()
-
             registros = []
             for row in data:
                 # Filtrar solo los campos válidos
@@ -2340,7 +2337,9 @@ def guardar_comisiones_temp(request):
                 registros.append(PresupuestoComisionesAux(**row_filtrado))
 
             # Inserción masiva optimizada
-            PresupuestoComisionesAux.objects.bulk_create(registros)
+            with transaction.atomic():
+                PresupuestoComisionesAux.objects.all().delete()
+                PresupuestoComisionesAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -2360,7 +2359,7 @@ def cargar_comisiones_base(request):
     PresupuestoComisionesAux.objects.all().delete()  # limpia tabla temporal
     base_data = ConceptosFijosYVariables.objects.values(
         "cedula","nombre","nombrecar","nomcosto","nombre_cen", "nombre_con", "enero", "febrero", "marzo", "abril", "mayo",
-        "junio", "julio", "agosto", "total"
+        "junio", "julio", "agosto", "septiembre" "total"
     )
 
     # filtrar solo concepto que sea igual a 389
@@ -2382,6 +2381,7 @@ def cargar_comisiones_base(request):
             junio=row["junio"] or 0,
             julio=row["julio"] or 0,
             agosto=row["agosto"] or 0,
+            septiembre=row["septiembre"] or 0,
             total=row["total"] or 0,
         )
 
@@ -4870,7 +4870,7 @@ def obtener_presupuesto_aprobado_tecnologia(request):
 
 def tabla_auxiliar_tecnologia(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 30)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
 
     # 🚫 Si ya pasó la fecha, negar acceso
@@ -7721,7 +7721,7 @@ def obtener_presupuesto_aprobado_contabilidad(request):
 
 def tabla_auxiliar_contabilidad(request):
     # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
+    fecha_limite = datetime.date(2025, 10, 22)  # <-- cámbiala según lo que necesites
     hoy = datetime.date.today()
     # 🚫 Si ya pasó la fecha, negar acceso
     if hoy > fecha_limite:
