@@ -321,6 +321,26 @@ $(document).ready(function() {
         rowData.total = total;
         return rowData;
     }
+    // 🔹 NUEVO: función para recalcular promedio de oct–dic
+    function recalcularPromedioUltimosMeses(rowData) {
+        const incrementoComisiones = parseFloat("{{ incrementoComisiones }}".replace(",", ".")) || 0;
+
+        // Promedio desde enero hasta septiembre
+        let mesesBase = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre"];
+        let suma = 0;
+        mesesBase.forEach(m => suma += parseFloat(rowData[m]) || 0);
+        let promedio = suma / mesesBase.length;
+
+        // Aplicar incremento
+        let promedioAjustado = promedio + (promedio * incrementoComisiones / 100);
+
+        // Asignar a octubre, noviembre y diciembre
+        rowData.octubre = Math.round(promedioAjustado);
+        rowData.noviembre = Math.round(promedioAjustado);
+        rowData.diciembre = Math.round(promedioAjustado);
+
+        return rowData;
+    }
     // cerrar edición y guardar valor
     function cerrarEdicion(cell, newValue) {
         let row = table.row($(cell).closest("tr"));
@@ -332,6 +352,10 @@ $(document).ready(function() {
 
         rowData[colName] = newValue;
 
+        // 🔹 NUEVO: recalcular promedio (si se cambia un mes de Ene–Sep)
+        if (["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre"].includes(colName)) {
+            rowData = recalcularPromedioUltimosMeses(rowData);
+        }
         // recalcular total dinámicamente
         rowData = recalcularTotal(rowData);
 
