@@ -159,14 +159,24 @@ urlpatterns = [
     path("borrar_presupuesto_bonificaciones/", views.borrar_presupuesto_bonificaciones, name="borrar_presupuesto_bonificaciones"),
     
     # auxilio movilidad (tuberculina)
-    path("auxilio-movilidad/", views.auxilio_movilidad, name="auxilio_movilidad"),
-    path("obtener-presupuesto-auxilio-movilidad/", views.obtener_presupuesto_auxilio_movilidad, name="obtener_presupuesto_auxilio_movilidad"),
-    path("tabla-auxiliar-auxilio-movilidad/", views.tabla_auxiliar_auxilio_movilidad, name="tabla_auxiliar_auxilio_movilidad"), # ruta para la tabla temporal del auxilio de movilidad
-    path("obtener-auxilio-movilidad-temp/", views.obtener_auxilio_movilidad_temp, name="obtener_auxilio_movilidad_temp"),
-    path("subir-presupuesto-auxilio-movilidad/", views.subir_presupuesto_auxilio_movilidad, name="subir_presupuesto_auxilio_movilidad"),
-    path("cargar-auxilio-movilidad-base/", views.cargar_auxilio_movilidad_base, name="cargar_auxilio_movilidad_base"),
-    path("guardar-auxilio-movilidad-temp/", views.guardar_auxilio_movilidad_temp, name="guardar_auxilio_movilidad_temp"),
-    path("borrar_presupuesto_auxilio_movilidad/", views.borrar_presupuesto_auxilio_movilidad, name="borrar_presupuesto_auxilio_movilidad"),
+    path("bolsa_consumibles/", views.bolsa_consumibles, name="bolsa_consumibles"),
+    path("obtener-presupuesto-bolsa_consumibles/", views.obtener_presupuesto_bolsa_consumibles, name="obtener_presupuesto_bolsa_consumibles"),
+    path("tabla-auxiliar-bolsa_consumibles/", views.tabla_auxiliar_bolsa_consumibles, name="tabla_auxiliar_bolsa_consumibles"), # ruta para la tabla temporal del auxilio de movilidad
+    path("obtener-bolsa_consumibles-temp/", views.obtener_bolsa_consumibles_temp, name="obtener_bolsa_consumibles_temp"),
+    path("subir-presupuesto-bolsa_consumibles/", views.subir_presupuesto_bolsa_consumibles, name="subir_presupuesto_bolsa_consumibles"),
+    path("cargar-bolsa_consumibles-base/", views.cargar_bolsa_consumibles_base, name="cargar_bolsa_consumibles_base"),
+    path("guardar-bolsa_consumibles-temp/", views.guardar_bolsa_consumibles_temp, name="guardar_bolsa_consumibles_temp"),
+    path("borrar_presupuesto_bolsa_consumibles/", views.borrar_presupuesto_bolsa_consumibles, name="borrar_presupuesto_bolsa_consumibles"),
+    
+    # auxilio tbckit
+    path("auxilio-TBCKIT/", views.auxilio_TBCKIT, name="auxilio_TBCKIT"),
+    path("obtener-presupuesto-auxilio-TBCKIT/", views.obtener_presupuesto_auxilio_TBCKIT, name="obtener_presupuesto_auxilio_TBCKIT"),
+    path("tabla-auxiliar-auxilio-TBCKIT/", views.tabla_auxiliar_auxilio_TBCKIT, name="tabla_auxiliar_auxilio_TBCKIT"), # ruta para la tabla temporal del auxilio de movilidad
+    path("obtener-auxilio-TBCKIT-temp/", views.obtener_auxilio_TBCKIT_temp, name="obtener_auxilio_TBCKIT_temp"),
+    path("subir-presupuesto-auxilio-TBCKIT/", views.subir_presupuesto_auxilio_TBCKIT, name="subir_presupuesto_auxilio_TBCKIT"),
+    path("cargar-auxilio-TBCKIT-base/", views.cargar_auxilio_TBCKIT_base, name="cargar_auxilio_TBCKIT_base"),
+    path("guardar-auxilio-TBCKIT-temp/", views.guardar_auxilio_TBCKIT_temp, name="guardar_auxilio_TBCKIT_temp"),
+    path("borrar_presupuesto_auxilio_TBCKIT/", views.borrar_presupuesto_auxilio_TBCKIT, name="borrar_presupuesto_auxilio_TBCKIT"),
     
     # seguridad social
     path("seguridad-social/", views.seguridad_social, name="seguridad_social"),

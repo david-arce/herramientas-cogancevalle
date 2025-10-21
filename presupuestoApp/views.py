@@ -6,7 +6,7 @@ from pyexpat.errors import messages
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 import pandas as pd
-from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoAuxilioMovilidad, PresupuestoAuxilioMovilidadAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado, PresupuestoServiciosTecnicos, PresupuestoServiciosTecnicosAux, PresupuestoServiciosTecnicosAprobado, PresupuestoLogistica, PresupuestoLogisticaAux, PresupuestoLogisticaAprobado, PresupuestoGestionRiesgos, PresupuestoGestionRiesgosAux, PresupuestoGestionRiesgosAprobado, PresupuestoGH, PresupuestoGHAux, PresupuestoGHAprobado, PresupuestoAlmacenTulua, PresupuestoAlmacenTuluaAux, PresupuestoAlmacenTuluaAprobado, PresupuestoAlmacenBuga, PresupuestoAlmacenBugaAux, PresupuestoAlmacenBugaAprobado, PresupuestoAlmacenCartago, PresupuestoAlmacenCartagoAux, PresupuestoAlmacenCartagoAprobado, PresupuestoAlmacenCali, PresupuestoAlmacenCaliAux, PresupuestoAlmacenCaliAprobado, PresupuestoComunicaciones, PresupuestoComunicacionesAux, PresupuestoComunicacionesAprobado, PresupuestoComercialCostos, PresupuestoComercialCostosAux, PresupuestoComercialCostosAprobado, PresupuestoContabilidad, PresupuestoContabilidadAux, PresupuestoContabilidadAprobado, PresupuestoGerencia, PresupuestoGerenciaAux, PresupuestoGerenciaAprobado, Cuenta5, Cuenta5Base
+from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoBolsaConsumibles, PresupuestoBolsaConsumiblesAux, PresupuestoAuxilioTBCKIT, PresupuestoAuxilioTCBKITAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado, PresupuestoServiciosTecnicos, PresupuestoServiciosTecnicosAux, PresupuestoServiciosTecnicosAprobado, PresupuestoLogistica, PresupuestoLogisticaAux, PresupuestoLogisticaAprobado, PresupuestoGestionRiesgos, PresupuestoGestionRiesgosAux, PresupuestoGestionRiesgosAprobado, PresupuestoGH, PresupuestoGHAux, PresupuestoGHAprobado, PresupuestoAlmacenTulua, PresupuestoAlmacenTuluaAux, PresupuestoAlmacenTuluaAprobado, PresupuestoAlmacenBuga, PresupuestoAlmacenBugaAux, PresupuestoAlmacenBugaAprobado, PresupuestoAlmacenCartago, PresupuestoAlmacenCartagoAux, PresupuestoAlmacenCartagoAprobado, PresupuestoAlmacenCali, PresupuestoAlmacenCaliAux, PresupuestoAlmacenCaliAprobado, PresupuestoComunicaciones, PresupuestoComunicacionesAux, PresupuestoComunicacionesAprobado, PresupuestoComercialCostos, PresupuestoComercialCostosAux, PresupuestoComercialCostosAprobado, PresupuestoContabilidad, PresupuestoContabilidadAux, PresupuestoContabilidadAprobado, PresupuestoGerencia, PresupuestoGerenciaAux, PresupuestoGerenciaAprobado, Cuenta5, Cuenta5Base
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.db.models.functions import Concat
 from django.db.models import Sum, Max, Q
@@ -31,7 +31,7 @@ def exportar_excel_nomina(request):
     prima = list(PresupuestoPrima.objects.values())
     vacaciones = list(PresupuestoVacaciones.objects.values())
     bonificaciones = list(PresupuestoBonificaciones.objects.values())
-    auxilio_movilidad = list(PresupuestoAuxilioMovilidad.objects.values())
+    auxilio_movilidad = list(PresupuestoBolsaConsumibles.objects.values())
     aprendiz = list(PresupuestoAprendiz.objects.values())
 
     # Crear DataFrames con columna de origen
@@ -3603,22 +3603,22 @@ def borrar_presupuesto_bonificaciones(request):
         return JsonResponse({"status": "ok", "message": "Presupuesto de bonificaciones eliminado"})
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
-#------------auxilio movilidad (novedad de nomina extra, consumibles y tuberculina)----------------
-def auxilio_movilidad(request):
-    return render(request, "presupuesto_nomina/auxilio_movilidad.html")
+#------------bolsa consumibles (novedad de nomina extra, consumibles y tuberculina)----------------
+def bolsa_consumibles(request):
+    return render(request, "presupuesto_nomina/bolsa_consumibles.html")
 
-def obtener_presupuesto_auxilio_movilidad(request):
-    auxilio_movilidad = list(PresupuestoAuxilioMovilidad.objects.values())
+def obtener_presupuesto_bolsa_consumibles(request):
+    auxilio_movilidad = list(PresupuestoBolsaConsumibles.objects.values())
     return JsonResponse({"data": auxilio_movilidad}, safe=False)
 
-def tabla_auxiliar_auxilio_movilidad(request):
+def tabla_auxiliar_bolsa_consumibles(request):
     parametros = ParametrosPresupuestos.objects.first()
     incremento_ipc = parametros.incremento_ipc if parametros else 0
-    return render(request, "presupuesto_nomina/aux_auxilio_movilidad.html", {'incrementoIPC': incremento_ipc})
+    return render(request, "presupuesto_nomina/aux_bolsa_consumibles.html", {'incrementoIPC': incremento_ipc})
 
-def subir_presupuesto_auxilio_movilidad(request):
+def subir_presupuesto_bolsa_consumibles(request):
     if request.method == "POST":
-        temporales = PresupuestoAuxilioMovilidadAux.objects.all()
+        temporales = PresupuestoBolsaConsumiblesAux.objects.all()
         if not temporales.exists():
             return JsonResponse({
                 "success": False,
@@ -3626,7 +3626,7 @@ def subir_presupuesto_auxilio_movilidad(request):
             }, status=400)
 
         for temp in temporales:
-            PresupuestoAuxilioMovilidad.objects.create(
+            PresupuestoBolsaConsumibles.objects.create(
                 cedula=temp.cedula,
                 nombre=temp.nombre,
                 centro=temp.centro,
@@ -3656,7 +3656,7 @@ def subir_presupuesto_auxilio_movilidad(request):
         "msg": "Método no permitido"
     }, status=405)
     
-def guardar_auxilio_movilidad_temp(request):
+def guardar_bolsa_consumibles_temp(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body.decode("utf-8"))
@@ -3680,12 +3680,12 @@ def guardar_auxilio_movilidad_temp(request):
                     if row_filtrado.get(mes) in [None, ""]:
                         row_filtrado[mes] = 0
 
-                registros.append(PresupuestoAuxilioMovilidadAux(**row_filtrado))
+                registros.append(PresupuestoBolsaConsumiblesAux(**row_filtrado))
 
             # Inserción masiva optimizada
             with transaction.atomic():
-                PresupuestoAuxilioMovilidadAux.objects.all().delete()
-                PresupuestoAuxilioMovilidadAux.objects.bulk_create(registros)
+                PresupuestoBolsaConsumiblesAux.objects.all().delete()
+                PresupuestoBolsaConsumiblesAux.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -3694,12 +3694,12 @@ def guardar_auxilio_movilidad_temp(request):
 
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
-def obtener_auxilio_movilidad_temp(request):
-    data = list(PresupuestoAuxilioMovilidadAux.objects.values())
+def obtener_bolsa_consumibles_temp(request):
+    data = list(PresupuestoBolsaConsumiblesAux.objects.values())
     return JsonResponse(data, safe=False)
 
-def cargar_auxilio_movilidad_base(request):
-    PresupuestoAuxilioMovilidadAux.objects.all().delete()  # limpia tabla temporal
+def cargar_bolsa_consumibles_base(request):
+    PresupuestoBolsaConsumiblesAux.objects.all().delete()  # limpia tabla temporal
     base_data = ConceptosFijosYVariables.objects.values(
         "cedula","nombre","nombrecar","nomcosto","nombre_cen", "nombre_con", "enero", "febrero", "marzo", "abril", "mayo",
         "junio", "julio", "agosto", "total"
@@ -3709,7 +3709,7 @@ def cargar_auxilio_movilidad_base(request):
     base_data = base_data.filter(concepto="E14")
     
     for row in base_data:
-        PresupuestoAuxilioMovilidadAux.objects.create(
+        PresupuestoBolsaConsumiblesAux.objects.create(
             cedula=row["cedula"],
             nombre=row["nombre"],
             cargo=row["nombrecar"],
@@ -3731,11 +3731,146 @@ def cargar_auxilio_movilidad_base(request):
     return JsonResponse({"status": "ok"})
 
 @csrf_exempt
-def borrar_presupuesto_auxilio_movilidad(request):
+def borrar_presupuesto_bolsa_consumibles(request):
     if request.method == "POST":
-        PresupuestoAuxilioMovilidad.objects.all().delete()
+        PresupuestoBolsaConsumibles.objects.all().delete()
         return JsonResponse({"status": "ok", "message": "Presupuesto de auxilio de movilidad eliminado"})
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+#-----------------------Auxilio TBC y KIT----------------------------
+def auxilio_TBCKIT(request):
+    return render(request, "presupuesto_nomina/auxilio_TBCKIT.html")
+
+def obtener_presupuesto_auxilio_TBCKIT(request):
+    auxilio_movilidad = list(PresupuestoAuxilioTBCKIT.objects.values())
+    return JsonResponse({"data": auxilio_movilidad}, safe=False)
+
+def tabla_auxiliar_auxilio_TBCKIT(request):
+    parametros = ParametrosPresupuestos.objects.first()
+    incremento_ipc = parametros.incremento_ipc if parametros else 0
+    return render(request, "presupuesto_nomina/aux_auxilio_TBCKIT.html", {'incrementoIPC': incremento_ipc})
+
+def subir_presupuesto_auxilio_TBCKIT(request):
+    if request.method == "POST":
+        temporales = PresupuestoAuxilioTCBKITAux.objects.all()
+        if not temporales.exists():
+            return JsonResponse({
+                "success": False,
+                "msg": "No hay datos temporales para subir ❌"
+            }, status=400)
+
+        for temp in temporales:
+            PresupuestoAuxilioTBCKIT.objects.create(
+                cedula=temp.cedula,
+                nombre=temp.nombre,
+                centro=temp.centro,
+                area = temp.area,
+                cargo=temp.cargo,
+                concepto=temp.concepto,
+                enero=temp.enero,
+                febrero=temp.febrero,
+                marzo=temp.marzo,
+                abril=temp.abril,
+                mayo=temp.mayo,
+                junio=temp.junio,
+                julio=temp.julio,
+                agosto=temp.agosto,
+                septiembre=temp.septiembre,
+                octubre=temp.octubre,
+                noviembre=temp.noviembre,
+                diciembre=temp.diciembre,
+                total=temp.total,
+            )
+        return JsonResponse({
+            "success": True,
+            "msg": f"Presupuesto de auxilio de movilidad subido ✅"
+        })
+    return JsonResponse({
+        "success": False,
+        "msg": "Método no permitido"
+    }, status=405)
+    
+def guardar_auxilio_TBCKIT_temp(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            }
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoAuxilioTCBKITAux(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoAuxilioTCBKITAux.objects.all().delete()
+                PresupuestoAuxilioTCBKITAux.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+def obtener_auxilio_TBCKIT_temp(request):
+    data = list(PresupuestoAuxilioTCBKITAux.objects.values())
+    return JsonResponse(data, safe=False)
+
+def cargar_auxilio_TBCKIT_base(request):
+    PresupuestoAuxilioTCBKITAux.objects.all().delete()  # limpia tabla temporal
+    base_data = ConceptosFijosYVariables.objects.values(
+        "cedula","nombre","nombrecar","nomcosto","nombre_cen", "nombre_con", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "total"
+    )
+
+    # filtrar solo concepto que sea igual a 389
+    base_data = base_data.filter(concepto="E14")
+    
+    for row in base_data:
+        PresupuestoAuxilioTCBKITAux.objects.create(
+            cedula=row["cedula"],
+            nombre=row["nombre"],
+            cargo=row["nombrecar"],
+            area=row["nomcosto"],
+            centro=row["nombre_cen"],
+            concepto=row["nombre_con"],
+            enero=row["enero"] or 0,
+            febrero=row["febrero"] or 0,
+            marzo=row["marzo"] or 0,
+            abril=row["abril"] or 0,
+            mayo=row["mayo"] or 0,
+            junio=row["junio"] or 0,
+            julio=row["julio"] or 0,
+            agosto=row["agosto"] or 0,
+            septiembre=row["septiembre"] or 0,
+            total=row["total"] or 0,
+        )
+
+        
+    return JsonResponse({"status": "ok"})
+
+@csrf_exempt
+def borrar_presupuesto_auxilio_TBCKIT(request):
+    if request.method == "POST":
+        PresupuestoAuxilioTBCKIT.objects.all().delete()
+        return JsonResponse({"status": "ok", "message": "Presupuesto de auxilio de movilidad eliminado"})
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
 
 # ----------------------------SEGURIDAD SOCIAL---------------------
 def seguridad_social(request):

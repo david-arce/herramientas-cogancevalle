@@ -917,7 +917,7 @@ class PresupuestoAprendizAux(models.Model):
     class Meta:
         db_table = 'presupuesto_aprendiz_auxiliar'
 
-class PresupuestoAuxilioMovilidad(models.Model):
+class PresupuestoBolsaConsumibles(models.Model):
     cedula = models.CharField(max_length=20)
     nombre = models.CharField(max_length=150)
     centro = models.CharField(max_length=150, null=True, blank=True)
@@ -939,15 +939,15 @@ class PresupuestoAuxilioMovilidad(models.Model):
     total = models.BigIntegerField(default=0)
 
     class Meta:
-        db_table = 'presupuesto_auxilio_movilidad'
+        db_table = 'presupuesto_bolsa_consumibles'
 
-class PresupuestoAuxilioMovilidadAux(models.Model):
+class PresupuestoBolsaConsumiblesAux(models.Model):
     cedula = models.CharField(max_length=20)
     nombre = models.CharField(max_length=150)
     centro = models.CharField(max_length=150, null=True, blank=True)
     area = models.CharField(max_length=150, null=True, blank=True)
     cargo = models.CharField(max_length=150, null=True, blank=True)
-    concepto = models.CharField(max_length=50, default="AUXILIO MOVILIDAD")
+    concepto = models.CharField(max_length=50)
     enero = models.IntegerField(default=0)
     febrero = models.IntegerField(default=0)
     marzo = models.IntegerField(default=0)
@@ -963,7 +963,56 @@ class PresupuestoAuxilioMovilidadAux(models.Model):
     total = models.BigIntegerField(default=0)
 
     class Meta:
-        db_table = 'presupuesto_auxilio_movilidad_auxiliar'
+        db_table = 'presupuesto_bolsa_consumibles_auxiliar'
+
+class PresupuestoAuxilioTBCKIT(models.Model):
+    cedula = models.CharField(max_length=20)
+    nombre = models.CharField(max_length=150)
+    centro = models.CharField(max_length=150, null=True, blank=True)
+    area = models.CharField(max_length=150, null=True, blank=True)
+    cargo = models.CharField(max_length=150, null=True, blank=True)
+    concepto = models.CharField(max_length=50)
+    enero = models.IntegerField(default=0)
+    febrero = models.IntegerField(default=0)
+    marzo = models.IntegerField(default=0)
+    abril = models.IntegerField(default=0)
+    mayo = models.IntegerField(default=0)
+    junio = models.IntegerField(default=0)
+    julio = models.IntegerField(default=0)
+    agosto = models.IntegerField(default=0)
+    septiembre = models.IntegerField(default=0)
+    octubre = models.IntegerField(default=0)
+    noviembre = models.IntegerField(default=0)
+    diciembre = models.IntegerField(default=0)
+    total = models.BigIntegerField(default=0)
+
+    class Meta:
+        db_table = 'presupuesto_auxilio_tbckit'
+
+class PresupuestoAuxilioTCBKITAux(models.Model):
+    cedula = models.CharField(max_length=20)
+    nombre = models.CharField(max_length=150)
+    centro = models.CharField(max_length=150, null=True, blank=True)
+    area = models.CharField(max_length=150, null=True, blank=True)
+    cargo = models.CharField(max_length=150, null=True, blank=True)
+    concepto = models.CharField(max_length=50)
+    enero = models.IntegerField(default=0)
+    febrero = models.IntegerField(default=0)
+    marzo = models.IntegerField(default=0)
+    abril = models.IntegerField(default=0)
+    mayo = models.IntegerField(default=0)
+    junio = models.IntegerField(default=0)
+    julio = models.IntegerField(default=0)
+    agosto = models.IntegerField(default=0)
+    septiembre = models.IntegerField(default=0)
+    octubre = models.IntegerField(default=0)
+    noviembre = models.IntegerField(default=0)
+    diciembre = models.IntegerField(default=0)
+    total = models.BigIntegerField(default=0)
+
+    class Meta:
+        db_table = 'presupuesto_auxilio_tbckit_auxiliar'
+        
         
 class PresupuestoBonificacionesFoco(models.Model):
     cedula = models.CharField(max_length=20)

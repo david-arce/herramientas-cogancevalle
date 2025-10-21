@@ -28,7 +28,7 @@
         <button id="btnHome"> Inicio</button>
     </div>
 
-    <form id="subirPresupuestoForm" method="post" action="{% url 'subir_presupuesto_auxilio_movilidad' %}">
+    <form id="subirPresupuestoForm" method="post" action="{% url 'subir_presupuesto_bolsa_consumibles' %}">
         {% csrf_token %}
         <button type="submit" id="subirBtn" class="btn btn-success">
             Subir Presupuesto auxilio movilidad
@@ -75,7 +75,7 @@
 $(document).ready(function() {
         // Botón Ir a la tabla de auxilio movilidad
     document.getElementById("btnTabla").addEventListener("click", function () {
-        window.location.href = "{% url 'auxilio_movilidad' %}";
+        window.location.href = "{% url 'bolsa_consumibles' %}";
     });
     // Botón Ir al inicio
     document.getElementById("btnHome").addEventListener("click", function () {
@@ -83,7 +83,7 @@ $(document).ready(function() {
     });
     let table = $('#tempTable').DataTable({
         ajax: {
-            url: "{% url 'obtener_auxilio_movilidad_temp' %}",
+            url: "{% url 'obtener_bolsa_consumibles_temp' %}",
             dataSrc: ""
         },
         columns: [
@@ -367,7 +367,7 @@ $(document).ready(function() {
         $spinner.show();
         $btn.prop("disabled", true);
 
-        $.post("{% url 'subir_presupuesto_auxilio_movilidad' %}", {
+        $.post("{% url 'subir_presupuesto_bolsa_consumibles' %}", {
             csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val()
         }, function(response) {
             if (response.success) {
@@ -412,7 +412,7 @@ $(document).ready(function() {
         $spinner.show();
         $btn.prop("disabled", true);
 
-        $.get("{% url 'cargar_auxilio_movilidad_base' %}", function() {
+        $.get("{% url 'cargar_bolsa_consumibles_base' %}", function() {
             table.ajax.reload();
             showToast("Datos cargados desde Conceptos (NOM516) 📂", "success");
         })
@@ -521,7 +521,7 @@ $(document).ready(function() {
         $btn.prop("disabled", true);
 
         $.ajax({
-            url: "{% url 'guardar_auxilio_movilidad_temp' %}",
+            url: "{% url 'guardar_bolsa_consumibles_temp' %}",
             type: "POST",
             data: JSON.stringify(data),
             contentType: "application/json",
