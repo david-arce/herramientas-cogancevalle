@@ -2497,7 +2497,7 @@ def cargar_horas_extra_base(request):
     PresupuestoHorasExtraAux.objects.all().delete()  # limpia tabla temporal
     base_data = ConceptosFijosYVariables.objects.values(
         "cedula","nombre","nombrecar","nomcosto","nombre_cen", "nombre_con", "enero", "febrero", "marzo", "abril", "mayo",
-        "junio", "julio", "agosto", "total"
+        "junio", "julio", "agosto", "septiembre", "total"
     )
 
     # Filtrar solo los conceptos que necesitamos
@@ -2514,6 +2514,7 @@ def cargar_horas_extra_base(request):
             junio=Sum("junio"),
             julio=Sum("julio"),
             agosto=Sum("agosto"),
+            septiembre=Sum("septiembre"),
             total=Sum("total"),
         )
     )
@@ -2534,6 +2535,7 @@ def cargar_horas_extra_base(request):
             junio=row["junio"] or 0,
             julio=row["julio"] or 0,
             agosto=row["agosto"] or 0,
+            septiembre=row["septiembre"] or 0,
             total=row["total"] or 0,
         )
 

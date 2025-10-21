@@ -214,38 +214,38 @@ $(document).ready(function() {
         }
     ],
     initComplete: function() {
-            const api = this.api();
+        const api = this.api();
 
-            // Función que llena y activa Select2 con búsqueda interna
-            function configurarSelect(colIndex, selector) {
-                const valores = new Set();
-                api.column(colIndex).data().each(d => { if (d) valores.add(d.trim()); });
+        // Función que llena y activa Select2 con búsqueda interna
+        function configurarSelect(colIndex, selector) {
+            const valores = new Set();
+            api.column(colIndex).data().each(d => { if (d) valores.add(d.trim()); });
 
-                const sorted = Array.from(valores).sort((a,b)=>a.localeCompare(b));
-                const $select = $(selector);
-                $select.empty().append('<option value="">Todos</option>');
-                sorted.forEach(v => $select.append(`<option value="${v}">${v}</option>`));
+            const sorted = Array.from(valores).sort((a,b)=>a.localeCompare(b));
+            const $select = $(selector);
+            $select.empty().append('<option value="">Todos</option>');
+            sorted.forEach(v => $select.append(`<option value="${v}">${v}</option>`));
 
-                // Activar Select2 con búsqueda
-                $select.select2({
-                    placeholder: 'Buscar...',
-                    allowClear: true,
-                    width: '200px'
-                });
+            // Activar Select2 con búsqueda
+            $select.select2({
+                placeholder: 'Buscar...',
+                allowClear: true,
+                width: '200px'
+            });
 
-                // Filtrar DataTable cuando cambie el valor
-                $select.on('change', function() {
-                    const val = $.fn.dataTable.util.escapeRegex($(this).val());
-                    api.column(colIndex).search(val ? '^' + val + '$' : '', true, false).draw();
-                });
-            }
+            // Filtrar DataTable cuando cambie el valor
+            $select.on('change', function() {
+                const val = $.fn.dataTable.util.escapeRegex($(this).val());
+                api.column(colIndex).search(val ? '^' + val + '$' : '', true, false).draw();
+            });
+        }
 
-            configurarSelect(3, '#filtroNombre'); // Nombre
-            configurarSelect(4, '#filtroCentro'); // Centro
-            configurarSelect(5, '#filtroArea');   // Área
-        },
-        paging: false,
-        fixedHeader: true,
+        configurarSelect(3, '#filtroNombre'); // Nombre
+        configurarSelect(4, '#filtroCentro'); // Centro
+        configurarSelect(5, '#filtroArea');   // Área
+    },
+    paging: false,
+    fixedHeader: true,
 
     });
     function seleccionarFila($row) {
