@@ -57,12 +57,12 @@
                 <th>Octubre</th>
                 <th>Noviembre</th>
                 <th>Diciembre</th>
-                <th>Total</th>
+                <th>Total</th>  
             </tr>
         </thead>
         <tfoot>
             <tr>
-                <th colspan="21" style="text-align:right">Total visible:</th>
+                <th colspan="20" style="text-align:right">Total visible:</th>
                 <th id="footer-total">0</th>
             </tr>
         </tfoot>
@@ -133,14 +133,17 @@ $(document).ready(function() {
                         : 0;
             };
 
-            // 🔹 Calcular total de la columna visible (por filtro)
+            // 🔹 Detectar automáticamente la última columna (Total)
+            let lastCol = api.columns().count() - 1;
+
+            // 🔹 Calcular total de la columna visible (según filtros)
             let totalVisible = api
-                .column(21, { search: 'applied' }) // índice 21 → columna "Total"
+                .column(lastCol, { search: 'applied' })
                 .data()
                 .reduce((a, b) => a + intVal(b), 0);
 
             // 🔹 Actualizar el footer
-            $(api.column(21).footer()).html(
+            $(api.column(lastCol).footer()).html(
                 new Intl.NumberFormat('es-ES').format(totalVisible)
             );
         },
@@ -148,9 +151,11 @@ $(document).ready(function() {
                 url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
         },
         createdRow: function(row, data, dataIndex) {
+            // 🔹 Obtener el número total de columnas
+            let totalCols = this.api().columns().count();
             // marcar como editables sólo columnas relevantes (excluyendo columna 0 = checkbox)
             $('td', row).each(function(index) {
-                if (index > 1 && index < 21) { // >0 excluye checkbox, <20 hasta "total"
+                if (index > 1 && index < totalCols - 1) { // >0 excluye checkbox, <20 hasta "total"
                     $(this).addClass("editable");
                 }
             });
