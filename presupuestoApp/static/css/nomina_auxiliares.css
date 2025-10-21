@@ -117,3 +117,101 @@ table.dataTable thead th {
     /* override temporal del background para que el "flash" sea más claro */
     background-color: #b6b6b6ff !important;
 }
+
+/* ==== ESTILOS BÁSICOS PARA BOTONES ==== */
+.btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+    align-items: center;
+}
+
+button, .btn {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+button:hover, .btn:hover {
+    background-color: #0056b3;
+    transform: scale(1.02);
+}
+
+button:disabled, .btn:disabled {
+    background-color: #b0b0b0;
+    cursor: not-allowed;
+}
+
+/* Botones específicos */
+#agregarFila {
+    background-color: #28a745;
+}
+#agregarFila:hover {
+    background-color: #1e7e34;
+}
+
+#guardarTempBtn {
+    background-color: #17a2b8;
+}
+#guardarTempBtn:hover {
+    background-color: #117a8b;
+}
+
+#calcularBtn {
+    background-color: #415afc;
+    color: #ffffff;
+}
+#calcularBtn:hover {
+    background-color: #2f52dd;
+}
+
+#cargarBase {
+    background-color: #6f42c1;
+}
+#cargarBase:hover {
+    background-color: #59309e;
+}
+#btnHome {
+    background-color: #6c757d;
+}
+#btnHome:hover {
+    background-color: #545b62;
+}
+
+/* Botones pequeños dentro de la tabla */
+.duplicarFila, .eliminarFila {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    margin: 5px 2px;
+    border: none;
+}
+.duplicarFila {
+    background-color: #17a2b8;
+    color: white;
+}
+.duplicarFila:hover {
+    background-color: #117a8b;
+}
+.eliminarFila {
+    background-color: #dc3545;
+    color: white;
+}
+.eliminarFila:hover {
+    background-color: #b02a37;
+}
+
+/* Botón subir presupuesto */
+#subirBtn {
+    background-color: #007bff;
+    margin-top: 10px;
+}
+#subirBtn:hover {
+    background-color: #0056b3;
+}
