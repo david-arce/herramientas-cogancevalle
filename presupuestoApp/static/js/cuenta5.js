@@ -31,7 +31,9 @@ $(document).ready(function() {
         serverSide: true,
         ajax: {
             url: url_obtener_cuenta5_base,
-            type: "GET"
+            type: "POST",
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            dataSrc: 'data'
         },
         columns: [
             {   // 🔥 Columna de selección

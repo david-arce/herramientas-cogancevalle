@@ -8251,23 +8251,21 @@ def cuenta5(request):
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     return render(request, "presupuesto_consolidado/cuenta5.html")
 
+@csrf_exempt
 def obtener_cuenta5_base(request):
     try:
-        # Manejo seguro de parámetros
-        draw = int(request.GET.get('draw') or 1)
-        start = int(request.GET.get('start') or 0)
-        length = int(request.GET.get('length') or 50)
+        params = request.POST or request.GET  # funciona con ambos métodos
+        draw = int(params.get('draw') or 1)
+        start = int(params.get('start') or 0)
+        length = int(params.get('length') or 50)
 
-        # Consulta base
         queryset = Cuenta5Base.objects.all()
         total = queryset.count()
 
-        # Paginación
         paginator = Paginator(queryset, length)
         page_number = start // length + 1
         page = paginator.get_page(page_number)
 
-        # Convertir a lista de diccionarios
         data = list(page.object_list.values())
 
         return JsonResponse({
@@ -8275,13 +8273,11 @@ def obtener_cuenta5_base(request):
             'recordsTotal': total,
             'recordsFiltered': total,
             'data': data
-        }, safe=False)
+        })
 
     except Exception as e:
-        # Loguea o retorna error controlado (útil para producción)
         print(f"❌ Error en obtener_cuenta5_base: {e}")
-        return JsonResponse({'error': str(e)}, status=500)
-    
+        return JsonResponse({'error': str(e)}, status=500) 
 def cargar_cuenta5_base(request):
     # limpio tabla cuenta 5 antes de recalcular
     Cuenta5Base.objects.all().delete()
