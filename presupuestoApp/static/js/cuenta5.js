@@ -696,28 +696,6 @@ $(document).ready(function() {
         cerrarModal('modalEliminar');
     });
 
-    // Cargar datos base
-    $('#cargarBase').on('click', function() {
-        let $btn = $(this);
-        let $spinner = $btn.find(".spinner");
-
-        // Mostrar spinner y deshabilitar botón
-        $spinner.show();
-        $btn.prop("disabled", true);
-
-        $.get("{% url 'cargar_cuenta5_base' %}", function() {
-            table.ajax.reload();
-            showToast("Datos cargados desde plantilla gastos 📂", "success");
-        })
-        .fail(function() {
-            showToast("Error al cargar datos ❌", "error");
-        })
-        .always(function() {
-            // Ocultar spinner y reactivar botón
-            $spinner.hide();
-            $btn.prop("disabled", false);
-        });
-    });
 
     // Configurar CSRF para AJAX
     function getCSRFToken() {
@@ -733,77 +711,44 @@ $(document).ready(function() {
     });
 
     // Guardar en BD temporal
-    $('#guardarTempBtn').on('click', function() {
-        let $btn = $(this);
-        let $spinner = $btn.find('.spinner');
-        let data = table.rows().data().toArray();
+    // $('#guardarTempBtn').on('click', function() {
+    //     let $btn = $(this);
+    //     let $spinner = $btn.find('.spinner');
+    //     let data = table.rows().data().toArray();
 
-        // Mostrar spinner
-        $spinner.show();
-        $btn.prop("disabled", true);
+    //     // Mostrar spinner
+    //     $spinner.show();
+    //     $btn.prop("disabled", true);
 
-        $.ajax({
-            url: "{% url 'guardar_almacen_buga_temp' %}",
-            type: "POST",
-            data: JSON.stringify(data),
-            contentType: "application/json",
-            success: function() {
-                showToast("Datos guardados en tabla temporal ✅", "success");
-                // ✅ Ocultar advertencia al guardar
-                if (persistentToast) {
-                    persistentToast.classList.remove("show");
-                    setTimeout(() => {
-                        if (persistentToast && document.body.contains(persistentToast)) {
-                            persistentToast.remove();
-                        }
-                        persistentToast = null;
-                    }, 500);
-                }
-                editando = false;
-            },
-            error: function() {
-                showToast("Error al guardar ❌", "error");
-            },
-            complete: function() {
-                // Ocultar spinner y reactivar botón
-                $spinner.hide();
-                $btn.prop("disabled", false);
-            }
-        });
-    });
-
-    // Botón Calcular IPC
-    $('#calcularIPC').on('click', function() {
-        let valor = $("#ipcInput").val();
-        if (!valor || isNaN(valor)) {
-            showToast("Debe ingresar un número válido ❌", "error");
-            return;
-        }
-
-        let factorIPC = 1 + (parseFloat(valor) / 100);
-
-        $('#tempTable tbody tr').each(function() {
-            let $row = $(this);
-            let $check = $row.find(".row-check");
-            if ($check.is(":checked")) {
-                let row = table.row($row);
-                let rowData = row.data();
-
-                let meses = ["enero","febrero","marzo","abril","mayo","junio",
-                            "julio","agosto","septiembre","octubre","noviembre","diciembre"];
-
-                meses.forEach(m => {
-                    let valor = parseFloat(rowData[m]) || 0;
-                    rowData[m] = Math.round(valor * factorIPC);
-                });
-
-                rowData.total = meses.reduce((acc,m)=> acc + (parseFloat(rowData[m])||0), 0);
-                row.data(rowData).draw(false);
-            }
-            });
-
-            showToast("IPC aplicado a filas seleccionadas 📈", "success");
-    });
+    //     $.ajax({
+    //         url: "{% url 'guardar_almacen_buga_temp' %}",
+    //         type: "POST",
+    //         data: JSON.stringify(data),
+    //         contentType: "application/json",
+    //         success: function() {
+    //             showToast("Datos guardados en tabla temporal ✅", "success");
+    //             // ✅ Ocultar advertencia al guardar
+    //             if (persistentToast) {
+    //                 persistentToast.classList.remove("show");
+    //                 setTimeout(() => {
+    //                     if (persistentToast && document.body.contains(persistentToast)) {
+    //                         persistentToast.remove();
+    //                     }
+    //                     persistentToast = null;
+    //                 }, 500);
+    //             }
+    //             editando = false;
+    //         },
+    //         error: function() {
+    //             showToast("Error al guardar ❌", "error");
+    //         },
+    //         complete: function() {
+    //             // Ocultar spinner y reactivar botón
+    //             $spinner.hide();
+    //             $btn.prop("disabled", false);
+    //         }
+    //     });
+    // });
 
     // =====================================================
     // 🔹 BOTÓN: EXPORTAR PLANTILLA EXCEL VACÍA
@@ -972,7 +917,6 @@ $(document).ready(function() {
         return cookieValue;
     }
 
-    // 🔴 Botón para borrar PresupuestoNomina
     $("#btnBorrar").on("click", function () {
         if (!confirm("⚠️ ¿Estás seguro de borrar todo el presupuesto? Esta acción no se puede deshacer.")) {
             return;

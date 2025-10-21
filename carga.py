@@ -68,7 +68,7 @@ def cargar_excel_a_postgresql_delete(file_path, sheet_name, db_url, table_name):
         df = pd.read_excel(file_path, sheet_name=sheet_name,
                         #    dtype={"MCNCUENTA": str, "MCNSUCVIN": str, "MCNSUCURS": str, "MCNCCOSTO": str, "MCNDESTINO": str,
                         #           "MCNZONA": str, "MCNEMPRESA": str, "MCNCLASE": str}
-                        dtype={"CENTRO_TRA": str, "CODCOSTO": str, "CARGO": str} 
+                        # dtype={"CENTRO_TRA": str, "CODCOSTO": str, "CARGO": str} 
                            )
         logger.info(f"Hoja '{sheet_name}' del archivo Excel leída correctamente.")
         
@@ -111,10 +111,10 @@ def cargar_excel_a_postgresql_delete(file_path, sheet_name, db_url, table_name):
 
 # Parámetros
 ruta_carpeta = os.path.join('..', 'bd')
-file_path = os.path.join(ruta_carpeta, 'conceptos_fijos_y_variables.xlsx')
-sheet_name = 'Page 001'
+file_path = os.path.join(ruta_carpeta, 'BD_2020_2025_VENTAS_COSTOS.xlsx')
+sheet_name = '2025'
 db_url = os.getenv('DATABASE_URL')
-table_name = 'conceptos_fijos_y_variables'
+table_name = 'bd_ventas_2025'
 
 # Llamada a la función
 cargar_excel_a_postgresql_delete(file_path, sheet_name, db_url, table_name)

@@ -8252,28 +8252,36 @@ def cuenta5(request):
     return render(request, "presupuesto_consolidado/cuenta5.html")
 
 def obtener_cuenta5_base(request):
-    draw = int(request.GET.get('draw', 1))
-    start = int(request.GET.get('start', 0))
-    length = int(request.GET.get('length', 50))
+    try:
+        # Manejo seguro de parámetros
+        draw = int(request.GET.get('draw') or 1)
+        start = int(request.GET.get('start') or 0)
+        length = int(request.GET.get('length') or 50)
 
-    # Filtrar y ordenar si lo deseas (por ejemplo, por fecha)
-    queryset = Cuenta5Base.objects.all()
+        # Consulta base
+        queryset = Cuenta5Base.objects.all()
+        total = queryset.count()
 
-    total = queryset.count()
+        # Paginación
+        paginator = Paginator(queryset, length)
+        page_number = start // length + 1
+        page = paginator.get_page(page_number)
 
-    # Paginar los resultados
-    paginator = Paginator(queryset, length)
-    page_number = start // length + 1
-    page = paginator.get_page(page_number)
+        # Convertir a lista de diccionarios
+        data = list(page.object_list.values())
 
-    data = list(page.object_list.values())
-    return JsonResponse({
-        'draw': draw,
-        'recordsTotal': total,
-        'recordsFiltered': total,
-        'data': data
-    })
+        return JsonResponse({
+            'draw': draw,
+            'recordsTotal': total,
+            'recordsFiltered': total,
+            'data': data
+        }, safe=False)
 
+    except Exception as e:
+        # Loguea o retorna error controlado (útil para producción)
+        print(f"❌ Error en obtener_cuenta5_base: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+    
 def cargar_cuenta5_base(request):
     # limpio tabla cuenta 5 antes de recalcular
     Cuenta5Base.objects.all().delete()
