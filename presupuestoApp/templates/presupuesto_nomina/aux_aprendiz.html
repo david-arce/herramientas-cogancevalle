@@ -63,6 +63,12 @@
                 <th>Total</th>
             </tr>
         </thead>
+        <tfoot>
+            <tr>
+                <th colspan="21" style="text-align:right">Total visible:</th>
+                <th id="footer-total">0</th>
+            </tr>
+        </tfoot>
     </table>
 
     <!-- Contenedor de toasts -->
@@ -78,6 +84,12 @@ $(document).ready(function() {
     document.getElementById("btnHome").addEventListener("click", function () {
         window.location.href = "{% url 'presupuestoNomina' %}";
     });
+    function numberFormat(data, type, row) {
+        if (type === 'display' && !isNaN(data)) {
+            return new Intl.NumberFormat('es-ES').format(data);
+        }
+    return data;
+    }
 
     let table = $('#tempTable').DataTable({
         ajax: {
@@ -104,21 +116,44 @@ $(document).ready(function() {
             { data: "area" },
             { data: "cargo" },
             { data: "concepto" },
-            { data: "salario_base" },
-            { data: "enero" },
-            { data: "febrero" },
-            { data: "marzo" },
-            { data: "abril" },
-            { data: "mayo" },
-            { data: "junio" },
-            { data: "julio" },
-            { data: "agosto" },
-            { data: "septiembre" },
-            { data: "octubre" },
-            { data: "noviembre" },
-            { data: "diciembre" },
-            { data: "total" },
+            { data: "salario_base", render: numberFormat },
+            { data: "enero" , render: numberFormat},
+            { data: "febrero", render: numberFormat },
+            { data: "marzo", render: numberFormat },
+            { data: "abril", render: numberFormat },
+            { data: "mayo", render: numberFormat },
+            { data: "junio", render: numberFormat },
+            { data: "julio", render: numberFormat },
+            { data: "agosto", render: numberFormat },
+            { data: "septiembre", render: numberFormat },
+            { data: "octubre", render: numberFormat },
+            { data: "noviembre", render: numberFormat },
+            { data: "diciembre", render: numberFormat },
+            { data: "total", render: numberFormat },
         ],
+        footerCallback: function (row, data, start, end, display) {
+            let api = this.api();
+
+            // 🔹 Función para convertir texto a número
+            let intVal = function (i) {
+                return typeof i === 'string'
+                    ? parseFloat(i.replace(/[\$,\.]/g, '').replace(',', '.')) || 0
+                    : typeof i === 'number'
+                        ? i
+                        : 0;
+            };
+
+            // 🔹 Calcular total de la columna visible (por filtro)
+            let totalVisible = api
+                .column(21, { search: 'applied' }) // índice 21 → columna "Total"
+                .data()
+                .reduce((a, b) => a + intVal(b), 0);
+
+            // 🔹 Actualizar el footer
+            $(api.column(21).footer()).html(
+                new Intl.NumberFormat('es-ES').format(totalVisible)
+            );
+        },
         language: {
                 url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
         },

@@ -60,6 +60,12 @@
                 <th>Total</th>
             </tr>
         </thead>
+        <tfoot>
+            <tr>
+                <th colspan="21" style="text-align:right">Total visible:</th>
+                <th id="footer-total">0</th>
+            </tr>
+        </tfoot>
     </table>
 
     <!-- Contenedor de toasts -->
@@ -115,6 +121,29 @@ $(document).ready(function() {
             { data: "total" },
             
         ],
+        footerCallback: function (row, data, start, end, display) {
+            let api = this.api();
+
+            // 🔹 Función para convertir texto a número
+            let intVal = function (i) {
+                return typeof i === 'string'
+                    ? parseFloat(i.replace(/[\$,\.]/g, '').replace(',', '.')) || 0
+                    : typeof i === 'number'
+                        ? i
+                        : 0;
+            };
+
+            // 🔹 Calcular total de la columna visible (por filtro)
+            let totalVisible = api
+                .column(21, { search: 'applied' }) // índice 21 → columna "Total"
+                .data()
+                .reduce((a, b) => a + intVal(b), 0);
+
+            // 🔹 Actualizar el footer
+            $(api.column(21).footer()).html(
+                new Intl.NumberFormat('es-ES').format(totalVisible)
+            );
+        },
         language: {
                 url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
         },

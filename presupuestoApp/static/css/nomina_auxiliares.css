@@ -215,3 +215,25 @@ button:disabled, .btn:disabled {
 #subirBtn:hover {
     background-color: #0056b3;
 }
+/* filtros */
+.filtros-container {
+    margin: 16px 0;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.filtro-box {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 14px;
+}
+
+.filtro-box label {
+    font-weight: bold;
+}
+
+.select2-container {
+    min-width: 250px;
+}
