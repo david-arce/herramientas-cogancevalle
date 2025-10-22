@@ -4682,7 +4682,9 @@ def obtener_presupuesto_auxilio_educacion(request):
     return JsonResponse({"data": auxilio_educacion}, safe=False)
 
 def tabla_auxiliar_auxilio_educacion(request):
-    return render(request, "presupuesto_nomina/aux_auxilio_educacion.html")
+    parametros = ParametrosPresupuestos.objects.first()
+    incremento_ipc = parametros.incremento_ipc if parametros else 0
+    return render(request, "presupuesto_nomina/aux_auxilio_educacion.html", {'incrementoIPC': incremento_ipc})
 
 def subir_presupuesto_auxilio_educacion(request):
     if request.method == "POST":
@@ -4776,11 +4778,7 @@ def cargar_auxilio_educacion_base(request):
     # filtrar solo concepto = 001
     base_data = base_data.filter(concepto="016")
     
-    parametros = ParametrosPresupuestos.objects.first()
-    incrementoIPC = parametros.incremento_ipc if parametros else 0
-    
     for row in base_data:
-        diciembreIncremento = row["diciembre"] * (1 + incrementoIPC / 100)
         PresupuestoAuxilioEducacionAux.objects.create(
             cedula=row["cedula"],
             nombre=row["nombre"],
@@ -4788,8 +4786,8 @@ def cargar_auxilio_educacion_base(request):
             area=row["nomcosto"],
             centro=row["nombre_cen"],
             concepto=row["nombre_con"],
-            diciembre=diciembreIncremento,
-            total=diciembreIncremento,
+            diciembre=row["diciembre"],
+            total=row["total"],
         )
     
     return JsonResponse({"status": "ok"})

@@ -23,10 +23,12 @@
 <body>
     <h2>Presupuesto Nómina - Tabla auxiliar auxilio educacion</h2>
     <div class="btn-group">
+        <span>incrementoIPC (%): <strong>{{ incrementoIPC|default:"0" }}</strong></span>
         <button id="cargarBase">
             Cargar desde Conceptos
             <span class="spinner" style="display:none; margin-left:8px;"></span>
         </button>
+        <button id="calcularBtn">Calcular</button>
         <button id="agregarFila">➕ Agregar fila</button>
         <button id="guardarTempBtn">Guardar cambios<span class="spinner" style="display:none; margin-left:8px;"></span>
         </button>
@@ -501,6 +503,78 @@ $(document).ready(function() {
             $btn.prop("disabled", false);
         });
     });
+
+    $('#calcularBtn').on('click', function() {
+        calcular();
+    });
+
+    // Calcular solo las filas seleccionadas
+    function calcular() {
+        // 🔹 Obtener incrementoSalarial desde el contexto Django
+        const incrementoIPC = parseFloat("{{ incrementoIPC }}".replace(",", "."));
+        console.log("Incremento IPC:", incrementoIPC);
+         // 🔹 Iterar solo sobre filas seleccionadas (checkbox marcados)
+        $('#tempTable tbody tr').each(function() {
+            let $row = $(this);
+            let $checkbox = $row.find('.row-check');
+
+            if ($checkbox.is(':checked')) {
+                // 🔹 Obtener objeto de datos de la fila desde DataTables
+                let row = table.row($row);
+                let data = row.data();
+
+                let enero = parseFloat(data.enero) || 0;
+                let febrero = parseFloat(data.febrero) || 0;
+                let marzo = parseFloat(data.marzo) || 0;
+                let abril = parseFloat(data.abril) || 0;
+                let mayo = parseFloat(data.mayo) || 0;
+                let junio = parseFloat(data.junio) || 0;
+                let julio = parseFloat(data.julio) || 0;
+                let agosto = parseFloat(data.agosto) || 0;
+                let septiembre = parseFloat(data.septiembre) || 0;
+                let octubre = parseFloat(data.octubre) || 0;
+                let noviembre = parseFloat(data.noviembre) || 0;
+                let diciembre = parseFloat(data.diciembre) || 0;
+
+                let nuevaComisionEnero = enero + (enero * incrementoIPC / 100);
+                let nuevaComisionFebrero = febrero + (febrero * incrementoIPC / 100);
+                let nuevaComisionMarzo = marzo +(marzo * incrementoIPC / 100);
+                let nuevaComisionAbril =abril + (abril * incrementoIPC / 100);
+                let nuevaComisionMayo = mayo + (mayo * incrementoIPC / 100);
+                let nuevaComisionJunio = junio + (junio * incrementoIPC / 100);
+                let nuevaComisionJulio = julio + (julio * incrementoIPC / 100);
+                let nuevaComisionAgosto = agosto + (agosto * incrementoIPC / 100);
+                let nuevaComisionSeptiembre = septiembre + (septiembre * incrementoIPC / 100);
+                let nuevaComisionOctubre = octubre + (octubre * incrementoIPC / 100);
+                let nuevaComisionNoviembre = noviembre + (noviembre * incrementoIPC / 100);
+                let nuevaComisionDiciembre = diciembre + (diciembre * incrementoIPC / 100);
+                
+                // Enero a Agosto = nuevo salario
+                data.enero = Math.round(nuevaComisionEnero);
+                data.febrero = Math.round(nuevaComisionFebrero);
+                data.marzo = Math.round(nuevaComisionMarzo);
+                data.abril = Math.round(nuevaComisionAbril);
+                data.mayo = Math.round(nuevaComisionMayo);
+                data.junio = Math.round(nuevaComisionJunio);
+                data.julio = Math.round(nuevaComisionJulio);
+                data.agosto = Math.round(nuevaComisionAgosto);
+                data.septiembre = Math.round(nuevaComisionSeptiembre);
+                data.octubre = Math.round(nuevaComisionOctubre);
+                data.noviembre = Math.round(nuevaComisionNoviembre);
+                data.diciembre = Math.round(nuevaComisionDiciembre);
+
+                // Total
+                data.total = data.enero + data.febrero + data.marzo + data.abril +
+                                data.mayo + data.junio + data.julio + data.agosto +
+                                data.septiembre + data.octubre + data.noviembre + data.diciembre;
+            
+
+                // 🔹 Actualizar fila en DataTable
+                row.data(data).draw(false);
+            }
+        });
+        showToast("Cálculo aplicado correctamente ✅", "success");
+    };
 
 
     // agregar fila vacía
