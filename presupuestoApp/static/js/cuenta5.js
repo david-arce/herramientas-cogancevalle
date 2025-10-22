@@ -930,7 +930,7 @@ $(document).ready(function() {
             headers: { "X-CSRFToken": $("meta[name='csrf-token']").attr("content") },
             success: function (response) {
                 showToast("Presupuesto eliminado correctamente ✅", "success");
-                table.ajax.reload(null, false); // recarga sin perder paginación
+                table.ajax.reload(null, false); 
             },
             error: function (xhr) {
                 showToast("Error al borrar ❌: " + xhr.responseText, "error");

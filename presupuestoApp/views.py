@@ -4904,7 +4904,7 @@ def cargar_bonos_kyrovet_base(request):
         "cedula","nombre","nombrecar","nomcosto","nombre_cen", "nombre_con", "concepto_f"
     )
     # filtrar solo concepto = 001
-    base_data = base_data.filter(nombre_con="BONO CANASTA KYROVET")
+    base_data = base_data.filter(nombre_con__icontains="BONOS CANASTA KYROVET")
     parametros = ParametrosPresupuestos.objects.first()
     incrementoIPC = parametros.incremento_ipc if parametros else 0
    
