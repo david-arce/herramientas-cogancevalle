@@ -2843,21 +2843,21 @@ def cargar_auxilio_transporte_base(request):
                 auxRetroactivo = (nuevo_salario - salario_base) * 2  # retroactivo de enero y febrero
                
                 # Sumar el valor del mes en todas las tablas
-                total_mes = 0
+                # total_mes = 0
 
-                total_mes += PresupuestoMediosTransporte.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes += PresupuestoSueldos.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes += PresupuestoComisiones.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes += PresupuestoHorasExtra.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-
-                total_mes -= auxRetroactivo
+                # total_mes += PresupuestoMediosTransporte.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                # total_mes += PresupuestoSueldos.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                # total_mes += PresupuestoComisiones.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                # total_mes += PresupuestoHorasExtra.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes_marzo = total_mes
+                total_mes_marzo -= auxRetroactivo
                 
                 # 🔹 Condición: si la suma < SMMLV, asignar 200000 a ese mes
-                if total_mes < LIMITE_SMMLV:
-                    setattr(aux, mes, AUXILIO_BASE)
-                # si total_mes es igual a cero poner cero en el mes
                 if total_mes == 0:
                     setattr(aux, mes, 0)
+                elif total_mes_marzo < LIMITE_SMMLV:
+                    setattr(aux, mes, AUXILIO_BASE)
+                
 
         # Guardar cambios
         aux.save()
