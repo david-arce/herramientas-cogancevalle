@@ -2843,7 +2843,7 @@ def cargar_auxilio_transporte_base(request):
                 total_mes += PresupuestoComisiones.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
                 total_mes += PresupuestoHorasExtra.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
 
-                total_mes -= auxRetroactivo * 2
+                total_mes -= auxRetroactivo
                 
                 # 🔹 Condición: si la suma < SMMLV, asignar 200000 a ese mes
                 if total_mes < LIMITE_SMMLV:
