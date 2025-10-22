@@ -70,9 +70,11 @@
             <tr>
                 <th><input type="checkbox" id="checkAllIPC" title="Seleccionar todo"></th>
                 <th>Acciones</th>
+                <th>Cedula</th>
                 <th>Nombre</th>
                 <th>Centro</th>
                 <th>Area</th>
+                <th>Cargo</th>
                 <th>Concepto</th>
                 <th>Enero</th>
                 <th>Febrero</th>
@@ -91,7 +93,7 @@
         </thead>
         <tfoot>
             <tr>
-                <th colspan="18" style="text-align:right">Total visible:</th>
+                <th colspan="20" style="text-align:right">Total visible:</th>
                 <th id="footer-total">0</th>
             </tr>
         </tfoot>
@@ -135,9 +137,11 @@ $(document).ready(function() {
                     `,
                 orderable: false
             },
+            { data: "cedula" },
             { data: "nombre" },
             { data: "centro" },
             { data: "area" },
+            { data: "cargo" },
             { data: "concepto" },
             { data: "enero", render: numberFormat },
             { data: "febrero", render: numberFormat },
