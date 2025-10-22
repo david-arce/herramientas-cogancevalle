@@ -2784,6 +2784,7 @@ def cargar_auxilio_transporte_base(request):
     parametros = ParametrosPresupuestos.objects.first()
     salarioIncremento = parametros.salario_minimo + (parametros.salario_minimo * (parametros.incremento_salarial / 100))
     LIMITE_SMMLV = (salarioIncremento) * 2
+    print(LIMITE_SMMLV)
     AUXILIO_BASE = 200000
     MESES = [
         "enero", "febrero", "marzo", "abril", "mayo", "junio",
@@ -2798,7 +2799,7 @@ def cargar_auxilio_transporte_base(request):
     empleados = PresupuestoSueldos.objects.all().values(
     "cedula", "nombre", "cargo", "area", "centro", "salario_base"
     )
-    print(empleados)
+    
     # Tomo también los aprendices
     aprendices = PresupuestoAprendiz.objects.filter(concepto="SALARIO APRENDIZ REFORMA").values(
     "cedula", "nombre", "cargo", "area", "centro", "salario_base"
@@ -2825,10 +2826,16 @@ def cargar_auxilio_transporte_base(request):
             total_mes += PresupuestoSueldos.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
             total_mes += PresupuestoComisiones.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
             total_mes += PresupuestoHorasExtra.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-
+            # print(f"Cédula: {row['cedula']} - Mes: {mes} - Total antes de aux: {total_mes}")
+            #guardar en un documento de texto
+            with open("debug_auxilio_transporte.txt", "a") as f:
+                f.write(f"Cédula: {row['cedula']} - Mes: {mes} - Total antes de aux: {total_mes}\n")    
             # 🔹 Condición: si la suma < SMMLV, asignar 200000 a ese mes
             if total_mes < LIMITE_SMMLV:
                 setattr(aux, mes, AUXILIO_BASE)
+            # si total_mes es igual a cero poner cero en el mes
+            if total_mes == 0:
+                setattr(aux, mes, 0)
 
             if mes == "marzo":
                 salario_base = row["salario_base"] or 0
@@ -2848,6 +2855,9 @@ def cargar_auxilio_transporte_base(request):
                 # 🔹 Condición: si la suma < SMMLV, asignar 200000 a ese mes
                 if total_mes < LIMITE_SMMLV:
                     setattr(aux, mes, AUXILIO_BASE)
+                # si total_mes es igual a cero poner cero en el mes
+                if total_mes == 0:
+                    setattr(aux, mes, 0)
 
         # Guardar cambios
         aux.save()
