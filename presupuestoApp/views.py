@@ -2791,17 +2791,27 @@ def cargar_auxilio_transporte_base(request):
     ]
     PresupuestoAuxilioTransporteAux.objects.all().delete()  # limpia tabla temporal
     # Obtener base de empleados
-    base_data = ConceptosFijosYVariables.objects.filter(concepto__in=["001", "006"]).values(
-        "cedula", "nombre", "nombrecar", "nomcosto", "nombre_cen", "concepto_f"
+    # base_data = ConceptosFijosYVariables.objects.filter(concepto__in=["001", "006"]).values(
+    #     "cedula", "nombre", "nombrecar", "nomcosto", "nombre_cen", "concepto_f"
+    # )
+    # Tomo todos los empleados desde nómina (puede ser tu base principal)
+    empleados = PresupuestoSueldos.objects.all().values(
+    "cedula", "nombre", "cargo", "area", "centro", "salario_base"
     )
-    
+    print(empleados)
+    # Tomo también los aprendices
+    aprendices = PresupuestoAprendiz.objects.filter(concepto="SALARIO APRENDIZ REFORMA").values(
+    "cedula", "nombre", "cargo", "area", "centro", "salario_base"
+    )
+    # Uno empleados y aprendices en una sola lista
+    base_data = list(empleados) + list(aprendices)
     for row in base_data:
         aux = PresupuestoAuxilioTransporteAux.objects.create(
             cedula=row["cedula"],
             nombre=row["nombre"],
-            cargo=row["nombrecar"],
-            area=row["nomcosto"],
-            centro=row["nombre_cen"],
+            cargo=row["cargo"],
+            area=row["area"],
+            centro=row["centro"],
             concepto="AUXILIO DE TRANSPORTE",
             base=AUXILIO_BASE,
         )
@@ -2821,7 +2831,7 @@ def cargar_auxilio_transporte_base(request):
                 setattr(aux, mes, AUXILIO_BASE)
 
             if mes == "marzo":
-                salario_base = row["concepto_f"] or 0
+                salario_base = row["salario_base"] or 0
                 nuevo_salario = salario_base + (salario_base * (parametros.incremento_salarial / 100))
                 auxRetroactivo = (nuevo_salario - salario_base) * 2  # retroactivo de enero y febrero
                
