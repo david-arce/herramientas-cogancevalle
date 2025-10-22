@@ -10,6 +10,14 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <!-- Select2 (para búsqueda dentro de select) -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <!-- 🔹 FixedHeader CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
+    <!-- 🔹 FixedHeader JS -->
+    <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
+
     <link rel="stylesheet" href="{% static 'css/nomina_auxiliares.css' %}">
 </head>
 <body>
@@ -34,6 +42,29 @@
             Subir Presupuesto vacaciones
         </button>
     </form>
+    <!-- 🔹 Filtros con búsqueda interna -->
+    <div class="filtros-container">
+        <div class="filtro-box">
+            <label for="filtroNombre">Nombre:</label>
+            <select id="filtroNombre">
+                <option value="">Todos</option>
+            </select>
+        </div>
+
+        <div class="filtro-box">
+            <label for="filtroCentro">Centro:</label>
+            <select id="filtroCentro">
+                <option value="">Todos</option>
+            </select>
+        </div>
+
+        <div class="filtro-box">
+            <label for="filtroArea">Área:</label>
+            <select id="filtroArea">
+                <option value="">Todos</option>
+            </select>
+        </div>
+    </div>
     <table id="tempTable" class="display">
         <thead>
             <tr>
@@ -62,7 +93,7 @@
         </thead>
         <tfoot>
             <tr>
-                <th colspan="21" style="text-align:right">Total visible:</th>
+                <th colspan="20" style="text-align:right">Total visible:</th>
                 <th id="footer-total">0</th>
             </tr>
         </tfoot>
@@ -81,6 +112,12 @@ $(document).ready(function() {
     document.getElementById("btnHome").addEventListener("click", function () {
         window.location.href = "{% url 'presupuestoNomina' %}";
     });
+    function numberFormat(data, type, row) {
+        if (type === 'display' && !isNaN(data)) {
+            return new Intl.NumberFormat('es-ES').format(data);
+        }
+    return data;
+    }
     let table = $('#tempTable').DataTable({
         ajax: {
             url: "{% url 'obtener_vacaciones_temp' %}",
@@ -124,33 +161,86 @@ $(document).ready(function() {
         footerCallback: function (row, data, start, end, display) {
             let api = this.api();
 
-            // 🔹 Función para convertir texto a número
+            // 🔹 Convierte valores a números (limpia formato)
             let intVal = function (i) {
                 return typeof i === 'string'
-                    ? parseFloat(i.replace(/[\$,\.]/g, '').replace(',', '.')) || 0
+                    ? parseFloat(i.replace(/[\$,.]/g, '').replace(',', '.')) || 0
                     : typeof i === 'number'
                         ? i
                         : 0;
             };
 
-            // 🔹 Calcular total de la columna visible (por filtro)
+            // 🔹 Nombres de columnas numéricas (ajusta si cambia el orden)
+            let columnasMeses = [
+                "enero","febrero","marzo","abril","mayo","junio",
+                "julio","agosto","septiembre","octubre","noviembre","diciembre"
+            ];
+
+            // 🔹 Mapeo: nombre de columna → índice en la tabla
+            let colIndex = {};
+            api.columns().every(function(idx) {
+                let name = api.column(idx).dataSrc();
+                if (columnasMeses.includes(name)) {
+                    colIndex[name] = idx;
+                }
+                if (name === "total") {
+                    colIndex["total"] = idx;
+                }
+            });
+
+            // 🔹 Calcular total visible por cada mes
+            let totalesMeses = {};
+            columnasMeses.forEach(mes => {
+                totalesMeses[mes] = api
+                    .column(colIndex[mes], { search: 'applied' })
+                    .data()
+                    .reduce((a, b) => a + intVal(b), 0);
+            });
+
+            // 🔹 Calcular total visible general
             let totalVisible = api
-                .column(21, { search: 'applied' }) // índice 21 → columna "Total"
+                .column(colIndex["total"], { search: 'applied' })
                 .data()
                 .reduce((a, b) => a + intVal(b), 0);
 
-            // 🔹 Actualizar el footer
-            $(api.column(21).footer()).html(
-                new Intl.NumberFormat('es-ES').format(totalVisible)
-            );
+            // 🔹 Construir fila de totales
+            let footerCells = [];
+            for (let i = 0; i < api.columns().count(); i++) {
+                let name = api.column(i).dataSrc();
+                if (columnasMeses.includes(name)) {
+                    footerCells.push(new Intl.NumberFormat('es-ES').format(totalesMeses[name]));
+                } else if (name === "total") {
+                    footerCells.push(new Intl.NumberFormat('es-ES').format(totalVisible));
+                } else {
+                    footerCells.push(""); // columnas sin total
+                }
+            }
+
+            // 🔹 Aplicar al footer (si existe)
+            let $footerRow = $(api.table().footer()).find('tr');
+            if ($footerRow.length === 0) {
+                // crear si no existe
+                $footerRow = $('<tr>').appendTo($(api.table().footer()));
+            }
+
+            $footerRow.empty();
+            footerCells.forEach((cellValue, idx) => {
+                let th = $('<th style="text-align:right;">').html(cellValue);
+                $footerRow.append(th);
+            });
+
+            // 🔹 Primera columna con texto “Totales:”
+            $footerRow.find('th').eq(1).html("<strong>Totales visibles:</strong>");
         },
         language: {
                 url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
         },
         createdRow: function(row, data, dataIndex) {
+            // 🔹 Obtener el número total de columnas
+            let totalCols = this.api().columns().count();
             // marcar como editables sólo columnas relevantes (excluyendo columna 0 = checkbox)
             $('td', row).each(function(index) {
-                if (index > 1 && index < 21) { // >0 excluye checkbox, <20 hasta "total"
+                if (index > 1 && index < totalCols - 1) { // >0 excluye checkbox, <20 hasta "total"
                     $(this).addClass("editable");
                 }
             });
@@ -171,7 +261,39 @@ $(document).ready(function() {
             }
         }
     ],
+    initComplete: function() {
+        const api = this.api();
+
+        // Función que llena y activa Select2 con búsqueda interna
+        function configurarSelect(colIndex, selector) {
+            const valores = new Set();
+            api.column(colIndex).data().each(d => { if (d) valores.add(d.trim()); });
+
+            const sorted = Array.from(valores).sort((a,b)=>a.localeCompare(b));
+            const $select = $(selector);
+            $select.empty().append('<option value="">Todos</option>');
+            sorted.forEach(v => $select.append(`<option value="${v}">${v}</option>`));
+
+            // Activar Select2 con búsqueda
+            $select.select2({
+                placeholder: 'Buscar...',
+                allowClear: true,
+                width: '200px'
+            });
+
+            // Filtrar DataTable cuando cambie el valor
+            $select.on('change', function() {
+                const val = $.fn.dataTable.util.escapeRegex($(this).val());
+                api.column(colIndex).search(val ? '^' + val + '$' : '', true, false).draw();
+            });
+        }
+
+        configurarSelect(3, '#filtroNombre'); // Nombre
+        configurarSelect(4, '#filtroCentro'); // Centro
+        configurarSelect(5, '#filtroArea');   // Área
+    },
     paging: false,
+    fixedHeader: true,
     });
     function seleccionarFila($row) {
             // Quitar selección previa
