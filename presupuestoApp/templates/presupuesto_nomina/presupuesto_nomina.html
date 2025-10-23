@@ -269,6 +269,77 @@
                 fixedHeader: true,
             });
 
+            // 🔹 Agregar selects dinámicos en las filas después de cada redibujo
+            table.on('draw', function() {
+                // Agregar selects dinámicos en las columnas deseadas (centro, área, cargo, concepto)
+                $('#presupuestoTable tbody tr').each(function() {
+                    let $row = $(this);
+                    let data = table.row($row).data();
+                    if (!data) return;
+
+                    // Generar selects si no existen
+                    if (!$row.find('.select-centro').length) {
+                        let selectCentro = `<select class="select-centro select2">
+                            {% for c in centros %}
+                                <option value="{{ c|escape }}">{{ c }}</option>
+                            {% endfor %}
+                        </select>`;
+                        $row.find('td:eq(3)').html(selectCentro);
+                    }
+
+                    if (!$row.find('.select-area').length) {
+                        let selectArea = `<select class="select-area select2">
+                            {% for a in areas %}
+                                <option value="{{ a|escape }}">{{ a }}</option>
+                            {% endfor %}
+                        </select>`;
+                        $row.find('td:eq(4)').html(selectArea);
+                    }
+
+                    if (!$row.find('.select-cargo').length) {
+                        let selectCargo = `<select class="select-cargo select2">
+                            {% for c in cargos %}
+                                <option value="{{ c|escape }}">{{ c }}</option>
+                            {% endfor %}
+                        </select>`;
+                        $row.find('td:eq(5)').html(selectCargo);
+                    }
+
+                    if (!$row.find('.select-concepto').length) {
+                        let selectConcepto = `<select class="select-concepto select2">
+                            {% for c in conceptos %}
+                                <option value="{{ c|escape }}">{{ c }}</option>
+                            {% endfor %}
+                        </select>`;
+                        $row.find('td:eq(6)').html(selectConcepto);
+                    }
+
+                    // Asignar el valor actual
+                    $row.find('.select-centro').val(data.centro);
+                    $row.find('.select-area').val(data.area);
+                    $row.find('.select-cargo').val(data.cargo);
+                    $row.find('.select-concepto').val(data.concepto);
+
+                    // Activar select2
+                    $row.find('.select2').select2({
+                        width: '100%',
+                        dropdownAutoWidth: true,
+                        placeholder: 'Seleccionar...',
+                        allowClear: true
+                    });
+
+                    // Actualizar los datos del DataTable cuando cambie
+                    $row.find('select').on('change', function() {
+                        let updatedData = table.row($row).data();
+                        updatedData.centro = $row.find('.select-centro').val();
+                        updatedData.area = $row.find('.select-area').val();
+                        updatedData.cargo = $row.find('.select-cargo').val();
+                        updatedData.concepto = $row.find('.select-concepto').val();
+                        table.row($row).data(updatedData).invalidate().draw(false);
+                    });
+                });
+            });
+
             // --- Distribución de porcentajes ---
             $(document).on("click", "#btnDistribuir", function () {
                 let porcentajes = [];
@@ -340,8 +411,6 @@
 
                 showToast(`✅ Se distribuyeron y reemplazaron ${filasSeleccionadas.length} fila(s) con ${nuevasFilas.length} nuevas.`, "success");
             });
-
-
 
             function seleccionarFila($row) {
                 // Quitar selección previa

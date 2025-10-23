@@ -2857,9 +2857,9 @@ def cargar_auxilio_transporte_base(request):
                 salario = row["salario_base"] or 0
                 if salario < salarioIncremento:
                     salario = salarioIncremento
-                else: 
-                    nuevo_salario = salario + (salario * (parametros.incremento_salarial / 100))
-                    auxRetroactivo = (nuevo_salario - salario) * 2  # retroactivo de enero y febrero
+                     
+                nuevo_salario = salario + (salario * (parametros.incremento_salarial / 100))
+                auxRetroactivo = (nuevo_salario - salario) * 2  # retroactivo de enero y febrero
                     
                 # Sumar el valor del mes en todas las tablas
                 # total_mes = 0
