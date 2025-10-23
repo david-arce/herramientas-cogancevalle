@@ -4327,13 +4327,12 @@ def cargar_intereses_cesantias_base(request):
     for reg in cesantias_qs:
         # valores de cesantías base mes a mes
         cesantias_base = [getattr(reg, m) or 0 for m in meses]
-
         valores = {}
         intereses_acumulados = 0  # lo ya calculado hasta el mes anterior
 
         for i, mes in enumerate(meses):
             suma_cesantias = sum(cesantias_base[: i + 1])  # hasta mes actual
-            interes_teorico = suma_cesantias * (interesCesantias / 100) * (dias_acumulados[i] / 360)
+            interes_teorico = (suma_cesantias * dias_acumulados[i] * 0.12) / 360
             interes_mes = interes_teorico - intereses_acumulados
 
             valores[mes] = interes_mes
@@ -4341,7 +4340,6 @@ def cargar_intereses_cesantias_base(request):
 
         # suma total
         total = sum(Decimal(valores[m]) for m in meses)
-
         create_kwargs = {m: int(round(float(valores[m]))) for m in meses}
 
         PresupuestoInteresesCesantiasAux.objects.create(
