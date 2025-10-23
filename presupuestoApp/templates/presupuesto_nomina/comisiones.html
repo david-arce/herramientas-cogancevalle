@@ -1,7 +1,9 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>Comisiones</title>
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
@@ -9,51 +11,72 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <!-- Select2 (para búsqueda dentro de select) -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <!-- 🔹 FixedHeader CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
+    <!-- 🔹 FixedHeader JS -->
+    <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 30px;
-        }
-        h2 {
-            text-align: center;
-        }
-        table.dataTable thead th {
-            background-color: #007bff;
-            color: white;
-        }
-        .dataTables_wrapper {
-            width: 100% !important;
-            margin: 20px auto;
-        }
-        #btnTabla {
-            position: relative;
-            padding: 8px 16px;
-            border: none;
-            background-color: #646464ff;
-            color: white;
-            font-size: 14px;
-            border-radius: 6px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-    </style>
+    <link rel="stylesheet" href="{% static 'css/nomina_principal.css' %}">
 </head>
 <body>
     <h2>Presupuesto Nómina - Comisiones</h2>
+    <div class="toast-container" id="toastContainer"></div>
     <!-- Contenedor de botones -->
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
         <button id="btnTabla">Ir a tabla auxiliar de comisiones</button>
         <button id="btnHome"> Inicio</button>
+        <button id="guardarBtn">Guardar cambios<span class="spinner" style="display:none; margin-left:8px;"></span>
+        </button>
         <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
             Borrar Presupuesto
         </button>
     </div>
+    <div id="distribucion-container" style="margin-top:20px; padding:10px; border:1px solid #ccc; border-radius:8px;">
+        <h3>Distribuir valores (porcentajes)</h3>
+        <p>Ingresa los porcentajes (deben sumar 100%)</p>
+        <div style="display:flex; flex-wrap:wrap; gap:15px;">
+            <input type="number" class="input-porcentaje input-ventas-tulua" placeholder="Ventas tuluá" min="0" max="100" step="0.1">
+            <input type="number" class="input-porcentaje input-ventas-buga" placeholder="Ventas buga" min="0" max="100" step="0.1">
+            <input type="number" class="input-porcentaje input-ventas-cartago" placeholder="Ventas cartago" min="0" max="100" step="0.1">
+            <input type="number" class="input-porcentaje input-ventas-cali" placeholder="Ventas cali" min="0" max="100" step="0.1">
+            <input type="number" class="input-porcentaje input-administracion" placeholder="Administración" min="0" max="100" step="0.1">
+            <input type="number" class="input-porcentaje input-AT-1" placeholder="AT-1" min="0" max="100" step="0.1">
+            <input type="number" class="input-porcentaje input-AT-4" placeholder="AT-4" min="0" max="100" step="0.1">
+        </div>
+        <button id="btnDistribuir" style="margin-top:15px; background-color:#007bff; color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer;">
+            Distribuir valores seleccionados
+        </button>
+    </div>
+    <!-- 🔹 Filtros con búsqueda interna -->
+    <div class="filtros-container">
+        <div class="filtro-box">
+            <label for="filtroNombre">Nombre:</label>
+            <select id="filtroNombre">
+                <option value="">Todos</option>
+            </select>
+        </div>
+
+        <div class="filtro-box">
+            <label for="filtroCentro">Centro:</label>
+            <select id="filtroCentro">
+                <option value="">Todos</option>
+            </select>
+        </div>
+
+        <div class="filtro-box">
+            <label for="filtroArea">Área:</label>
+            <select id="filtroArea">
+                <option value="">Todos</option>
+            </select>
+        </div>
+    </div>
     <table id="presupuestoTable" class="display">
         <thead>
             <tr>
+                <th><input type="checkbox" id="checkAllIPC" title="Seleccionar todo"></th>
                 <th>Cedula</th>
                 <th>Nombre</th>
                 <th>Centro</th>
@@ -84,34 +107,346 @@
             document.getElementById("btnHome").addEventListener("click", function () {
                 window.location.href = "{% url 'presupuestoNomina' %}";
             });
+            function numberFormat(data, type, row) {
+                if (type === 'display' && !isNaN(data)) {
+                    return new Intl.NumberFormat('es-ES').format(data);
+                }
+            return data;
+            }
             let table = $('#presupuestoTable').DataTable({
                 ajax: {url: '{% url "obtener_presupuesto_comisiones" %}',
                 },
                 columns: [
-                { data: "cedula" },
+                    { 
+                        data: null,
+                        defaultContent: '<input type="checkbox" class="row-check" title="Seleccionar fila">',
+                        orderable: false
+                    },
+                    { data: "cedula" },
                     { data: "nombre" },
                     { data: "centro" },
                     { data: "area" },
                     { data: "cargo" },
                     { data: "concepto"},
-                    { data: "enero", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "febrero", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "marzo", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "abril", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "mayo", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "junio", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "julio", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "agosto", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "septiembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "octubre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "noviembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "diciembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "total", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                    { data: "enero", render: numberFormat },
+                    { data: "febrero", render: numberFormat },
+                    { data: "marzo", render: numberFormat },
+                    { data: "abril", render: numberFormat },
+                    { data: "mayo", render: numberFormat },
+                    { data: "junio", render: numberFormat },
+                    { data: "julio", render: numberFormat },
+                    { data: "agosto", render: numberFormat },
+                    { data: "septiembre", render: numberFormat },
+                    { data: "octubre", render: numberFormat },
+                    { data: "noviembre", render: numberFormat },
+                    { data: "diciembre", render: numberFormat },
+                    { data: "total", render: numberFormat },
                 ],
+                footerCallback: function (row, data, start, end, display) {
+                    let api = this.api();
+
+                    // 🔹 Convierte valores a números (limpia formato)
+                    let intVal = function (i) {
+                        return typeof i === 'string'
+                            ? parseFloat(i.replace(/[\$,.]/g, '').replace(',', '.')) || 0
+                            : typeof i === 'number'
+                                ? i
+                                : 0;
+                    };
+
+                    // 🔹 Nombres de columnas numéricas (ajusta si cambia el orden)
+                    let columnasMeses = [
+                        "enero","febrero","marzo","abril","mayo","junio",
+                        "julio","agosto","septiembre","octubre","noviembre","diciembre"
+                    ];
+
+                    // 🔹 Mapeo: nombre de columna → índice en la tabla
+                    let colIndex = {};
+                    api.columns().every(function(idx) {
+                        let name = api.column(idx).dataSrc();
+                        if (columnasMeses.includes(name)) {
+                            colIndex[name] = idx;
+                        }
+                        if (name === "total") {
+                            colIndex["total"] = idx;
+                        }
+                    });
+
+                    // 🔹 Calcular total visible por cada mes
+                    let totalesMeses = {};
+                    columnasMeses.forEach(mes => {
+                        totalesMeses[mes] = api
+                            .column(colIndex[mes], { search: 'applied' })
+                            .data()
+                            .reduce((a, b) => a + intVal(b), 0);
+                    });
+
+                    // 🔹 Calcular total visible general
+                    let totalVisible = api
+                        .column(colIndex["total"], { search: 'applied' })
+                        .data()
+                        .reduce((a, b) => a + intVal(b), 0);
+
+                    // 🔹 Construir fila de totales
+                    let footerCells = [];
+                    for (let i = 0; i < api.columns().count(); i++) {
+                        let name = api.column(i).dataSrc();
+                        if (columnasMeses.includes(name)) {
+                            footerCells.push(new Intl.NumberFormat('es-ES').format(totalesMeses[name]));
+                        } else if (name === "total") {
+                            footerCells.push(new Intl.NumberFormat('es-ES').format(totalVisible));
+                        } else {
+                            footerCells.push(""); // columnas sin total
+                        }
+                    }
+
+                    // 🔹 Aplicar al footer (si existe)
+                    let $footerRow = $(api.table().footer()).find('tr');
+                    if ($footerRow.length === 0) {
+                        // crear si no existe
+                        $footerRow = $('<tr>').appendTo($(api.table().footer()));
+                    }
+
+                    $footerRow.empty();
+                    footerCells.forEach((cellValue, idx) => {
+                        let th = $('<th style="text-align:right;">').html(cellValue);
+                        $footerRow.append(th);
+                    });
+
+                    // 🔹 Primera columna con texto “Totales:”
+                    $footerRow.find('th').eq(1).html("<strong>Totales visibles:</strong>");
+                },
                 language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
-                }
+                        url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+                },
+                dom: 'Bftip', // 🔥 agrega botones arriba de la tabla
+                buttons: [
+                    {
+                        extend: 'excelHtml5',
+                        text: '📥 Exportar a Excel',
+                        filename: 'presupuesto_nomina',
+                        exportOptions: {
+                            modifier: {
+                                page: 'all',   // 🔥 Exporta todas las páginas
+                                search: 'applied',
+                                order: 'applied'
+                            },
+                            columns: ':not(:last-child)' // 🔥 excluye columna "Acciones"
+                        }
+                    }
+                ],
+                initComplete: function() {
+                    const api = this.api();
+    
+                    // Función que llena y activa Select2 con búsqueda interna
+                    function configurarSelect(colIndex, selector) {
+                        const valores = new Set();
+                        api.column(colIndex).data().each(d => { if (d) valores.add(d.trim()); });
+    
+                        const sorted = Array.from(valores).sort((a,b)=>a.localeCompare(b));
+                        const $select = $(selector);
+                        $select.empty().append('<option value="">Todos</option>');
+                        sorted.forEach(v => $select.append(`<option value="${v}">${v}</option>`));
+    
+                        // Activar Select2 con búsqueda
+                        $select.select2({
+                            placeholder: 'Buscar...',
+                            allowClear: true,
+                            width: '200px'
+                        });
+    
+                        // Filtrar DataTable cuando cambie el valor
+                        $select.on('change', function() {
+                            const val = $.fn.dataTable.util.escapeRegex($(this).val());
+                            api.column(colIndex).search(val ? '^' + val + '$' : '', true, false).draw();
+                        });
+                    }
+    
+                    configurarSelect(2, '#filtroNombre'); // Nombre
+                    configurarSelect(3, '#filtroCentro'); // Centro
+                    configurarSelect(4, '#filtroArea');   // Área
+                },
+                paging: false,
+                fixedHeader: true,
+                autoWidth: false,
             });
+
+            // 🔹 Agregar selects dinámicos en las filas después de cada redibujo
+            table.on('draw', function() {
+                // Agregar selects dinámicos en las columnas deseadas (centro, área, cargo, concepto)
+                $('#presupuestoTable tbody tr').each(function() {
+                    let $row = $(this);
+                    let data = table.row($row).data();
+                    if (!data) return;
+
+                    // Generar selects si no existen
+                    if (!$row.find('.select-centro').length) {
+                        let selectCentro = `<select class="select-centro select2">
+                            {% for c in centros %}
+                                <option value="{{ c|escape }}">{{ c }}</option>
+                            {% endfor %}
+                        </select>`;
+                        $row.find('td:eq(3)').html(selectCentro);
+                    }
+
+                    if (!$row.find('.select-area').length) {
+                        let selectArea = `<select class="select-area select2">
+                            {% for a in areas %}
+                                <option value="{{ a|escape }}">{{ a }}</option>
+                            {% endfor %}
+                        </select>`;
+                        $row.find('td:eq(4)').html(selectArea);
+                    }
+
+                    if (!$row.find('.select-cargo').length) {
+                        let selectCargo = `<select class="select-cargo select2">
+                            {% for c in cargos %}
+                                <option value="{{ c|escape }}">{{ c }}</option>
+                            {% endfor %}
+                        </select>`;
+                        $row.find('td:eq(5)').html(selectCargo);
+                    }
+
+                    // Asignar el valor actual
+                    $row.find('.select-centro').val(data.centro);
+                    $row.find('.select-area').val(data.area);
+                    $row.find('.select-cargo').val(data.cargo);
+
+                    // Activar select2
+                    $row.find('.select2').select2({
+                        width: '100%',
+                        dropdownAutoWidth: true,
+                        placeholder: 'Seleccionar...',
+                        allowClear: true
+                    });
+
+                    // Actualizar los datos del DataTable cuando cambie
+                    $row.find('select').on('change', function() {
+                        let updatedData = table.row($row).data();
+                        updatedData.centro = $row.find('.select-centro').val();
+                        updatedData.area = $row.find('.select-area').val();
+                        updatedData.cargo = $row.find('.select-cargo').val();
+                        table.row($row).data(updatedData).invalidate().draw(false);
+                    });
+                });
+            });
+
+            // --- Mapeo de Centro y Área por input ---
+            const configuracionDistribucion = {
+                1: { centro: "ALMACEN TULUA", area: "VENTAS GASTOS DE PERSONAL" },
+                2: { centro: "ALMACEN BUGA", area: "VENTAS GASTOS DE PERSONAL" },
+                3: { centro: "ALMACEN CARTAGO", area: "VENTAS GASTOS DE PERSONAL" },
+                4: { centro: "ALMACEN CALI", area: "VENTAS GASTOS DE PERSONAL" },
+                5: { centro: "ALMACEN TULUA", area: "ADMINISTRACION DE PERSONAL" },
+                6: { centro: "ALMACEN TULUA", area: "ASISTENCIA TECNICA CONVENIO" },
+                7: { centro: "ALMACEN TULUA", area: "ASISTENCIA TECNICA PROPIA" },
+            };
+
+            // --- Distribución de porcentajes con actualización de centro y área ---
+            $(document).on("click", "#btnDistribuir", function () {
+                let porcentajes = [];
+                $(".input-porcentaje").each(function () {
+                    let val = parseFloat($(this).val()) || 0;
+                    porcentajes.push(val);
+                });
+
+                // ✅ Validar suma 100
+                let suma = porcentajes.reduce((a, b) => a + b, 0);
+                if (Math.abs(suma - 100) > 0.001) {
+                    showToast("❌ La suma de los porcentajes debe ser exactamente 100%.", "error");
+                    return;
+                }
+
+                // ✅ Obtener filas seleccionadas
+                let table = $("#presupuestoTable").DataTable();
+                let filasSeleccionadas = [];
+                $("#presupuestoTable .row-check:checked").each(function () {
+                    let fila = $(this).closest("tr");
+                    let data = table.row(fila).data();
+                    filasSeleccionadas.push({ data, row: fila });
+                });
+
+                if (filasSeleccionadas.length === 0) {
+                    showToast("⚠️ Debes seleccionar al menos una fila.", "error");
+                    return;
+                }
+
+                let nuevasFilas = [];
+
+                // ✅ Procesar duplicación según los porcentajes
+                filasSeleccionadas.forEach(({ data }) => {
+                    porcentajes.forEach((p, idx) => {
+                        if (p > 0) {
+                            let nueva = { ...data }; // copia base
+                            let factor = p / 100.0;
+
+                            // calcular meses
+                            [
+                                "enero","febrero","marzo","abril","mayo","junio",
+                                "julio","agosto","septiembre","octubre","noviembre","diciembre"
+                            ].forEach(mes => {
+                                nueva[mes] = Math.round(data[mes] * factor);
+                            });
+
+                            // recalcular total
+                            nueva["total"] = [
+                                "enero","febrero","marzo","abril","mayo","junio",
+                                "julio","agosto","septiembre","octubre","noviembre","diciembre"
+                            ].reduce((a, k) => a + (parseFloat(nueva[k]) || 0), 0);
+
+                            // --- 🔹 Actualizar Centro y Área según input ---
+                            let conf = configuracionDistribucion[idx + 1];
+                            if (conf) {
+                                nueva["centro"] = conf.centro;
+                                nueva["area"] = conf.area;
+                            }
+
+                            // --- 🔹 Actualizar concepto ---
+                            //nueva["concepto"] = data["concepto"] + ` (${p}%)`;
+
+                            nuevasFilas.push(nueva);
+                        }
+                    });
+                });
+
+                // ✅ Eliminar las filas originales seleccionadas
+                filasSeleccionadas.forEach(({ row }) => {
+                    table.row(row).remove();
+                });
+
+                // ✅ Agregar las nuevas filas generadas
+                nuevasFilas.forEach(fila => table.row.add(fila));
+
+                // ✅ Redibujar la tabla
+                table.draw(false);
+
+                showToast(`✅ Se distribuyeron y reemplazaron ${filasSeleccionadas.length} fila(s) con ${nuevasFilas.length} nuevas.`, "success");
+            });
+
+            function seleccionarFila($row) {
+                // Quitar selección previa
+                $('#presupuestoTable tbody tr').removeClass('fila-activa');
+                // Marcar la nueva fila
+                $row.addClass('fila-activa');
+            }
+            // Seleccionar fila cuando se hace clic
+            $('#presupuestoTable').on('click', 'tbody tr', function() {
+                seleccionarFila($(this));
+            });
+            // ✅ Checkbox maestro para seleccionar/deseleccionar todos
+            $('#checkAllIPC').on('change', function() {
+                let checked = $(this).is(':checked');
+                $('.row-check').prop('checked', checked);
+            });
+            // ✅ Si se desmarca una sola fila → se desmarca el "Seleccionar todo"
+            $('#presupuestoTable').on('change', '.row-check', function() {
+                if (!$(this).is(':checked')) {
+                    $('#checkAllIPC').prop('checked', false);
+                } else if ($('.row-check:checked').length === $('.row-check').length) {
+                    $('#checkAllIPC').prop('checked', true);
+                }
+            }); 
+
             // Función para mostrar toasts
             function showToast(message, type = "success", duration = 3000) {
                 let container = document.getElementById("toastContainer");
@@ -133,6 +468,35 @@
                     setTimeout(() => toast.remove(), 500); // eliminar después de animación
                 }, duration);
             }
+             // Guardar cambios
+            $('#guardarBtn').on('click', function() {
+                let $btn = $(this);
+                let $spinner = $btn.find('.spinner');
+                let data = table.rows().data().toArray();
+
+                // Mostrar spinner
+                $spinner.show();
+                $btn.prop("disabled", true);
+
+                $.ajax({
+                    url: "{% url 'guardar_comisiones' %}",
+                    type: "POST",
+                    data: JSON.stringify(data),
+                    contentType: "application/json",
+                    headers: { "X-CSRFToken": $("meta[name='csrf-token']").attr("content") },
+                    success: function() {
+                        showToast("Datos guardados en tabla sueldos ✅", "success");
+                    },
+                    error: function() {
+                        showToast("Error al guardar ❌", "error");
+                    },
+                    complete: function() {
+                        // Ocultar spinner y reactivar botón
+                        $spinner.hide();
+                        $btn.prop("disabled", false);
+                    }
+                });
+            });
 
             // Botón Ir a la tabla de sueldos
             document.getElementById("btnTabla").addEventListener("click", function () {

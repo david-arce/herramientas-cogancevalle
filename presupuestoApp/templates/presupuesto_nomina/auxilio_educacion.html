@@ -82,6 +82,12 @@
             document.getElementById("btnHome").addEventListener("click", function () {
                 window.location.href = "{% url 'presupuestoNomina' %}";
             });
+            function numberFormat(data, type, row) {
+                if (type === 'display' && !isNaN(data)) {
+                    return new Intl.NumberFormat('es-ES').format(data);
+                }
+            return data;
+            }
             let table = $('#presupuestoTable').DataTable({
                 ajax: {url: '{% url "obtener_presupuesto_auxilio_educacion" %}',
                 },
@@ -90,19 +96,19 @@
                     { data: "centro" },
                     { data: "area" },
                     { data: "concepto"},
-                    { data: "enero", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "febrero", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "marzo", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "abril", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "mayo", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "junio", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "julio", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "agosto", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "septiembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "octubre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "noviembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "diciembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-                    { data: "total", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                    { data: "enero", render: numberFormat },
+                    { data: "febrero", render: numberFormat },
+                    { data: "marzo", render: numberFormat },
+                    { data: "abril", render: numberFormat },
+                    { data: "mayo", render: numberFormat },
+                    { data: "junio", render: numberFormat },
+                    { data: "julio", render: numberFormat },
+                    { data: "agosto", render: numberFormat },
+                    { data: "septiembre", render: numberFormat },
+                    { data: "octubre", render: numberFormat },
+                    { data: "noviembre", render: numberFormat },
+                    { data: "diciembre", render: numberFormat },
+                    { data: "total", render: numberFormat },
                 ],
                 language: {
                     url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'

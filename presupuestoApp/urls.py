@@ -65,6 +65,7 @@ urlpatterns = [
     path("obtener_nomina_temp/", views.obtener_nomina_temp, name="obtener_nomina_temp"), 
     path("cargar_nomina_base/", views.cargar_nomina_base, name="cargar_nomina_base"),
     path("guardar_nomina_temp/", views.guardar_nomina_temp, name="guardar_nomina_temp"),
+    path("guardar_nomina/", views.guardar_nomina, name="guardar_nomina"),
     path("subir-presupuesto-sueldos/", views.subir_presupuesto_sueldos, name="subir_presupuesto_sueldos"),
     path("borrar_presupuesto_sueldos/", views.borrar_presupuesto_sueldos, name="borrar_presupuesto_sueldos"),
 
@@ -76,6 +77,7 @@ urlpatterns = [
     path("subir-presupuesto-comisiones/", views.subir_presupuesto_comisiones, name="subir_presupuesto_comisiones"),
     path("cargar-comisiones-base/", views.cargar_comisiones_base, name="cargar_comisiones_base"),
     path("guardar-comisiones-temp/", views.guardar_comisiones_temp, name="guardar_comisiones_temp"),
+    path("guardar_comisiones/", views.guardar_comisiones, name="guardar_comisiones"),
     path("borrar_presupuesto_comisiones/", views.borrar_presupuesto_comisiones, name="borrar_presupuesto_comisiones"),
     
     # horas extra
@@ -86,6 +88,7 @@ urlpatterns = [
     path("subir-presupuesto-horas-extra/", views.subir_presupuesto_horas_extra, name="subir_presupuesto_horas_extra"),
     path("cargar-horas-extra-base/", views.cargar_horas_extra_base, name="cargar_horas_extra_base"),
     path("guardar-horas-extra-temp/", views.guardar_horas_extra_temp, name="guardar_horas_extra_temp"),
+    path("guardar_horas_extra/", views.guardar_horas_extra, name="guardar_horas_extra"),
     path("borrar_presupuesto_horas_extra/", views.borrar_presupuesto_horas_extra, name="borrar_presupuesto_horas_extra"),
     
     # auxilio transporte
@@ -106,6 +109,7 @@ urlpatterns = [
     path("subir-presupuesto-medios-transporte/", views.subir_presupuesto_medios_transporte, name="subir_presupuesto_medios_transporte"),
     path("cargar-medios-transporte-base/", views.cargar_medios_transporte_base, name="cargar_medios_transporte_base"),
     path("guardar-medios-transporte-temp/", views.guardar_medios_transporte_temp, name="guardar_medios_transporte_temp"),
+    path("guardar_medios_transporte/", views.guardar_medios_transporte, name="guardar_medios_transporte"),
     path("borrar_presupuesto_medios_transporte/", views.borrar_presupuesto_medios_transporte, name="borrar_presupuesto_medios_transporte"),
     
     # ayuda transporte
@@ -206,6 +210,7 @@ urlpatterns = [
     path("subir-presupuesto-aprendiz/", views.subir_presupuesto_aprendiz, name="subir_presupuesto_aprendiz"),
     path("cargar-aprendiz-base/", views.cargar_aprendiz_base, name="cargar_aprendiz_base"),
     path("guardar-aprendiz-temp/", views.guardar_aprendiz_temp, name="guardar_aprendiz_temp"),
+    path("guardar_aprendiz/", views.guardar_aprendiz, name="guardar_aprendiz"),
     path("borrar_presupuesto_aprendiz/", views.borrar_presupuesto_aprendiz, name="borrar_presupuesto_aprendiz"),
     
     # bonificaciones foco

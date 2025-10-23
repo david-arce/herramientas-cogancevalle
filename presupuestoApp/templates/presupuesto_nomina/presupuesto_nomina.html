@@ -28,6 +28,8 @@
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
         <button id="btnTabla">Ir a tabla auxiliar de sueldos</button>
         <button id="btnHome"> Inicio</button>
+        <button id="guardarBtn">Guardar cambios<span class="spinner" style="display:none; margin-left:8px;"></span>
+        </button>
         <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
             Borrar Presupuesto
         </button>
@@ -35,20 +37,20 @@
     <div id="distribucion-container" style="margin-top:20px; padding:10px; border:1px solid #ccc; border-radius:8px;">
         <h3>Distribuir valores (porcentajes)</h3>
         <p>Ingresa los porcentajes (deben sumar 100%)</p>
-        <div style="display:flex; flex-wrap:wrap; gap:10px;">
-            <input type="number" class="input-porcentaje" placeholder="%" min="0" max="100" step="0.1">
-            <input type="number" class="input-porcentaje" placeholder="%" min="0" max="100" step="0.1">
-            <input type="number" class="input-porcentaje" placeholder="%" min="0" max="100" step="0.1">
-            <input type="number" class="input-porcentaje" placeholder="%" min="0" max="100" step="0.1">
-            <input type="number" class="input-porcentaje" placeholder="%" min="0" max="100" step="0.1">
-            <input type="number" class="input-porcentaje" placeholder="%" min="0" max="100" step="0.1">
-            <input type="number" class="input-porcentaje" placeholder="%" min="0" max="100" step="0.1">
+        <div style="display:flex; flex-wrap:wrap; gap:15px;">
+            <input type="number" class="input-porcentaje input-ventas-tulua" placeholder="Ventas tuluá" min="0" max="100" step="0.1">
+            <input type="number" class="input-porcentaje input-ventas-buga" placeholder="Ventas buga" min="0" max="100" step="0.1">
+            <input type="number" class="input-porcentaje input-ventas-cartago" placeholder="Ventas cartago" min="0" max="100" step="0.1">
+            <input type="number" class="input-porcentaje input-ventas-cali" placeholder="Ventas cali" min="0" max="100" step="0.1">
+            <input type="number" class="input-porcentaje input-administracion" placeholder="Administración" min="0" max="100" step="0.1">
+            <input type="number" class="input-porcentaje input-AT-1" placeholder="AT-1" min="0" max="100" step="0.1">
+            <input type="number" class="input-porcentaje input-AT-4" placeholder="AT-4" min="0" max="100" step="0.1">
         </div>
         <button id="btnDistribuir" style="margin-top:15px; background-color:#007bff; color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer;">
             Distribuir valores seleccionados
         </button>
     </div>
-     <!-- 🔹 Filtros con búsqueda interna -->
+    <!-- 🔹 Filtros con búsqueda interna -->
     <div class="filtros-container">
         <div class="filtro-box">
             <label for="filtroNombre">Nombre:</label>
@@ -98,13 +100,13 @@
                 <th>Total</th>
             </tr>
         </thead>
+        <tfoot>
+            <tr>
+                <th colspan="20" style="text-align:right">Total visible:</th>
+                <th id="footer-total">0</th>
+            </tr>
+        </tfoot>
     </table>
-    <tfoot>
-        <tr>
-            <th colspan="21" style="text-align:right">Total visible:</th>
-            <th id="footer-total">0</th>
-        </tr>
-    </tfoot>
     <script>
        $(document).ready(function () {
             // Botón Ir al inicio
@@ -346,7 +348,18 @@
                 });
             });
 
-            // --- Distribución de porcentajes ---
+            // --- Mapeo de Centro y Área por input ---
+            const configuracionDistribucion = {
+                1: { centro: "ALMACEN TULUA", area: "VENTAS GASTOS DE PERSONAL" },
+                2: { centro: "ALMACEN BUGA", area: "VENTAS GASTOS DE PERSONAL" },
+                3: { centro: "ALMACEN CARTAGO", area: "VENTAS GASTOS DE PERSONAL" },
+                4: { centro: "ALMACEN CALI", area: "VENTAS GASTOS DE PERSONAL" },
+                5: { centro: "ALMACEN TULUA", area: "ADMINISTRACION DE PERSONAL" },
+                6: { centro: "ALMACEN TULUA", area: "ASISTENCIA TECNICA CONVENIO" },
+                7: { centro: "ALMACEN TULUA", area: "ASISTENCIA TECNICA PROPIA" },
+            };
+
+            // --- Distribución de porcentajes con actualización de centro y área ---
             $(document).on("click", "#btnDistribuir", function () {
                 let porcentajes = [];
                 $(".input-porcentaje").each(function () {
@@ -379,7 +392,7 @@
 
                 // ✅ Procesar duplicación según los porcentajes
                 filasSeleccionadas.forEach(({ data }) => {
-                    porcentajes.forEach((p) => {
+                    porcentajes.forEach((p, idx) => {
                         if (p > 0) {
                             let nueva = { ...data }; // copia base
                             let factor = p / 100.0;
@@ -398,7 +411,16 @@
                                 "julio","agosto","septiembre","octubre","noviembre","diciembre"
                             ].reduce((a, k) => a + (parseFloat(nueva[k]) || 0), 0);
 
+                            // --- 🔹 Actualizar Centro y Área según input ---
+                            let conf = configuracionDistribucion[idx + 1];
+                            if (conf) {
+                                nueva["centro"] = conf.centro;
+                                nueva["area"] = conf.area;
+                            }
+
+                            // --- 🔹 Actualizar concepto ---
                             //nueva["concepto"] = data["concepto"] + ` (${p}%)`;
+
                             nuevasFilas.push(nueva);
                         }
                     });
@@ -440,8 +462,59 @@
                 } else if ($('.row-check:checked').length === $('.row-check').length) {
                     $('#checkAllIPC').prop('checked', true);
                 }
-            });
+            }); 
 
+            // Función para mostrar toasts
+            function showToast(message, type = "success", duration = 3000) {
+                let container = document.getElementById("toastContainer");
+
+                // Crear toast
+                let toast = document.createElement("div");
+                toast.className = `toast ${type}`;
+                toast.textContent = message;
+
+                // Insertar en el contenedor
+                container.appendChild(toast);
+
+                // Forzar reflow para animación
+                setTimeout(() => toast.classList.add("show"), 50);
+
+                // Ocultar y eliminar después de "duration"
+                setTimeout(() => {
+                    toast.classList.remove("show");
+                    setTimeout(() => toast.remove(), 500); // eliminar después de animación
+                }, duration);
+            }
+             // Guardar cambios
+            $('#guardarBtn').on('click', function() {
+                let $btn = $(this);
+                let $spinner = $btn.find('.spinner');
+                let data = table.rows().data().toArray();
+
+                // Mostrar spinner
+                $spinner.show();
+                $btn.prop("disabled", true);
+
+                $.ajax({
+                    url: "{% url 'guardar_nomina' %}",
+                    type: "POST",
+                    data: JSON.stringify(data),
+                    contentType: "application/json",
+                    headers: { "X-CSRFToken": $("meta[name='csrf-token']").attr("content") },
+                    success: function() {
+                        showToast("Datos guardados en tabla sueldos ✅", "success");
+                    },
+                    error: function() {
+                        showToast("Error al guardar ❌", "error");
+                    },
+                    complete: function() {
+                        // Ocultar spinner y reactivar botón
+                        $spinner.hide();
+                        $btn.prop("disabled", false);
+                    }
+                });
+            });
+            
             // 🔴 Botón para borrar PresupuestoNomina
             $("#btnBorrar").on("click", function () {
                 if (!confirm("⚠️ ¿Estás seguro de borrar todo el presupuesto? Esta acción no se puede deshacer.")) {
@@ -461,34 +534,11 @@
                     }
                 });
             });
-        });
-
-        // Función para mostrar toasts
-        function showToast(message, type = "success", duration = 3000) {
-            let container = document.getElementById("toastContainer");
-
-            // Crear toast
-            let toast = document.createElement("div");
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-
-            // Insertar en el contenedor
-            container.appendChild(toast);
-
-            // Forzar reflow para animación
-            setTimeout(() => toast.classList.add("show"), 50);
-
-            // Ocultar y eliminar después de "duration"
-            setTimeout(() => {
-                toast.classList.remove("show");
-                setTimeout(() => toast.remove(), 500); // eliminar después de animación
-            }, duration);
-        }
-
-        // Botón Ir a la tabla de sueldos
-        document.getElementById("btnTabla").addEventListener("click", function () {
-            window.location.href = "{% url 'tabla_auxiliar_sueldos' %}";
-        });
+            // Botón Ir a la tabla de sueldos
+            document.getElementById("btnTabla").addEventListener("click", function () {
+                window.location.href = "{% url 'tabla_auxiliar_sueldos' %}";
+            });
+    });
     </script>
 </body>
 </html>

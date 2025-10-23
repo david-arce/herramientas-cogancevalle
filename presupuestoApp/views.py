@@ -2183,6 +2183,47 @@ def guardar_nomina_temp(request):
 
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
+def guardar_nomina(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto",
+                "salario_base", "enero", "febrero", "marzo", "abril", "mayo",
+                "junio", "julio", "agosto", "septiembre", "octubre",
+                "noviembre", "diciembre", "total"
+            }
+            
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "salario_base","enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoSueldos(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoSueldos.objects.all().delete()
+                PresupuestoSueldos.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
 def subir_presupuesto_sueldos(request):
     if request.method != "POST":
         return JsonResponse({
@@ -2274,7 +2315,22 @@ def borrar_presupuesto_sueldos(request):
 
 # -------------------------------COMISIONES---------------------------------
 def comisiones(request):
-    return render(request, "presupuesto_nomina/comisiones.html")
+    # 🔹 Obtener valores únicos de ambas tablas
+    centros = set(PresupuestoSueldos.objects.values_list('centro', flat=True))
+    centros.update(PresupuestoAprendiz.objects.values_list('centro', flat=True))
+
+    areas = set(PresupuestoSueldos.objects.values_list('area', flat=True))
+    areas.update(PresupuestoAprendiz.objects.values_list('area', flat=True))
+
+    cargos = set(PresupuestoSueldos.objects.values_list('cargo', flat=True))
+    cargos.update(PresupuestoAprendiz.objects.values_list('cargo', flat=True))
+    
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+    }
+    return render(request, "presupuesto_nomina/comisiones.html", context)
 
 def obtener_presupuesto_comisiones(request):
     comisiones = list(PresupuestoComisiones.objects.values())
@@ -2365,6 +2421,45 @@ def guardar_comisiones_temp(request):
 
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
+def guardar_comisiones(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            }
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoComisiones(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoComisiones.objects.all().delete()
+                PresupuestoComisiones.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+
 def obtener_comisiones_temp(request):
     data = list(PresupuestoComisionesAux.objects.values())
     return JsonResponse(data, safe=False)
@@ -2414,7 +2509,22 @@ def borrar_presupuesto_comisiones(request):
 
 # -------------------------------HORAS EXTRA---------------------------------
 def horas_extra(request):
-    return render(request, "presupuesto_nomina/horas_extra.html")
+    # 🔹 Obtener valores únicos de ambas tablas
+    centros = set(PresupuestoSueldos.objects.values_list('centro', flat=True))
+    centros.update(PresupuestoAprendiz.objects.values_list('centro', flat=True))
+
+    areas = set(PresupuestoSueldos.objects.values_list('area', flat=True))
+    areas.update(PresupuestoAprendiz.objects.values_list('area', flat=True))
+
+    cargos = set(PresupuestoSueldos.objects.values_list('cargo', flat=True))
+    cargos.update(PresupuestoAprendiz.objects.values_list('cargo', flat=True))
+
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+    }
+    return render(request, "presupuesto_nomina/horas_extra.html", context)
 
 def obtener_presupuesto_horas_extra(request):
     horas_extra = list(PresupuestoHorasExtra.objects.values())
@@ -2504,6 +2614,45 @@ def guardar_horas_extra_temp(request):
 
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
+def guardar_horas_extra(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            }
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoHorasExtra(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoHorasExtra.objects.all().delete()
+                PresupuestoHorasExtra.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+
 def obtener_horas_extra_temp(request):
     data = list(PresupuestoHorasExtraAux.objects.values())
     return JsonResponse(data, safe=False)
@@ -2568,7 +2717,22 @@ def borrar_presupuesto_horas_extra(request):
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 # -------------------------------MEDIOS DE TRANSPORTE---------------------------------
 def medios_transporte(request):
-    return render(request, "presupuesto_nomina/medios_transporte.html")
+    # 🔹 Obtener valores únicos de ambas tablas
+    centros = set(PresupuestoSueldos.objects.values_list('centro', flat=True))
+    centros.update(PresupuestoAprendiz.objects.values_list('centro', flat=True))
+
+    areas = set(PresupuestoSueldos.objects.values_list('area', flat=True))
+    areas.update(PresupuestoAprendiz.objects.values_list('area', flat=True))
+
+    cargos = set(PresupuestoSueldos.objects.values_list('cargo', flat=True))
+    cargos.update(PresupuestoAprendiz.objects.values_list('cargo', flat=True))
+
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+    }
+    return render(request, "presupuesto_nomina/medios_transporte.html", context)
 
 def obtener_presupuesto_medios_transporte(request):
     medios_transporte = list(PresupuestoMediosTransporte.objects.values())
@@ -2658,6 +2822,45 @@ def guardar_medios_transporte_temp(request):
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+def guardar_medios_transporte(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto", "base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            }
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoMediosTransporte(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoMediosTransporte.objects.all().delete()
+                PresupuestoMediosTransporte.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
 
 def obtener_medios_transporte_temp(request):
     data = list(PresupuestoMediosTransporteAux.objects.values())
@@ -4386,7 +4589,26 @@ def borrar_presupuesto_intereses_cesantias(request):
 
 #----------------------------APRENDIZ------------------
 def aprendiz(request):
-    return render(request, "presupuesto_nomina/aprendiz.html")
+    # 🔹 Obtener valores únicos de ambas tablas
+    centros = set(PresupuestoSueldos.objects.values_list('centro', flat=True))
+    centros.update(PresupuestoAprendiz.objects.values_list('centro', flat=True))
+
+    areas = set(PresupuestoSueldos.objects.values_list('area', flat=True))
+    areas.update(PresupuestoAprendiz.objects.values_list('area', flat=True))
+
+    cargos = set(PresupuestoSueldos.objects.values_list('cargo', flat=True))
+    cargos.update(PresupuestoAprendiz.objects.values_list('cargo', flat=True))
+
+    conceptos = set(PresupuestoSueldos.objects.values_list('concepto', flat=True))
+    conceptos.update(PresupuestoAprendiz.objects.values_list('concepto', flat=True))
+
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+        'conceptos': sorted(list(filter(None, conceptos))),
+    }
+    return render(request, "presupuesto_nomina/aprendiz.html", context)
 
 def obtener_presupuesto_aprendiz(request):
     aprendiz = list(PresupuestoAprendiz.objects.values())
@@ -4475,6 +4697,45 @@ def guardar_aprendiz_temp(request):
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+def guardar_aprendiz(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto", "salario_base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            }
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoAprendiz(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoAprendiz.objects.all().delete()
+                PresupuestoAprendiz.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
 
 def obtener_aprendiz_temp(request):
     data = list(PresupuestoAprendizAux.objects.values())
