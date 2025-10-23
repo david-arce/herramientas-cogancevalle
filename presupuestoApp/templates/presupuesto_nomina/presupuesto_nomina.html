@@ -393,7 +393,7 @@
                                 "julio","agosto","septiembre","octubre","noviembre","diciembre"
                             ].reduce((a, k) => a + (parseFloat(nueva[k]) || 0), 0);
 
-                            nueva["concepto"] = data["concepto"] + ` (${p}%)`;
+                            //nueva["concepto"] = data["concepto"] + ` (${p}%)`;
                             nuevasFilas.push(nueva);
                         }
                     });
@@ -458,32 +458,32 @@
             });
         });
 
-    // Función para mostrar toasts
-    function showToast(message, type = "success", duration = 3000) {
-        let container = document.getElementById("toastContainer");
+        // Función para mostrar toasts
+        function showToast(message, type = "success", duration = 3000) {
+            let container = document.getElementById("toastContainer");
 
-        // Crear toast
-        let toast = document.createElement("div");
-        toast.className = `toast ${type}`;
-        toast.textContent = message;
+            // Crear toast
+            let toast = document.createElement("div");
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
 
-        // Insertar en el contenedor
-        container.appendChild(toast);
+            // Insertar en el contenedor
+            container.appendChild(toast);
 
-        // Forzar reflow para animación
-        setTimeout(() => toast.classList.add("show"), 50);
+            // Forzar reflow para animación
+            setTimeout(() => toast.classList.add("show"), 50);
 
-        // Ocultar y eliminar después de "duration"
-        setTimeout(() => {
-            toast.classList.remove("show");
-            setTimeout(() => toast.remove(), 500); // eliminar después de animación
-        }, duration);
-    }
+            // Ocultar y eliminar después de "duration"
+            setTimeout(() => {
+                toast.classList.remove("show");
+                setTimeout(() => toast.remove(), 500); // eliminar después de animación
+            }, duration);
+        }
 
-    // Botón Ir a la tabla de sueldos
-    document.getElementById("btnTabla").addEventListener("click", function () {
-        window.location.href = "{% url 'tabla_auxiliar_sueldos' %}";
-    });
+        // Botón Ir a la tabla de sueldos
+        document.getElementById("btnTabla").addEventListener("click", function () {
+            window.location.href = "{% url 'tabla_auxiliar_sueldos' %}";
+        });
     </script>
 </body>
 </html>

@@ -3129,7 +3129,7 @@ def cargar_cesantias_base(request):
     empleados = PresupuestoSueldos.objects.all()
     # Tomo también los aprendices
     aprendices = PresupuestoAprendiz.objects.filter(concepto="SALARIO APRENDIZ REFORMA")
-    
+    print(aprendices)
     # # Uno empleados y aprendices en una sola lista
     personas = list(empleados) + list(aprendices)
     for emp in personas:
@@ -3165,6 +3165,12 @@ def cargar_cesantias_base(request):
         if extra:
             for mes in meses:
                 data_meses[mes] += getattr(extra, mes, 0)
+                
+        # Sumo de aprendices
+        aprendiz = PresupuestoAprendiz.objects.filter(cedula=emp.cedula).first()
+        if aprendiz:
+            for mes in meses:
+                data_meses[mes] += getattr(aprendiz, mes, 0)
 
         # Creo el registro en cesantías con la suma
         PresupuestoCesantiasAux.objects.create(
