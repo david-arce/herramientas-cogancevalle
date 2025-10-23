@@ -2835,48 +2835,46 @@ def cargar_auxilio_transporte_base(request):
 
         # 🔹 recorrer meses
         for mes in MESES:
-            # Sumar el valor del mes en todas las tablas
+            
             total_mes = 0
-            total_mes += PresupuestoMediosTransporte.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-            total_mes += PresupuestoSueldos.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-            total_mes += PresupuestoComisiones.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-            total_mes += PresupuestoHorasExtra.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-            total_mes += PresupuestoAprendiz.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-            # print(f"Cédula: {row['cedula']} - Mes: {mes} - Total antes de aux: {total_mes}")
-            # descargar en un archivo de texto los totales por mes y cédula
-            # with open("totales_auxilio_transporte.txt", "a") as f:
-            #     f.write(f"Cédula: {row['cedula']} - cargo: {row['cargo']} - Mes: {mes} - Total antes de aux: {total_mes}\n")  
-            # 🔹 Condición: si la suma < SMMLV, asignar 200000 a ese mes
-            if total_mes < LIMITE_SMMLV:
-                setattr(aux, mes, AUXILIO_BASE)
-            # si total_mes es igual a cero poner cero en el mes
-            if total_mes == 0:
-                setattr(aux, mes, 0)
-
-            if mes == "marzo":
-                salario = row["salario_base"] or 0
-                if salario < salarioIncremento:
-                    salario = salarioIncremento
-                     
-                nuevo_salario = salario + (salario * (parametros.incremento_salarial / 100))
-                auxRetroactivo = (nuevo_salario - salario) * 2  # retroactivo de enero y febrero
-                    
+            if mes != "marzo":
                 # Sumar el valor del mes en todas las tablas
-                # total_mes = 0
-
-                # total_mes += PresupuestoMediosTransporte.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                # total_mes += PresupuestoSueldos.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                # total_mes += PresupuestoComisiones.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                # total_mes += PresupuestoHorasExtra.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes += PresupuestoMediosTransporte.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes += PresupuestoSueldos.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes += PresupuestoComisiones.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes += PresupuestoHorasExtra.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes += PresupuestoAprendiz.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                # descargar en un archivo de texto los totales por mes y cédula
+                # with open("totales_auxilio_transporte.txt", "a") as f:
+                #     f.write(f"Cédula: {row['cedula']} - cargo: {row['cargo']} - Mes: {mes} - Total antes de aux: {total_mes}\n")  
+                # 🔹 Condición: si la suma < SMMLV, asignar 200000 a ese mes
+                if total_mes < LIMITE_SMMLV:
+                    setattr(aux, mes, AUXILIO_BASE)
+                # si total_mes es igual a cero poner cero en el mes
+                if total_mes == 0:
+                    setattr(aux, mes, 0)
+            else: 
+                # salario = row["salario_base"] or 0
+                # if salario < salarioIncremento:
+                #     salario = salarioIncremento
+                     
+                # nuevo_salario = salario + (salario * (parametros.incremento_salarial / 100))
+                # auxRetroactivo = (nuevo_salario - salario) * 2  # retroactivo de enero y febrero
+              
+                mes_temp = "abril"
+                total_mes += PresupuestoMediosTransporte.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes += PresupuestoSueldos.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes_temp))["s"] or 0
+                total_mes += PresupuestoComisiones.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes += PresupuestoHorasExtra.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes += PresupuestoAprendiz.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
                 total_mes_marzo = total_mes
-                total_mes_marzo -= auxRetroactivo
+                # total_mes_marzo -= auxRetroactivo
                 
                 # 🔹 Condición: si la suma < SMMLV, asignar 200000 a ese mes
                 if total_mes == 0:
                     setattr(aux, mes, 0)
                 elif total_mes_marzo < LIMITE_SMMLV:
                     setattr(aux, mes, AUXILIO_BASE)
-                
 
         # Guardar cambios
         aux.save()
