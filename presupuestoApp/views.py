@@ -2826,10 +2826,7 @@ def cargar_auxilio_transporte_base(request):
             total_mes += PresupuestoSueldos.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
             total_mes += PresupuestoComisiones.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
             total_mes += PresupuestoHorasExtra.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-            # print(f"Cédula: {row['cedula']} - Mes: {mes} - Total antes de aux: {total_mes}")
-            #guardar en un documento de texto
-            with open("debug_auxilio_transporte.txt", "a") as f:
-                f.write(f"Cédula: {row['cedula']} - Mes: {mes} - Total antes de aux: {total_mes}\n")    
+            # print(f"Cédula: {row['cedula']} - Mes: {mes} - Total antes de aux: {total_mes}")  
             # 🔹 Condición: si la suma < SMMLV, asignar 200000 a ese mes
             if total_mes < LIMITE_SMMLV:
                 setattr(aux, mes, AUXILIO_BASE)
@@ -8532,3 +8529,4 @@ def borrar_cuenta5_base(request):
         Cuenta5Base.objects.all().delete()
         return JsonResponse({"status": "ok", "message": "Datos de cuenta 5 eliminados"})
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+

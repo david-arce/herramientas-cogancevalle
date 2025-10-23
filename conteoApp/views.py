@@ -24,7 +24,7 @@ def asignar_tareas(request):
         fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
     else:
         fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-    # fecha_asignar =  '20251011'
+    # fecha_asignar =  '20251021'
     
     if request.user.username != "DBENITEZ" and request.user.username != "CHINCAPI" and request.user.username != "FDUQUE" and request.user.username != "LAMAYA" and request.user.username != "AGRAJALE"  and request.user.username != "admin":
         raise PermissionDenied("No tienes permiso para acceder a esta vista.")
@@ -177,22 +177,26 @@ def asignar_tareas(request):
             request.session['fecha_asignacion'] = str(datetime.date.today())
             # return redirect('asignar_tareas')
         if 'view_all_user_tasks' in request.POST:
+            fecha_tasks = datetime.date.today()
+            # fecha_tasks = "2025-10-21"
             # usuario_id = request.POST.get('usuario_id')  # Obtener el ID del usuario
-            tareas = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), activo=True, usuario__usercity__ciudad=ciudad).exclude(diferencia=0)
+            tareas = Tarea.objects.filter(fecha_asignacion=fecha_tasks, activo=True, usuario__usercity__ciudad=ciudad).exclude(diferencia=0)
             # guardar tareas en la session
             request.session['selected_user_ids'] = list(tareas.values_list('usuario__id', flat=True).distinct())
-            request.session['fecha_asignacion'] = str(datetime.date.today())
+            request.session['fecha_asignacion'] = str(fecha_tasks)
             mostrar_exportar_todo = False
         else:
             mostrar_exportar_todo = True
 
         if 'view_all_tasks' in request.POST:
             # Mostrar todas las tareas asignadas para hoy
-            tareas = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad)
+            fecha_tasks = datetime.date.today()
+            # fecha_tasks = "2025-10-21"
+            tareas = Tarea.objects.filter(fecha_asignacion=fecha_tasks, usuario__usercity__ciudad=ciudad)
             # guardar un solo id de los usuarios que están en tareas obteniendo el numero, quitando el queryset
             usuario_id = list(tareas.values_list('usuario__id', flat=True).distinct())
             request.session['selected_user_ids'] = usuario_id
-            request.session['fecha_asignacion'] = str(datetime.date.today())
+            request.session['fecha_asignacion'] = str(fecha_tasks)
             # return redirect('asignar_tareas')
         
         if 'ver_no_verificados' in request.POST:
@@ -351,7 +355,7 @@ def lista_tareas(request):
         fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
     else:
         fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-    # fecha_asignar =  '20251011'
+    # fecha_asignar =  '20251021'
     fecha_especifica = datetime.date.today() 
     try:
         ciudad = request.user.usercity.ciudad
