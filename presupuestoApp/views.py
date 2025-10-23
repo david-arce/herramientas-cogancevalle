@@ -4316,59 +4316,52 @@ def cargar_intereses_cesantias_base(request):
     interesCesantias = parametros.intereses_cesantias if parametros else 0
     print(f"Intereses cesantías parámetro: {interesCesantias}")
 
-    # Limpio tabla auxiliar antes de recalcular
+    # Limpiar tabla auxiliar antes de recalcular
     PresupuestoInteresesCesantiasAux.objects.all().delete()
 
     cesantias_qs = PresupuestoCesantias.objects.all()
 
     for reg in cesantias_qs:
-        # valores base por mes
         cesantias_base = [getattr(reg, m) or 0 for m in meses]
         valores = {}
+
+        # Variables de control
+        suma_cesantias = 0
+        consecutivo_valores = 0
+        bloque_activo = False
         intereses_acumulados = 0
 
-        # buscar índices de los meses con valores
-        meses_con_valor = [i for i, v in enumerate(cesantias_base) if v > 0]
-
-        if not meses_con_valor:
-            # si no hay valores, se guarda todo en cero
-            create_kwargs = {m: 0 for m in meses}
-            PresupuestoInteresesCesantiasAux.objects.create(
-                cedula=reg.cedula,
-                nombre=reg.nombre,
-                centro=reg.centro,
-                area=reg.area,
-                cargo=reg.cargo,
-                concepto="INTERESES CESANTÍAS",
-                **create_kwargs,
-                total=0
-            )
-            continue
-
-        # iterador de días acumulados solo para los meses con valor
-        dias_incrementales = [30 * (i + 1) for i in range(len(meses_con_valor))]
-
         for i, mes in enumerate(meses):
-            # si no hay valor ese mes, 0
-            if i not in meses_con_valor:
+            valor_mes = cesantias_base[i]
+
+            if valor_mes == 0:
+                # Mes sin valor → 0 y termina el bloque
                 valores[mes] = 0
+                bloque_activo = False
                 continue
 
-            # posición dentro de los meses con valor
-            pos = meses_con_valor.index(i)
-            dias = dias_incrementales[pos]
+            # Si inicia un nuevo bloque, reiniciar sumatoria, días e intereses
+            if not bloque_activo:
+                suma_cesantias = 0
+                consecutivo_valores = 0
+                intereses_acumulados = 0  # Reinicia intereses al iniciar bloque
+                bloque_activo = True
 
-            # sumar todas las cesantías hasta el mes actual (acumuladas)
-            suma_cesantias = sum(cesantias_base[: i + 1])
+            # Acumular dentro del bloque
+            suma_cesantias += valor_mes
+            consecutivo_valores += 1
 
-            # cálculo del interés
+            # Días = 30 * posición dentro del bloque
+            dias = 30 * consecutivo_valores
+
+            # Cálculo del interés
             interes_teorico = (suma_cesantias * dias * 0.12) / 360
             interes_mes = interes_teorico - intereses_acumulados
 
             valores[mes] = interes_mes
             intereses_acumulados += interes_mes
 
-        # totalizar y guardar
+        # Totalizar y guardar en tabla auxiliar
         total = sum(Decimal(valores[m]) for m in meses)
         create_kwargs = {m: int(round(float(valores[m]))) for m in meses}
 
