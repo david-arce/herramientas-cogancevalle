@@ -46,6 +46,7 @@
     <!-- Contenedor de botones -->
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
         <button id="btnTabla">Ir a tabla auxiliar de comisiones</button>
+        <button id="btnHome"> Inicio</button>
         <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
             Borrar Presupuesto
         </button>
@@ -79,6 +80,10 @@
 
     <script>   
         $(document).ready(function () {
+            // Botón Ir al inicio
+            document.getElementById("btnHome").addEventListener("click", function () {
+                window.location.href = "{% url 'presupuestoNomina' %}";
+            });
             let table = $('#presupuestoTable').DataTable({
                 ajax: {url: '{% url "obtener_presupuesto_bolsa_consumibles" %}',
                 },

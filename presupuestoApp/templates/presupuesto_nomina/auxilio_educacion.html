@@ -46,6 +46,7 @@
     <!-- Contenedor de botones -->
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
         <button id="btnTabla">Ir a tabla auxiliar de auxilio educacion</button>
+        <button id="btnHome"> Inicio</button>
         <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
             Borrar Presupuesto
         </button>
@@ -77,6 +78,10 @@
 
     <script>   
         $(document).ready(function () {
+            // Botón Ir al inicio
+            document.getElementById("btnHome").addEventListener("click", function () {
+                window.location.href = "{% url 'presupuestoNomina' %}";
+            });
             let table = $('#presupuestoTable').DataTable({
                 ajax: {url: '{% url "obtener_presupuesto_auxilio_educacion" %}',
                 },
@@ -86,18 +91,18 @@
                     { data: "area" },
                     { data: "concepto"},
                     { data: "enero", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "febrero", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "marzo", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "abril", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "mayo", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "junio", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "julio", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "agosto", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "septiembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "octubre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "noviembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "diciembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
-            { data: "total", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                    { data: "febrero", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                    { data: "marzo", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                    { data: "abril", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                    { data: "mayo", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                    { data: "junio", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                    { data: "julio", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                    { data: "agosto", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                    { data: "septiembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                    { data: "octubre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                    { data: "noviembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                    { data: "diciembre", render: $.fn.dataTable.render.number('.', ',', 0, '') },
+                    { data: "total", render: $.fn.dataTable.render.number('.', ',', 0, '') },
                 ],
                 language: {
                     url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
