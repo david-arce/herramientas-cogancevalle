@@ -4311,16 +4311,13 @@ def cargar_intereses_cesantias_base(request):
         "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
     ]
 
-    # parametrización
+    # Parametrización
     parametros = ParametrosPresupuestos.objects.first()
     interesCesantias = parametros.intereses_cesantias if parametros else 0
     print(f"Intereses cesantías parámetro: {interesCesantias}")
 
-    # limpio tabla auxiliar antes de recalcular
+    # Limpio tabla auxiliar antes de recalcular
     PresupuestoInteresesCesantiasAux.objects.all().delete()
-
-    # días acumulados típicos
-    dias_acumulados = [30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360]
 
     cesantias_qs = PresupuestoCesantias.objects.all()
 
@@ -4330,33 +4327,41 @@ def cargar_intereses_cesantias_base(request):
         valores = {}
         intereses_acumulados = 0
 
-        # buscar el primer mes que tiene valor
-        primer_mes_con_valor = None
-        for i, valor in enumerate(cesantias_base):
-            if valor > 0:
-                primer_mes_con_valor = i  # índice del primer mes con valor
-                break
+        # buscar índices de los meses con valores
+        meses_con_valor = [i for i, v in enumerate(cesantias_base) if v > 0]
+
+        if not meses_con_valor:
+            # si no hay valores, se guarda todo en cero
+            create_kwargs = {m: 0 for m in meses}
+            PresupuestoInteresesCesantiasAux.objects.create(
+                cedula=reg.cedula,
+                nombre=reg.nombre,
+                centro=reg.centro,
+                area=reg.area,
+                cargo=reg.cargo,
+                concepto="INTERESES CESANTÍAS",
+                **create_kwargs,
+                total=0
+            )
+            continue
+
+        # iterador de días acumulados solo para los meses con valor
+        dias_incrementales = [30 * (i + 1) for i in range(len(meses_con_valor))]
 
         for i, mes in enumerate(meses):
-            if primer_mes_con_valor is None:
-                # no hay valores, todos 0
+            # si no hay valor ese mes, 0
+            if i not in meses_con_valor:
                 valores[mes] = 0
                 continue
 
+            # posición dentro de los meses con valor
+            pos = meses_con_valor.index(i)
+            dias = dias_incrementales[pos]
+
+            # sumar todas las cesantías hasta el mes actual (acumuladas)
             suma_cesantias = sum(cesantias_base[: i + 1])
 
-            # si estamos antes del primer valor, no calcular nada
-            if i < primer_mes_con_valor:
-                valores[mes] = 0
-                continue
-
-            # si estamos en el primer mes con valor, usar 30 días fijos
-            if i == primer_mes_con_valor:
-                dias = 30
-            else:
-                dias = dias_acumulados[i]
-
-            # fórmula de interés (usando el parámetro del sistema)
+            # cálculo del interés
             interes_teorico = (suma_cesantias * dias * 0.12) / 360
             interes_mes = interes_teorico - intereses_acumulados
 
@@ -4379,7 +4384,6 @@ def cargar_intereses_cesantias_base(request):
         )
 
     return JsonResponse({"status": "ok"})
-
 @csrf_exempt
 def borrar_presupuesto_intereses_cesantias(request):
     if request.method == "POST":
