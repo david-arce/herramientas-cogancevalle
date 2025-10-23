@@ -4316,29 +4316,54 @@ def cargar_intereses_cesantias_base(request):
     interesCesantias = parametros.intereses_cesantias if parametros else 0
     print(f"Intereses cesantías parámetro: {interesCesantias}")
 
-    # limpio tabla auxiliar de intereses antes de recalcular
+    # limpio tabla auxiliar antes de recalcular
     PresupuestoInteresesCesantiasAux.objects.all().delete()
 
-    # días acumulados por mes (ejemplo típico calendario 30 días/mes)
+    # días acumulados típicos
     dias_acumulados = [30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360]
-    
-    # recorro cada registro de cesantías (por persona / fila)
+
     cesantias_qs = PresupuestoCesantias.objects.all()
+
     for reg in cesantias_qs:
-        # valores de cesantías base mes a mes
+        # valores base por mes
         cesantias_base = [getattr(reg, m) or 0 for m in meses]
         valores = {}
-        intereses_acumulados = 0  # lo ya calculado hasta el mes anterior
+        intereses_acumulados = 0
+
+        # buscar el primer mes que tiene valor
+        primer_mes_con_valor = None
+        for i, valor in enumerate(cesantias_base):
+            if valor > 0:
+                primer_mes_con_valor = i  # índice del primer mes con valor
+                break
 
         for i, mes in enumerate(meses):
-            suma_cesantias = sum(cesantias_base[: i + 1])  # hasta mes actual
-            interes_teorico = (suma_cesantias * dias_acumulados[i] * 0.12) / 360
+            if primer_mes_con_valor is None:
+                # no hay valores, todos 0
+                valores[mes] = 0
+                continue
+
+            suma_cesantias = sum(cesantias_base[: i + 1])
+
+            # si estamos antes del primer valor, no calcular nada
+            if i < primer_mes_con_valor:
+                valores[mes] = 0
+                continue
+
+            # si estamos en el primer mes con valor, usar 30 días fijos
+            if i == primer_mes_con_valor:
+                dias = 30
+            else:
+                dias = dias_acumulados[i]
+
+            # fórmula de interés (usando el parámetro del sistema)
+            interes_teorico = (suma_cesantias * dias * 0.12) / 360
             interes_mes = interes_teorico - intereses_acumulados
 
             valores[mes] = interes_mes
             intereses_acumulados += interes_mes
 
-        # suma total
+        # totalizar y guardar
         total = sum(Decimal(valores[m]) for m in meses)
         create_kwargs = {m: int(round(float(valores[m]))) for m in meses}
 
