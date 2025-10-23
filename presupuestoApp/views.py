@@ -2784,7 +2784,6 @@ def cargar_auxilio_transporte_base(request):
     parametros = ParametrosPresupuestos.objects.first()
     salarioIncremento = parametros.salario_minimo + (parametros.salario_minimo * (parametros.incremento_salarial / 100))
     LIMITE_SMMLV = (salarioIncremento) * 2
-    print(LIMITE_SMMLV)
     AUXILIO_BASE = 200000
     MESES = [
         "enero", "febrero", "marzo", "abril", "mayo", "junio",
@@ -2797,12 +2796,12 @@ def cargar_auxilio_transporte_base(request):
     # )
     # Tomo todos los empleados desde nómina (puede ser tu base principal)
     empleados = PresupuestoSueldos.objects.all().values(
-    "cedula", "nombre", "cargo", "area", "centro", "salario_base"
+    "cedula", "nombre", "centro", "area", "cargo", "salario_base"
     )
-    
+    print(empleados)
     # Tomo también los aprendices
     aprendices = PresupuestoAprendiz.objects.filter(concepto="SALARIO APRENDIZ REFORMA").values(
-    "cedula", "nombre", "cargo", "area", "centro", "salario_base"
+    "cedula", "nombre", "centro", "area", "cargo", "salario_base"
     )
     # Uno empleados y aprendices en una sola lista
     base_data = list(empleados) + list(aprendices)
@@ -2821,12 +2820,15 @@ def cargar_auxilio_transporte_base(request):
         for mes in MESES:
             # Sumar el valor del mes en todas las tablas
             total_mes = 0
-
             total_mes += PresupuestoMediosTransporte.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
             total_mes += PresupuestoSueldos.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
             total_mes += PresupuestoComisiones.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
             total_mes += PresupuestoHorasExtra.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-            # print(f"Cédula: {row['cedula']} - Mes: {mes} - Total antes de aux: {total_mes}")  
+            total_mes += PresupuestoAprendiz.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+            # print(f"Cédula: {row['cedula']} - Mes: {mes} - Total antes de aux: {total_mes}")
+            # descargar en un archivo de texto los totales por mes y cédula
+            # with open("totales_auxilio_transporte.txt", "a") as f:
+            #     f.write(f"Cédula: {row['cedula']} - cargo: {row['cargo']} - Mes: {mes} - Total antes de aux: {total_mes}\n")  
             # 🔹 Condición: si la suma < SMMLV, asignar 200000 a ese mes
             if total_mes < LIMITE_SMMLV:
                 setattr(aux, mes, AUXILIO_BASE)
