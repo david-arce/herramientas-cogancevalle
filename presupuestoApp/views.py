@@ -2082,9 +2082,27 @@ def presupuestoNomina(request):
 
 
 def presupuesto_sueldos(request):
-    # obtener los valores de nomina unicos
-    # nomina = Nom005Salarios.objects.values('cedula','nombre','nombre_car','nombre_cco','nombre_cen','salario').distinct()
-    return render(request, "presupuesto_nomina/presupuesto_nomina.html")
+    # 🔹 Obtener valores únicos de ambas tablas
+    centros = set(PresupuestoSueldos.objects.values_list('centro', flat=True))
+    centros.update(PresupuestoAprendiz.objects.values_list('centro', flat=True))
+
+    areas = set(PresupuestoSueldos.objects.values_list('area', flat=True))
+    areas.update(PresupuestoAprendiz.objects.values_list('area', flat=True))
+
+    cargos = set(PresupuestoSueldos.objects.values_list('cargo', flat=True))
+    cargos.update(PresupuestoAprendiz.objects.values_list('cargo', flat=True))
+
+    conceptos = set(PresupuestoSueldos.objects.values_list('concepto', flat=True))
+    conceptos.update(PresupuestoAprendiz.objects.values_list('concepto', flat=True))
+
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+        'conceptos': sorted(list(filter(None, conceptos))),
+    }
+
+    return render(request, "presupuesto_nomina/presupuesto_nomina.html", context)
 
 def obtener_nomina_temp(request):
     data = list(PresupuestoSueldosAux.objects.values())
@@ -2798,7 +2816,6 @@ def cargar_auxilio_transporte_base(request):
     empleados = PresupuestoSueldos.objects.all().values(
     "cedula", "nombre", "centro", "area", "cargo", "salario_base"
     )
-    print(empleados)
     # Tomo también los aprendices
     aprendices = PresupuestoAprendiz.objects.filter(concepto="SALARIO APRENDIZ REFORMA").values(
     "cedula", "nombre", "centro", "area", "cargo", "salario_base"
@@ -2837,10 +2854,13 @@ def cargar_auxilio_transporte_base(request):
                 setattr(aux, mes, 0)
 
             if mes == "marzo":
-                salario_base = row["salario_base"] or 0
-                nuevo_salario = salario_base + (salario_base * (parametros.incremento_salarial / 100))
-                auxRetroactivo = (nuevo_salario - salario_base) * 2  # retroactivo de enero y febrero
-               
+                salario = row["salario_base"] or 0
+                if salario < salarioIncremento:
+                    salario = salarioIncremento
+                else: 
+                    nuevo_salario = salario + (salario * (parametros.incremento_salarial / 100))
+                    auxRetroactivo = (nuevo_salario - salario) * 2  # retroactivo de enero y febrero
+                    
                 # Sumar el valor del mes en todas las tablas
                 # total_mes = 0
 
