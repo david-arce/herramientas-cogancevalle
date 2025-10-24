@@ -5058,7 +5058,16 @@ def obtener_presupuesto_aprendiz(request):
 def tabla_auxiliar_aprendiz(request):
     parametros = ParametrosPresupuestos.objects.first()
     incrementoSalarial = parametros.incremento_salarial if parametros else 0
-    return render(request, "presupuesto_nomina/aux_aprendiz.html", {'incrementoSalarial': incrementoSalarial})
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
+
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+    }
+    return render(request, "presupuesto_nomina/aux_aprendiz.html", context)
 
 def subir_presupuesto_aprendiz(request):
     if request.method == "POST":
