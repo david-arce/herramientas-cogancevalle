@@ -230,6 +230,7 @@ urlpatterns = [
     path("subir-presupuesto-bonificaciones-foco/", views.subir_presupuesto_bonificaciones_foco, name="subir_presupuesto_bonificaciones_foco"),
     path("cargar-bonificaciones-foco-base/", views.cargar_bonificaciones_foco_base, name="cargar_bonificaciones_foco_base"),
     path("guardar-bonificaciones-foco-temp/", views.guardar_bonificaciones_foco_temp, name="guardar_bonificaciones_foco_temp"),
+    path("guardar_bonificaciones_foco/", views.guardar_bonificaciones_foco, name="guardar_bonificaciones_foco"),
     path("borrar_presupuesto_bonificaciones_foco/", views.borrar_presupuesto_bonificaciones_foco, name="borrar_presupuesto_bonificaciones_foco"),
     
     # auxilio educacion
@@ -251,6 +252,7 @@ urlpatterns = [
     path("subir-presupuesto-bonos-kyrovet/", views.subir_presupuesto_bonos_kyrovet, name="subir_presupuesto_bonos_kyrovet"),
     path("cargar-bonos-kyrovet-base/", views.cargar_bonos_kyrovet_base, name="cargar_bonos_kyrovet_base"),
     path("guardar-bonos-kyrovet-temp/", views.guardar_bonos_kyrovet_temp, name="guardar_bonos_kyrovet_temp"),
+    path("guardar_bonos_kyrovet/", views.guardar_bonos_kyrovet, name="guardar_bonos_kyrovet"),
     path("borrar_presupuesto_bonos_kyrovet/", views.borrar_presupuesto_bonos_kyrovet, name="borrar_presupuesto_bonos_kyrovet"),
     
     #-----------------------------PRESUPUESTO GENERAL--------------------------------
