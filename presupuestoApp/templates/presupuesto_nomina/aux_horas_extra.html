@@ -112,6 +112,12 @@ $(document).ready(function() {
     document.getElementById("btnHome").addEventListener("click", function () {
         window.location.href = "{% url 'presupuestoNomina' %}";
     });
+    function numberFormat(data, type, row) {
+        if (type === 'display' && !isNaN(data)) {
+            return new Intl.NumberFormat('es-ES').format(data);
+        }
+    return data;
+    }
     let table = $('#tempTable').DataTable({
         ajax: {
             url: "{% url 'obtener_horas_extra_temp' %}",
@@ -137,19 +143,19 @@ $(document).ready(function() {
             { data: "area" },
             { data: "cargo" },
             { data: "concepto" },
-            { data: "enero" },
-            { data: "febrero" },
-            { data: "marzo" },
-            { data: "abril" },
-            { data: "mayo" },
-            { data: "junio" },
-            { data: "julio" },
-            { data: "agosto" },
-            { data: "septiembre" },
-            { data: "octubre" },
-            { data: "noviembre" },
-            { data: "diciembre" },
-            { data: "total" },
+            { data: "enero", render: numberFormat },
+            { data: "febrero", render: numberFormat },
+            { data: "marzo", render: numberFormat },
+            { data: "abril", render: numberFormat },
+            { data: "mayo", render: numberFormat },
+            { data: "junio", render: numberFormat },
+            { data: "julio", render: numberFormat },
+            { data: "agosto", render: numberFormat },
+            { data: "septiembre", render: numberFormat },
+            { data: "octubre", render: numberFormat },
+            { data: "noviembre", render: numberFormat },
+            { data: "diciembre", render: numberFormat },
+            { data: "total", render: numberFormat },
             
         ],
         footerCallback: function (row, data, start, end, display) {
