@@ -2061,11 +2061,29 @@ def vista_presupuesto_comercial(request):
 
 #  ---------------------NOMINA-------------------------------------------------------------
 def presupuestoNomina(request):
-   # Obtiene el único registro (o lo crea vacío la primera vez)
+    # Obtener o crear registro de parámetros
     parametros, created = ParametrosPresupuestos.objects.get_or_create(id=1)
 
+    # --- AJAX para actualizar parámetros ---
     if request.method == "POST" and request.headers.get("x-requested-with") == "XMLHttpRequest":
-        # Actualizar con los valores enviados desde AJAX
+        if request.POST.get("action") == "insertar_concepto":
+            nombrecar = request.POST.get("nombrecar")
+            if not nombrecar:
+                return JsonResponse({"status": "error", "msg": "Debe ingresar un nombre de cargo"})
+            
+            # Crear nuevo registro con todos los demás campos en 0 o vacío
+            ConceptosFijosYVariables.objects.create(
+                nombrecar=nombrecar,
+                centro_tra="", nombre_cen="", codcosto="", nomcosto="",
+                tipocpto="", cuenta="", concepto="", nombre_con="",
+                cargo="", cedula=0, nombre="",
+                arlporc=0, concepto_f=0, enero=0, febrero=0, marzo=0,
+                abril=0, mayo=0, junio=0, julio=0, agosto=0, septiembre=0,
+                total=0
+            )
+            return JsonResponse({"status": "ok", "msg": f"'{nombrecar}' agregado correctamente ✅"})
+
+        # Actualización de parámetros
         parametros.incremento_salarial = request.POST.get("incrementoSalarial") or None
         parametros.incremento_ipc = request.POST.get("incrementoIPC") or None
         parametros.auxilio_transporte = request.POST.get("auxilioTransporte") or None
@@ -2078,8 +2096,13 @@ def presupuestoNomina(request):
         parametros.save()
         return JsonResponse({"status": "ok", "msg": "Parámetros actualizados correctamente ✅"})
 
-    return render(request, "presupuesto_nomina/dashboard_nomina.html", {"parametros": parametros})
+    # Obtener lista única de nombres de cargos
+    nombres_cargos = ConceptosFijosYVariables.objects.values_list("nombrecar", flat=True).distinct()
 
+    return render(request, "presupuesto_nomina/dashboard_nomina.html", {
+        "parametros": parametros,
+        "nombres_cargos": [n for n in nombres_cargos if n],  # eliminar nulos
+    })
 
 def presupuesto_sueldos(request):
     # 🔹 Obtener valores únicos de ambas tablas
