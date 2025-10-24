@@ -27,7 +27,7 @@
             <span class="spinner" style="display:none; margin-left:8px;"></span>
         </button>
         <button id="agregarFila">➕ Agregar fila</button>
-        <button id="guardarTempBtn">Guardar en BD (temporal)<span class="spinner" style="display:none; margin-left:8px;"></span>
+        <button id="guardarTempBtn">Guardar cambios<span class="spinner" style="display:none; margin-left:8px;"></span>
         </button>
         <button id="btnTabla"> Ir a tabla principal</button>
         <button id="btnHome"> Inicio</button>
@@ -39,6 +39,29 @@
             Subir Presupuesto seguridad social
         </button>
     </form>
+    <!-- 🔹 Filtros con búsqueda interna -->
+    <div class="filtros-container">
+        <div class="filtro-box">
+            <label for="filtroNombre">Nombre:</label>
+            <select id="filtroNombre">
+                <option value="">Todos</option>
+            </select>
+        </div>
+
+        <div class="filtro-box">
+            <label for="filtroCentro">Centro:</label>
+            <select id="filtroCentro">
+                <option value="">Todos</option>
+            </select>
+        </div>
+
+        <div class="filtro-box">
+            <label for="filtroArea">Área:</label>
+            <select id="filtroArea">
+                <option value="">Todos</option>
+            </select>
+        </div>
+    </div>
     <table id="tempTable" class="display">
         <thead>
             <tr>
@@ -65,7 +88,7 @@
         </thead>
         <tfoot>
             <tr>
-                <th colspan="20" style="text-align:right">Total visible:</th>
+                <th colspan="18" style="text-align:right">Total visible:</th>
                 <th id="footer-total">0</th>
             </tr>
         </tfoot>

@@ -255,7 +255,22 @@ $(document).ready(function() {
                     search: 'applied',
                     order: 'applied'
                 },
-                columns: ':not(:last-child)' // 🔥 excluye columna "Acciones"
+                // 🔹 Excluir las dos primeras columnas (checkbox y acciones)
+                columns: function (idx, data, node) {
+                    return idx > 1;  // Solo exporta desde la columna 2 en adelante
+                },
+                format: {
+                    body: function (data, row, column, node) {
+                        // 🔹 Si es número con puntos o comas, limpiar para exportar como número real
+                        if (typeof data === 'string') {
+                            let clean = data.replace(/\./g, '').replace(',', '.');
+                            if (!isNaN(clean) && clean.trim() !== '') {
+                                return parseFloat(clean);
+                            }
+                        }
+                        return data;
+                    }
+                }
             }
         }
     ],
