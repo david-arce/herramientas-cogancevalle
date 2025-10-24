@@ -5066,6 +5066,7 @@ def tabla_auxiliar_aprendiz(request):
         'centros': sorted(list(filter(None, centros))),
         'areas': sorted(list(filter(None, areas))),
         'cargos': sorted(list(filter(None, cargos))),
+        'incrementoSalarial': incrementoSalarial,
     }
     return render(request, "presupuesto_nomina/aux_aprendiz.html", context)
 
