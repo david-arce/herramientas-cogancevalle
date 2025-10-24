@@ -165,6 +165,7 @@ urlpatterns = [
     path("subir-presupuesto-bonificaciones/", views.subir_presupuesto_bonificaciones, name="subir_presupuesto_bonificaciones"),
     path("cargar-bonificaciones-base/", views.cargar_bonificaciones_base, name="cargar_bonificaciones_base"),
     path("guardar-bonificaciones-temp/", views.guardar_bonificaciones_temp, name="guardar_bonificaciones_temp"),
+    path("guardar_bonificaciones/", views.guardar_bonificaciones, name="guardar_bonificaciones"),
     path("borrar_presupuesto_bonificaciones/", views.borrar_presupuesto_bonificaciones, name="borrar_presupuesto_bonificaciones"),
     
     # auxilio bolsa consumibles

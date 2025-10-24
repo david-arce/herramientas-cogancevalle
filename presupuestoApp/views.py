@@ -4066,6 +4066,44 @@ def guardar_bonificaciones_temp(request):
 
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
+def guardar_bonificaciones(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            }
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoBonificaciones(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoBonificaciones.objects.all().delete()
+                PresupuestoBonificaciones.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
 def obtener_bonificaciones_temp(request):
     data = list(PresupuestoBonificacionesAux.objects.values())
     return JsonResponse(data, safe=False)
@@ -5268,6 +5306,44 @@ def guardar_bonificaciones_foco_temp(request):
 
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
+def guardar_bonificaciones_foco(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            }
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoBonificacionesFoco(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoBonificacionesFoco.objects.all().delete()
+                PresupuestoBonificacionesFoco.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
 def obtener_bonificaciones_foco_temp(request):
     data = list(PresupuestoBonificacionesFocoAux.objects.values())
     return JsonResponse(data, safe=False)
@@ -5279,7 +5355,7 @@ def cargar_bonificaciones_foco_base(request):
 
     parametros = ParametrosPresupuestos.objects.first()
     incrementoIpc = parametros.incremento_ipc if parametros else 0
-
+    incrementoComisiones = parametros.incremento_comisiones if parametros else 0
     
     # agrupamos por persona sumando los meses de enero a junio
     comisiones_agrupadas = (
@@ -5308,7 +5384,7 @@ def cargar_bonificaciones_foco_base(request):
         # Cálculo para enero usando total anual / 12
         if com["total"] > 0:
             # Ajustar cada mes según incrementoComisiones
-            incremento_factor = 1 + (incrementoIpc / 100)
+            incremento_factor = 1 + (incrementoComisiones / 100)
             enero_base = (com["enero"] or 0) / incremento_factor
             febrero_base = (com["febrero"] or 0) / incremento_factor
             marzo_base = (com["marzo"] or 0) / incremento_factor
@@ -5671,6 +5747,44 @@ def guardar_bonos_kyrovet_temp(request):
             with transaction.atomic():
                 PresupuestoBonosKyrovetAux.objects.all().delete()
                 PresupuestoBonosKyrovetAux.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+def guardar_bonos_kyrovet(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto","base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            }
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoBonosKyrovet(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoBonosKyrovet.objects.all().delete()
+                PresupuestoBonosKyrovet.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
