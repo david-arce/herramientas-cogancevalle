@@ -2541,14 +2541,9 @@ def borrar_presupuesto_comisiones(request):
 # -------------------------------HORAS EXTRA---------------------------------
 def horas_extra(request):
     # 🔹 Obtener valores únicos de ambas tablas
-    centros = set(PresupuestoSueldos.objects.values_list('centro', flat=True))
-    centros.update(PresupuestoAprendiz.objects.values_list('centro', flat=True))
-
-    areas = set(PresupuestoSueldos.objects.values_list('area', flat=True))
-    areas.update(PresupuestoAprendiz.objects.values_list('area', flat=True))
-
-    cargos = set(PresupuestoSueldos.objects.values_list('cargo', flat=True))
-    cargos.update(PresupuestoAprendiz.objects.values_list('cargo', flat=True))
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
 
     context = {
         'centros': sorted(list(filter(None, centros))),
@@ -2749,14 +2744,9 @@ def borrar_presupuesto_horas_extra(request):
 # -------------------------------MEDIOS DE TRANSPORTE---------------------------------
 def medios_transporte(request):
     # 🔹 Obtener valores únicos de ambas tablas
-    centros = set(PresupuestoSueldos.objects.values_list('centro', flat=True))
-    centros.update(PresupuestoAprendiz.objects.values_list('centro', flat=True))
-
-    areas = set(PresupuestoSueldos.objects.values_list('area', flat=True))
-    areas.update(PresupuestoAprendiz.objects.values_list('area', flat=True))
-
-    cargos = set(PresupuestoSueldos.objects.values_list('cargo', flat=True))
-    cargos.update(PresupuestoAprendiz.objects.values_list('cargo', flat=True))
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
 
     context = {
         'centros': sorted(list(filter(None, centros))),
@@ -2934,14 +2924,9 @@ def borrar_presupuesto_medios_transporte(request):
 # -------------------------------AUXILIO DE TRANSPORTE---------------------------------
 def auxilio_transporte(request):
     # 🔹 Obtener valores únicos de ambas tablas
-    centros = set(PresupuestoSueldos.objects.values_list('centro', flat=True))
-    centros.update(PresupuestoAprendiz.objects.values_list('centro', flat=True))
-
-    areas = set(PresupuestoSueldos.objects.values_list('area', flat=True))
-    areas.update(PresupuestoAprendiz.objects.values_list('area', flat=True))
-
-    cargos = set(PresupuestoSueldos.objects.values_list('cargo', flat=True))
-    cargos.update(PresupuestoAprendiz.objects.values_list('cargo', flat=True))
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
 
     context = {
         'centros': sorted(list(filter(None, centros))),
@@ -3179,14 +3164,9 @@ def borrar_presupuesto_auxilio_transporte(request):
 # -------------------------------AYUDA AL TRANSPORTE---------------------------------
 def ayuda_transporte(request):
     # 🔹 Obtener valores únicos de ambas tablas
-    centros = set(PresupuestoSueldos.objects.values_list('centro', flat=True))
-    centros.update(PresupuestoAprendiz.objects.values_list('centro', flat=True))
-
-    areas = set(PresupuestoSueldos.objects.values_list('area', flat=True))
-    areas.update(PresupuestoAprendiz.objects.values_list('area', flat=True))
-
-    cargos = set(PresupuestoSueldos.objects.values_list('cargo', flat=True))
-    cargos.update(PresupuestoAprendiz.objects.values_list('cargo', flat=True))
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
 
     context = {
         'centros': sorted(list(filter(None, centros))),
@@ -3364,7 +3344,15 @@ def borrar_presupuesto_ayuda_transporte(request):
 
 # -----------------------------Cesantias---------------------
 def cesantias(request):
-    return render(request, "presupuesto_nomina/cesantias.html")
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+    }
+    return render(request, "presupuesto_nomina/cesantias.html", context)
 
 def obtener_presupuesto_cesantias(request):
     cesantias = list(PresupuestoCesantias.objects.values())
@@ -3537,7 +3525,15 @@ def borrar_presupuesto_cesantias(request):
 
 # ------------------------Prima------------------
 def prima(request):
-    return render(request, "presupuesto_nomina/prima.html")
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+    }
+    return render(request, "presupuesto_nomina/prima.html", context)
 
 def obtener_presupuesto_prima(request):
     prima = list(PresupuestoPrima.objects.values())
@@ -3701,7 +3697,15 @@ def borrar_presupuesto_prima(request):
 
 # ------------------------Vacaciones------------------
 def vacaciones(request):
-    return render(request, "presupuesto_nomina/vacaciones.html")
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+    }
+    return render(request, "presupuesto_nomina/vacaciones.html", context)
 
 def obtener_presupuesto_vacaciones(request):
     vacaciones = list(PresupuestoVacaciones.objects.values())
@@ -3853,7 +3857,15 @@ def borrar_presupuesto_vacaciones(request):
 
 #----------------------------BONIFICACIONES----------------------
 def bonificaciones(request):
-    return render(request, "presupuesto_nomina/bonificaciones.html")
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+    }
+    return render(request, "presupuesto_nomina/bonificaciones.html", context)
 
 def obtener_presupuesto_bonificaciones(request):
     bonificaciones = list(PresupuestoBonificaciones.objects.values())
@@ -3990,7 +4002,17 @@ def borrar_presupuesto_bonificaciones(request):
 
 #------------bolsa consumibles (novedad de nomina extra, consumibles y tuberculina)----------------
 def bolsa_consumibles(request):
-    return render(request, "presupuesto_nomina/bolsa_consumibles.html")
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
+    
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+    }
+    
+    return render(request, "presupuesto_nomina/bolsa_consumibles.html", context)
 
 def obtener_presupuesto_bolsa_consumibles(request):
     auxilio_movilidad = list(PresupuestoBolsaConsumibles.objects.values())
@@ -4124,7 +4146,15 @@ def borrar_presupuesto_bolsa_consumibles(request):
 
 #-----------------------Auxilio TBC y KIT----------------------------
 def auxilio_TBCKIT(request):
-    return render(request, "presupuesto_nomina/auxilio_TBCKIT.html")
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+    }
+    return render(request, "presupuesto_nomina/auxilio_TBCKIT.html", context)
 
 def obtener_presupuesto_auxilio_TBCKIT(request):
     auxilio_movilidad = list(PresupuestoAuxilioTBCKIT.objects.values())
@@ -4259,7 +4289,15 @@ def borrar_presupuesto_auxilio_TBCKIT(request):
 
 # ----------------------------SEGURIDAD SOCIAL---------------------
 def seguridad_social(request):
-    return render(request, "presupuesto_nomina/seguridad_social.html")
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+    }
+    return render(request, "presupuesto_nomina/seguridad_social.html", context)
 
 def obtener_presupuesto_seguridad_social(request):
     seguridad_social = list(PresupuestoSeguridadSocial.objects.values())
@@ -4552,7 +4590,15 @@ def borrar_presupuesto_seguridad_social(request):
 
 #--------------------------INTERESES DE CESANTIAS----------------------
 def intereses_cesantias(request):
-    return render(request, "presupuesto_nomina/intereses_cesantias.html")
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+    }
+    return render(request, "presupuesto_nomina/intereses_cesantias.html", context)
 
 def obtener_presupuesto_intereses_cesantias(request):
     intereses_cesantias = list(PresupuestoInteresesCesantias.objects.values())
@@ -4899,7 +4945,15 @@ def borrar_presupuesto_aprendiz(request):
 
 #--------------------------BONIFICACIONES FOCO----------------------
 def bonificaciones_foco(request):
-    return render(request, "presupuesto_nomina/bonificaciones_foco.html")
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+    }
+    return render(request, "presupuesto_nomina/bonificaciones_foco.html", context)
 
 def obtener_presupuesto_bonificaciones_foco(request):
     bonificaciones_foco = list(PresupuestoBonificacionesFoco.objects.values())
@@ -5128,7 +5182,15 @@ def borrar_presupuesto_bonificaciones_foco(request):
 
 #------------------------AUXILIO EDUCACION----------------------
 def auxilio_educacion(request):
-    return render(request, "presupuesto_nomina/auxilio_educacion.html")
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+    }
+    return render(request, "presupuesto_nomina/auxilio_educacion.html", context)
 
 def obtener_presupuesto_auxilio_educacion(request):
     auxilio_educacion = list(PresupuestoAuxilioEducacion.objects.values())
@@ -5254,7 +5316,15 @@ def borrar_presupuesto_auxilio_educacion(request):
 
 #------------------------BONOS KYROVET----------------------
 def bonos_kyrovet(request):
-    return render(request, "presupuesto_nomina/bonos_kyrovet.html")
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+    }
+    return render(request, "presupuesto_nomina/bonos_kyrovet.html", context)
 
 def obtener_presupuesto_bonos_kyrovet(request):
     bonos_kyrovet = list(PresupuestoBonosKyrovet.objects.values())

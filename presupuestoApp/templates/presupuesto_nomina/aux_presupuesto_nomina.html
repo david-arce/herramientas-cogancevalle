@@ -134,6 +134,7 @@ $(document).ready(function() {
             { 
                 data: null,
                 defaultContent: `
+                        <button class="copiarFila" title="Copiar fila">📋</button>
                         <button class="duplicarFila" title="Duplicar fila">📑</button>
                         <button class="eliminarFila" title="Eliminar fila">❌</button>
                     `,
@@ -299,6 +300,17 @@ $(document).ready(function() {
         fixedHeader: true,
         autoWidth: false,
     });
+    // 🔹 Copiar fila al localStorage
+    $('#tempTable').on('click', '.copiarFila', function() {
+        let table = $('#tempTable').DataTable();
+        let rowData = table.row($(this).parents('tr')).data();
+
+        // Guardar en localStorage
+        localStorage.setItem('filaCopiadaNomina', JSON.stringify(rowData));
+
+        showToast("Fila copiada 📋 (lista para pegar en Comisiones)", "success");
+    });
+
     function seleccionarFila($row) {
             // Quitar selección previa
             $('#tempTable tbody tr').removeClass('fila-activa');

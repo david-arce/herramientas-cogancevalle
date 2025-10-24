@@ -42,6 +42,7 @@
             Subir Presupuesto auxilio movilidad
         </button>
     </form>
+    <button id="pegarFila">📋 Pegar fila copiada</button>
     <!-- 🔹 Filtros con búsqueda interna -->
     <div class="filtros-container">
         <div class="filtro-box">
@@ -293,6 +294,22 @@ $(document).ready(function() {
     },
     paging: false,
     fixedHeader: true,
+    });
+    // 🔹 Pegar fila copiada desde localStorage (manteniendo todos los valores)
+    $('#pegarFila').on('click', function() {
+        let table = $('#tempTable').DataTable();
+        let filaCopiada = localStorage.getItem('filaCopiadaNomina');
+
+        if (filaCopiada) {
+            let data = JSON.parse(filaCopiada);
+
+            // Agregar la fila exactamente igual
+            table.row.add(data).draw(false);
+
+            showToast("Fila pegada desde Sueldos ✅", "success");
+        } else {
+            showToast("No hay fila copiada ⚠️", "error");
+        }
     });
     function seleccionarFila($row) {
             // Quitar selección previa
