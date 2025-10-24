@@ -2083,14 +2083,9 @@ def presupuestoNomina(request):
 
 def presupuesto_sueldos(request):
     # 🔹 Obtener valores únicos de ambas tablas
-    centros = set(PresupuestoSueldos.objects.values_list('centro', flat=True))
-    centros.update(PresupuestoAprendiz.objects.values_list('centro', flat=True))
-
-    areas = set(PresupuestoSueldos.objects.values_list('area', flat=True))
-    areas.update(PresupuestoAprendiz.objects.values_list('area', flat=True))
-
-    cargos = set(PresupuestoSueldos.objects.values_list('cargo', flat=True))
-    cargos.update(PresupuestoAprendiz.objects.values_list('cargo', flat=True))
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
 
     context = {
         'centros': sorted(list(filter(None, centros))),
@@ -2109,14 +2104,9 @@ def tabla_auxiliar_sueldos(request):
     incremento_salarial = parametros.incremento_salarial if parametros else 0
     salario = parametros.salario_minimo if parametros else 0
 
-    centros = set(PresupuestoSueldos.objects.values_list('centro', flat=True))
-    centros.update(PresupuestoAprendiz.objects.values_list('centro', flat=True))
-
-    areas = set(PresupuestoSueldos.objects.values_list('area', flat=True))
-    areas.update(PresupuestoAprendiz.objects.values_list('area', flat=True))
-
-    cargos = set(PresupuestoSueldos.objects.values_list('cargo', flat=True))
-    cargos.update(PresupuestoAprendiz.objects.values_list('cargo', flat=True))
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
 
     context = {
         'centros': sorted(list(filter(None, centros))),
@@ -2329,14 +2319,9 @@ def borrar_presupuesto_sueldos(request):
 # -------------------------------COMISIONES---------------------------------
 def comisiones(request):
     # 🔹 Obtener valores únicos de ambas tablas
-    centros = set(PresupuestoSueldos.objects.values_list('centro', flat=True))
-    centros.update(PresupuestoAprendiz.objects.values_list('centro', flat=True))
-
-    areas = set(PresupuestoSueldos.objects.values_list('area', flat=True))
-    areas.update(PresupuestoAprendiz.objects.values_list('area', flat=True))
-
-    cargos = set(PresupuestoSueldos.objects.values_list('cargo', flat=True))
-    cargos.update(PresupuestoAprendiz.objects.values_list('cargo', flat=True))
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
     
     context = {
         'centros': sorted(list(filter(None, centros))),
@@ -2353,7 +2338,17 @@ def tabla_auxiliar_comisiones(request):
     # obtener el incremento de comisiones desde la tabla auxiliar
     parametros = ParametrosPresupuestos.objects.first()
     incremento_comisiones = parametros.incremento_comisiones if parametros else 0
-    return render(request, "presupuesto_nomina/aux_comisiones.html", {'incrementoComisiones': incremento_comisiones})
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
+    
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+        'incrementoComisiones': incremento_comisiones,
+    }
+    return render(request, "presupuesto_nomina/aux_comisiones.html", context)
 
 def subir_presupuesto_comisiones(request):
     if request.method == "POST":
