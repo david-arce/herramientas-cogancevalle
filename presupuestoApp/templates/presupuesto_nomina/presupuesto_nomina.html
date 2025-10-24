@@ -28,7 +28,10 @@
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
         <button id="btnTabla">Ir a tabla auxiliar de sueldos</button>
         <button id="btnHome"> Inicio</button>
-        <button id="guardarBtn">Guardar cambios<span class="spinner" style="display:none; margin-left:8px;"></span></button>
+        <button id="guardarBtn" style="background-color:#28a745; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
+            Guardar Cambios
+            <span class="spinner" style="display:none; margin-left:8px;"></span>
+        </button>
         <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
             Borrar Presupuesto
         </button>
@@ -473,7 +476,7 @@
                     setTimeout(() => toast.remove(), 500); // eliminar después de animación
                 }, duration);
             }
-             // Guardar cambios
+            // Guardar cambios
             $('#guardarBtn').on('click', function() {
                 let $btn = $(this);
                 let $spinner = $btn.find('.spinner');

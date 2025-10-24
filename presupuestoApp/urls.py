@@ -164,7 +164,7 @@ urlpatterns = [
     path("guardar-bonificaciones-temp/", views.guardar_bonificaciones_temp, name="guardar_bonificaciones_temp"),
     path("borrar_presupuesto_bonificaciones/", views.borrar_presupuesto_bonificaciones, name="borrar_presupuesto_bonificaciones"),
     
-    # auxilio movilidad (tuberculina)
+    # auxilio bolsa consumibles
     path("bolsa_consumibles/", views.bolsa_consumibles, name="bolsa_consumibles"),
     path("obtener-presupuesto-bolsa_consumibles/", views.obtener_presupuesto_bolsa_consumibles, name="obtener_presupuesto_bolsa_consumibles"),
     path("tabla-auxiliar-bolsa_consumibles/", views.tabla_auxiliar_bolsa_consumibles, name="tabla_auxiliar_bolsa_consumibles"), # ruta para la tabla temporal del auxilio de movilidad
@@ -172,6 +172,7 @@ urlpatterns = [
     path("subir-presupuesto-bolsa_consumibles/", views.subir_presupuesto_bolsa_consumibles, name="subir_presupuesto_bolsa_consumibles"),
     path("cargar-bolsa_consumibles-base/", views.cargar_bolsa_consumibles_base, name="cargar_bolsa_consumibles_base"),
     path("guardar-bolsa_consumibles-temp/", views.guardar_bolsa_consumibles_temp, name="guardar_bolsa_consumibles_temp"),
+    path("guardar_bolsa_consumibles/", views.guardar_bolsa_consumibles, name="guardar_bolsa_consumibles"),
     path("borrar_presupuesto_bolsa_consumibles/", views.borrar_presupuesto_bolsa_consumibles, name="borrar_presupuesto_bolsa_consumibles"),
     
     # auxilio tbckit

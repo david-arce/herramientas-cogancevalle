@@ -307,10 +307,19 @@ $(document).ready(function() {
         let table = $('#tempTable').DataTable();
         let rowData = table.row($(this).parents('tr')).data();
 
+        // Crear un nuevo objeto con solo los campos necesarios
+        let filaReducida = {
+            cedula: rowData.cedula || "",
+            nombre: rowData.nombre || "",
+            centro: rowData.centro || "",
+            area: rowData.area || "",
+            cargo: rowData.cargo || "",
+            concepto: rowData.concepto || ""
+        };
         // Guardar en localStorage
-        localStorage.setItem('filaCopiadaNomina', JSON.stringify(rowData));
+        localStorage.setItem('filaCopiadaNomina', JSON.stringify(filaReducida));
 
-        showToast("Fila copiada 📋 (lista para pegar en Comisiones)", "success");
+        showToast("Fila copiada 📋", "success");
     });
 
     function seleccionarFila($row) {

@@ -4101,6 +4101,44 @@ def guardar_bolsa_consumibles_temp(request):
 
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
+def guardar_bolsa_consumibles(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            }
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoBolsaConsumibles(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoBolsaConsumibles.objects.all().delete()
+                PresupuestoBolsaConsumibles.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
 def obtener_bolsa_consumibles_temp(request):
     data = list(PresupuestoBolsaConsumiblesAux.objects.values())
     return JsonResponse(data, safe=False)
