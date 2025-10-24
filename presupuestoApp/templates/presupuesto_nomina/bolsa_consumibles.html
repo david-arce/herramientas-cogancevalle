@@ -392,14 +392,17 @@
                                 "enero","febrero","marzo","abril","mayo","junio",
                                 "julio","agosto","septiembre","octubre","noviembre","diciembre"
                             ].forEach(mes => {
-                                nueva[mes] = Math.round(data[mes] * factor);
+                                // mantener hasta 2 decimales
+                                let valor = parseFloat(data[mes]) * factor;
+                                nueva[mes] = parseFloat(valor.toFixed(2));
                             });
 
-                            // recalcular total
+                            // recalcular total manteniendo decimales
                             nueva["total"] = [
                                 "enero","febrero","marzo","abril","mayo","junio",
                                 "julio","agosto","septiembre","octubre","noviembre","diciembre"
                             ].reduce((a, k) => a + (parseFloat(nueva[k]) || 0), 0);
+                            nueva["total"] = parseFloat(nueva["total"].toFixed(2));
 
                             // --- 🔹 Actualizar Centro y Área según input ---
                             let conf = configuracionDistribucion[idx + 1];
