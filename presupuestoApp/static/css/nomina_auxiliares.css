@@ -184,14 +184,24 @@ button:disabled, .btn:disabled {
     background-color: #545b62;
 }
 
+/* Contenedor flex para los botones */
+.btn-group-tabla {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 /* Botones pequeños dentro de la tabla */
 .duplicarFila, .eliminarFila, .copiarFila {
     padding: 4px 8px;
     border-radius: 4px;
     font-size: 13px;
-    margin: 5px 2px;
     border: none;
+    cursor: pointer;
+    margin: 5px;
 }
+
+
 .duplicarFila {
     background-color: #17a2b8;
     color: white;

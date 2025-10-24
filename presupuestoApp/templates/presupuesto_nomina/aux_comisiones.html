@@ -305,6 +305,10 @@ $(document).ready(function() {
         if (filaCopiada) {
             let data = JSON.parse(filaCopiada);
 
+            // Reiniciar los valores de meses y total
+            let meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+            meses.forEach(m => data[m] = 0);
+            data.total = 0;
             // Agregar la fila exactamente igual
             table.row.add(data).draw(false);
 
