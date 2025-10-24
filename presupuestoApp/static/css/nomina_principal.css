@@ -144,11 +144,3 @@ table.dataTable thead th {
     padding-right: 20px !important;
 }
 
-/* 🔹 Reducir ancho de las columnas con selects */
-#presupuestoTable td:nth-child(2),
-#presupuestoTable th:nth-child(2),
-#presupuestoTable td:nth-child(3),
-#presupuestoTable th:nth-child(3) {
-    width: 170px; /* se ajusta a los selects */
-    text-align: left;
-}

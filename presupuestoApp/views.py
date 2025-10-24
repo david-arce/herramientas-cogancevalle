@@ -2092,14 +2092,10 @@ def presupuesto_sueldos(request):
     cargos = set(PresupuestoSueldos.objects.values_list('cargo', flat=True))
     cargos.update(PresupuestoAprendiz.objects.values_list('cargo', flat=True))
 
-    conceptos = set(PresupuestoSueldos.objects.values_list('concepto', flat=True))
-    conceptos.update(PresupuestoAprendiz.objects.values_list('concepto', flat=True))
-
     context = {
         'centros': sorted(list(filter(None, centros))),
         'areas': sorted(list(filter(None, areas))),
         'cargos': sorted(list(filter(None, cargos))),
-        'conceptos': sorted(list(filter(None, conceptos))),
     }
 
     return render(request, "presupuesto_nomina/presupuesto_nomina.html", context)
@@ -2109,11 +2105,28 @@ def obtener_nomina_temp(request):
     return JsonResponse(data, safe=False)
 
 def tabla_auxiliar_sueldos(request):
-    # obtener el incremento salarial desde la tabla auxiliar
     parametros = ParametrosPresupuestos.objects.first()
     incremento_salarial = parametros.incremento_salarial if parametros else 0
     salario = parametros.salario_minimo if parametros else 0
-    return render(request, "presupuesto_nomina/aux_presupuesto_nomina.html", {'incrementoSalarial': incremento_salarial, 'salarioMinimo': salario})
+
+    centros = set(PresupuestoSueldos.objects.values_list('centro', flat=True))
+    centros.update(PresupuestoAprendiz.objects.values_list('centro', flat=True))
+
+    areas = set(PresupuestoSueldos.objects.values_list('area', flat=True))
+    areas.update(PresupuestoAprendiz.objects.values_list('area', flat=True))
+
+    cargos = set(PresupuestoSueldos.objects.values_list('cargo', flat=True))
+    cargos.update(PresupuestoAprendiz.objects.values_list('cargo', flat=True))
+
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+        'incrementoSalarial': incremento_salarial,
+        'salarioMinimo': salario,
+    }
+
+    return render(request, "presupuesto_nomina/aux_presupuesto_nomina.html", context)
 
 def cargar_nomina_base(request):
     """
@@ -2902,7 +2915,22 @@ def borrar_presupuesto_medios_transporte(request):
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 # -------------------------------AUXILIO DE TRANSPORTE---------------------------------
 def auxilio_transporte(request):
-    return render(request, "presupuesto_nomina/auxilio_transporte.html")
+    # 🔹 Obtener valores únicos de ambas tablas
+    centros = set(PresupuestoSueldos.objects.values_list('centro', flat=True))
+    centros.update(PresupuestoAprendiz.objects.values_list('centro', flat=True))
+
+    areas = set(PresupuestoSueldos.objects.values_list('area', flat=True))
+    areas.update(PresupuestoAprendiz.objects.values_list('area', flat=True))
+
+    cargos = set(PresupuestoSueldos.objects.values_list('cargo', flat=True))
+    cargos.update(PresupuestoAprendiz.objects.values_list('cargo', flat=True))
+
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+    }
+    return render(request, "presupuesto_nomina/auxilio_transporte.html", context)
 
 def obtener_presupuesto_auxilio_transporte(request):
     auxilio_transporte = list(PresupuestoAuxilioTransporte.objects.values())
@@ -2992,6 +3020,45 @@ def guardar_auxilio_transporte_temp(request):
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+def guardar_auxilio_transporte(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto", "base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            }
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoAuxilioTransporte(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoAuxilioTransporte.objects.all().delete()
+                PresupuestoAuxilioTransporte.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
 
 def obtener_auxilio_transporte_temp(request):
     data = list(PresupuestoAuxilioTransporteAux.objects.values())
@@ -3093,7 +3160,22 @@ def borrar_presupuesto_auxilio_transporte(request):
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 # -------------------------------AYUDA AL TRANSPORTE---------------------------------
 def ayuda_transporte(request):
-    return render(request, "presupuesto_nomina/ayuda_transporte.html")
+    # 🔹 Obtener valores únicos de ambas tablas
+    centros = set(PresupuestoSueldos.objects.values_list('centro', flat=True))
+    centros.update(PresupuestoAprendiz.objects.values_list('centro', flat=True))
+
+    areas = set(PresupuestoSueldos.objects.values_list('area', flat=True))
+    areas.update(PresupuestoAprendiz.objects.values_list('area', flat=True))
+
+    cargos = set(PresupuestoSueldos.objects.values_list('cargo', flat=True))
+    cargos.update(PresupuestoAprendiz.objects.values_list('cargo', flat=True))
+
+    context = {
+        'centros': sorted(list(filter(None, centros))),
+        'areas': sorted(list(filter(None, areas))),
+        'cargos': sorted(list(filter(None, cargos))),
+    }
+    return render(request, "presupuesto_nomina/ayuda_transporte.html", context)
 
 def obtener_presupuesto_ayuda_transporte(request):
     ayuda_transporte = list(PresupuestoAyudaTransporte.objects.values())
@@ -3183,6 +3265,45 @@ def guardar_ayuda_transporte_temp(request):
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+def guardar_ayuda_transporte(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto", "base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            }
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoAyudaTransporte(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoAyudaTransporte.objects.all().delete()
+                PresupuestoAyudaTransporte.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
 
 def obtener_ayuda_transporte_temp(request):
     data = list(PresupuestoAyudaTransporteAux.objects.values())

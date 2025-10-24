@@ -28,8 +28,7 @@
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
         <button id="btnTabla">Ir a tabla auxiliar de sueldos</button>
         <button id="btnHome"> Inicio</button>
-        <button id="guardarBtn">Guardar cambios<span class="spinner" style="display:none; margin-left:8px;"></span>
-        </button>
+        <button id="guardarBtn">Guardar cambios<span class="spinner" style="display:none; margin-left:8px;"></span></button>
         <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
             Borrar Presupuesto
         </button>
@@ -313,20 +312,10 @@
                         $row.find('td:eq(5)').html(selectCargo);
                     }
 
-                    if (!$row.find('.select-concepto').length) {
-                        let selectConcepto = `<select class="select-concepto select2">
-                            {% for c in conceptos %}
-                                <option value="{{ c|escape }}">{{ c }}</option>
-                            {% endfor %}
-                        </select>`;
-                        $row.find('td:eq(6)').html(selectConcepto);
-                    }
-
                     // Asignar el valor actual
                     $row.find('.select-centro').val(data.centro);
                     $row.find('.select-area').val(data.area);
                     $row.find('.select-cargo').val(data.cargo);
-                    $row.find('.select-concepto').val(data.concepto);
 
                     // Activar select2
                     $row.find('.select2').select2({
@@ -342,7 +331,6 @@
                         updatedData.centro = $row.find('.select-centro').val();
                         updatedData.area = $row.find('.select-area').val();
                         updatedData.cargo = $row.find('.select-cargo').val();
-                        updatedData.concepto = $row.find('.select-concepto').val();
                         table.row($row).data(updatedData).invalidate().draw(false);
                     });
                 });

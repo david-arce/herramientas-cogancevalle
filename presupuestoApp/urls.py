@@ -99,6 +99,7 @@ urlpatterns = [
     path("subir-presupuesto-auxilio-transporte/", views.subir_presupuesto_auxilio_transporte, name="subir_presupuesto_auxilio_transporte"),
     path("cargar-auxilio-transporte-base/", views.cargar_auxilio_transporte_base, name="cargar_auxilio_transporte_base"),
     path("guardar-auxilio-transporte-temp/", views.guardar_auxilio_transporte_temp, name="guardar_auxilio_transporte_temp"),
+    path("guardar_auxilio_transporte/", views.guardar_auxilio_transporte, name="guardar_auxilio_transporte"),
     path("borrar_presupuesto_auxilio_transporte/", views.borrar_presupuesto_auxilio_transporte, name="borrar_presupuesto_auxilio_transporte"),
     
     # medios transporte
@@ -120,6 +121,7 @@ urlpatterns = [
     path("subir-presupuesto-ayuda-transporte/", views.subir_presupuesto_ayuda_transporte, name="subir_presupuesto_ayuda_transporte"),
     path("cargar-ayuda-transporte-base/", views.cargar_ayuda_transporte_base, name="cargar_ayuda_transporte_base"),
     path("guardar-ayuda-transporte-temp/", views.guardar_ayuda_transporte_temp, name="guardar_ayuda_transporte_temp"),
+    path("guardar-ayuda-transporte/", views.guardar_ayuda_transporte, name="guardar_ayuda_transporte"),
     path("borrar_presupuesto_ayuda_transporte/", views.borrar_presupuesto_ayuda_transporte, name="borrar_presupuesto_ayuda_transporte"),
     
     # cesantias
