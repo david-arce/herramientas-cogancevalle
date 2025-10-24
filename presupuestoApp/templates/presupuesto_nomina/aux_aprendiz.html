@@ -10,6 +10,14 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <!-- Select2 (para búsqueda dentro de select) -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <!-- 🔹 FixedHeader CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
+    <!-- 🔹 FixedHeader JS -->
+    <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
+
     <link rel="stylesheet" href="{% static 'css/nomina_auxiliares.css' %}">
 </head>
 <body>
@@ -182,7 +190,8 @@ $(document).ready(function() {
             }
         ],
         paging: false,
-        
+        fixedHeader: true,
+        autoWidth: false,
     });
     function seleccionarFila($row) {
             // Quitar selección previa

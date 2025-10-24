@@ -4728,24 +4728,14 @@ def borrar_presupuesto_intereses_cesantias(request):
 
 #----------------------------APRENDIZ------------------
 def aprendiz(request):
-    # 🔹 Obtener valores únicos de ambas tablas
-    centros = set(PresupuestoSueldos.objects.values_list('centro', flat=True))
-    centros.update(PresupuestoAprendiz.objects.values_list('centro', flat=True))
-
-    areas = set(PresupuestoSueldos.objects.values_list('area', flat=True))
-    areas.update(PresupuestoAprendiz.objects.values_list('area', flat=True))
-
-    cargos = set(PresupuestoSueldos.objects.values_list('cargo', flat=True))
-    cargos.update(PresupuestoAprendiz.objects.values_list('cargo', flat=True))
-
-    conceptos = set(PresupuestoSueldos.objects.values_list('concepto', flat=True))
-    conceptos.update(PresupuestoAprendiz.objects.values_list('concepto', flat=True))
+    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
+    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
+    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
 
     context = {
         'centros': sorted(list(filter(None, centros))),
         'areas': sorted(list(filter(None, areas))),
         'cargos': sorted(list(filter(None, cargos))),
-        'conceptos': sorted(list(filter(None, conceptos))),
     }
     return render(request, "presupuesto_nomina/aprendiz.html", context)
 

@@ -209,6 +209,46 @@
 
     <script>
         
+        // --- Insertar nuevo cargo ---
+        document.getElementById("btnAgregarCargo").addEventListener("click", function () {
+            const nombreCargo = document.getElementById("nuevoCargo").value.trim();
+            if (!nombreCargo) {
+                alert("Debe ingresar un nombre de cargo");
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("action", "insertar_concepto");
+            formData.append("nombrecar", nombreCargo);
+
+            fetch("", {
+                method: "POST",
+                body: formData,
+                headers: {"X-Requested-With": "XMLHttpRequest", "X-CSRFToken": "{{ csrf_token }}"}
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("resultado").innerText = data.msg;
+                if (data.status === "ok") {
+                    document.getElementById("resultado").style.color = "green";
+
+                    // Agregar el nuevo cargo a la lista desplegable
+                    const select = document.getElementById("listaCargos");
+                    const option = document.createElement("option");
+                    option.value = nombreCargo;
+                    option.textContent = nombreCargo;
+                    select.appendChild(option);
+
+                    document.getElementById("nuevoCargo").value = "";
+                } else {
+                    document.getElementById("resultado").style.color = "red";
+                }
+            })
+            .catch(() => {
+                document.getElementById("resultado").innerText = "❌ Error al agregar el cargo";
+                document.getElementById("resultado").style.color = "red";
+            });
+        });
         // Convertir automáticamente a mayúsculas mientras se escribe
         const nuevoCargoInput = document.getElementById("nuevoCargo");
         nuevoCargoInput.addEventListener("input", function () {
