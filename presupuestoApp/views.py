@@ -5375,7 +5375,7 @@ def cargar_bonificaciones_foco_base(request):
     
     # 2️⃣ Insertar en la tabla de bonificaciones con enero = 220000 + IPC
     for emp in empleados_fijos:
-        enero_valor = 220000 * (1 + incrementoComisiones / 100)
+        enero_valor = 220000 * (1 + incrementoIpc / 100)
         PresupuestoBonificacionesFocoAux.objects.create(
             cedula=emp["cedula"],
             nombre=emp["nombre"],
