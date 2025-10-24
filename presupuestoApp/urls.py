@@ -132,6 +132,7 @@ urlpatterns = [
     path("subir-presupuesto-cesantias/", views.subir_presupuesto_cesantias, name="subir_presupuesto_cesantias"),
     path("cargar-cesantias-base/", views.cargar_cesantias_base, name="cargar_cesantias_base"),
     path("guardar-cesantias-temp/", views.guardar_cesantias_temp, name="guardar_cesantias_temp"),
+    path("guardar_cesantias/", views.guardar_cesantias, name="guardar_cesantias"),
     path("borrar_presupuesto_cesantias/", views.borrar_presupuesto_cesantias, name="borrar_presupuesto_cesantias"),
     
     # prima
@@ -142,6 +143,7 @@ urlpatterns = [
     path("subir-presupuesto-prima/", views.subir_presupuesto_prima, name="subir_presupuesto_prima"),
     path("cargar-prima-base/", views.cargar_prima_base, name="cargar_prima_base"),
     path("guardar-prima-temp/", views.guardar_prima_temp, name="guardar_prima_temp"),
+    path("guardar_prima/", views.guardar_prima, name="guardar_prima"),
     path("borrar_presupuesto_prima/", views.borrar_presupuesto_prima, name="borrar_presupuesto_prima"),
     
     # vacaciones
@@ -152,6 +154,7 @@ urlpatterns = [
     path("subir-presupuesto-vacaciones/", views.subir_presupuesto_vacaciones, name="subir_presupuesto_vacaciones"),
     path("cargar-vacaciones-base/", views.cargar_vacaciones_base, name="cargar_vacaciones_base"),
     path("guardar-vacaciones-temp/", views.guardar_vacaciones_temp, name="guardar_vacaciones_temp"),
+    path("guardar_vacaciones/", views.guardar_vacaciones, name="guardar_vacaciones"),
     path("borrar_presupuesto_vacaciones/", views.borrar_presupuesto_vacaciones, name="borrar_presupuesto_vacaciones"),
     
     # bonificaciones
@@ -183,6 +186,7 @@ urlpatterns = [
     path("subir-presupuesto-auxilio-TBCKIT/", views.subir_presupuesto_auxilio_TBCKIT, name="subir_presupuesto_auxilio_TBCKIT"),
     path("cargar-auxilio-TBCKIT-base/", views.cargar_auxilio_TBCKIT_base, name="cargar_auxilio_TBCKIT_base"),
     path("guardar-auxilio-TBCKIT-temp/", views.guardar_auxilio_TBCKIT_temp, name="guardar_auxilio_TBCKIT_temp"),
+    path("guardar_auxilio_TBCKIT/", views.guardar_auxilio_TBCKIT, name="guardar_auxilio_TBCKIT"),
     path("borrar_presupuesto_auxilio_TBCKIT/", views.borrar_presupuesto_auxilio_TBCKIT, name="borrar_presupuesto_auxilio_TBCKIT"),
     
     # seguridad social
@@ -203,6 +207,7 @@ urlpatterns = [
     path("subir-presupuesto-intereses-cesantias/", views.subir_presupuesto_intereses_cesantias, name="subir_presupuesto_intereses_cesantias"),
     path("cargar-intereses-cesantias-base/", views.cargar_intereses_cesantias_base, name="cargar_intereses_cesantias_base"),
     path("guardar-intereses-cesantias-temp/", views.guardar_intereses_cesantias_temp, name="guardar_intereses_cesantias_temp"),
+    path("guardar_intereses_cesantias/", views.guardar_intereses_cesantias, name="guardar_intereses_cesantias"),
     path("borrar_presupuesto_intereses_cesantias/", views.borrar_presupuesto_intereses_cesantias, name="borrar_presupuesto_intereses_cesantias"),
     
     # aprendiz
@@ -234,6 +239,7 @@ urlpatterns = [
     path("subir-presupuesto-auxilio-educacion/", views.subir_presupuesto_auxilio_educacion, name="subir_presupuesto_auxilio_educacion"),
     path("cargar-auxilio-educacion-base/", views.cargar_auxilio_educacion_base, name="cargar_auxilio_educacion_base"),
     path("guardar-auxilio-educacion-temp/", views.guardar_auxilio_educacion_temp, name="guardar_auxilio_educacion_temp"),
+    path("guardar_auxilio_educacion/", views.guardar_auxilio_educacion, name="guardar_auxilio_educacion"),
     path("borrar_presupuesto_auxilio_educacion/", views.borrar_presupuesto_auxilio_educacion, name="borrar_presupuesto_auxilio_educacion"),
     
     # bonos kyrovet

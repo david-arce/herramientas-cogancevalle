@@ -3442,6 +3442,44 @@ def guardar_cesantias_temp(request):
 
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
+def guardar_cesantias(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            }
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoCesantias(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoCesantias.objects.all().delete()
+                PresupuestoCesantias.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
 def obtener_cesantias_temp(request):
     data = list(PresupuestoCesantiasAux.objects.values())
     return JsonResponse(data, safe=False)
@@ -3585,7 +3623,7 @@ def subir_presupuesto_prima(request):
         "msg": "Método no permitido"
     }, status=405)
     
-def guardar_prima_temp(request):
+def guardar_prima(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body.decode("utf-8"))
@@ -3615,6 +3653,44 @@ def guardar_prima_temp(request):
             with transaction.atomic():
                 PresupuestoPrimaAux.objects.all().delete()
                 PresupuestoPrimaAux.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+def guardar_prima_temp(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            }
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoPrima(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoPrima.objects.all().delete()
+                PresupuestoPrima.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -3787,6 +3863,44 @@ def guardar_vacaciones_temp(request):
             with transaction.atomic():
                 PresupuestoVacacionesAux.objects.all().delete()
                 PresupuestoVacacionesAux.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+def guardar_vacaciones(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            }
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoVacaciones(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoVacaciones.objects.all().delete()
+                PresupuestoVacaciones.objects.bulk_create(registros)
 
             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
 
@@ -4281,6 +4395,44 @@ def guardar_auxilio_TBCKIT_temp(request):
 
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
+def guardar_auxilio_TBCKIT(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            }
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoAuxilioTBCKIT(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoAuxilioTBCKIT.objects.all().delete()
+                PresupuestoAuxilioTBCKIT.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
 def obtener_auxilio_TBCKIT_temp(request):
     data = list(PresupuestoAuxilioTCBKITAux.objects.values())
     return JsonResponse(data, safe=False)
@@ -4726,6 +4878,44 @@ def guardar_intereses_cesantias_temp(request):
 
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
+def guardar_intereses_cesantias(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            }
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoInteresesCesantias(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoInteresesCesantias.objects.all().delete()
+                PresupuestoInteresesCesantias.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
 def obtener_intereses_cesantias_temp(request):
     data = list(PresupuestoInteresesCesantiasAux.objects.values())
     return JsonResponse(data, safe=False)
@@ -5088,7 +5278,7 @@ def cargar_bonificaciones_foco_base(request):
     PresupuestoBonificacionesFocoAux.objects.all().delete()
 
     parametros = ParametrosPresupuestos.objects.first()
-    incrementoComisiones = parametros.incremento_comisiones if parametros else 0
+    incrementoIpc = parametros.incremento_ipc if parametros else 0
 
     
     # agrupamos por persona sumando los meses de enero a junio
@@ -5118,7 +5308,7 @@ def cargar_bonificaciones_foco_base(request):
         # Cálculo para enero usando total anual / 12
         if com["total"] > 0:
             # Ajustar cada mes según incrementoComisiones
-            incremento_factor = 1 + (incrementoComisiones / 100)
+            incremento_factor = 1 + (incrementoIpc / 100)
             enero_base = (com["enero"] or 0) / incremento_factor
             febrero_base = (com["febrero"] or 0) / incremento_factor
             marzo_base = (com["marzo"] or 0) / incremento_factor
@@ -5317,6 +5507,43 @@ def guardar_auxilio_educacion_temp(request):
 
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
+def guardar_auxilio_educacion(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+
+            # Definir los campos válidos en el modelo temporal
+            campos_validos = {
+                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+            }
+
+            registros = []
+            for row in data:
+                # Filtrar solo los campos válidos
+                row_filtrado = {k: row.get(k) for k in campos_validos}
+
+                # Reemplazar None por 0 en numéricos
+                for mes in [
+                    "enero","febrero","marzo","abril","mayo",
+                    "junio","julio","agosto","septiembre","octubre",
+                    "noviembre","diciembre","total"
+                ]:
+                    if row_filtrado.get(mes) in [None, ""]:
+                        row_filtrado[mes] = 0
+
+                registros.append(PresupuestoAuxilioEducacion(**row_filtrado))
+
+            # Inserción masiva optimizada
+            with transaction.atomic():
+                PresupuestoAuxilioEducacion.objects.all().delete()
+                PresupuestoAuxilioEducacion.objects.bulk_create(registros)
+
+            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
 def obtener_auxilio_educacion_temp(request):
     data = list(PresupuestoAuxilioEducacionAux.objects.values())
