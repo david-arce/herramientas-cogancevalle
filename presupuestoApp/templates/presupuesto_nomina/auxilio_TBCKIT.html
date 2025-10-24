@@ -53,24 +53,25 @@
         </button>
     </div>
     <!-- 🔹 Filtros con búsqueda interna -->
+    <!-- 🔹 Filtros con búsqueda interna -->
     <div class="filtros-container">
         <div class="filtro-box">
             <label for="filtroNombre">Nombre:</label>
-            <select id="filtroNombre">
+            <select id="filtroNombre" multiple>
                 <option value="">Todos</option>
             </select>
         </div>
 
         <div class="filtro-box">
             <label for="filtroCentro">Centro:</label>
-            <select id="filtroCentro">
+            <select id="filtroCentro" multiple>
                 <option value="">Todos</option>
             </select>
         </div>
 
         <div class="filtro-box">
             <label for="filtroArea">Área:</label>
-            <select id="filtroArea">
+            <select id="filtroArea" multiple>
                 <option value="">Todos</option>
             </select>
         </div>
@@ -265,8 +266,15 @@
     
                         // Filtrar DataTable cuando cambie el valor
                         $select.on('change', function() {
-                            const val = $.fn.dataTable.util.escapeRegex($(this).val());
-                            api.column(colIndex).search(val ? '^' + val + '$' : '', true, false).draw();
+                            const valores = $(this).val(); // array con los seleccionados
+                            if (valores && valores.length > 0) {
+                                // 🔹 Crear regex OR para múltiples valores seleccionados
+                                const regex = valores.map(v => `^${$.fn.dataTable.util.escapeRegex(v)}$`).join('|');
+                                api.column(colIndex).search(regex, true, false).draw();
+                            } else {
+                                // 🔹 Sin filtro (mostrar todos)
+                                api.column(colIndex).search('', true, false).draw();
+                            }
                         });
                     }
     
