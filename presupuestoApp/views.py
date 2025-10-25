@@ -4597,7 +4597,7 @@ def guardar_seguridad_social_temp(request):
 
             # Definir los campos válidos en el modelo temporal
             campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
+                "nombre", "centro", "area", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
             }
 
             registros = []

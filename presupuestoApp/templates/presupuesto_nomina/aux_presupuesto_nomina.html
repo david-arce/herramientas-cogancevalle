@@ -718,12 +718,11 @@ $(document).ready(function() {
         showToast("Cálculo aplicado a filas seleccionadas ✅", "success");
     }
 
-
     // Configurar CSRF para AJAX
     function getCSRFToken() {
         return document.querySelector('meta[name="csrf-token"]').getAttribute("content");
     }
-
+    
     $.ajaxSetup({
         beforeSend: function(xhr, settings) {
             if (!(/^GET|HEAD|OPTIONS|TRACE$/i.test(settings.type))) {
@@ -743,7 +742,7 @@ $(document).ready(function() {
         $btn.prop("disabled", true);
 
         $.ajax({
-            url: "{% url 'guardar_nomina_temp' %}",
+            url: "{% url 'guardar_seguridad_social_temp' %}",
             type: "POST",
             data: JSON.stringify(data),
             contentType: "application/json",
