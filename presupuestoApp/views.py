@@ -33,6 +33,11 @@ def exportar_excel_nomina(request):
     bonificaciones = list(PresupuestoBonificaciones.objects.values())
     auxilio_movilidad = list(PresupuestoBolsaConsumibles.objects.values())
     aprendiz = list(PresupuestoAprendiz.objects.values())
+    auxilio_TBCKIT = list(PresupuestoAuxilioTBCKIT.objects.values())
+    auxilio_educacion = list(PresupuestoAuxilioEducacion.objects.values())
+    bonificaciones_foco = list(PresupuestoBonificacionesFoco.objects.values())
+    bonos_kyrovet = list(PresupuestoBonosKyrovet.objects.values())
+    seguridad_social = list(PresupuestoSeguridadSocial.objects.values())
 
     # Crear DataFrames con columna de origen
     def prepare_df(data, origen):
@@ -57,10 +62,15 @@ def exportar_excel_nomina(request):
     df_bonificaciones = prepare_df(bonificaciones, "Bonificaciones")
     df_auxilio_movilidad = prepare_df(auxilio_movilidad, "Auxilio Movilidad")
     df_aprendiz = prepare_df(aprendiz, "Aprendiz")
+    df_auxilio_TBCKIT = prepare_df(auxilio_TBCKIT, "Auxilio Movilidad")
+    df_auxilio_educacion = prepare_df(auxilio_educacion, "Auxilio Educación")
+    df_bonificaciones_foco = prepare_df(bonificaciones_foco, "Bonificaciones Foco")
+    df_bonos_kyrovet = prepare_df(bonos_kyrovet, "Bonos Kyrovet")
+    df_seguridad_social = prepare_df(seguridad_social, "Seguridad Social")
 
     # Concatenar todos en un solo DataFrame
     df_final = pd.concat(
-        [df_nomina, df_comisiones, df_horas_extra, df_auxilio_transporte, df_medios_transporte, df_ayuda_transporte, df_cesantias, df_intereses_cesantias, df_prima, df_vacaciones, df_bonificaciones, df_auxilio_movilidad, df_aprendiz],
+        [df_nomina, df_comisiones, df_horas_extra, df_auxilio_transporte, df_medios_transporte, df_ayuda_transporte, df_cesantias, df_intereses_cesantias, df_prima, df_vacaciones, df_bonificaciones, df_auxilio_movilidad, df_aprendiz, df_auxilio_TBCKIT, df_auxilio_educacion, df_bonificaciones_foco, df_bonos_kyrovet, df_seguridad_social],
         ignore_index=True
     )
 
