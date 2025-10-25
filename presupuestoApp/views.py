@@ -3643,7 +3643,7 @@ def subir_presupuesto_prima(request):
         "msg": "Método no permitido"
     }, status=405)
     
-def guardar_prima(request):
+def guardar_prima_temp(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body.decode("utf-8"))
@@ -3681,7 +3681,7 @@ def guardar_prima(request):
 
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
-def guardar_prima_temp(request):
+def guardar_prima(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body.decode("utf-8"))
