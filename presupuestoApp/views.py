@@ -3733,9 +3733,9 @@ def cargar_prima_base(request):
     PresupuestoPrimaAux.objects.all().delete()
 
     # Tomo todos los empleados desde nómina (puede ser tu base principal)
-    empleados = PresupuestoSueldos.objects.all()
+    empleados = PresupuestoSueldosAux.objects.all()
     # Tomo también los aprendices
-    aprendices = PresupuestoAprendiz.objects.filter(concepto="SALARIO APRENDIZ REFORMA")
+    aprendices = PresupuestoAprendizAux.objects.filter(concepto="SALARIO APRENDIZ REFORMA")
     # Uno empleados y aprendices en una sola lista
     personas = list(empleados) + list(aprendices)
     for emp in personas:
@@ -3747,25 +3747,25 @@ def cargar_prima_base(request):
             data_meses[mes] += getattr(emp, mes, 0)
 
         # Sumo de comisiones
-        comision = PresupuestoComisiones.objects.filter(cedula=emp.cedula).first()
+        comision = PresupuestoComisionesAux.objects.filter(cedula=emp.cedula).first()
         if comision:
             for mes in meses:
                 data_meses[mes] += getattr(comision, mes, 0)
                 
         # Sumo de medios de transporte
-        medio = PresupuestoMediosTransporte.objects.filter(cedula=emp.cedula).first()
+        medio = PresupuestoMediosTransporteAux.objects.filter(cedula=emp.cedula).first()
         if medio:
             for mes in meses:
                 data_meses[mes] += getattr(medio, mes, 0)
 
         # Sumo de auxilio transporte
-        aux = PresupuestoAuxilioTransporte.objects.filter(cedula=emp.cedula).first()
+        aux = PresupuestoAuxilioTransporteAux.objects.filter(cedula=emp.cedula).first()
         if aux:
             for mes in meses:
                 data_meses[mes] += getattr(aux, mes, 0)
 
         # Sumo de horas extra
-        extra = PresupuestoHorasExtra.objects.filter(cedula=emp.cedula).first()
+        extra = PresupuestoHorasExtraAux.objects.filter(cedula=emp.cedula).first()
         if extra:
             for mes in meses:
                 data_meses[mes] += getattr(extra, mes, 0)
