@@ -4647,6 +4647,8 @@ def cargar_seguridad_social_base(request):
         (item["nombre_cen"], item["nomcosto"]): (item["promedio_arl"] / 100.0)
         for item in promedios_arl if item["promedio_arl"] is not None
     }
+    # tomar 2 decimales
+    arl_porcentajes = {key: round(value, 4) for key, value in arl_porcentajes.items()}
     
     # imprimir el diccionario
     print(arl_porcentajes)
@@ -4669,6 +4671,7 @@ def cargar_seguridad_social_base(request):
     # Salario mínimo (ajusta según el año correspondiente)
     parametros = ParametrosPresupuestos.objects.first()
     salarioIncremento = parametros.salario_minimo + (parametros.salario_minimo * (parametros.incremento_salarial / 100))
+    print("Salario con incremento:", salarioIncremento)
     TOPE = (salarioIncremento) * 10
     
     # Limpio tabla antes de recalcular
@@ -4678,48 +4681,45 @@ def cargar_seguridad_social_base(request):
     acumulados_generales = defaultdict(lambda: {mes: 0 for mes in meses})  # pensión, cajas, ARL, SENA
     acumulados_salud_icbf = defaultdict(lambda: {mes: 0 for mes in meses})  # solo > 10 SMMLV
     acumulados_aprendiz_salud = defaultdict(lambda: {mes: 0 for mes in meses}) # aprendices con salario aprendiz
-
+   
     empleados = PresupuestoSueldos.objects.all()
     aprendices = PresupuestoAprendiz.objects.all()
+    medios = PresupuestoMediosTransporte.objects.all()
+    comisiones = PresupuestoComisiones.objects.all()
+    horas_extra = PresupuestoHorasExtra.objects.all()
     
+    # Primero agrupar las bases de sueldos por centro y área
     for emp in empleados:
         key = (emp.centro, emp.area)
-
-        # Calcular base mensual del empleado (nomina + comision + medio + extra)
-        base_empleado = {mes: getattr(emp, mes, 0) for mes in meses}
-
-        # Comisiones
-        comision = PresupuestoComisiones.objects.filter(cedula=emp.cedula).first()
-        if comision:
-            for mes in meses:
-                base_empleado[mes] += getattr(comision, mes, 0)
-
-        # Medios de transporte
-        medio = PresupuestoMediosTransporte.objects.filter(cedula=emp.cedula).first()
-        if medio:
-            for mes in meses:
-                base_empleado[mes] += getattr(medio, mes, 0)
-
-        # Horas extra
-        extra = PresupuestoHorasExtra.objects.filter(cedula=emp.cedula).first()
-        if extra:
-            for mes in meses:
-                base_empleado[mes] += getattr(extra, mes, 0)
-
-        
-        # Sumar a los acumulados
-        # → siempre suman a pensión, cajas, ARL y SENA
-        for mes in meses:
-            acumulados_generales[key][mes] += base_empleado[mes]
-
         salario_base = emp.salario_base
         nuevo_salario = salario_base + (salario_base * (parametros.incremento_salarial / 100))
-        
-        # → si excede los 10 SMMLV, también suma a salud e ICBF
-        if nuevo_salario > TOPE:
-            for mes in meses:
-                acumulados_salud_icbf[key][mes] += base_empleado[mes]
 
+        for mes in meses:
+            # Base mensual del sueldo
+            base_mes = getattr(emp, mes, 0)
+            acumulados_generales[key][mes] += base_mes
+
+            if nuevo_salario > TOPE:
+                acumulados_salud_icbf[key][mes] += base_mes
+    
+    # Luego agrupar los medios de transporte por centro y área
+    for medio in medios:
+        key = (medio.centro, medio.area)
+        for mes in meses:
+            acumulados_generales[key][mes] += getattr(medio, mes, 0)
+    
+    # Luego agrupar las comisiones por centro y área
+    for comi in comisiones:
+        key = (comi.centro, comi.area)
+        for mes in meses:
+            acumulados_generales[key][mes] += getattr(comi, mes, 0)
+    
+    # Luego agrupar las horas extra por centro y área
+    for hora in horas_extra:
+        key = (hora.centro, hora.area)
+        for mes in meses:
+            acumulados_generales[key][mes] += getattr(hora, mes, 0)
+    
     # === APRENDICES (tabla aparte) ===
     for apr in aprendices:
         if apr.concepto == "SALARIO APRENDIZ":
@@ -4749,7 +4749,9 @@ def cargar_seguridad_social_base(request):
                         data = {mes: data[mes] + aprendiz_data[mes] for mes in meses}
                     else:
                         data = aprendiz_data
-
+                    # cambiar los valores (lo que esta en cero se deja en cero) por el salario minimo incremento
+                    data = {mes: (salarioIncremento if data[mes] > 0 else 0) for mes in meses}
+                     
                     # sobrescribo el porcentaje SOLO para aprendices
                     porcentaje = 0.125 
 
@@ -4767,15 +4769,16 @@ def cargar_seguridad_social_base(request):
             else:
                 data = data_meses
 
-            valores_mensuales = {mes: round(data[mes] * porcentaje, 2) for mes in meses}
+            valores_mensuales = {mes: data[mes] * porcentaje for mes in meses} 
             PresupuestoSeguridadSocialAux.objects.create(
                 nombre="SEGURIDAD SOCIAL",
                 centro=centro,
                 area=area,
                 concepto=concepto,
                 **valores_mensuales,
-                total=round(sum(valores_mensuales.values()), 2)
+                total=round(sum(valores_mensuales.values()))
             )
+    
     # === AGRUPAR POR ÁREA LOS DE ASISTENCIA TÉCNICA ===
     asistencia = (
         PresupuestoSeguridadSocialAux.objects
