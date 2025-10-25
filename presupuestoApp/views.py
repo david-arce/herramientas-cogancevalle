@@ -4539,11 +4539,9 @@ def borrar_presupuesto_auxilio_TBCKIT(request):
 def seguridad_social(request):
     centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
     areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
     context = {
         'centros': sorted(list(filter(None, centros))),
         'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
     }
     return render(request, "presupuesto_nomina/seguridad_social.html", context)
 
