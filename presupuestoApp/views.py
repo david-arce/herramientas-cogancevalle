@@ -4673,7 +4673,7 @@ def cargar_seguridad_social_base(request):
         "APORTE PENSIÓN": 0.12,               # 12%
         "APORTE SALUD": 0.085,                # 8.5%
         "APORTE CAJAS DE COMPENSACIÓN": 0.04, # 4%
-        "APORTE A.R.L": None,              # 0.931%
+        "APORTE A.R.L": None,              # 0.93%
         "APORTE SENA": 0.02,                  # 2%
         "APORTE I.C.B.F": 0.03                # 3%
     }
@@ -4681,7 +4681,7 @@ def cargar_seguridad_social_base(request):
     # Salario mínimo (ajusta según el año correspondiente)
     parametros = ParametrosPresupuestos.objects.first()
     salarioIncremento = parametros.salario_minimo + (parametros.salario_minimo * (parametros.incremento_salarial / 100))
-    print("Salario con incremento:", salarioIncremento)
+   
     TOPE = (salarioIncremento) * 10
     
     # Limpio tabla antes de recalcular
@@ -4697,50 +4697,72 @@ def cargar_seguridad_social_base(request):
     medios = PresupuestoMediosTransporte.objects.all()
     comisiones = PresupuestoComisiones.objects.all()
     horas_extra = PresupuestoHorasExtra.objects.all()
-    
+    bandera = False
     # Primero agrupar las bases de sueldos por centro y área
     for emp in empleados:
         key = (emp.centro, emp.area)
         salario_base = emp.salario_base
         nuevo_salario = salario_base + (salario_base * (parametros.incremento_salarial / 100))
-
         for mes in meses:
             # Base mensual del sueldo
             base_mes = getattr(emp, mes, 0)
             acumulados_generales[key][mes] += base_mes
 
             if nuevo_salario > TOPE:
+                bandera = True
                 acumulados_salud_icbf[key][mes] += base_mes
     
     # Luego agrupar los medios de transporte por centro y área
     for medio in medios:
+        cc = medio.cedula
         key = (medio.centro, medio.area)
         for mes in meses:
             acumulados_generales[key][mes] += getattr(medio, mes, 0)
+           
+            if bandera and cc == "31793592":
+                acumulados_salud_icbf[key][mes] += getattr(medio, mes, 0)
     
     # Luego agrupar las comisiones por centro y área
     for comi in comisiones:
+        cc = comi.cedula
         key = (comi.centro, comi.area)
         for mes in meses:
             acumulados_generales[key][mes] += getattr(comi, mes, 0)
+            if bandera and cc == "31793592":
+                acumulados_salud_icbf[key][mes] += getattr(comi, mes, 0)
     
     # Luego agrupar las horas extra por centro y área
     for hora in horas_extra:
+        cc = hora.cedula
         key = (hora.centro, hora.area)
         for mes in meses:
             acumulados_generales[key][mes] += getattr(hora, mes, 0)
+            if bandera and cc == "31793592":
+                acumulados_salud_icbf[key][mes] += getattr(hora, mes, 0)
     
+    # print("acumulados icbf:", acumulados_salud_icbf)
     # === APRENDICES (tabla aparte) ===
+    # cambiar los valores (lo que esta en cero se deja en cero) por el salario minimo incremento
     for apr in aprendices:
+        for mes in meses:
+            if getattr(apr, mes, 0) > 0:
+                setattr(apr, mes, salarioIncremento)
+    
+    for apr in aprendices:
+        cc = apr.cedula
         if apr.concepto == "SALARIO APRENDIZ":
             key = (apr.centro, apr.area)
             for mes in meses:
                 acumulados_aprendiz_salud[key][mes] += getattr(apr, mes, 0)
+                if bandera and cc == "31793592":
+                    acumulados_salud_icbf[key][mes] += getattr(apr, mes, 0)
         if apr.concepto == "SALARIO APRENDIZ REFORMA":
             # además suman a todos los aportes (como parte de la base general)
             key = (apr.centro, apr.area)
             for mes in meses:
                 acumulados_generales[key][mes] += getattr(apr, mes, 0)
+                if bandera and cc == "31793592":
+                    acumulados_salud_icbf[key][mes] += getattr(apr, mes, 0)
 
     # Crear registros en la tabla
     for (centro, area), data_meses in acumulados_generales.items():
@@ -4759,9 +4781,6 @@ def cargar_seguridad_social_base(request):
                         data = {mes: data[mes] + aprendiz_data[mes] for mes in meses}
                     else:
                         data = aprendiz_data
-                    # cambiar los valores (lo que esta en cero se deja en cero) por el salario minimo incremento
-                    data = {mes: (salarioIncremento if data[mes] > 0 else 0) for mes in meses}
-                     
                     # sobrescribo el porcentaje SOLO para aprendices
                     porcentaje = 0.125 
 
@@ -4775,7 +4794,7 @@ def cargar_seguridad_social_base(request):
                     aprendiz_data = acumulados_aprendiz_salud[(centro, area)]
                     data = {mes: data[mes] + aprendiz_data[mes] for mes in meses}
                 # aquí reemplazamos el porcentaje fijo con el promedio real
-                porcentaje = arl_porcentajes.get((centro, area), 0.00931)
+                porcentaje = arl_porcentajes.get((centro, area), 0.0093)
             else:
                 data = data_meses
 
