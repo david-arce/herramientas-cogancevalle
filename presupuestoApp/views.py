@@ -95,19 +95,19 @@ def dashboard_home(request):
 
 def exportar_excel_presupuestos(request):
     # Obtener datos de cada tabla
-    tecnologia = PresupuestoTecnologia.objects.values()
-    servicios_tecnicos = PresupuestoServiciosTecnicos.objects.values()
-    logistica = PresupuestoLogistica.objects.values()
-    gestion_riesgos = PresupuestoGestionRiesgos.objects.values()
-    gh = PresupuestoGH.objects.values()
-    almacen_tulua = PresupuestoAlmacenTulua.objects.values()
-    almacen_buga = PresupuestoAlmacenBuga.objects.values()
-    almacen_cartago = PresupuestoAlmacenCartago.objects.values()
-    almacen_cali = PresupuestoAlmacenCali.objects.values()
-    comunicaciones = PresupuestoComunicaciones.objects.values()
-    comercial_costos = PresupuestoComercialCostos.objects.values()
-    contabilidad = PresupuestoContabilidad.objects.values()
-    gerencia = PresupuestoGerencia.objects.values()
+    tecnologia = PresupuestotecnologiaAprobado.objects.values()
+    servicios_tecnicos = PresupuestoServiciosTecnicosAprobado.objects.values()
+    logistica = PresupuestoLogisticaAprobado.objects.values()
+    gestion_riesgos = PresupuestoGestionRiesgosAprobado.objects.values()
+    gh = PresupuestoGHAprobado.objects.values()
+    almacen_tulua = PresupuestoAlmacenTuluaAprobado.objects.values()
+    almacen_buga = PresupuestoAlmacenBugaAprobado.objects.values()
+    almacen_cartago = PresupuestoAlmacenCartagoAprobado.objects.values()
+    almacen_cali = PresupuestoAlmacenCaliAprobado.objects.values()
+    comunicaciones = PresupuestoComunicacionesAprobado.objects.values()
+    comercial_costos = PresupuestoComercialCostosAprobado.objects.values()
+    contabilidad = PresupuestoContabilidadAprobado.objects.values()
+    gerencia = PresupuestoGerenciaAprobado.objects.values()
     
     # filtrar por ultima version todas las tablas
     tecnologia = tecnologia.filter(version=tecnologia.aggregate(Max('version'))['version__max'])
