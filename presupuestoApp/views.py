@@ -1490,7 +1490,7 @@ def obtener_presupuesto_centro_segmento_costos(request):
 def vista_presupuesto_centro_segmento_costos(request):
     return render(request, 'presupuesto_comercial/presupuesto_centro_segmento_costos.html')
 
-#----------------PRESUPUESTO COMERCIAL-----------------------
+#----------------PRESUPUESTO COMERCIAL PRINCIPAL-----------------------
 def aux_presupuesto_comercial_costos():
     bd2020 = BdVentas2020.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
     bd2021 = BdVentas2021.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
@@ -3506,9 +3506,9 @@ def cargar_cesantias_base(request):
     PresupuestoCesantiasAux.objects.all().delete()
 
     # Tomo todos los empleados desde nómina (puede ser tu base principal)
-    empleados = PresupuestoSueldos.objects.all()
+    empleados = PresupuestoSueldosAux.objects.all()
     # Tomo también los aprendices
-    aprendices = PresupuestoAprendiz.objects.filter(concepto="SALARIO APRENDIZ REFORMA")
+    aprendices = PresupuestoAprendizAux.objects.filter(concepto="SALARIO APRENDIZ REFORMA")
     print(aprendices)
     # # Uno empleados y aprendices en una sola lista
     personas = list(empleados) + list(aprendices)
@@ -3517,37 +3517,37 @@ def cargar_cesantias_base(request):
         data_meses = {mes: 0 for mes in meses}
 
         # Sumo de nómina
-        nomina = PresupuestoSueldos.objects.filter(cedula=emp.cedula).first()
+        nomina = PresupuestoSueldosAux.objects.filter(cedula=emp.cedula).first()
         if nomina:
             for mes in meses:
                 data_meses[mes] += getattr(nomina, mes, 0)
         
         # Sumo de comisiones
-        comision = PresupuestoComisiones.objects.filter(cedula=emp.cedula).first()
+        comision = PresupuestoComisionesAux.objects.filter(cedula=emp.cedula).first()
         if comision:
             for mes in meses:
                 data_meses[mes] += getattr(comision, mes, 0)
 
         # Sumo de medios de transporte
-        medio = PresupuestoMediosTransporte.objects.filter(cedula=emp.cedula).first()
+        medio = PresupuestoMediosTransporteAux.objects.filter(cedula=emp.cedula).first()
         if medio:
             for mes in meses:
                 data_meses[mes] += getattr(medio, mes, 0)
 
         # Sumo de auxilio transporte
-        aux = PresupuestoAuxilioTransporte.objects.filter(cedula=emp.cedula).first()
+        aux = PresupuestoAuxilioTransporteAux.objects.filter(cedula=emp.cedula).first()
         if aux:
             for mes in meses:
                 data_meses[mes] += getattr(aux, mes, 0)
 
         # Sumo de horas extra
-        extra = PresupuestoHorasExtra.objects.filter(cedula=emp.cedula).first()
+        extra = PresupuestoHorasExtraAux.objects.filter(cedula=emp.cedula).first()
         if extra:
             for mes in meses:
                 data_meses[mes] += getattr(extra, mes, 0)
                 
         # Sumo de aprendices
-        aprendiz = PresupuestoAprendiz.objects.filter(cedula=emp.cedula).first()
+        aprendiz = PresupuestoAprendizAux.objects.filter(cedula=emp.cedula).first()
         if aprendiz:
             for mes in meses:
                 data_meses[mes] += getattr(aprendiz, mes, 0)
@@ -3963,9 +3963,9 @@ def cargar_vacaciones_base(request):
     PresupuestoVacacionesAux.objects.all().delete()
 
     # Tomo todos los empleados desde nómina (puede ser tu base principal)
-    empleados = PresupuestoSueldos.objects.all()
+    empleados = PresupuestoSueldosAux.objects.all()
     # Tomo también los aprendices
-    aprendices = PresupuestoAprendiz.objects.filter(concepto="SALARIO APRENDIZ REFORMA")
+    aprendices = PresupuestoAprendizAux.objects.filter(concepto="SALARIO APRENDIZ REFORMA")
     # Uno empleados y aprendices en una sola lista
     personas = list(empleados) + list(aprendices)
     for emp in personas:
@@ -3977,13 +3977,13 @@ def cargar_vacaciones_base(request):
             data_meses[mes] += getattr(emp, mes, 0)
 
         # Sumo de comisiones
-        comision = PresupuestoComisiones.objects.filter(cedula=emp.cedula).first()
+        comision = PresupuestoComisionesAux.objects.filter(cedula=emp.cedula).first()
         if comision:
             for mes in meses:
                 data_meses[mes] += getattr(comision, mes, 0)
                 
         # Sumo de medios de transporte
-        medio = PresupuestoMediosTransporte.objects.filter(cedula=emp.cedula).first()
+        medio = PresupuestoMediosTransporteAux.objects.filter(cedula=emp.cedula).first()
         if medio:
             for mes in meses:
                 data_meses[mes] += getattr(medio, mes, 0)
@@ -4172,7 +4172,7 @@ def cargar_bonificaciones_base(request):
     PresupuestoBonificacionesAux.objects.all().delete()
 
     # Tomo todos los empleados desde nómina (puede ser tu base principal)
-    empleados = PresupuestoSueldos.objects.all()
+    empleados = PresupuestoSueldosAux.objects.all()
 
     for emp in empleados:
         # Inicializo acumuladores por mes
@@ -5060,7 +5060,7 @@ def cargar_intereses_cesantias_base(request):
     # Limpiar tabla auxiliar antes de recalcular
     PresupuestoInteresesCesantiasAux.objects.all().delete()
 
-    cesantias_qs = PresupuestoCesantias.objects.all()
+    cesantias_qs = PresupuestoCesantiasAux.objects.all()
 
     for reg in cesantias_qs:
         cesantias_base = [getattr(reg, m) or 0 for m in meses]
