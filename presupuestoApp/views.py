@@ -49,7 +49,7 @@ def exportar_excel_nomina(request):
                 df[col] = df[col].dt.tz_localize(None)
         return df
 
-    df_nomina = prepare_df(nomina, "Nómina")
+    df_nomina = prepare_df(nomina, "Nomina")
     df_comisiones = prepare_df(comisiones, "Comisiones")
     df_horas_extra = prepare_df(horas_extra, "Horas Extra")
     df_auxilio_transporte = prepare_df(auxlio_transporte, "Auxilio Transporte")
@@ -189,9 +189,12 @@ def exportar_nomina_vertical(request):
         df = pd.DataFrame(data)
         if not df.empty:
             df["origen"] = origen
+            # asegurar que no haya datetime con timezone
+            for col in df.select_dtypes(include=["datetimetz"]).columns:
+                df[col] = df[col].dt.tz_localize(None)
         return df
     
-    df_nomina = prepare_df(nomina, "Nómina")
+    df_nomina = prepare_df(nomina, "Sueldos")
     df_comisiones = prepare_df(comisiones, "Comisiones")
     df_horas_extra = prepare_df(horas_extra, "Horas Extra")
     df_auxilio_transporte = prepare_df(auxlio_transporte, "Auxilio Transporte")
