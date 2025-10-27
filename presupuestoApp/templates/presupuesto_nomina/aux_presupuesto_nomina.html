@@ -742,7 +742,7 @@ $(document).ready(function() {
         $btn.prop("disabled", true);
 
         $.ajax({
-            url: "{% url 'guardar_seguridad_social_temp' %}",
+            url: "{% url 'guardar_nomina_temp' %}",
             type: "POST",
             data: JSON.stringify(data),
             contentType: "application/json",

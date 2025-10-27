@@ -20,6 +20,7 @@ urlpatterns = [
     path('guardar-presupuesto-general-ventas/', views.guardar_presupuesto_general_ventas, name='guardar_presupuesto_general_ventas'),
     path('obtener-presupuesto-general-ventas/', views.obtener_presupuesto_general_ventas, name='obtener_presupuesto_general_ventas'),
     path('cargar-presupuesto-general-ventas/', views.cargar_presupuesto_general_ventas, name='cargar_presupuesto_general_ventas'),
+    path('actualizar-presupuesto-general-ventas/', views.actualizar_presupuesto_general_ventas, name='actualizar_presupuesto_general_ventas'),
     
     # presupuesto centro ventas
     path('presupuesto-centro-ventas/', views.vista_presupuesto_centro_ventas, name='presupuestoCentroVentas'), 
