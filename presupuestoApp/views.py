@@ -1964,44 +1964,6 @@ def guardar_presupuesto_comercial(request):
                 # Limpieza antes de insertar
                 PresupuestoComercial.objects.all().delete()
                 PresupuestoComercial.objects.bulk_create(registros)
-            
-            year_actual = timezone.now().year
-            year_siguiente = timezone.now().year + 1
-            
-            # ================== 🔄 Actualizar PresupuestoCentroOperacionVentas con total_proyectado ==================
-            proyecciones = (
-                PresupuestoComercial.objects.filter(year=year_actual)
-                .values("year", "nombre_centro_de_operacion")
-                .annotate(total_proyectado=Sum("proyeccion_ventas"))
-            )
-           
-            for item in proyecciones:
-                centro = item["nombre_centro_de_operacion"]
-                total_proyectado = item["total_proyectado"] or 0
-
-                PresupuestoCentroOperacionVentas.objects.filter(
-                    year=year_siguiente,
-                    nombre_centro_operacion=centro
-                ).update(total_proyectado=total_proyectado)
-            
-            # ================== 🔄 Actualizar total_proyectado por año, centro y clase cliente ==================
-            proyecciones_seg_centro = (
-                PresupuestoComercial.objects.filter(year=year_actual)
-                .values("year", "nombre_centro_de_operacion", "nombre_clase_cliente")
-                .annotate(total_proyectado=Sum("proyeccion_ventas"))
-            )
-            
-            for item in proyecciones_seg_centro:
-                year = item["year"]
-                centro = item["nombre_centro_de_operacion"]
-                clase = item["nombre_clase_cliente"]
-                total_proyectado = item["total_proyectado"] or 0
-
-                PresupuestoCentroSegmentoVentas.objects.filter(
-                    year=year_siguiente,
-                    nombre_centro_operacion=centro,
-                    segmento=clase  # 👈 aquí "segmento" representa la clase cliente
-                ).update(total_proyectado=total_proyectado)
 
             return JsonResponse({"status": "ok", "mensaje": "Cambios guardados y recalculados ✅"})
 
@@ -2013,6 +1975,33 @@ def guardar_presupuesto_comercial(request):
 def actualizar_presupuesto_general_ventas(request):
     year_actual = timezone.now().year
     year_siguiente = timezone.now().year + 1
+    
+    # ================== 📊 Agrupar por centro y mes del año siguiente (2026) ==================
+    totales_mensuales = (
+        PresupuestoCentroOperacionVentas.objects
+        .filter(year=year_siguiente)
+        .values("mes", "nombre_centro_operacion")
+        .annotate(total_mes=Sum("total"))
+    )
+    # ================== 🔄 Sumar por mes (sin distinguir centro) ==================
+    totales_por_mes = (
+        PresupuestoCentroOperacionVentas.objects
+        .filter(year=year_siguiente)
+        .values("mes")
+        .annotate(total_mes=Sum("total"))
+        .order_by("mes")
+    )
+    # ================== 🔄 Calcular total anual ==================
+    total_anual = sum(item["total_mes"] for item in totales_por_mes)
+    # ================== 💾 Actualizar tabla PresupuestoGeneralVentas por año y mes
+    for item in totales_por_mes:
+        mes = item["mes"]
+        total_mes = item["total_mes"] or 0
+        PresupuestoGeneralVentas.objects.filter(
+            year=year_siguiente,
+            mes=mes
+        ).update(total=total_mes) 
+    
     # ================== 🔄 Actualizar PresupuestoGeneralVentas con total_proyectado ==================
     total_2026 = PresupuestoComercial.objects.filter(year=year_actual).aggregate(
         total_proyectado=Sum("proyeccion_ventas")
@@ -2021,7 +2010,150 @@ def actualizar_presupuesto_general_ventas(request):
     PresupuestoGeneralVentas.objects.filter(year=year_siguiente).update(
         total_proyectado=total_2026
     )
+    
     return JsonResponse({"status": "ok", "mensaje": "Presupuesto general de ventas actualizado ✅"})
+
+def actualizar_presupuesto_centro_ventas(request):
+    year_actual = timezone.now().year
+    year_siguiente = timezone.now().year + 1
+    # ================== 🔄 Actualizar PresupuestoCentroOperacionVentas con total_proyectado ==================
+    proyecciones = (
+        PresupuestoComercial.objects.filter(year=year_actual)
+        .values("year", "nombre_centro_de_operacion")
+        .annotate(total_proyectado=Sum("proyeccion_ventas"))
+    )
+    
+    for item in proyecciones:
+        centro = item["nombre_centro_de_operacion"]
+        total_proyectado = item["total_proyectado"] or 0
+
+        PresupuestoCentroOperacionVentas.objects.filter(
+            year=year_siguiente,
+            nombre_centro_operacion=centro
+        ).update(total_proyectado=total_proyectado)
+    # ================== 📊 Calcular porcentaje de participación por mes ==================
+    # Paso 1: agrupar totales por centro y mes (año actual)
+    data = (
+        PresupuestoCentroOperacionVentas.objects.filter(year=year_actual)
+        .values("nombre_centro_operacion", "mes")
+        .annotate(total_mes=Sum("total"))
+    )
+
+    # Paso 2: agrupar totales anuales por centro
+    totales_anuales = (
+        PresupuestoCentroOperacionVentas.objects.filter(year=year_actual)
+        .values("nombre_centro_operacion")
+        .annotate(total_anual=Sum("total"))
+    )
+    # Convertimos a dict para acceso rápido
+    totales_anuales_dict = {
+        t["nombre_centro_operacion"]: t["total_anual"] for t in totales_anuales
+    }
+    # 3️⃣ Totales proyectados por centro (2026)
+    proyectados = {
+        p["nombre_centro_operacion"]: p["total_proyectado"]
+        for p in PresupuestoCentroOperacionVentas.objects.filter(year=year_siguiente)
+        .values("nombre_centro_operacion", "total_proyectado")
+        .distinct()
+    }
+
+    # Paso 3: Calcular porcentaje y actualizar en la base de datos
+    for item in data:
+        centro = item["nombre_centro_operacion"]
+        mes = item["mes"]
+        total_mes = item["total_mes"] or 0
+        total_anual = totales_anuales_dict.get(centro, 0) or 1  # evitar división por cero
+        total_proyectado = proyectados.get(centro, 0) or 1  # evitar división por cero
+
+        porcentaje = (total_mes / total_anual) * 100
+        
+        # valor proyectado mensual
+        valor_proyectado_mes = round((porcentaje / 100) * total_proyectado)
+        # Actualizar registro
+        PresupuestoCentroOperacionVentas.objects.filter(
+            year=year_siguiente,
+            nombre_centro_operacion=centro,
+            mes=mes
+        ).update(total = valor_proyectado_mes)
+    
+    return JsonResponse({"status": "ok", "mensaje": "Presupuesto por centro de operación actualizado ✅"})
+
+def actualizar_presupuesto_centro_segmento_ventas(request):
+    year_actual = timezone.now().year      # 2025
+    year_siguiente = year_actual + 1       # 2026
+
+    # ================== 🔄 Actualizar total_proyectado (año siguiente) ==================
+    proyecciones = (
+        PresupuestoComercial.objects.filter(year=year_actual)
+        .values("year", "nombre_centro_de_operacion", "nombre_clase_cliente")
+        .annotate(total_proyectado=Sum("proyeccion_ventas"))
+    )
+
+    for item in proyecciones:
+        centro = item["nombre_centro_de_operacion"]
+        segmento = item["nombre_clase_cliente"]
+        total_proyectado = item["total_proyectado"] or 0
+
+        PresupuestoCentroSegmentoVentas.objects.filter(
+            year=year_siguiente,
+            nombre_centro_operacion=centro,
+            segmento=segmento
+        ).update(total_proyectado=total_proyectado)
+
+    # ================== 📊 Calcular distribución mensual ==================
+    # Paso 1️⃣: Totales por centro, segmento y mes (2025)
+    data = (
+        PresupuestoCentroSegmentoVentas.objects.filter(year=year_actual)
+        .values("nombre_centro_operacion", "segmento", "mes")
+        .annotate(total_mes=Sum("total"))
+    )
+
+    # Paso 2️⃣: Totales por centro, segmento y mes (2025) → base para cálculo de % dentro del mes
+    totales_mes_segmento = (
+        PresupuestoCentroSegmentoVentas.objects.filter(year=year_actual)
+        .values("nombre_centro_operacion", "mes")
+        .annotate(total_mes_centro=Sum("total"))
+    )
+    totales_mes_segmento_dict = {
+        (t["nombre_centro_operacion"], t["mes"]): t["total_mes_centro"]
+        for t in totales_mes_segmento
+    }
+
+    # Paso 3️⃣: Totales proyectados por centro y segmento (2026)
+    proyectados = {
+        (p["nombre_centro_operacion"], p["segmento"]): p["total_proyectado"]
+        for p in PresupuestoCentroSegmentoVentas.objects.filter(year=year_siguiente)
+        .values("nombre_centro_operacion", "segmento", "total_proyectado")
+        .distinct()
+    }
+
+    # Paso 4️⃣: Calcular valor proyectado mensual (2026)
+    for item in data:
+        centro = item["nombre_centro_operacion"]
+        segmento = item["segmento"]
+        mes = item["mes"]
+        total_mes_segmento = item["total_mes"] or 0
+        total_mes_centro = totales_mes_segmento_dict.get((centro, mes), 0) or 1  # evitar división por 0
+        total_proyectado = proyectados.get((centro, segmento), 0) or 0
+
+        # proporción de ese segmento dentro del centro en ese mes
+        proporcion = total_mes_segmento / total_mes_centro
+
+        # valor proyectado mensual = proporción * total proyectado del centro-segmento
+        valor_proyectado_mes = round(total_proyectado * proporcion)
+
+        # Actualizar registro correspondiente al año siguiente
+        PresupuestoCentroSegmentoVentas.objects.filter(
+            year=year_siguiente,
+            nombre_centro_operacion=centro,
+            segmento=segmento,
+            mes=mes
+        ).update(total=valor_proyectado_mes)
+
+    return JsonResponse({
+        "status": "ok",
+        "mensaje": "Presupuesto por centro y segmento actualizado y distribuido por mes ✅"
+    })
 
 def obtener_presupuesto_comercial(request):
     data = list(PresupuestoComercial.objects.values())

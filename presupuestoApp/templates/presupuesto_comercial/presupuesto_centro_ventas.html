@@ -4,6 +4,7 @@
     <div class="btn-group">
         {% comment %} <button type="button" id="cargarBtnCentroVentas" class="btn-accion">🔄 Cargar desde histórico</button> {% endcomment %}
         {% comment %} <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button> {% endcomment %}
+        <button type="button" id="actualizarBtnCentro" class="btn-accion btn-actualizar">Actualizar tabla</button>
     </div>
 
     <table id="presupuestoTableCentroOperacion" class="display" style="width:100%">
@@ -63,6 +64,7 @@
 </style>
 
 <script>
+    
 function numberFormat(data, type, row) {
     if (type === 'display' && !isNaN(data)) {
         return new Intl.NumberFormat('es-ES').format(data);
@@ -135,7 +137,37 @@ function unpivotData(tableData) {
     return result;
 }
 
-$(function () {
+$(document).ready(function() {
+    // boton actualizar 
+    document.getElementById("actualizarBtnCentro").addEventListener("click", function () {
+        // llamada AJAX para actualizar presupuesto general ventas
+        $.ajax({
+            url: "{% url 'actualizar_presupuesto_centro_ventas' %}",
+            type: "GET",
+            dataType: "json",
+            success: function(resp) {
+                if (resp.status === "ok") {
+                    alert("Presupuesto centro operación actualizado correctamente.");
+                    // recargar tabla
+                    $.ajax({
+                        url: "{% url 'obtener_presupuesto_centro_ventas' %}",
+                        type: "GET",
+                        dataType: "json",
+                        success: function(resp) {
+                            let datos = Array.isArray(resp) ? resp : resp.data;
+                            loadTable(datos);
+                        }
+                    });
+                } else {
+                    alert("Error al actualizar el presupuesto general de ventas.");
+                }
+            },
+            error: function(err) {
+                console.error("Error AJAX:", err);
+                alert("Error al actualizar el presupuesto general de ventas.");
+            }
+        });
+    });
     let table = null;
     let allData = [];
 

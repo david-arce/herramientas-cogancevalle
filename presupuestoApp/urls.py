@@ -27,12 +27,14 @@ urlpatterns = [
     path('guardar-presupuesto-centro-ventas/', views.guardar_presupuesto_centro_ventas, name='guardar_presupuesto_centro_ventas'),
     path('obtener-presupuesto-centro-ventas/', views.obtener_presupuesto_centro_ventas, name='obtener_presupuesto_centro_ventas'),
     path('cargar-presupuesto-centro-ventas/', views.cargar_presupuesto_centro_ventas, name='cargar_presupuesto_centro_ventas'),
+    path('actualizar-presupuesto-centro-ventas/', views.actualizar_presupuesto_centro_ventas, name='actualizar_presupuesto_centro_ventas'),
     
     # presupuesto centro - segmento ventas
     path('presupuesto-centro-segmento-ventas/', views.vista_presupuesto_centro_segmento_ventas, name='presupuestoCentroSegmentoVentas'), 
     path('guardar-presupuesto-centro-segmento-ventas/', views.guardar_presupuesto_centro_segmento_ventas, name='guardar_presupuesto_centro_segmento_ventas'),
     path('obtener-presupuesto-centro-segmento-ventas/', views.obtener_presupuesto_centro_segmento_ventas, name='obtener_presupuesto_centro_segmento_ventas'),
     path('cargar-presupuesto-centro-segmento-ventas/', views.cargar_presupuesto_centro_segmento_ventas, name='cargar_presupuesto_centro_segmento_ventas'),
+    path('actualizar-presupuesto-centro-segmento-ventas/', views.actualizar_presupuesto_centro_segmento_ventas, name='actualizar_presupuesto_centro_segmento_ventas'),
     
     # presupuesto general costos
     path('presupuesto-general-costos/', views.vista_presupuesto_general_costos, name='presupuestoGeneralCostos'), 
