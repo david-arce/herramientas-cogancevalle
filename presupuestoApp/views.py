@@ -164,29 +164,70 @@ def exportar_excel_presupuestos(request):
         df_final.to_excel(writer, sheet_name="Presupuestos", index=False)
     return response
 
-def df_horizontal_a_vertical(request):
-    registros = PresupuestoTecnologia.objects.all().values()
-    # filtrar por ultima version
-    registros = registros.filter(version=registros.aggregate(Max('version'))['version__max'])
-    df = pd.DataFrame(list(registros))
-
-    meses = [
-        'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-        'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-    ]
-
-    # Convertir de formato ancho → largo (vertical)
-    df_vertical = df.melt(
-        id_vars=[col for col in df.columns if col not in meses],
-        value_vars=meses,
-        var_name='mes',
-        value_name='valor'
+def exportar_nomina_vertical(request):
+    nomina = PresupuestoSueldos.objects.values()
+    comisiones = PresupuestoComisiones.objects.values()
+    horas_extra = PresupuestoHorasExtra.objects.values()
+    auxlio_transporte = PresupuestoAuxilioTransporte.objects.values()
+    medios_transporte = PresupuestoMediosTransporte.objects.values()
+    ayuda_transporte = PresupuestoAyudaTransporte.objects.values()
+    cesantias = PresupuestoCesantias.objects.values()
+    intereses_cesantias = PresupuestoInteresesCesantias.objects.values()
+    prima = PresupuestoPrima.objects.values()
+    vacaciones = PresupuestoVacaciones.objects.values()
+    bonificaciones = PresupuestoBonificaciones.objects.values()
+    auxilio_movilidad = PresupuestoBolsaConsumibles.objects.values()
+    aprendiz = PresupuestoAprendiz.objects.values()
+    auxilio_TBCKIT = PresupuestoAuxilioTBCKIT.objects.values()
+    auxilio_educacion = PresupuestoAuxilioEducacion.objects.values()
+    bonificaciones_foco = PresupuestoBonificacionesFoco.objects.values()
+    bonos_kyrovet = PresupuestoBonosKyrovet.objects.values()
+    seguridad_social = PresupuestoSeguridadSocial.objects.values()
+    
+    # crear dataframes con columna de origen
+    def prepare_df(data, origen):
+        df = pd.DataFrame(data)
+        if not df.empty:
+            df["origen"] = origen
+        return df
+    
+    df_nomina = prepare_df(nomina, "Nómina")
+    df_comisiones = prepare_df(comisiones, "Comisiones")
+    df_horas_extra = prepare_df(horas_extra, "Horas Extra")
+    df_auxilio_transporte = prepare_df(auxlio_transporte, "Auxilio Transporte")
+    df_medios_transporte = prepare_df(medios_transporte, "Medios Transporte")
+    df_ayuda_transporte = prepare_df(ayuda_transporte, "Ayuda Transporte")
+    df_cesantias = prepare_df(cesantias, "Cesantías")
+    df_intereses_cesantias = prepare_df(intereses_cesantias, "Intereses Cesantías")
+    df_prima = prepare_df(prima, "Prima")
+    df_vacaciones = prepare_df(vacaciones, "Vacaciones")
+    df_bonificaciones = prepare_df(bonificaciones, "Bonificaciones")
+    df_auxilio_movilidad = prepare_df(auxilio_movilidad, "Auxilio Movilidad")
+    df_aprendiz = prepare_df(aprendiz, "Aprendiz")
+    df_auxilio_TBCKIT = prepare_df(auxilio_TBCKIT, "Auxilio Movilidad")
+    df_auxilio_educacion = prepare_df(auxilio_educacion, "Auxilio Educación")
+    df_bonificaciones_foco = prepare_df(bonificaciones_foco, "Bonificaciones Foco")
+    df_bonos_kyrovet = prepare_df(bonos_kyrovet, "Bonos Kyrovet")
+    df_seguridad_social = prepare_df(seguridad_social, "Seguridad Social")
+    
+    # concatenar todos en un solo dataframe
+    df_final = pd.concat(
+        [df_nomina, df_comisiones, df_horas_extra, df_auxilio_transporte, df_medios_transporte, df_ayuda_transporte, df_cesantias, df_intereses_cesantias, df_prima, df_vacaciones, df_bonificaciones, df_auxilio_movilidad, df_aprendiz, df_auxilio_TBCKIT, df_auxilio_educacion, df_bonificaciones_foco, df_bonos_kyrovet, df_seguridad_social],
+        ignore_index=True
     )
-    # ordenar
-    # df_vertical = df_vertical.sort_values(by=['detalle_cuenta']).reset_index(drop=True)
-    # print(df_vertical)
-    # df_vertical.to_excel('df_vertical.xlsx', index=False)
-    return df_vertical
+    # pivot de columna que son meses a filas (enero, febrero, marzo, abril, mayo, junio, julio, agosto, septiembre, octubre, noviembre, diciembre)
+    meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+    df_final = df_final.melt(id_vars=[col for col in df_final.columns if col not in meses], value_vars=meses, var_name='mes', value_name='valor')
+    
+    # Crear la respuesta HTTP para Excel
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = 'attachment; filename="Presupuesto_Nomina_Vertical.xlsx"'
+    # Exportar a una sola hoja
+    with pd.ExcelWriter(response, engine="openpyxl") as writer:
+        df_final.to_excel(writer, sheet_name="Presupuesto Nómina", index=False)
+    return response
 
 @login_required
 def base_comercial(request):
@@ -1865,92 +1906,6 @@ def guardar_presupuesto_comercial(request):
             # 🔹 Convertir en DataFrame
             df = pd.DataFrame(data)
 
-            # 🔹 Nos aseguramos que ventas y costos sean enteros
-            # df["ventas"] = df["ventas"].fillna(0).astype(int)
-            # df["costos"] = df["costos"].fillna(0).astype(int)
-
-            # # ================== 🔄 Recalcular proyecciones con base en ventas y costos 2025 ==================
-            # if "crecimiento_ventas" in df.columns and "crecimiento_costos" in df.columns and "ventas" in df.columns and "costos" in df.columns and "year" in df.columns:
-            #     df["crecimiento_ventas"] = pd.to_numeric(df["crecimiento_ventas"], errors="coerce").fillna(0)
-            #     df["crecimiento_costos"] = pd.to_numeric(df["crecimiento_costos"], errors="coerce").fillna(0)
-            #     df["ventas"] = pd.to_numeric(df["ventas"], errors="coerce").fillna(0)
-            #     df["costos"] = pd.to_numeric(df["costos"], errors="coerce").fillna(0)
-
-            #     mask_2025 = df["year"] == 2026
-
-            #     # Proyección ventas = ventas 2025 + (ventas 2025 * crecimiento_ventas%)
-            #     df.loc[mask_2025, "proyeccion_ventas"] = (
-            #         df.loc[mask_2025, "ventas"] + (df.loc[mask_2025, "ventas"] * (df.loc[mask_2025, "crecimiento_ventas"] / 100))
-            #     ).round().astype("int64")
-
-            #     # Proyección costos = costos 2025 + (costos 2025 * crecimiento_costos%)
-            #     df.loc[mask_2025, "proyeccion_costos"] = (
-            #         df.loc[mask_2025, "costos"] + (df.loc[mask_2025, "costos"] * (df.loc[mask_2025, "crecimiento_costos"] / 100))
-            #     ).round().astype("int64")
-
-            # ================== 🔄 Recalcular métricas ==================
-            # df["utilidad_valor"] = df["proyeccion_ventas"] - df["proyeccion_costos"]
-            # df["utilidad_porcentual"] = (1 - (df["proyeccion_ventas"] / df["proyeccion_costos"])) * 100
-            # df["utilidad_porcentual"] = df["utilidad_porcentual"].replace([np.inf, -np.inf], 0).fillna(0).round(2)
-            
-            # # recalcular variaciones
-            # df["variacion_proyectada_valor"] = df["utilidad_valor"] - df["utilidad_valor_actual"]
-            # df["variacion_proyectada_porcentual"] = df["utilidad_porcentual"] - df["utilidad_porcentual_actual"]
-
-            # Agrupamos por línea para calcular variaciones entre 2024 y 2025
-            # for linea, grupo in df.groupby("linea"):
-            #     if 2025 in grupo["year"].values and 2026 in grupo["year"].values:
-            #         row2024 = grupo[grupo["year"] == 2025].iloc[0]
-            #         row2025 = grupo[grupo["year"] == 2026].iloc[0]
-
-            #         # Variaciones para ventas
-            #         variacion_valor_ventas = row2025["ventas"] - row2024["ventas"]
-            #         variacion_pct_ventas = (variacion_valor_ventas / row2024["ventas"] * 100) if row2024["ventas"] != 0 else 0
-            #         variacion_mes_ventas = round(variacion_valor_ventas / 12)
-            #         variacion_precios_ventas = round(row2024["ventas"] * 0.02)
-            #         crecimiento_comercial_ventas = variacion_valor_ventas - variacion_precios_ventas
-            #         crecimiento_comercial_mes_ventas = round(crecimiento_comercial_ventas / 12)
-
-            #         # Variaciones para costos
-            #         variacion_valor_costos = row2025["costos"] - row2024["costos"]
-            #         variacion_pct_costos = (variacion_valor_costos / row2024["costos"] * 100) if row2024["costos"] != 0 else 0
-            #         variacion_mes_costos = round(variacion_valor_costos / 12)
-            #         variacion_precios_costos = round(row2024["costos"] * 0.02)
-            #         crecimiento_comercial_costos = variacion_valor_costos - variacion_precios_costos
-            #         crecimiento_comercial_mes_costos = round(crecimiento_comercial_costos / 12)
-
-            #         # Actualizar fila 2025
-            #         df.loc[(df["linea"] == linea) & (df["year"] == 2026), [
-            #             "variacion_porcentual_ventas", "variacion_valor_ventas", "variacion_mes_ventas",
-            #             "variacion_precios_ventas", "crecimiento_comercial_ventas", "crecimiento_comercial_mes_ventas",
-            #             "variacion_porcentual_costos", "variacion_valor_costos", "variacion_mes_costos",
-            #             "variacion_precios_costos", "crecimiento_comercial_costos", "crecimiento_comercial_mes_costos"
-            #         ]] = [
-            #             round(variacion_pct_ventas, 2), variacion_valor_ventas, variacion_mes_ventas,
-            #             variacion_precios_ventas, crecimiento_comercial_ventas, crecimiento_comercial_mes_ventas,
-            #             round(variacion_pct_costos, 2), variacion_valor_costos, variacion_mes_costos,
-            #             variacion_precios_costos, crecimiento_comercial_costos, crecimiento_comercial_mes_costos
-            #         ]
-                    
-            # ================== 🔄 Recalcular R2 ==================
-            # for linea, grupo in df.groupby("linea"):
-            #     x = grupo["year"].values
-            #     # --- R2 ventas ---
-            #     y_ventas = grupo["ventas"].values
-            #     if len(x) >= 2 and np.std(y_ventas) != 0 and np.std(x) != 0:
-            #         r2_ventas = abs(np.corrcoef(x, y_ventas)[0, 1]) * 100
-            #     else:
-            #         r2_ventas = 0.0
-            #     df.loc[df["linea"] == linea, "r2_ventas"] = round(r2_ventas, 2)
-
-            #     # --- R2 costos ---
-            #     y_costos = grupo["costos"].values
-            #     if len(x) >= 2 and np.std(y_costos) != 0 and np.std(x) != 0:
-            #         r2_costos = abs(np.corrcoef(x, y_costos)[0, 1]) * 100
-            #     else:
-            #         r2_costos = 0.0
-            #     df.loc[df["linea"] == linea, "r2_costos"] = round(r2_costos, 2)
-
             # 🔹 Asegurar que campos numéricos sean numéricos (llenar NaN con 0)
             columnas_numericas = [
                 "ventas", "costos", "utilidad_valor",
@@ -2026,7 +1981,6 @@ def guardar_presupuesto_comercial(request):
             )
            
             for item in proyecciones:
-                year = item["year"]
                 centro = item["nombre_centro_de_operacion"]
                 total_proyectado = item["total_proyectado"] or 0
 

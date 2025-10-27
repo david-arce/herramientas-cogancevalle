@@ -21,6 +21,16 @@
             text-decoration: none;
             margin-bottom: 20px;
         }
+        a.exportar-vertical {
+            float: right;
+            background-color: #17a2b8;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            margin-right: 10px;
+            margin-bottom: 20px;
+        }
         .grid-acciones {
             max-width: 900px;
             margin: 20px auto;
@@ -91,6 +101,8 @@
     <h2>Presupuesto Nómina - Parámetros</h2>
 
     <a href="{% url 'exportar_excel' %}" class="exportar">📊 Exportar Todo a Excel</a>
+    <a href="{% url 'exportar_nomina_vertical' %}" class="exportar-vertical">Exportar Todo a Excel Vertical</a>
+
     <!-- Modal Confirmación añadir nuevo cargo -->
     <div id="modalConfirmar" class="modal" style="display:none;" aria-hidden="true">
         <div class="modal-content">

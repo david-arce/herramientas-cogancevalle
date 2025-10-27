@@ -10,12 +10,12 @@ urlpatterns = [
     path("borrar_cuenta5_base/", views.borrar_cuenta5_base, name="borrar_cuenta5_base"),
     
     path('exportar-excel-presupuestos/', views.exportar_excel_presupuestos, name='exportar_excel_presupuestos'),
-    path('ver_df/', views.df_horizontal_a_vertical, name='ver_df'),
     
     path("exportar-excel/", views.exportar_excel_nomina, name="exportar_excel"),
+    path('exportar-nomina-vertical/', views.exportar_nomina_vertical, name='exportar_nomina_vertical'),
     path('presupuesto-ventas/', views.base_comercial, name='baseComercial'), 
     
-    # Presupuesto general ventas
+    # Presupuesto general ventas 
     path('presupuesto-general-ventas/', views.vista_presupuesto_general_ventas, name='presupuestoGeneralVentas'), 
     path('guardar-presupuesto-general-ventas/', views.guardar_presupuesto_general_ventas, name='guardar_presupuesto_general_ventas'),
     path('obtener-presupuesto-general-ventas/', views.obtener_presupuesto_general_ventas, name='obtener_presupuesto_general_ventas'),
