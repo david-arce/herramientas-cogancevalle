@@ -2010,7 +2010,7 @@ def guardar_presupuesto_comercial(request):
 
     return JsonResponse({"status": "error", "mensaje": "Método no permitido"}, status=405)
 
-def actualizar_presupuesto_general_ventas():
+def actualizar_presupuesto_general_ventas(request):
     year_actual = timezone.now().year
     year_siguiente = timezone.now().year + 1
     # ================== 🔄 Actualizar PresupuestoGeneralVentas con total_proyectado ==================
@@ -2021,6 +2021,7 @@ def actualizar_presupuesto_general_ventas():
     PresupuestoGeneralVentas.objects.filter(year=year_siguiente).update(
         total_proyectado=total_2026
     )
+    return JsonResponse({"status": "ok", "mensaje": "Presupuesto general de ventas actualizado ✅"})
 
 def obtener_presupuesto_comercial(request):
     data = list(PresupuestoComercial.objects.values())
