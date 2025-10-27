@@ -7,6 +7,8 @@
     <meta name="csrf-token" content="{{ csrf_token }}">
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <!-- DataTables Buttons CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <!-- DataTables JS -->
@@ -236,7 +238,22 @@
                                 search: 'applied',
                                 order: 'applied'
                             },
-                            columns: ':not(:last-child)' // 🔥 excluye columna "Acciones"
+                            // 🔹 Excluir las dos primeras columnas (checkbox y acciones)
+                            columns: function (idx, data, node) {
+                                return idx > 0;  // Solo exporta desde la columna 2 en adelante
+                            },
+                            format: {
+                                body: function (data, row, column, node) {
+                                    // 🔹 Si es número con puntos o comas, limpiar para exportar como número real
+                                    if (typeof data === 'string') {
+                                        let clean = data.replace(/\./g, '').replace(',', '.');
+                                        if (!isNaN(clean) && clean.trim() !== '') {
+                                            return parseFloat(clean);
+                                        }
+                                    }
+                                    return data;
+                                }
+                            }
                         }
                     }
                 ],
@@ -540,5 +557,9 @@
                     
         });
     </script>
+    <!-- DataTables Buttons JS -->
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </body>
 </html>
