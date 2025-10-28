@@ -20,13 +20,12 @@
         
         <!-- Grupo: Otras acciones -->
         <div class="btn-section4">
-            <button id="agregarFila" title="Agregar fila vacia al final de la tabla">➕ Agregar fila vacía</button>
             <button onclick="document.getElementById('manualModal').style.display='block'">📘 Ver Manual de Cuentas</button>
             <!-- 🔹 Nuevo botón -->
             <button id="exportarPlantillaBtn" title="Descargar plantilla Excel vacía">📄 Exportar plantilla Excel</button>
             <!-- NUEVO: Cargar archivo Excel -->
             <input type="file" id="inputExcel" accept=".xlsx, .xls" style="display: none;">
-            <button id="btnCargarExcel" title="Subir archivo Excel">⬆️ Cargar Excel</button>
+            <button id="btnCargarExcel" title="Subir archivo Excel">⬆️ Cargar Excel <span class="spinner" style="display:none; margin-left:8px;"></span></button>
             <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
             Borrar Cuenta 5 Base
             </button>
@@ -136,7 +135,7 @@
         const url_seleccionCuentasContables = "{% url 'seleccionCuentasContables' %}";
         const url_borrar_cuenta5_base = "{% url 'borrar_cuenta5_base' %}";
     </script>
-    <script src="{% static 'js/cuenta5.js' %}"></>
+    <script src="{% static 'js/cuenta5.js' %}"></script>
     {% endblock %}
 
 {% endblock %}

@@ -51,8 +51,8 @@ $(document).ready(function() {
                 width: "60px"
             },
             
-            { data: 'mcncuenta', render: numberFormat },
-            { data: 'mcnfecha', render: numberFormat },
+            { data: 'mcncuenta'},
+            { data: 'mcnfecha'},
             { data: 'mcntipodoc' },
             { data: 'mcnnumedoc', render: numberFormat },
             { data: 'mcnvincula', render: numberFormat },
@@ -636,35 +636,6 @@ $(document).ready(function() {
         cerrarModal(modalId);
     });
 
-    // agregar fila vacía
-    $('#agregarFila').on('click', function() {
-        table.row.add({
-            centro_tra: "",
-            nombre_cen: "",
-            codcosto: "",
-            responsable: "",
-            cuenta: 0,
-            cuenta_mayor: "",
-            detalle_cuenta: "",
-            sede_distribucion: 0,
-            proveedor: "",
-            enero: 0,
-            febrero: 0,
-            marzo: 0,
-            abril: 0,
-            mayo: 0,
-            junio: 0,
-            julio: 0,
-            agosto: 0,
-            septiembre: 0,
-            octubre: 0,
-            noviembre: 0,
-            diciembre: 0,
-            total: 0,
-            comentario: ""
-        }).draw();
-        showToast("Fila agregada ✅", "success");
-    });
 
     // 🗑 Confirmación de eliminar fila
     $('#tempTable').on('click', '.eliminarFila', function() {
@@ -785,6 +756,10 @@ $(document).ready(function() {
     });
 
     document.getElementById("inputExcel").addEventListener("change", function (e) {
+        const $btn = $('#btnCargarExcel');
+        const $spinner = $btn.find('.spinner');
+        $spinner.show();
+        $btn.prop("disabled", true);
         const file = e.target.files[0];
         if (!file) return;
 
@@ -875,6 +850,9 @@ $(document).ready(function() {
             .then(resp => resp.json())
             .then(data => {
                 alert(`✅ ${data.insertados} registros cargados correctamente`);
+                table.ajax.reload(null, false); // recargar tabla sin perder paginación
+                $spinner.hide();
+                $btn.prop("disabled", false);
             })
             .catch(err => {
                 console.error(err);

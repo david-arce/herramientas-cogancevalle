@@ -184,6 +184,11 @@ button {
 .btn-confirm-upload:hover {
     background: #0069d9;
 }
+#btnCargarExcel:disabled{
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #a9a9a9;
+}
 
 /* =======================
    EFECTOS VISUALES EN TABLA
