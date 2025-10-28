@@ -356,6 +356,7 @@ document.addEventListener("DOMContentLoaded", function () {
     .catch(err => {
       console.error(err);
       alert("Hubo un problema, revisa la consola.");
+      console.log(err);
       document.getElementById("processingModal").style.display = "none";
       btn.disabled = false;
     });
