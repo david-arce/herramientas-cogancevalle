@@ -806,7 +806,7 @@
             "ALMACEN CARTAGO": {codigoCosto: "020202", centro: "003"},
             "ALMACEN CALI" : {codigoCosto: "020202", centro: "004"},
             "ADMINISTRACIÓN" : {codigoCosto: "0102", centro: "001"},
-            "SEVICIOS TÉCNICOS" : {codigoCosto: "020302", centro: "001"},
+            "SERVICIOS TÉCNICOS" : {codigoCosto: "020302", centro: "001"},
         };
 
         // ==========================
@@ -883,7 +883,9 @@
                     if (nuevoValor === "540531" || nuevoValor === "54059503") {
                         rowData["codcosto"] = "020201";
                     }
-
+                    if (nuevoValor === "540531" || nuevoValor === "54059503") and (rowData["nombre_cen"] === "SERVICIOS TÉCNICOS"){
+                        rowData["codcosto"] = "020301";
+                    }
 
                     row.data(rowData).draw(false);
                     editingCell = null;
