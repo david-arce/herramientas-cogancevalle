@@ -238,6 +238,16 @@
                 language: {
                         url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
                 },
+                createdRow: function(row, data, dataIndex) {
+                    // 🔹 Obtener el número total de columnas
+                    let totalCols = this.api().columns().count();
+                    // marcar como editables sólo columnas relevantes (excluyendo columna 0 = checkbox)
+                    $('td', row).each(function(index) {
+                        if (index > 1 && index < totalCols - 1) { // >0 excluye checkbox, <20 hasta "total"
+                            $(this).addClass("editable");
+                        }
+                    });
+                },
                 dom: 'Bftip', // 🔥 agrega botones arriba de la tabla
                 buttons: [
                     {

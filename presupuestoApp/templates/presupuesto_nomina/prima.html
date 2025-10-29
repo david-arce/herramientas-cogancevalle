@@ -80,6 +80,7 @@
         <thead>
             <tr>
                 <th><input type="checkbox" id="checkAllIPC" title="Seleccionar todo"></th>
+                <th>Acciones</th>
                 <th>Cedula</th>
                 <th>Nombre</th>
                 <th>Centro</th>
@@ -128,6 +129,16 @@
                     { 
                         data: null,
                         defaultContent: '<input type="checkbox" class="row-check" title="Seleccionar fila">',
+                        orderable: false
+                    },
+                    { 
+                        data: null,
+                        defaultContent: `
+                                <div class="btn-group-tabla">
+                                    <button class="duplicarFila" title="Duplicar fila">📑</button>
+                                    <button class="eliminarFila" title="Eliminar fila">❌</button>
+                                </div>
+                            `,
                         orderable: false
                     },
                     { data: "cedula" },
@@ -227,6 +238,16 @@
                 language: {
                         url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
                 },
+                createdRow: function(row, data, dataIndex) {
+                    // 🔹 Obtener el número total de columnas
+                    let totalCols = this.api().columns().count();
+                    // marcar como editables sólo columnas relevantes (excluyendo columna 0 = checkbox)
+                    $('td', row).each(function(index) {
+                        if (index > 1 && index < totalCols - 1) { // >0 excluye checkbox, <20 hasta "total"
+                            $(this).addClass("editable");
+                        }
+                    });
+                },
                 dom: 'Bftip', // 🔥 agrega botones arriba de la tabla
                 buttons: [
                     {
@@ -277,9 +298,9 @@
                         });
                     }
     
-                    configurarSelect(2, '#filtroNombre'); // Nombre
-                    configurarSelect(3, '#filtroCentro'); // Centro
-                    configurarSelect(4, '#filtroArea');   // Área
+                    configurarSelect(3, '#filtroNombre'); // Nombre
+                    configurarSelect(4, '#filtroCentro'); // Centro
+                    configurarSelect(5, '#filtroArea');   // Área
                 },
                 paging: false,
                 fixedHeader: true,
