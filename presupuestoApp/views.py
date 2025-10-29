@@ -3937,7 +3937,7 @@ def cargar_prima_base(request):
         sueldos = PresupuestoSueldosAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
         if sueldos:
             for mes in meses:
-                data_meses[mes] += getattr(emp, mes, 0)
+                data_meses[mes] += getattr(sueldos, mes, 0)
 
         # Sumo de comisiones
         comision = PresupuestoComisionesAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
@@ -3962,6 +3962,12 @@ def cargar_prima_base(request):
         if extra:
             for mes in meses:
                 data_meses[mes] += getattr(extra, mes, 0)
+        
+        # Sumo de aprendices
+        aprendiz = PresupuestoAprendizAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
+        if aprendiz:
+            for mes in meses:
+                data_meses[mes] += getattr(aprendiz, mes, 0)
 
         # Creo el registro en cesantías con la suma
         PresupuestoPrimaAux.objects.create(
