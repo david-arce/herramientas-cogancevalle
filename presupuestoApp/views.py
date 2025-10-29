@@ -2495,8 +2495,16 @@ def subir_presupuesto_comisiones(request):
                 "success": False,
                 "msg": "No hay datos temporales para subir ❌"
             }, status=400)
-
+        # obtener las cédulas existentes en la tabla principal
+        cedulas_existentes = set(
+            PresupuestoComisiones.objects.values_list("cedula", flat=True)
+        )
+        creados = 0
+        omitidos = 0
         for temp in temporales:
+            if temp.cedula in cedulas_existentes:
+                omitidos += 1
+                continue  # ya existe → no crear
             PresupuestoComisiones.objects.create(
                 cedula=temp.cedula,
                 nombre=temp.nombre,
@@ -2518,9 +2526,14 @@ def subir_presupuesto_comisiones(request):
                 diciembre=temp.diciembre,
                 total=temp.total,
             )
+            creados += 1
+        if creados == 0:
+            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
+        else:
+            msg = f"{creados} registro(s) agregado(s) ✅"
         return JsonResponse({
             "success": True,
-            "msg": f"Presupuesto de comisiones subido ✅"
+            "msg": msg
         })
     return JsonResponse({
         "success": False,
@@ -2683,8 +2696,16 @@ def subir_presupuesto_horas_extra(request):
                 "success": False,
                 "msg": "No hay datos temporales para subir ❌"
             }, status=400)
-
+        # obtener las cédulas existentes en la tabla principal
+        cedulas_existentes = set(
+            PresupuestoHorasExtra.objects.values_list("cedula", flat=True)
+        )
+        creados = 0
+        omitidos = 0
         for temp in temporales:
+            if temp.cedula in cedulas_existentes:
+                omitidos += 1
+                continue  # ya existe → no crear
             PresupuestoHorasExtra.objects.create(
                 cedula=temp.cedula,
                 nombre=temp.nombre,
@@ -2706,9 +2727,14 @@ def subir_presupuesto_horas_extra(request):
                 diciembre=temp.diciembre,
                 total=temp.total,
             )
+            creados += 1
+        if creados == 0:
+            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
+        else:
+            msg = f"{creados} registro(s) agregado(s) ✅"
         return JsonResponse({
             "success": True,
-            "msg": f"Presupuesto de horas extra subido ✅"
+            "msg": msg
         })
     return JsonResponse({
         "success": False,
@@ -2886,8 +2912,16 @@ def subir_presupuesto_medios_transporte(request):
                 "success": False,
                 "msg": "No hay datos temporales para subir ❌"
             }, status=400)
-
+        # obtener las cédulas existentes en la tabla principal
+        cedulas_existentes = set(
+            PresupuestoMediosTransporte.objects.values_list("cedula", flat=True)
+        )
+        creados = 0
+        omitidos = 0
         for temp in temporales:
+            if temp.cedula in cedulas_existentes:
+                omitidos += 1
+                continue  # ya existe → no crear
             PresupuestoMediosTransporte.objects.create(
                 cedula=temp.cedula,
                 nombre=temp.nombre,
@@ -2910,9 +2944,14 @@ def subir_presupuesto_medios_transporte(request):
                 diciembre=temp.diciembre,
                 total=temp.total,
             )
+            creados += 1
+        if creados == 0:
+            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
+        else:
+            msg = f"{creados} registro(s) agregado(s) ✅"
         return JsonResponse({
             "success": True,
-            "msg": f"Presupuesto de medios de transporte subido ✅"
+            "msg": msg
         })
     return JsonResponse({
         "success": False,
@@ -3322,8 +3361,16 @@ def subir_presupuesto_ayuda_transporte(request):
                 "success": False,
                 "msg": "No hay datos temporales para subir ❌"
             }, status=400)
-
+        # obtener las cédulas existentes en la tabla principal
+        cedulas_existentes = set(
+            PresupuestoAyudaTransporte.objects.values_list("cedula", flat=True)
+        )
+        creados = 0
+        omitidos = 0
         for temp in temporales:
+            if temp.cedula in cedulas_existentes:
+                omitidos += 1
+                continue  # ya existe → no crear
             PresupuestoAyudaTransporte.objects.create(
                 cedula=temp.cedula,
                 nombre=temp.nombre,
@@ -3346,9 +3393,14 @@ def subir_presupuesto_ayuda_transporte(request):
                 diciembre=temp.diciembre,
                 total=temp.total,
             )
+            creados += 1
+        if creados == 0:
+            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
+        else:
+            msg = f"{creados} registro(s) agregado(s) ✅"
         return JsonResponse({
             "success": True,
-            "msg": f"Presupuesto de ayuda de transporte subido ✅"
+            "msg": msg
         })
     return JsonResponse({
         "success": False,
@@ -4368,8 +4420,16 @@ def subir_presupuesto_bolsa_consumibles(request):
                 "success": False,
                 "msg": "No hay datos temporales para subir ❌"
             }, status=400)
-
+        # obtener cedulas de la tabla principal
+        cedulas_existentes = set(
+            PresupuestoBolsaConsumibles.objects.values_list("cedula", flat=True)
+        )
+        creados = 0
+        omitidos = 0
         for temp in temporales:
+            if temp.cedula in cedulas_existentes:
+                omitidos += 1
+                continue  # ya existe → no crear
             PresupuestoBolsaConsumibles.objects.create(
                 cedula=temp.cedula,
                 nombre=temp.nombre,
@@ -4391,9 +4451,14 @@ def subir_presupuesto_bolsa_consumibles(request):
                 diciembre=temp.diciembre,
                 total=temp.total,
             )
+            creados += 1
+        if creados == 0:
+            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
+        else:
+            msg = f"{creados} registro(s) agregado(s) ✅"
         return JsonResponse({
             "success": True,
-            "msg": f"Presupuesto de auxilio de movilidad subido ✅"
+            "msg": msg
         })
     return JsonResponse({
         "success": False,
@@ -4548,8 +4613,16 @@ def subir_presupuesto_auxilio_TBCKIT(request):
                 "success": False,
                 "msg": "No hay datos temporales para subir ❌"
             }, status=400)
-
+        # obtener cedulas de la tabla principal
+        cedulas_existentes = set(
+            PresupuestoAuxilioTBCKIT.objects.values_list("cedula", flat=True)
+        )
+        creados = 0
+        omitidos = 0
         for temp in temporales:
+            if temp.cedula in cedulas_existentes:
+                omitidos += 1
+                continue  # ya existe → no crear
             PresupuestoAuxilioTBCKIT.objects.create(
                 cedula=temp.cedula,
                 nombre=temp.nombre,
@@ -4571,9 +4644,14 @@ def subir_presupuesto_auxilio_TBCKIT(request):
                 diciembre=temp.diciembre,
                 total=temp.total,
             )
+            creados += 1
+        if creados == 0:
+            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
+        else:
+            msg = f"{creados} registro(s) agregado(s) ✅"
         return JsonResponse({
             "success": True,
-            "msg": f"Presupuesto de auxilio de movilidad subido ✅"
+            "msg": msg
         })
     return JsonResponse({
         "success": False,
@@ -4725,8 +4803,16 @@ def subir_presupuesto_seguridad_social(request):
                 "success": False,
                 "msg": "No hay datos temporales para subir ❌"
             }, status=400)
-
+        # obtener nombres de la tabla principal
+        nombres_existentes = set(
+            PresupuestoSeguridadSocial.objects.values_list("nombre", flat=True)
+        )
+        creados = 0
+        omitidos = 0
         for temp in temporales:
+            if temp.nombre in nombres_existentes:
+                omitidos += 1
+                continue  # ya existe → no crear
             PresupuestoSeguridadSocial.objects.create(
                 nombre=temp.nombre,
                 centro=temp.centro,
@@ -4746,9 +4832,14 @@ def subir_presupuesto_seguridad_social(request):
                 diciembre=temp.diciembre,
                 total=temp.total,
             )
+            creados += 1
+        if creados == 0:
+            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
+        else:
+            msg = f"{creados} registro(s) agregado(s) ✅"
         return JsonResponse({
             "success": True,
-            "msg": f"Presupuesto de seguridad social subido ✅"
+            "msg": msg
         })
     return JsonResponse({
         "success": False,
@@ -5297,8 +5388,16 @@ def subir_presupuesto_aprendiz(request):
                 "success": False,
                 "msg": "No hay datos temporales para subir ❌"
             }, status=400)
-
+        # obtener cedulas de la tabla principal
+        cedulas_existentes = set(
+            PresupuestoAprendiz.objects.values_list('cedula', flat=True)
+        )
+        creados = 0
+        omitidos = 0
         for temp in temporales:
+            if temp.cedula in cedulas_existentes:
+                omitidos += 1
+                continue  # omitir si ya existe
             PresupuestoAprendiz.objects.create(
                 cedula=temp.cedula,
                 nombre=temp.nombre,
@@ -5321,9 +5420,14 @@ def subir_presupuesto_aprendiz(request):
                 diciembre=temp.diciembre,
                 total=temp.total,
             )
+            creados += 1
+        if creados == 0:
+            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
+        else:
+            msg = f"{creados} registro(s) agregado(s) ✅"
         return JsonResponse({
             "success": True,
-            "msg": f"Presupuesto de aprendices subido ✅"
+            "msg": msg
         })
     return JsonResponse({
         "success": False,
@@ -5465,8 +5569,16 @@ def subir_presupuesto_bonificaciones_foco(request):
                 "success": False,
                 "msg": "No hay datos temporales para subir ❌"
             }, status=400)
-
+        # obtener cedulas de la tabla principal
+        cedulas_existentes = set(
+            PresupuestoBonificacionesFoco.objects.values_list('cedula', flat=True)
+        )
+        creados = 0
+        omitidos = 0
         for temp in temporales:
+            if temp.cedula in cedulas_existentes:
+                omitidos += 1
+                continue  # omitir si ya existe
             PresupuestoBonificacionesFoco.objects.create(
                 cedula=temp.cedula,
                 nombre=temp.nombre,
@@ -5488,9 +5600,14 @@ def subir_presupuesto_bonificaciones_foco(request):
                 diciembre=temp.diciembre,
                 total=temp.total,
             )
+            creados += 1
+        if creados == 0:
+            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
+        else:
+            msg = f"{creados} registro(s) agregado(s) ✅"
         return JsonResponse({
             "success": True,
-            "msg": f"Presupuesto de bonificaciones subido ✅"
+            "msg": msg
         })
     return JsonResponse({
         "success": False,
@@ -5742,8 +5859,16 @@ def subir_presupuesto_auxilio_educacion(request):
                 "success": False,
                 "msg": "No hay datos temporales para subir ❌"
             }, status=400)
-
+        # obtener cedulas de la tabla principal
+        cedulas_existentes = set(
+            PresupuestoAuxilioEducacion.objects.values_list('cedula', flat=True)
+        )
+        creados = 0
+        omitidos = 0
         for temp in temporales:
+            if temp.cedula in cedulas_existentes:
+                omitidos += 1
+                continue  # omitir si ya existe
             PresupuestoAuxilioEducacion.objects.create(
                 cedula=temp.cedula,
                 nombre=temp.nombre,
@@ -5765,9 +5890,14 @@ def subir_presupuesto_auxilio_educacion(request):
                 diciembre=temp.diciembre,
                 total=temp.total,
             )
+            creados += 1
+        if creados == 0:
+            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
+        else:
+            msg = f"{creados} registro(s) agregado(s) ✅"
         return JsonResponse({
             "success": True,
-            "msg": f"Presupuesto de auxilio de educación subido ✅"
+            "msg": msg
         })
     return JsonResponse({
         "success": False,
@@ -5913,8 +6043,16 @@ def subir_presupuesto_bonos_kyrovet(request):
                 "success": False,
                 "msg": "No hay datos temporales para subir ❌"
             }, status=400)
-
+        # obtener cedulas de la tabla principal
+        cedulas_existentes = set(
+            PresupuestoBonosKyrovet.objects.values_list('cedula', flat=True)
+        )
+        creados = 0
+        omitidos = 0
         for temp in temporales:
+            if temp.cedula in cedulas_existentes:
+                omitidos += 1
+                continue  # omitir si ya existe
             PresupuestoBonosKyrovet.objects.create(
                 cedula=temp.cedula,
                 nombre=temp.nombre,
@@ -5937,9 +6075,14 @@ def subir_presupuesto_bonos_kyrovet(request):
                 diciembre=temp.diciembre,
                 total=temp.total,
             )
+            creados += 1
+        if creados == 0:
+            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
+        else:
+            msg = f"{creados} registro(s) agregado(s) ✅"
         return JsonResponse({
             "success": True,
-            "msg": f"Presupuesto de bonos Kyrovet subido ✅"
+            "msg": msg
         })
     return JsonResponse({
         "success": False,
