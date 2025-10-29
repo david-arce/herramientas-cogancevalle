@@ -44,7 +44,6 @@ $(document).ready(function() {
             { 
                 data: null,
                 defaultContent: `
-                    <button class="duplicarFila" title="Duplicar fila">📑</button>
                     <button class="eliminarFila" title="Eliminar fila">❌</button>
                 `,
                 orderable: false,
@@ -142,74 +141,7 @@ $(document).ready(function() {
         fixedHeader: true,   // 🔥 Aquí activamos el header fijo
         pageLength: 50
     });
-
-    // función para recalcular total de una fila
-    function recalcularTotal(rowData) {
-        let meses = ["enero","febrero","marzo","abril","mayo","junio",
-                    "julio","agosto","septiembre","octubre","noviembre","diciembre"];
-        let total = 0;
-        meses.forEach(m => {
-            total += parseFloat(rowData[m]) || 0;
-        });
-        rowData.total = total;
-        return rowData;
-    }
-
-    // cerrar edición y guardar valor
-    function cerrarEdicion(cell, newValue) {
-        try {
-            if (!table) {
-                // console.error("Error: la tabla no está inicializada."); 
-                return;
-            }
-
-            // Asegurarse de que la celda aún existe en el DOM
-            if (!cell || !$.contains(document, cell)) {
-                // console.warn("La celda ya no existe en el DOM. Cancelando edición.");
-                editingCell = null;
-                return;
-            }
-
-            const dtCell = table.cell(cell);
-            if (!dtCell || dtCell.index() === undefined) {
-                // console.warn("La celda de DataTables ya no es válida.");
-                editingCell = null;
-                return;
-            }
-
-            const colIdx = dtCell.index().column;
-            const row = table.row($(cell).closest("tr"));
-            const rowData = row.data();
-
-            if (!rowData) {
-                // console.warn("No se pudo obtener la fila asociada a la celda."); 
-                editingCell = null;
-                return;
-            }
-
-            const colName = table.column(colIdx).dataSrc();
-            if (!colName) {
-                // console.warn("No se encontró la columna para índice:", colIdx);
-                editingCell = null;
-                return;
-            }
-
-            // Actualizar el valor en los datos de la fila
-            rowData[colName] = newValue;
-
-            // Recalcular total dinámicamente (según tu lógica)
-            const newRowData = recalcularTotal(rowData);
-
-            // Actualizar la fila sin redibujar completamente
-            row.data(newRowData).draw(false);
-
-        } catch (err) {
-            console.error("Error en cerrarEdicion:", err);
-        } finally {
-            editingCell = null;
-        }
-    }
-
+    
 
     // ======== 🔹 GESTIÓN DE FILA ACTIVA (solo color) ========
     function seleccionarFila($row) {
@@ -222,11 +154,6 @@ $(document).ready(function() {
     // Seleccionar fila cuando se hace clic
     $('#tempTable').on('click', 'tbody tr', function() {
         seleccionarFila($(this));
-    });
-
-    // Seleccionar fila automáticamente al editar
-    $('#tempTable').on('dblclick', 'td.editable', function() {
-        seleccionarFila($(this).closest('tr'));
     });
 
     // 🔹 Permitir redimensionar verticalmente el contenedor del DataTable
@@ -297,345 +224,12 @@ $(document).ready(function() {
     });
     let filaAEliminar = null; // 🔥 Guardar la fila temporal
     let editingCell = null;
-    
-    // duplicar fila
-    $('#tempTable').on('click', '.duplicarFila', function() {
-        let row = table.row($(this).parents('tr'));
-        let rowData = row.data();
-        let currentIndex = row.index();
-
-        // clonar datos
-        let newRow = { ...rowData };
-
-        // reiniciar meses
-        let meses = ["enero","febrero","marzo","abril","mayo","junio",
-                    "julio","agosto","septiembre","octubre","noviembre","diciembre"];
-        meses.forEach(m => newRow[m] = 0);
-
-        // total en 0
-        newRow.total = 0;
-
-        // 🔹 obtener todos los datos actuales de la tabla
-        let allData = table.rows().data().toArray();
-
-        // 🔹 insertar justo después del índice actual
-        allData.splice(currentIndex + 1, 0, newRow);
-
-        // 🔹 limpiar y volver a cargar los datos sin alterar scroll
-        let scrollBody = $('.dataTables_scrollBody');
-        let scrollPos = scrollBody.scrollTop();
-
-        table.clear().rows.add(allData).draw(false);
-
-        // 🔹 restaurar scroll y mantener selección
-        setTimeout(() => {
-            scrollBody.scrollTop(scrollPos);
-
-            // buscar la nueva fila duplicada
-            let $newRowNode = $('#tempTable tbody tr').eq(currentIndex + 1);
-
-            // seleccionar y animar
-            seleccionarFila($newRowNode);
-            $newRowNode.addClass("blink");
-            setTimeout(() => $newRowNode.removeClass("blink"), 2000);
-        }, 50);
-
-        showToast("Fila duplicada 📑", "success");
-    });
-
-    // lista desplegable para columna nombre centro
-    const opcionesNombreCentro = {
-        "ALMACEN TULUA": {codigoCosto: "020202", centro: "001"},
-        "ALMACEN BUGA": {codigoCosto: "020200", centro: "002"},
-        "ALMACEN CARTAGO": {codigoCosto: "020202", centro: "003"},
-        "ALMACEN CALI" : {codigoCosto: "020202", centro: "004"},
-        "ADMINISTRACIÓN" : {codigoCosto: "0102", centro: "001"},
-        "SEVICIOS TÉCNICOS" : {codigoCosto: "020302", centro: "001"},
-    };
-
-    // ==========================
-    //  LÓGICA DE EDICIÓN TIPO EXCEL
-    // ==========================
-
-    // doble clic para editar
-    $('#tempTable').on('dblclick', 'td.editable', function() {
-        if (!editando) {
-            showToast("⚠️ Estás editando la tabla. Recuerda guardar los cambios.", "error", 0, true);
-            editando = true;
-        }
-        let cell = table.cell(this);
-        let oldValue = cell.data();
-        let colIdx = table.cell(this).index().column;
-        let colName = table.column(colIdx).dataSrc();
-
-        // 🔥 Si ya hay otra celda editándose, cerrarla primero
-        if (editingCell && editingCell !== this) {
-            let $prevInput = $(editingCell).find("input");
-            if ($prevInput.length) {
-                cerrarEdicion(editingCell, $prevInput.val());
-            }
-        }
-
-        // Si la misma celda está en edición, no volver a abrir
-        if (editingCell === this) return;
-
-        // si es columna con desplegable
-        if (colName === "cuenta_mayor") {
-            let opciones = Object.keys(mapaCuentaMayor); // 🔥 ahora son las claves (códigos)
-            let row = table.row($(this).closest("tr"));
-            let rowData = row.data();
-            
-            // 🔥 Si el nombre_cen es ADMINISTRACIÓN → solo mostrar claves que empiezan con 51
-            if (rowData["nombre_cen"] && rowData["nombre_cen"].toUpperCase() === "ADMINISTRACIÓN") {
-                opciones = opciones.filter(o => o.startsWith("51"));
-            }else{
-                // 🔥 Si no es administración → excluir todas las que empiezan con 51
-                opciones = opciones.filter(o => !o.startsWith("51"));
-            }
-
-            // 🔥 Lista de códigos a excluir exactamente
-            const excluir = [
-                "51", "52", "5105", "5110", "54",
-                "541001", "541003", "541006", "5410",
-                "541019", "541027", "541033", "541095"
-            ];
-            // 🔥 Filtrar excluyendo solo coincidencias exactas
-            opciones = opciones.filter(o => !excluir.includes(o));
-
-            // 🔹 Ordenamos por la clave (código) ascendente
-            opciones.sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
-            let htmlSelect = `<select class="cell-select">` +
-            opciones.map(o => {
-                let leyenda = mapaCuentaMayor[o] || "";
-                return `<option value="${o}" ${o==oldValue ? "selected":""}>${o} - ${leyenda}</option>`;
-            }).join("") +
-            `</select>`;
-
-            $(this).html(htmlSelect);
-            let $select = $(this).find("select").focus();
-            editingCell = this;
-
-            $select.on("change blur", function() {
-                let nuevoValor = $(this).val();
-                
-                rowData["cuenta_mayor"] = mapaCuentaMayor[nuevoValor] || "";
-                rowData["cuenta"] = nuevoValor;
-                // 🔥 Condición especial: si es capacitación o salud ocupacional → codcosto = 0101
-                if (nuevoValor === "510531" || nuevoValor === "51059503") {
-                    rowData["codcosto"] = "0101";
-                }
-                if (nuevoValor === "540531" || nuevoValor === "54059503") {
-                    rowData["codcosto"] = "020201";
-                }
-
-                // 🔥 Esperar al siguiente ciclo de ejecución para evitar error del blur
-                setTimeout(() => {
-                    row.data(rowData).draw(false);
-                    editingCell = null;
-                }, 0);
-            });
-
-
-            $select.on("keydown", function(e) {
-                if (e.key === "Enter") {
-                    cerrarEdicion(editingCell, $(this).val());
-                } else if (e.key === "Escape") {
-                    table.cell(editingCell).data(oldValue).draw(false);
-                    editingCell = null;
-                }
-            });
-        } else if (colName === "nombre_cen") {
-            let opciones = Object.keys(opcionesNombreCentro);
-            let htmlSelect = `<select class="cell-select">` +
-                opciones.map(o => `<option value="${o}" ${o==oldValue ? "selected":""}>${o}</option>`).join("") +
-                `</select>`;
-            $(this).html(htmlSelect);
-            let $select = $(this).find("select").focus();
-            editingCell = this;
-
-            $select.on("change blur", function() {
-                let nuevoValor = $(this).val();
-                // 🔥 Actualizar columnas código costo y centro en la misma fila
-                let row = table.row($(editingCell).closest("tr"));
-                let rowData = row.data();
-                rowData["nombre_cen"] = nuevoValor;
-                rowData["codcosto"] = opcionesNombreCentro[nuevoValor]?.codigoCosto || "";
-                rowData["centro_tra"] = opcionesNombreCentro[nuevoValor]?.centro || "";
-                
-                // 🔥 Esperar al siguiente ciclo de ejecución para evitar error del blur
-                setTimeout(() => {
-                    row.data(rowData).draw(false);
-                    editingCell = null;
-                }, 0);
-            });
-
-            $select.on("keydown", function(e) {
-                if (e.key === "Enter") {
-                    cerrarEdicion(editingCell, $(this).val());
-                } else if (e.key === "Escape") {
-                    table.cell(editingCell).data(oldValue).draw(false);
-                    editingCell = null;
-                }
-            });
-        } 
-        else {
-            // para otras columnas, input de texto
-            $(this).html('<input type="text" class="cell-input" value="'+ oldValue +'" style="min-width:40px; "/>');
-            let $input = $(this).find("input").focus();
-            editingCell = this;
-            // seleccionar todo el contenido
-            $input[0].setSelectionRange(0, $input.val().length);
-            
-            // 🔹 Crear un span oculto para medir el ancho del texto
-            let $mirror = $('<span>')
-                .css({
-                    position: 'absolute',
-                    top: '-9999px',
-                    left: '-9999px',
-                    whiteSpace: 'pre',
-                    font: $input.css('font'),
-                    padding: $input.css('padding'),
-                    border: $input.css('border')
-                })
-                .appendTo('body');
-
-            // 🔹 Función para ajustar el ancho dinámicamente
-            function ajustarAncho() {
-                $mirror.text($input.val() || ' ');
-                const newWidth = $mirror.width() + 15; // margen extra
-                
-                $input.css('width', newWidth + 'px');
-            }
-
-            // 🔹 Ajustar al inicio y en cada cambio
-            ajustarAncho();
-            $input.on('input', ajustarAncho);
-
-            // 🔹 Al cerrar edición, eliminar el span espejo
-            $input.on('blur', function() {
-                $mirror.remove();
-            });
-
-            // 🔹 Validación: si la columna es un mes, solo permitir números enteros
-            const mesesCols = ["enero","febrero","marzo","abril","mayo","junio",
-                    "julio","agosto","septiembre","octubre","noviembre","diciembre"];
-
-            if (mesesCols.includes(colName)) {
-                // Solo permitir dígitos
-                $input.on("input", function() {
-                    this.value = this.value.replace(/[^0-9]/g, ""); 
-            });
-            } else{
-                // 🔥 convertir a mayúsculas mientras escribe (para comentarios u otros textos)
-                $input.on("input", function() {
-                    this.value = this.value.toUpperCase();
-                });
-            }
-
-            // manejar Enter, Escape y flechas
-            $input.on("keydown", function(e) {
-                const key = e.key;
-                const cursorPos = this.selectionStart;
-                const cursorEnd = this.selectionEnd;
-                const valueLength = this.value.length;
-
-                if (key === "Enter") {
-                    e.preventDefault();
-                    moverCelda("ArrowDown", editingCell, $input.val());
-                    return;
-                }
-                if (key === "Escape") {
-                    table.cell(editingCell).data(oldValue).draw(false);
-                    editingCell = null;
-                    return;
-                }
-                // 🔸 Tab → moverse hacia la DERECHA
-                if (key === "Tab") {
-                    e.preventDefault();
-                    moverCelda("ArrowRight", editingCell, $input.val());
-                    return;
-                }
-
-                // 🧭 Flechas: comportamiento como Excel fuera de edición,
-                // pero dentro de edición se mueven dentro del input.
-                if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key)) {
-
-                    // 🔸 Si hay texto seleccionado, no mover a otra celda.
-                    if (cursorPos !== cursorEnd) return;
-
-                    // 🔸 Si la flecha es izquierda y no estamos al inicio → mover el cursor
-                    if (key === "ArrowLeft" && cursorPos > 0) return;
-                    // 🔸 Si la flecha es derecha y no estamos al final → mover el cursor
-                    if (key === "ArrowRight" && cursorPos < valueLength) return;
-
-                    // 🔸 En caso contrario, movernos a la celda adyacente
-                    e.preventDefault();
-                    moverCelda(key, editingCell, $input.val());
-                }
-            });
-
-            // 🔸 Función auxiliar para moverse entre celdas
-            function moverCelda(key, editingCell, value) {
-                let $td = $(editingCell);
-                let $tr = $td.closest("tr");
-                let rowIdx = $tr.index();
-                let colIdx = $td.index();
-
-                if (key === "ArrowUp") rowIdx--;
-                if (key === "ArrowDown") rowIdx++;
-                if (key === "ArrowLeft") colIdx--;
-                if (key === "ArrowRight") colIdx++;
-
-                let $target = $('#tempTable tbody tr').eq(rowIdx).find("td").eq(colIdx);
-                if ($target.length && $target.hasClass("editable")) {
-                    cerrarEdicion(editingCell, value);
-                    $target.dblclick();
-                }else {
-                    // Si la celda siguiente no es editable, buscar la próxima editable
-                    let $nextEditable;
-                    if (key === "ArrowRight" || key === "Tab") {
-                        $nextEditable = $tr.find("td.editable").filter(function() {
-                            return $(this).index() > colIdx;
-                        }).first();
-                    } else if (key === "ArrowDown" || key === "Enter") {
-                        $nextEditable = $('#tempTable tbody tr').eq(rowIdx)
-                            .find("td.editable").eq($td.index());
-                    }
-                    if ($nextEditable && $nextEditable.length) {
-                        cerrarEdicion(editingCell, value);
-                        $nextEditable.dblclick();
-                    } else {
-                        cerrarEdicion(editingCell, value);
-                    }
-                }
-            }
-
-        }
-    });
-    // 🔥 Guardar automáticamente cuando se hace clic FUERA de la celda en edición
-    $(document).on("click", function(e) {
-        if (editingCell) {
-            const $cell = $(editingCell);
-            const $inputOrSelect = $cell.find("input, select");
-
-            // ✅ Si el clic fue dentro de la celda que se está editando, NO cerrar la edición
-            if ($cell.is(e.target) || $.contains($cell[0], e.target)) {
-                return; // como Excel: permite seguir interactuando con el campo
-            }
-
-            // ✅ Si se hace clic fuera, cerrar edición y guardar
-            if ($inputOrSelect.length) {
-                cerrarEdicion(editingCell, $inputOrSelect.val());
-            }
-        }
-    });
 
     // Botones cancelar de cualquier modal
     $('.btn-cancel').on('click', function() {
         let modalId = $(this).data('modal'); // viene del atributo data-modal="..."
         cerrarModal(modalId);
     });
-
 
     // 🗑 Confirmación de eliminar fila
     $('#tempTable').on('click', '.eliminarFila', function() {
@@ -669,7 +263,6 @@ $(document).ready(function() {
         cerrarModal('modalEliminar');
     });
 
-
     // Configurar CSRF para AJAX
     function getCSRFToken() {
         return document.querySelector('meta[name="csrf-token"]').getAttribute("content");
@@ -682,46 +275,6 @@ $(document).ready(function() {
             }
         }
     });
-
-    // Guardar en BD temporal
-    // $('#guardarTempBtn').on('click', function() {
-    //     let $btn = $(this);
-    //     let $spinner = $btn.find('.spinner');
-    //     let data = table.rows().data().toArray();
-
-    //     // Mostrar spinner
-    //     $spinner.show();
-    //     $btn.prop("disabled", true);
-
-    //     $.ajax({
-    //         url: "{% url 'guardar_almacen_buga_temp' %}",
-    //         type: "POST",
-    //         data: JSON.stringify(data),
-    //         contentType: "application/json",
-    //         success: function() {
-    //             showToast("Datos guardados en tabla temporal ✅", "success");
-    //             // ✅ Ocultar advertencia al guardar
-    //             if (persistentToast) {
-    //                 persistentToast.classList.remove("show");
-    //                 setTimeout(() => {
-    //                     if (persistentToast && document.body.contains(persistentToast)) {
-    //                         persistentToast.remove();
-    //                     }
-    //                     persistentToast = null;
-    //                 }, 500);
-    //             }
-    //             editando = false;
-    //         },
-    //         error: function() {
-    //             showToast("Error al guardar ❌", "error");
-    //         },
-    //         complete: function() {
-    //             // Ocultar spinner y reactivar botón
-    //             $spinner.hide();
-    //             $btn.prop("disabled", false);
-    //         }
-    //     });
-    // });
 
     // =====================================================
     // 🔹 BOTÓN: EXPORTAR PLANTILLA EXCEL VACÍA
@@ -790,9 +343,10 @@ $(document).ready(function() {
             const missingCols = requiredColumns.filter(c => !fileColumns.includes(c));
             if (missingCols.length > 0) {
                 alert("❌ Faltan columnas obligatorias:\n" + missingCols.join(", "));
+                $spinner.hide();
+                $btn.prop("disabled", false);
                 return;
             }
-
             // Validación de tipos de datos
             const errores = [];
             const registrosValidos = [];
@@ -832,12 +386,16 @@ $(document).ready(function() {
                     registrosValidos.push(validRow);
                 } catch (error) {
                     errores.push(`Fila ${numRow}: ${error.message}`);
+                    $spinner.hide();
+                    $btn.prop("disabled", false);
                 }
             });
 
             if (errores.length > 0) {
                 alert("❌ Errores encontrados:\n" + errores.slice(0, 10).join("\n") + 
                     (errores.length > 10 ? `\n...y ${errores.length - 10} más` : ""));
+                $spinner.hide();
+                $btn.prop("disabled", false);
                 return;
             }
 
@@ -857,6 +415,8 @@ $(document).ready(function() {
             .catch(err => {
                 console.error(err);
                 alert("❌ Error al subir los datos.");
+                $spinner.hide();
+                $btn.prop("disabled", false);
             });
         };
 
@@ -869,13 +429,21 @@ $(document).ready(function() {
     function parseBigInt(value) {
         if (value === null || value === "") return null;
         const parsed = Number(value);
-        if (!Number.isInteger(parsed)) throw new Error(`Se esperaba un número entero, recibido: ${value}`);
+        if (!Number.isInteger(parsed)) {
+            $spinner.hide();
+            $btn.prop("disabled", false);
+            throw new Error(`Se esperaba un número entero, recibido: ${value}`);
+        }
         return parsed;
     }
     function parseFloatOrNull(value) {
         if (value === null || value === "") return null;
         const parsed = parseFloat(value);
-        if (isNaN(parsed)) throw new Error(`Se esperaba un número decimal, recibido: ${value}`);
+        if (isNaN(parsed)) {
+            $spinner.hide();
+            $btn.prop("disabled", false);
+            throw new Error(`Se esperaba un número decimal, recibido: ${value}`);
+        }
         return parsed;
     }
     function parseString(value) {
@@ -897,11 +465,13 @@ $(document).ready(function() {
         return cookieValue;
     }
 
-    $("#btnBorrar").on("click", function () {
-        if (!confirm("⚠️ ¿Estás seguro de borrar todo el presupuesto? Esta acción no se puede deshacer.")) {
-            return;
-        }
+    $("#btnBorrar").on("click", function (e) {
+        e.preventDefault();
+        abrirModal('modalEliminarCuenta');
+    });
 
+    $("#confirmEliminarCuenta").on("click", function () {
+        cerrarModal('modalEliminarCuenta');
         $.ajax({
             url: url_borrar_cuenta5_base, // 🔥 Nueva vista Django
             type: "POST",

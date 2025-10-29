@@ -2137,11 +2137,10 @@ def actualizar_presupuesto_centro_segmento_ventas(request):
         total_proyectado = proyectados.get((centro, segmento), 0) or 0
 
         # proporción de ese segmento dentro del centro en ese mes
-        proporcion = total_mes_segmento / total_mes_centro
-
+        proporcion = (total_mes_segmento / total_mes_centro) 
         # valor proyectado mensual = proporción * total proyectado del centro-segmento
         valor_proyectado_mes = round(total_proyectado * proporcion)
-
+        print("Centro:", centro, "Segmento:", segmento, "Mes:", mes, "Total mes segmento:", total_mes_segmento, "mes centro:", total_mes_centro, "Proporción:", proporcion, "proyectado mes:", valor_proyectado_mes, "total proyectado:", total_proyectado)
         # Actualizar registro correspondiente al año siguiente
         PresupuestoCentroSegmentoVentas.objects.filter(
             year=year_siguiente,
