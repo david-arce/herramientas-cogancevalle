@@ -3254,11 +3254,11 @@ def cargar_auxilio_transporte_base(request):
     #     "cedula", "nombre", "nombrecar", "nomcosto", "nombre_cen", "concepto_f"
     # )
     # Tomo todos los empleados desde nómina (puede ser tu base principal)
-    empleados = PresupuestoSueldos.objects.all().values(
+    empleados = PresupuestoSueldosAux.objects.all().values(
     "cedula", "nombre", "centro", "area", "cargo", "salario_base"
     )
     # Tomo también los aprendices
-    aprendices = PresupuestoAprendiz.objects.filter(concepto="SALARIO APRENDIZ REFORMA").values(
+    aprendices = PresupuestoAprendizAux.objects.filter(concepto="SALARIO APRENDIZ REFORMA").values(
     "cedula", "nombre", "centro", "area", "cargo", "salario_base"
     )
     # Uno empleados y aprendices en una sola lista
@@ -3280,11 +3280,11 @@ def cargar_auxilio_transporte_base(request):
             total_mes = 0
             if mes != "marzo":
                 # Sumar el valor del mes en todas las tablas
-                total_mes += PresupuestoMediosTransporte.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes += PresupuestoSueldos.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes += PresupuestoComisiones.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes += PresupuestoHorasExtra.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes += PresupuestoAprendiz.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes += PresupuestoMediosTransporteAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes += PresupuestoSueldosAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes += PresupuestoComisionesAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes += PresupuestoHorasExtraAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes += PresupuestoAprendizAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
                 # descargar en un archivo de texto los totales por mes y cédula
                 # with open("totales_auxilio_transporte.txt", "a") as f:
                 #     f.write(f"Cédula: {row['cedula']} - cargo: {row['cargo']} - Mes: {mes} - Total antes de aux: {total_mes}\n")  
@@ -3303,11 +3303,11 @@ def cargar_auxilio_transporte_base(request):
                 # auxRetroactivo = (nuevo_salario - salario) * 2  # retroactivo de enero y febrero
               
                 mes_temp = "abril"
-                total_mes += PresupuestoMediosTransporte.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes += PresupuestoSueldos.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes_temp))["s"] or 0
-                total_mes += PresupuestoComisiones.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes += PresupuestoHorasExtra.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes += PresupuestoAprendiz.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes += PresupuestoMediosTransporteAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes += PresupuestoSueldosAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes_temp))["s"] or 0
+                total_mes += PresupuestoComisionesAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes += PresupuestoHorasExtraAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
+                total_mes += PresupuestoAprendizAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
                 total_mes_marzo = total_mes
                 # total_mes_marzo -= auxRetroactivo
                 
