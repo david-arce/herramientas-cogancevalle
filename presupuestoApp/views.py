@@ -3928,34 +3928,37 @@ def cargar_prima_base(request):
     aprendices = PresupuestoAprendizAux.objects.filter(concepto="SALARIO APRENDIZ REFORMA")
     # Uno empleados y aprendices en una sola lista
     personas = list(empleados) + list(aprendices)
+    
     for emp in personas:
         # Inicializo acumuladores por mes
         data_meses = {mes: 0 for mes in meses}
 
-        # Sumo de nómina
-        for mes in meses:
-            data_meses[mes] += getattr(emp, mes, 0)
+        # Sumo de sueldos
+        sueldos = PresupuestoSueldosAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
+        if sueldos:
+            for mes in meses:
+                data_meses[mes] += getattr(emp, mes, 0)
 
         # Sumo de comisiones
-        comision = PresupuestoComisionesAux.objects.filter(cedula=emp.cedula).first()
+        comision = PresupuestoComisionesAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
         if comision:
             for mes in meses:
                 data_meses[mes] += getattr(comision, mes, 0)
                 
         # Sumo de medios de transporte
-        medio = PresupuestoMediosTransporteAux.objects.filter(cedula=emp.cedula).first()
+        medio = PresupuestoMediosTransporteAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
         if medio:
             for mes in meses:
                 data_meses[mes] += getattr(medio, mes, 0)
 
         # Sumo de auxilio transporte
-        aux = PresupuestoAuxilioTransporteAux.objects.filter(cedula=emp.cedula).first()
+        aux = PresupuestoAuxilioTransporteAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
         if aux:
             for mes in meses:
                 data_meses[mes] += getattr(aux, mes, 0)
 
         # Sumo de horas extra
-        extra = PresupuestoHorasExtraAux.objects.filter(cedula=emp.cedula).first()
+        extra = PresupuestoHorasExtraAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
         if extra:
             for mes in meses:
                 data_meses[mes] += getattr(extra, mes, 0)
@@ -3971,7 +3974,7 @@ def cargar_prima_base(request):
             **data_meses,
             total=sum(data_meses.values())
         )
-
+    
     return JsonResponse({"status": "ok"})
 
 @csrf_exempt
