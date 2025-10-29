@@ -840,7 +840,8 @@
                 let opciones = Object.keys(mapaCuentaMayor); // 🔥 ahora son las claves (códigos)
                 let row = table.row($(this).closest("tr"));
                 let rowData = row.data();
-                
+                // 🔹 Clave actual según el valor guardado
+                let valorActual = rowData["cuenta"] || "";
                 // 🔥 Si el nombre_cen es ADMINISTRACIÓN → solo mostrar claves que empiezan con 51
                 if (rowData["nombre_cen"] && rowData["nombre_cen"].toUpperCase() === "ADMINISTRACIÓN") {
                     opciones = opciones.filter(o => o.startsWith("51"));
@@ -863,7 +864,7 @@
                 let htmlSelect = `<select class="cell-select">` +
                 opciones.map(o => {
                     let leyenda = mapaCuentaMayor[o] || "";
-                    return `<option value="${o}" ${o==oldValue ? "selected":""}>${o} - ${leyenda}</option>`;
+                    return `<option value="${o}" ${o==valorActual ? "selected":""}>${o} - ${leyenda}</option>`;
                 }).join("") +
                 `</select>`;
 
