@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>Presupuesto Nómina Temporal</title>
+    <title>Intereses cesantias auxiliar</title>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <!-- DataTables Buttons CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
@@ -28,6 +28,7 @@
             Cargar desde Conceptos
             <span class="spinner" style="display:none; margin-left:8px;"></span>
         </button>
+        <button id="calcularBtn">Calcular</button>
         <button id="agregarFila">➕ Agregar fila</button>
         <button id="guardarTempBtn">Guardar en BD (temporal)<span class="spinner" style="display:none; margin-left:8px;"></span>
         </button>
@@ -561,6 +562,81 @@ $(document).ready(function() {
             $btn.prop("disabled", false);
         });
     });
+
+    $('#calcularBtn').on('click', function() {
+        calcular();
+    });
+
+    // calcular solo las filas seleccionadas
+    function calcular() {
+        const tasaInteres = 0.12;
+        const meses = [
+            "enero", "febrero", "marzo", "abril", "mayo", "junio",
+            "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+        ];
+
+        // Iterar sobre filas seleccionadas
+        $('#tempTable tbody tr').each(function () {
+            const $row = $(this);
+            const $checkbox = $row.find('.row-check');
+            if (!$checkbox.is(':checked')) return;
+
+            const row = table.row($row);
+            const data = row.data();
+
+            // Convertir a números
+            const cesantias = meses.map(m => parseFloat(data[m]) || 0);
+
+            let suma_cesantias = 0;
+            let consecutivo_valores = 0;
+            let bloque_activo = false;
+            let intereses_acumulados = 0;
+            const valores = {};
+
+            // Calcular intereses por cada mes
+            meses.forEach((mes, i) => {
+                const valor_mes = cesantias[i];
+
+                if (valor_mes === 0) {
+                    valores[mes] = 0;
+                    bloque_activo = false;
+                    return;
+                }
+
+                // Nuevo bloque
+                if (!bloque_activo) {
+                    suma_cesantias = 0;
+                    consecutivo_valores = 0;
+                    intereses_acumulados = 0;
+                    bloque_activo = true;
+                }
+
+                suma_cesantias += valor_mes;
+                consecutivo_valores += 1;
+
+                const dias = 30 * consecutivo_valores;
+                const interes_teorico = (suma_cesantias * dias * tasaInteres) / 360;
+                const interes_mes = interes_teorico - intereses_acumulados;
+
+                valores[mes] = interes_mes;
+                intereses_acumulados += interes_mes;
+            });
+
+            // Actualizar datos de la fila
+            let total = 0;
+            meses.forEach(m => {
+                const val = Math.round(valores[m]);
+                data[m] = val;
+                total += val;
+            });
+            data.total = Math.round(total);
+
+            // Refrescar en DataTables
+            row.data(data).draw(false);
+        });
+
+        showToast("Intereses de cesantías calculados correctamente ✅", "success");
+    }
 
     // Configurar CSRF para AJAX
     function getCSRFToken() {

@@ -5294,50 +5294,8 @@ def cargar_intereses_cesantias_base(request):
 
     cesantias_qs = PresupuestoCesantiasAux.objects.all()
 
+    # cargar las cesantias en intereses de cesantias auxiliar
     for reg in cesantias_qs:
-        cesantias_base = [getattr(reg, m) or 0 for m in meses]
-        valores = {}
-
-        # Variables de control
-        suma_cesantias = 0
-        consecutivo_valores = 0
-        bloque_activo = False
-        intereses_acumulados = 0
-
-        for i, mes in enumerate(meses):
-            valor_mes = cesantias_base[i]
-
-            if valor_mes == 0:
-                # Mes sin valor → 0 y termina el bloque
-                valores[mes] = 0
-                bloque_activo = False
-                continue
-
-            # Si inicia un nuevo bloque, reiniciar sumatoria, días e intereses
-            if not bloque_activo:
-                suma_cesantias = 0
-                consecutivo_valores = 0
-                intereses_acumulados = 0  # Reinicia intereses al iniciar bloque
-                bloque_activo = True
-
-            # Acumular dentro del bloque
-            suma_cesantias += valor_mes
-            consecutivo_valores += 1
-
-            # Días = 30 * posición dentro del bloque
-            dias = 30 * consecutivo_valores
-
-            # Cálculo del interés
-            interes_teorico = (suma_cesantias * dias * 0.12) / 360
-            interes_mes = interes_teorico - intereses_acumulados
-
-            valores[mes] = interes_mes
-            intereses_acumulados += interes_mes
-
-        # Totalizar y guardar en tabla auxiliar
-        total = sum(Decimal(valores[m]) for m in meses)
-        create_kwargs = {m: int(round(float(valores[m]))) for m in meses}
-
         PresupuestoInteresesCesantiasAux.objects.create(
             cedula=reg.cedula,
             nombre=reg.nombre,
@@ -5345,11 +5303,78 @@ def cargar_intereses_cesantias_base(request):
             area=reg.area,
             cargo=reg.cargo,
             concepto="INTERESES CESANTÍAS",
-            **create_kwargs,
-            total=int(round(float(total)))
+            enero=reg.enero,
+            febrero=reg.febrero,
+            marzo=reg.marzo,
+            abril=reg.abril,
+            mayo=reg.mayo,
+            junio=reg.junio,
+            julio=reg.julio,
+            agosto=reg.agosto,
+            septiembre=reg.septiembre,
+            octubre=reg.octubre,
+            noviembre=reg.noviembre,
+            diciembre=reg.diciembre,
+            total=reg.total,
         )
+    
+    # for reg in cesantias_qs:
+    #     cesantias_base = [getattr(reg, m) or 0 for m in meses]
+    #     valores = {}
+
+    #     # Variables de control
+    #     suma_cesantias = 0
+    #     consecutivo_valores = 0
+    #     bloque_activo = False
+    #     intereses_acumulados = 0
+
+    #     for i, mes in enumerate(meses):
+    #         valor_mes = cesantias_base[i]
+
+    #         if valor_mes == 0:
+    #             # Mes sin valor → 0 y termina el bloque
+    #             valores[mes] = 0
+    #             bloque_activo = False
+    #             continue
+
+    #         # Si inicia un nuevo bloque, reiniciar sumatoria, días e intereses
+    #         if not bloque_activo:
+    #             suma_cesantias = 0
+    #             consecutivo_valores = 0
+    #             intereses_acumulados = 0  # Reinicia intereses al iniciar bloque
+    #             bloque_activo = True
+
+    #         # Acumular dentro del bloque
+    #         suma_cesantias += valor_mes
+    #         consecutivo_valores += 1
+
+    #         # Días = 30 * posición dentro del bloque
+    #         dias = 30 * consecutivo_valores
+
+    #         # Cálculo del interés
+    #         interes_teorico = (suma_cesantias * dias * 0.12) / 360
+    #         interes_mes = interes_teorico - intereses_acumulados
+
+    #         valores[mes] = interes_mes
+    #         intereses_acumulados += interes_mes
+
+    #     # Totalizar y guardar en tabla auxiliar
+    #     total = sum(Decimal(valores[m]) for m in meses)
+    #     create_kwargs = {m: int(round(float(valores[m]))) for m in meses}
+
+    #     PresupuestoInteresesCesantiasAux.objects.create(
+    #         cedula=reg.cedula,
+    #         nombre=reg.nombre,
+    #         centro=reg.centro,
+    #         area=reg.area,
+    #         cargo=reg.cargo,
+    #         concepto="INTERESES CESANTÍAS",
+    #         **create_kwargs,
+    #         total=int(round(float(total)))
+    #     )
 
     return JsonResponse({"status": "ok"})
+
 @csrf_exempt
 def borrar_presupuesto_intereses_cesantias(request):
     if request.method == "POST":
