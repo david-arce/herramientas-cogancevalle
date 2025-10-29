@@ -140,7 +140,7 @@ def exportar_excel_presupuestos(request):
     df_almacen_cartago = prepare_df(almacen_cartago, "Almacén Cartago")
     df_almacen_cali = prepare_df(almacen_cali, "Almacén Cali")
     df_comunicaciones = prepare_df(comunicaciones, "Comunicaciones")
-    df_comercial_costos = prepare_df(comercial_costos, "Comercial Costos")
+    df_comercial_costos = prepare_df(comercial_costos, "Comercial Gastos")
     df_contabilidad = prepare_df(contabilidad, "Contabilidad") 
     df_gerencia = prepare_df(gerencia, "Gerencia")
     
@@ -5705,7 +5705,7 @@ def cargar_bonificaciones_foco_base(request):
     
     # agrupamos por persona sumando los meses de enero a junio
     comisiones_agrupadas = (
-        PresupuestoComisiones.objects
+        PresupuestoComisionesAux.objects
         .values("cedula", "nombre", "centro", "area", "cargo")
         .annotate(
             total=Sum("total"),        # total de todos los meses
