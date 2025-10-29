@@ -879,12 +879,14 @@
                     if (nuevoValor === "540531" || nuevoValor === "54059503") {
                         rowData["codcosto"] = "020201";
                     }
-                    if (nuevoValor === "540531" || nuevoValor === "54059503") and (rowData["nombre_cen"] === "SERVICIOS TÉCNICOS"){
+                    if ((nuevoValor === "540531" || nuevoValor === "54059503") && (rowData["nombre_cen"] === "SERVICIOS TÉCNICOS")){
                         rowData["codcosto"] = "020301";
                     }
 
-                    row.data(rowData).draw(false);
-                    editingCell = null;
+                    setTimeout(() => {
+                        row.data(rowData).draw(false);
+                        editingCell = null;
+                    }, 0);
                 });
 
 
@@ -914,8 +916,10 @@
                     rowData["codcosto"] = opcionesNombreCentro[nuevoValor]?.codigoCosto || "";
                     rowData["centro_tra"] = opcionesNombreCentro[nuevoValor]?.centro || "";
                     
-                    row.data(rowData).draw(false);
-                    editingCell = null;
+                    setTimeout(() => {
+                        row.data(rowData).draw(false);
+                        editingCell = null;
+                    }, 0);
                 });
 
                 $select.on("keydown", function(e) {
