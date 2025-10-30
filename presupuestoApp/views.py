@@ -108,6 +108,7 @@ def exportar_excel_presupuestos(request):
     comercial_costos = PresupuestoComercialCostosAprobado.objects.values()
     contabilidad = PresupuestoContabilidadAprobado.objects.values()
     gerencia = PresupuestoGerenciaAprobado.objects.values()
+    salud_ocupacional = PresupuestoOcupacionalAprobado.objects.values()
     
     # filtrar por ultima version todas las tablas
     tecnologia = tecnologia.filter(version=tecnologia.aggregate(Max('version'))['version__max'])
@@ -123,6 +124,7 @@ def exportar_excel_presupuestos(request):
     comercial_costos = comercial_costos.filter(version=comercial_costos.aggregate(Max('version'))['version__max'])
     contabilidad = contabilidad.filter(version=contabilidad.aggregate(Max('version'))['version__max'])
     gerencia = gerencia.filter(version=gerencia.aggregate(Max('version'))['version__max'])
+    salud_ocupacional = salud_ocupacional.filter(version=salud_ocupacional.aggregate(Max('version'))['version__max'])
     
     # Crear DataFrames con columna de origen
     def prepare_df(data, origen):
@@ -143,10 +145,11 @@ def exportar_excel_presupuestos(request):
     df_comercial_costos = prepare_df(comercial_costos, "Comercial Gastos")
     df_contabilidad = prepare_df(contabilidad, "Contabilidad") 
     df_gerencia = prepare_df(gerencia, "Gerencia")
+    df_salud_ocupacional = prepare_df(salud_ocupacional, "Salud Ocupacional")
     
     # Concatenar todos en un solo DataFrame
     df_final = pd.concat(
-        [df_tecnologia, df_servicios_tecnicos, df_logistica, df_gestion_riesgos, df_gh, df_almacen_tulua, df_almacen_buga, df_almacen_cartago, df_almacen_cali, df_comunicaciones, df_comercial_costos, df_contabilidad, df_gerencia],
+        [df_tecnologia, df_servicios_tecnicos, df_logistica, df_gestion_riesgos, df_gh, df_almacen_tulua, df_almacen_buga, df_almacen_cartago, df_almacen_cali, df_comunicaciones, df_comercial_costos, df_contabilidad, df_gerencia, df_salud_ocupacional],
         ignore_index=True
     )
     
@@ -5085,6 +5088,27 @@ def cargar_seguridad_social_base(request):
         )
     )
     
+    # agrupar por area PROYECTO AFTOSA GASTOS DE PERSONAL
+    aftosa = (PresupuestoSeguridadSocialAux.objects
+        .filter(area__in=["PROYECTO AFTOSA GASTOS DE PERSONAL"])
+        .values("area", "concepto")  # agrupamos por área y concepto
+        .annotate(
+            enero=Sum("enero"),
+            febrero=Sum("febrero"),
+            marzo=Sum("marzo"),
+            abril=Sum("abril"),
+            mayo=Sum("mayo"),
+            junio=Sum("junio"),
+            julio=Sum("julio"),
+            agosto=Sum("agosto"),
+            septiembre=Sum("septiembre"),
+            octubre=Sum("octubre"),
+            noviembre=Sum("noviembre"),
+            diciembre=Sum("diciembre"),
+            total=Sum("total"),
+        )
+    )
+    
     # Insertar en la tabla como "ASISTENCIA TECNICA AGRUPADA"
     for item in asistencia:
         PresupuestoSeguridadSocialAux.objects.create(
@@ -5111,6 +5135,31 @@ def cargar_seguridad_social_base(request):
         area__in=["ASISTENCIA TECNICA PROPIA", "ASISTENCIA TECNICA CONVENIO"]
     ).exclude(centro="").delete()
     
+    # insertar AFTOSA
+    for item in aftosa:
+        PresupuestoSeguridadSocialAux.objects.create(
+            nombre="SEGURIDAD SOCIAL",
+            centro="",  # omitimos centro
+            area=item["area"],  # mantenemos el nombre de área original
+            concepto=item["concepto"],
+            enero=item["enero"] or 0,
+            febrero=item["febrero"] or 0,
+            marzo=item["marzo"] or 0,
+            abril=item["abril"] or 0,
+            mayo=item["mayo"] or 0,
+            junio=item["junio"] or 0,
+            julio=item["julio"] or 0,
+            agosto=item["agosto"] or 0,
+            septiembre=item["septiembre"] or 0,
+            octubre=item["octubre"] or 0,
+            noviembre=item["noviembre"] or 0,
+            diciembre=item["diciembre"] or 0,
+            total=item["total"] or 0,
+        )
+    # 2. Eliminamos las filas originales (con centro)
+    PresupuestoSeguridadSocialAux.objects.filter(
+        area__in=["PROYECTO AFTOSA GASTOS DE PERSONAL"]
+    ).exclude(centro="").delete()
 
     return JsonResponse({"status": "ok"})
 
