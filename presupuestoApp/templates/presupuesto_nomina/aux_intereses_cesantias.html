@@ -29,6 +29,7 @@
             <span class="spinner" style="display:none; margin-left:8px;"></span>
         </button>
         <button id="calcularBtn">Calcular</button>
+        <button id="calcularSimpleBtn">Calcular (método simple)</button>
         <button id="agregarFila">➕ Agregar fila</button>
         <button id="guardarTempBtn">Guardar en BD (temporal)<span class="spinner" style="display:none; margin-left:8px;"></span>
         </button>
@@ -566,6 +567,9 @@ $(document).ready(function() {
     $('#calcularBtn').on('click', function() {
         calcular();
     });
+    $('#calcularSimpleBtn').on('click', function() {
+        calcularInteresesCesantiasSimple();
+    });
 
     // calcular solo las filas seleccionadas
     function calcular() {
@@ -583,7 +587,6 @@ $(document).ready(function() {
 
             const row = table.row($row);
             const data = row.data();
-
             // Convertir a números
             const cesantias = meses.map(m => parseFloat(data[m]) || 0);
 
@@ -636,6 +639,86 @@ $(document).ready(function() {
         });
 
         showToast("Intereses de cesantías calculados correctamente ✅", "success");
+    }
+
+    function calcularInteresesCesantiasSimple() {
+        const tasaInteres = 0.12;
+        const meses = [
+            "enero", "febrero", "marzo", "abril", "mayo", "junio",
+            "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+        ];
+
+        // 🔹 Obtener todas las filas seleccionadas
+        const filasSeleccionadas = [];
+        $('#tempTable tbody tr').each(function () {
+            const $row = $(this);
+            const $checkbox = $row.find('.row-check');
+            if (!$checkbox.is(':checked')) return;
+
+            const row = table.row($row);
+            const data = row.data();
+            filasSeleccionadas.push(data);
+        });
+
+        // 🔹 Procesar cada fila seleccionada
+        filasSeleccionadas.forEach(data => {
+            const cedula = data.cedula;
+            const cesantias = meses.map(m => parseFloat(data[m]) || 0);
+
+            let suma_cesantias = 0;
+            let intereses_acumulados = 0;
+            const valores = {};
+
+            // 🔹 Calcular intereses mes a mes
+            meses.forEach((mes, i) => {
+                // Sumar los valores de ese mes para todas las filas con la misma cédula
+                let totalMesCedula = 0;
+                filasSeleccionadas.forEach(d => {
+                    if (d.cedula === cedula) {
+                        totalMesCedula += parseFloat(d[mes]) || 0;
+                    }
+                });
+
+                const valor_mes = totalMesCedula;
+                if (valor_mes === 0) {
+                    valores[mes] = 0;
+                    return;
+                }
+
+                suma_cesantias += valor_mes;
+                const consecutivo_valores = i + 1;
+                const dias = 30 * consecutivo_valores;
+                const interes_teorico = (suma_cesantias * dias * tasaInteres) / 360;
+                const interes_mes = interes_teorico - intereses_acumulados;
+
+                console.log(
+                    `👤 Cédula: ${cedula} | Mes: ${mes} | Valor Mes (total cédula): ${valor_mes} | ` +
+                    `Suma Cesantías: ${suma_cesantias} | Días: ${dias} | ` +
+                    `Interés Teórico: ${interes_teorico.toFixed(2)} | ` +
+                    `Interés Mes: ${interes_mes.toFixed(2)}`
+                );
+
+                valores[mes] = interes_mes;
+                intereses_acumulados += interes_mes;
+            });
+
+            // 🔹 Actualizar la fila actual con los intereses calculados
+            let total = 0;
+            meses.forEach(m => {
+                const val = Math.round(valores[m]);
+                data[m] = val;
+                total += val;
+            });
+            data.total = Math.round(total);
+
+            // 🔹 Refrescar en DataTables
+            const row = table.row(function (idx, d) {
+                return d.cedula === data.cedula && d.id === data.id;
+            });
+            row.data(data).draw(false);
+        });
+
+        showToast("Cálculo simplificado de intereses aplicado correctamente ✅", "success");
     }
 
     // Configurar CSRF para AJAX
