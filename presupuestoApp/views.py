@@ -2085,6 +2085,9 @@ def actualizar_presupuesto_centro_segmento_ventas(request):
     year_actual = timezone.now().year      # 2025
     year_siguiente = year_actual + 1       # 2026
 
+    bd2025 = BdVentas2025.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    df = pd.DataFrame(list(bd2025))
+
     # ================== 🔄 Actualizar total_proyectado (año siguiente) ==================
     proyecciones = (
         PresupuestoComercial.objects.filter(year=year_actual)
