@@ -2087,8 +2087,27 @@ def actualizar_presupuesto_centro_segmento_ventas(request):
 
     bd2025 = BdVentas2025.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
     df = pd.DataFrame(list(bd2025))
-
+    # Extraer el año desde 'lapso'
+    df['year'] = df['lapso'] // 100
+    df['mes'] = df['lapso'] % 100
+    # Agrupar por nombre de producto, año, y sumar
+    df_agrupado = df.groupby(['nombre_linea_n1', 'year', 'mes','nombre_centro_de_operacion', 'nombre_clase_cliente'])['suma'].sum().reset_index()
+    # 🔹 4. Calcular el total anual (todos los meses) por línea, centro y clase
+    totales_anuales = (
+        df_agrupado.groupby(['nombre_linea_n1', 'year', 'nombre_centro_de_operacion', 'nombre_clase_cliente'])['suma']
+        .sum()
+        .reset_index()
+        .rename(columns={'suma': 'total_anual'})
+    )
+    # 🔹 5. Unir el total anual a los datos mensuales
+    df_final = df_agrupado.merge(
+        totales_anuales,
+        on=['nombre_linea_n1', 'year', 'nombre_centro_de_operacion', 'nombre_clase_cliente'],
+        how='left'
+    )
+    # df_final.to_excel('df_agrupado_2025.xlsx', index=False)
     # ================== 🔄 Actualizar total_proyectado (año siguiente) ==================
+    """ 
     proyecciones = (
         PresupuestoComercial.objects.filter(year=year_actual)
         .values("year", "nombre_centro_de_operacion", "nombre_clase_cliente")
@@ -2154,7 +2173,7 @@ def actualizar_presupuesto_centro_segmento_ventas(request):
             segmento=segmento,
             mes=mes
         ).update(total=valor_proyectado_mes)
-
+    """
     return JsonResponse({
         "status": "ok",
         "mensaje": "Presupuesto por centro y segmento actualizado y distribuido por mes ✅"
