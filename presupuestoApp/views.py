@@ -1950,9 +1950,9 @@ def guardar_presupuesto_comercial(request):
                         crecimiento_comercial_costos=int(row.get("crecimiento_comercial_costos", 0)),
                         crecimiento_comercial_mes_ventas=int(row.get("crecimiento_comercial_mes_ventas", 0)),
                         crecimiento_comercial_mes_costos=int(row.get("crecimiento_comercial_mes_costos", 0)),
-                        crecimiento_ventas=int(row.get("crecimiento_ventas", 0)),
+                        crecimiento_ventas=float(row.get("crecimiento_ventas", 0)),
                         proyeccion_ventas=int(row.get("proyeccion_ventas", 0)),
-                        crecimiento_costos=int(row.get("crecimiento_costos", 0)),
+                        crecimiento_costos=float(row.get("crecimiento_costos", 0)),
                         proyeccion_costos=int(row.get("proyeccion_costos", 0)),
                         utilidad_porcentual=float(row["utilidad_porcentual"]),
                         utilidad_valor=int(row["utilidad_valor"]),
@@ -2105,6 +2105,11 @@ def actualizar_presupuesto_centro_segmento_ventas(request):
         on=['nombre_linea_n1', 'year', 'nombre_centro_de_operacion', 'nombre_clase_cliente'],
         how='left'
     )
+    # 🔹 Calcular porcentaje de participación mensual sobre el total anual
+    df_final['porcentaje_participacion'] = (
+        df_final['suma'] / df_final['total_anual'] * 100
+    )
+
     # df_final.to_excel('df_agrupado_2025.xlsx', index=False)
     # ================== 🔄 Actualizar total_proyectado (año siguiente) ==================
     """ 

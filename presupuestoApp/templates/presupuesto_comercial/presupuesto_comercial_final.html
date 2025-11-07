@@ -3,7 +3,7 @@
 
     <div class="btn-group">
         {% comment %} <button type="button" id="cargarBtnGeneral" class="btn-accion">🔄 Cargar desde histórico</button> {% endcomment %}
-        <button type="button" id="guardarBtnGeneral" class="btn-accion btn-guardar">💾 Guardar cambios</button>
+        {% comment %} <button type="button" id="guardarBtnGeneral" class="btn-accion btn-guardar">💾 Guardar cambios</button> {% endcomment %}
     </div>
 
    <!-- 🎯 FILTROS -->
@@ -430,12 +430,12 @@
                 }
             });
 
-// 🧠 Importante: solo ejecutamos blur si no hay edición activa por Enter
-$input.on("blur", function() {
-    if (editingCell) {
-        commitChange();
-    }
-});
+        // 🧠 Importante: solo ejecutamos blur si no hay edición activa por Enter
+        $input.on("blur", function() {
+            if (editingCell) {
+                commitChange();
+            }
+        });
 
         });
 
