@@ -4,7 +4,7 @@
     <div class="btn-group">
         {% comment %} <button type="button" id="cargarBtnCentroSegVentas" class="btn-accion">🔄 Cargar desde histórico</button> {% endcomment %}
         {% comment %} <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button> {% endcomment %}
-        <button type="button" id="actualizarBtnCentroSegmento" class="btn-accion btn-actualizar">Actualizar tabla</button>
+        {% comment %} <button type="button" id="actualizarBtnCentroSegmento" class="btn-accion btn-actualizar">Actualizar tabla</button> {% endcomment %}
     </div>
 
     <table id="presupuestoTableCentroOperacionSegmento" class="display" style="width:100%">
@@ -102,24 +102,85 @@
                 pivot[key][meses[row.mes]] = row.total || 0;
             } 
 
-            {% comment %} let r2Key = 'R2_' + row.nombre_centro_operacion + '_' + row.segmento;
-            if (!pivot[r2Key]) pivot[r2Key] = { year: "R2", nombre_centro_operacion: row.nombre_centro_operacion, segmento: row.segmento, total_year: 0, variacion_valor: 0, variacion_pct: 0 }; 
-            pivot[r2Key][meses[row.mes]] = row.r2;  {% endcomment %}
         });
         let result = Object.values(pivot);
 
-        // si hay filtro de centro o segmento, agregar fila R2 al final
-        {% comment %} if (selectedCentro != null || selectedSegmento != null) {
-            result = result.map(r => {
-                if (r.year === "R2" && r.nombre_centro_operacion === selectedCentro && r.segmento === selectedSegmento) {
-                    let emptyR2 = {...r};
-                    Object.keys(meses).forEach(m => emptyR2[meses[m]] = "");
-                    return emptyR2;
-                }
-                return r;
-            });
-        } {% endcomment %}
-        return result;
+        // 🔹 Año actual y siguiente dinámicos
+        const añoActual = new Date().getFullYear();
+        const añoSiguiente = añoActual + 1;
+
+        // 🔹 Agrupar por centro + segmento
+        const agrupado = {};
+        result.forEach(r => {
+            const key = `${r.nombre_centro_operacion}_${r.segmento}`;
+            if (!agrupado[key]) agrupado[key] = [];
+            agrupado[key].push(r);
+        });
+
+        let finalRows = [];
+
+        Object.entries(agrupado).forEach(([key, filas]) => {
+            // Ordenar por año
+            filas.sort((a, b) => a.year - b.year);
+            filas.forEach(f => finalRows.push(f));
+
+            const filaBase = filas.find(f => f.year === añoSiguiente);
+            const [centro, segmento] = key.split("_");
+
+            if (filaBase) {
+                // 🔸 Fila de utilidad %
+                const filaPct = { 
+                    year: "Margen % " + añoActual, 
+                    nombre_centro_operacion: centro, 
+                    segmento: segmento
+                };
+                Object.keys(meses).forEach(num => {
+                    const mes = meses[num];
+                    const registroMes = data.find(r => 
+                        r.year === añoSiguiente && 
+                        r.mes === parseInt(num) &&
+                        r.nombre_centro_operacion === centro &&
+                        r.segmento === segmento
+                    );
+                    filaPct[mes] = registroMes ? registroMes.utilidad_pct : null;
+                });
+                filaPct.total_year = null;
+                filaPct.total_year_costos = null;
+                filaPct.variacion_valor = null;
+                filaPct.variacion_pct = null;
+                filaPct.utilidad_pct = filaBase.utilidad_pct;
+                filaPct.utilidad_valor = null;
+                filaPct.total_proyectado = null;
+
+                // 🔸 Fila de utilidad valor
+                const filaValor = { 
+                    year: "Utilidad Valor " + añoSiguiente, 
+                    nombre_centro_operacion: centro, 
+                    segmento: segmento
+                };
+                Object.keys(meses).forEach(num => {
+                    const mes = meses[num];
+                    const registroMes = data.find(r => 
+                        r.year === añoSiguiente && 
+                        r.mes === parseInt(num) &&
+                        r.nombre_centro_operacion === centro &&
+                        r.segmento === segmento
+                    );
+                    filaValor[mes] = registroMes ? registroMes.utilidad_valor : null;
+                });
+                filaValor.total_year = filaBase.utilidad_valor || null;
+                filaValor.total_year_costos = null;
+                filaValor.variacion_valor = null;
+                filaValor.variacion_pct = null;
+                filaValor.utilidad_pct = null;
+                filaValor.utilidad_valor = filaBase.utilidad_valor;
+                filaValor.total_proyectado = null;
+
+                finalRows.push(filaPct, filaValor);
+            }
+        });
+
+        return finalRows;
     }
 
     // 🔄 Despivotar datos ignorando fila R2 para enviar al backend

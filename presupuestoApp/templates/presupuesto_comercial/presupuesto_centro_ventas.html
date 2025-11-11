@@ -4,7 +4,7 @@
     <div class="btn-group">
         {% comment %} <button type="button" id="cargarBtnCentroVentas" class="btn-accion">🔄 Cargar desde histórico</button> {% endcomment %}
         {% comment %} <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button> {% endcomment %}
-        <button type="button" id="actualizarBtnCentro" class="btn-accion btn-actualizar">Actualizar tabla</button>
+        {% comment %} <button type="button" id="actualizarBtnCentro" class="btn-accion btn-actualizar">Actualizar tabla</button> {% endcomment %}
     </div>
 
     <table id="presupuestoTableCentroOperacion" class="display" style="width:100%">
@@ -93,27 +93,82 @@ function pivotData(data, selectedCentro=null) {
             };
         }
         pivot[key][meses[row.mes]] = row.total;
-
-        {% comment %} let r2Key = "R2_" + row.nombre_centro_operacion;
-        if (!pivot[r2Key]) pivot[r2Key] = { year: "R2", nombre_centro_operacion: row.nombre_centro_operacion, total_year: 0, variacion_valor: 0, variacion_pct: 0 };
-        pivot[r2Key][meses[row.mes]] = row.r2; {% endcomment %}
     });
 
+    // Convertir a array
     let result = Object.values(pivot);
 
-    // Si hay filtro de centro, mostrar solo R2 de ese centro; otros R2 vacíos
-    {% comment %} if (selectedCentro !== null) {
-        result = result.map(r => {
-            if(r.year === "R2" && r.nombre_centro_operacion !== selectedCentro) {
-                let emptyR2 = {...r};
-                Object.values(meses).forEach(m => emptyR2[m] = "");
-                return emptyR2;
-            }
-            return r;
-        });
-    } {% endcomment %}
+    // Año actual y siguiente
+    const añoActual = new Date().getFullYear();
+    const añoSiguiente = añoActual + 1;
 
-    return result;
+    // 🔹 Agrupar por centro de operación
+    const agrupado = {};
+    result.forEach(r => {
+        if (!agrupado[r.nombre_centro_operacion]) agrupado[r.nombre_centro_operacion] = [];
+        agrupado[r.nombre_centro_operacion].push(r);
+    });
+
+    let finalRows = [];
+
+    Object.entries(agrupado).forEach(([centro, filas]) => {
+        // Ordenar años
+        filas.sort((a, b) => a.year - b.year);
+        filas.forEach(f => finalRows.push(f));
+
+        // Si existe el año siguiente en este centro
+        const filaBase = filas.find(f => f.year === añoSiguiente);
+        if (filaBase) {
+            // 🔸 Fila de utilidad %
+            const filaPct = { 
+                year: "Margen % " + añoActual, 
+                nombre_centro_operacion: centro 
+            };
+            Object.keys(meses).forEach(num => {
+                const mes = meses[num];
+                const registroMes = data.find(r => 
+                    r.year === añoSiguiente && 
+                    r.mes === parseInt(num) && 
+                    r.nombre_centro_operacion === centro
+                );
+                filaPct[mes] = registroMes ? registroMes.utilidad_pct : null;
+            });
+            filaPct.total_year = null;
+            filaPct.total_year_costos = null;
+            filaPct.variacion_valor = null;
+            filaPct.variacion_pct = null;
+            filaPct.utilidad_pct = null;
+            filaPct.utilidad_valor = null;
+            filaPct.total_proyectado = null;
+
+            // 🔸 Fila de utilidad valor
+            const filaValor = { 
+                year: "Utilidad Valor " + añoSiguiente, 
+                nombre_centro_operacion: centro 
+            };
+            Object.keys(meses).forEach(num => {
+                const mes = meses[num];
+                const registroMes = data.find(r => 
+                    r.year === añoSiguiente && 
+                    r.mes === parseInt(num) && 
+                    r.nombre_centro_operacion === centro
+                );
+                filaValor[mes] = registroMes ? registroMes.utilidad_valor : null;
+            });
+            filaValor.total_year = null;
+            filaValor.total_year_costos = null;
+            filaValor.variacion_valor = null;
+            filaValor.variacion_pct = null;
+            filaValor.utilidad_pct = null;
+            filaValor.utilidad_valor = null;
+            filaValor.total_proyectado = null;
+
+            // Insertar debajo del año siguiente
+            finalRows.push(filaPct, filaValor);
+        }
+    });
+
+    return finalRows;
 }
 
 // 🔄 Deshacer pivot para enviar al backend

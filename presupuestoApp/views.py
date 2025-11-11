@@ -1,6 +1,6 @@
 from collections import defaultdict
 import datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_DOWN
 from itertools import chain
 from pyexpat.errors import messages
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
@@ -1986,6 +1986,72 @@ def actualizar_presupuesto_general_ventas(request):
     PresupuestoGeneralVentas.objects.filter(year=year_siguiente).update(
         total_proyectado=total_2026
     )
+    # ================== 📊 Calcular porcentaje de participación mensual ==================
+    bd2025 = BdVentas2025.objects.values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    df = pd.DataFrame(list(bd2025))
+    # Extraer el año desde 'lapso'
+    df['year'] = df['lapso'] // 100
+    df['mes'] = df['lapso'] % 100
+    # Agrupar por nombre de producto, año, y sumar
+    df_agrupado = df.groupby(['year', 'mes','nombre_linea_n1','nombre_centro_de_operacion', 'nombre_clase_cliente'])['suma'].sum().reset_index()
+    # 🔹 4. Calcular el total anual (todos los meses) por línea, centro y clase
+    totales_anuales = (
+        df_agrupado.groupby(['year', 'nombre_linea_n1','nombre_centro_de_operacion', 'nombre_clase_cliente'])['suma']
+        .sum()
+        .reset_index()
+        .rename(columns={'suma': 'total_anual'})
+    )
+    # 🔹 5. Unir el total anual a los datos mensuales
+    df_final = df_agrupado.merge(
+        totales_anuales,
+        on=['year', 'nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente'],
+        how='left'
+    )
+    # 🔹 Calcular porcentaje de participación mensual sobre el total anual
+    df_final['porcentaje_participacion'] = (
+        df_final['suma'] / df_final['total_anual'] * 100
+    )
+    # actualizar meses proyectados (noviembre, diciembre) con el mismo porcentaje de participación
+    # for mes in [11, 12]:
+    #     df_final.loc[df_final['mes'] == mes, 'porcentaje_participacion'] = utilidad_pct
+    
+    # obtener total proyectado  por línea, centro y clase de la tabla presupuesto comercial
+    proyecciones = (
+        PresupuestoComercial.objects.filter(year=year_actual)
+        .values("linea", "nombre_centro_de_operacion", "nombre_clase_cliente")
+        .annotate(total_proyectado=Sum("proyeccion_ventas"))
+    )
+    # calcular el valor proyectado mensual por línea, centro y clase
+    for _, row in df_final.iterrows():
+        linea = row["nombre_linea_n1"]
+        centro = row["nombre_centro_de_operacion"]
+        clase = row["nombre_clase_cliente"]
+        porcentaje = row["porcentaje_participacion"] or 0
+        # buscar el total proyectado correspondiente
+        proyeccion_item = next((p for p in proyecciones if p["linea"] == linea and p["nombre_centro_de_operacion"] == centro and p["nombre_clase_cliente"] == clase), None)
+        total_proyectado = proyeccion_item["total_proyectado"] or 0 if proyeccion_item else 0
+        # valor proyectado mensual
+        valor_proyectado_mes = (porcentaje / 100) * total_proyectado
+        valor_proyectado_mes = round(valor_proyectado_mes)
+        # actualizar en df_final
+        df_final.loc[(_, 'valor_proyectado_mes')] = valor_proyectado_mes
+    
+    
+    # agrupar por año y mes de df_final para obtener el total por mes
+    totales_por_mes_agrupado = (
+        df_final.groupby(['year', 'mes'])['valor_proyectado_mes']
+        .sum()
+        .reset_index()
+    )
+    # actualizar tabla PresupuestoGeneralVentas por año y mes
+    for _, row in totales_por_mes_agrupado.iterrows():
+        mes = row["mes"]
+        total_mes = row["valor_proyectado_mes"] or 0
+        PresupuestoGeneralVentas.objects.filter(
+            year=year_siguiente,
+            mes=mes
+        ).update(total=total_mes)
+    
     # ================== 🔄 Sumar por mes (sin distinguir centro) ==================
     totales_por_mes = (
         PresupuestoGeneralVentas.objects
@@ -1994,31 +2060,75 @@ def actualizar_presupuesto_general_ventas(request):
         .distinct()
         .order_by("mes")
     )
-    # ================== 🔄 Calcular total anual ==================
-    total_anual = sum(item["total"] for item in totales_por_mes)
-    
-    # obtener total proyectado
-    total_proyectado = PresupuestoGeneralVentas.objects.filter(year=year_siguiente).values_list('total_proyectado', flat=True).first() or 0
 
-    # ================== 💾 Actualizar tabla PresupuestoGeneralVentas por año y mes
-    for item in totales_por_mes:
-        mes = item["mes"]
-        total_mes = item["total"] or 0
-        
-        porcentaje = (total_mes / total_anual) * 100 if total_anual != 0 else 0
-        # valor proyectado mensual
-        valor_proyectado_mes = round((porcentaje / 100) * total_proyectado)
-        PresupuestoGeneralVentas.objects.filter(
-            year=year_siguiente,
-            mes=mes
-        ).update(total=valor_proyectado_mes) 
-    
     # sumar todos los meses para obtener el total anual
     total_anual_siguiente = PresupuestoGeneralVentas.objects.filter(year=year_siguiente).aggregate(
         total_year=Sum('total')
     )['total_year'] or 0
     # actualizar columna total_year sumando todos los meses del año siguiente
     PresupuestoGeneralVentas.objects.filter(year=year_siguiente).update(total_year=total_anual_siguiente)
+    
+    # obtener el total por cada mes del año actual de la tabla presupuesto general costos
+    totales_costos_por_mes = (
+        PresupuestoGeneralCostos.objects
+        .filter(year=year_actual)
+        .values("mes", "total")
+        .distinct()
+        .order_by("mes")
+    )
+    # obtener el total por cada mes del año actual de la tabla presupuesto general ventas
+    totales_ventas_por_mes = (
+        PresupuestoGeneralVentas.objects
+        .filter(year=year_actual)
+        .values("mes", "total")
+        .distinct()
+        .order_by("mes")
+    )
+    total_ventas_mes_siguiente = (
+        PresupuestoGeneralVentas.objects
+        .filter(year=year_siguiente)
+        .values("mes", "total")
+        .distinct()
+        .order_by("mes")
+    )
+    # calcular utilidad porcentual y en valor por mes
+    for venta_item in totales_ventas_por_mes:
+        mes = venta_item["mes"]
+        total_ventas_mes = venta_item["total"] or 0
+        # buscar el total de costos del mismo mes
+        costo_item = next((c for c in totales_costos_por_mes if c["mes"] == mes), None)
+        # buscar el total de ventas del mismo mes en el año siguiente
+        venta_siguiente_item = next((v for v in total_ventas_mes_siguiente if v["mes"] == mes), None)
+        total_costos_mes = costo_item["total"] or 0 if costo_item else 0
+        # ================================
+        # ✅ Si el mes está entre 10 y 12, usar porcentaje de df_final
+        # ================================
+        # if mes in [11, 12]:
+        #     # Buscar el porcentaje del df_final para ese mes (promedio proyectado)
+        #     utilidad_pct_df = df_final.loc[df_final["mes"] == mes, "porcentaje_participacion"].mean()
+        #     utilidad_porcentual_mes = Decimal(utilidad_pct_df / 100).quantize(
+        #         Decimal('0.000000000000001'), rounding=ROUND_DOWN
+        #     )
+        # else:
+        #     # Calcular utilidad real a partir de ventas y costos
+        utilidad_porcentual_mes = 1 - (total_costos_mes / total_ventas_mes) if total_ventas_mes != 0 else 0
+        utilidad_porcentual_mes = Decimal(utilidad_porcentual_mes).quantize(
+            Decimal('0.000000000000001'), rounding=ROUND_DOWN
+        )
+        # calcular utilidad en valor para el mes siguiente
+        utilidad_valor_mes = venta_siguiente_item["total"] * utilidad_porcentual_mes if venta_siguiente_item else 0
+        utilidad_valor_mes = round(utilidad_valor_mes)
+        utilidad_porcentual_mes = utilidad_porcentual_mes * 100 if total_ventas_mes != 0 else 0
+        print(f"Mes: {mes}, Ventas: {total_ventas_mes}, Costos: {total_costos_mes}, Utilidad Valor: {utilidad_valor_mes}, Utilidad %: {utilidad_porcentual_mes}")
+        # actualizar en la tabla presupuesto general ventas
+        PresupuestoGeneralVentas.objects.filter(
+            year=year_siguiente,
+            mes=mes
+        ).update(
+            utilidad_valor=utilidad_valor_mes,
+            utilidad_pct=round(utilidad_porcentual_mes, 2)
+        )
+        
     
     return JsonResponse({"status": "ok", "mensaje": "Presupuesto general de ventas actualizado ✅"})
 
@@ -2040,49 +2150,130 @@ def actualizar_presupuesto_centro_ventas(request):
             year=year_siguiente,
             nombre_centro_operacion=centro
         ).update(total_proyectado=total_proyectado)
-    # ================== 📊 Calcular porcentaje de participación por mes ==================
-    # Paso 1: agrupar totales por centro y mes (año actual)
-    data = (
-        PresupuestoCentroOperacionVentas.objects.filter(year=year_actual)
-        .values("nombre_centro_operacion", "mes")
-        .annotate(total_mes=Sum("total"))
-    )
-
-    # Paso 2: agrupar totales anuales por centro
+    # ================== 📊 Calcular porcentaje de participación mensual ==================
+    bd2025 = BdVentas2025.objects.values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    df = pd.DataFrame(list(bd2025))
+    # Extraer el año desde 'lapso'
+    df['year'] = df['lapso'] // 100
+    df['mes'] = df['lapso'] % 100
+    # Agrupar por nombre de producto, año, y sumar
+    df_agrupado = df.groupby(['year', 'mes','nombre_linea_n1','nombre_centro_de_operacion', 'nombre_clase_cliente'])['suma'].sum().reset_index()
+    # 🔹 4. Calcular el total anual (todos los meses) por línea, centro y clase
     totales_anuales = (
-        PresupuestoCentroOperacionVentas.objects.filter(year=year_actual)
-        .values("nombre_centro_operacion")
-        .annotate(total_anual=Sum("total"))
+        df_agrupado.groupby(['year', 'nombre_linea_n1','nombre_centro_de_operacion', 'nombre_clase_cliente'])['suma']
+        .sum()
+        .reset_index()
+        .rename(columns={'suma': 'total_anual'})
     )
-    # Convertimos a dict para acceso rápido
-    totales_anuales_dict = {
-        t["nombre_centro_operacion"]: t["total_anual"] for t in totales_anuales
-    }
-    # 3️⃣ Totales proyectados por centro (2026)
-    proyectados = {
-        p["nombre_centro_operacion"]: p["total_proyectado"]
-        for p in PresupuestoCentroOperacionVentas.objects.filter(year=year_siguiente)
-        .values("nombre_centro_operacion", "total_proyectado")
-        .distinct()
-    }
-
-    # Paso 3: Calcular porcentaje y actualizar en la base de datos
-    for item in data:
-        centro = item["nombre_centro_operacion"]
-        mes = item["mes"]
-        total_mes = item["total_mes"] or 0
-        total_anual = totales_anuales_dict.get(centro, 0) or 1  # evitar división por cero
-        total_proyectado = proyectados.get(centro, 0) or 1  # evitar división por cero
-
-        porcentaje = (total_mes / total_anual) * 100
+    # 🔹 5. Unir el total anual a los datos mensuales
+    df_final = df_agrupado.merge(
+        totales_anuales,
+        on=['year', 'nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente'],
+        how='left'
+    )
+    # 🔹 Calcular porcentaje de participación mensual sobre el total anual
+    df_final['porcentaje_participacion'] = (
+        df_final['suma'] / df_final['total_anual'] * 100
+    )
+    # obtener total proyectado  por línea, centro y clase de la tabla presupuesto comercial
+    proyecciones = (
+        PresupuestoComercial.objects.filter(year=year_actual)
+        .values("linea", "nombre_centro_de_operacion", "nombre_clase_cliente")
+        .annotate(total_proyectado=Sum("proyeccion_ventas"))
+    )
+    # calcular el valor proyectado mensual por línea, centro y clase
+    for _, row in df_final.iterrows():
+        linea = row["nombre_linea_n1"]
+        centro = row["nombre_centro_de_operacion"]
+        clase = row["nombre_clase_cliente"]
+        porcentaje = row["porcentaje_participacion"] or 0
+        # buscar el total proyectado correspondiente
+        proyeccion_item = next((p for p in proyecciones if p["linea"] == linea and p["nombre_centro_de_operacion"] == centro and p["nombre_clase_cliente"] == clase), None)
+        total_proyectado = proyeccion_item["total_proyectado"] or 0 if proyeccion_item else 0
         # valor proyectado mensual
-        valor_proyectado_mes = round((porcentaje / 100) * total_proyectado)
-        # Actualizar registro
+        valor_proyectado_mes = (porcentaje / 100) * total_proyectado
+        valor_proyectado_mes = round(valor_proyectado_mes)
+        # actualizar en df_final
+        df_final.loc[(_, 'valor_proyectado_mes')] = valor_proyectado_mes
+    # agrupar por año, mes y centro de operación para obtener el total por mes
+    totales_por_mes_agrupado = (
+        df_final.groupby(['year', 'mes','nombre_centro_de_operacion'])['valor_proyectado_mes']
+        .sum()
+        .reset_index()
+    )
+    # actualizar tabla PresupuestoCentroOperacionVentas por año, mes y centro de operación
+    for _, row in totales_por_mes_agrupado.iterrows():
+        mes = row["mes"]
+        centro = row["nombre_centro_de_operacion"]
+        total_mes = row["valor_proyectado_mes"] or 0
         PresupuestoCentroOperacionVentas.objects.filter(
             year=year_siguiente,
-            nombre_centro_operacion=centro,
-            mes=mes
-        ).update(total = valor_proyectado_mes)
+            mes=mes,
+            nombre_centro_operacion=centro
+        ).update(total=total_mes)
+    
+    # sumar todos los meses para obtener el total anual por centro de operación
+    total_anual_siguiente = PresupuestoCentroOperacionVentas.objects.filter(year=year_siguiente).values('nombre_centro_operacion').annotate(total_year=Sum('total'))
+    for item in total_anual_siguiente:
+        centro = item['nombre_centro_operacion']
+        total_year = item['total_year'] or 0
+        # actualizar columna total_year sumando todos los meses del año siguiente
+        PresupuestoCentroOperacionVentas.objects.filter(
+            year=year_siguiente,
+            nombre_centro_operacion=centro
+        ).update(total_year=total_year)
+    
+    # obtener el total por cada mes del año actual de la tabla presupuesto centro operación costos
+    totales_costos_por_mes = (
+        PresupuestoCentroOperacionCostos.objects
+        .filter(year=year_actual)
+        .values("mes", "nombre_centro_operacion", "total")
+        .distinct()
+        .order_by("mes")
+    )
+    # obtener el total por cada mes del año actual de la tabla presupuesto centro operación ventas
+    totales_ventas_por_mes = (
+        PresupuestoCentroOperacionVentas.objects
+        .filter(year=year_actual)
+        .values("mes", "nombre_centro_operacion", "total")
+        .distinct()
+        .order_by("mes")
+    )
+    total_ventas_mes_siguiente = (
+        PresupuestoCentroOperacionVentas.objects
+        .filter(year=year_siguiente)
+        .values("mes", "nombre_centro_operacion", "total")
+        .distinct()
+        .order_by("mes")
+    )
+    # calcular utilidad porcentual y en valor por mes y centro de operación
+    for venta_item in totales_ventas_por_mes:
+        mes = venta_item["mes"]
+        centro = venta_item["nombre_centro_operacion"]
+        total_ventas_mes = venta_item["total"] or 0
+        # buscar el total de costos del mismo mes y centro
+        costo_item = next((c for c in totales_costos_por_mes if c["mes"] == mes and c["nombre_centro_operacion"] == centro), None)
+        # buscar el total de ventas del mismo mes y centro en el año siguiente
+        venta_siguiente_item = next((v for v in total_ventas_mes_siguiente if v["mes"] == mes and v["nombre_centro_operacion"] == centro), None)
+        total_costos_mes = costo_item["total"] or 0 if costo_item else 0
+        utilidad_porcentual_mes = 1 - (total_costos_mes / total_ventas_mes) 
+        utilidad_porcentual_mes = Decimal(utilidad_porcentual_mes).quantize(Decimal('0.000000000000001'), rounding=ROUND_DOWN)
+        # utilidad_porcentual_mes = utilidad_porcentual_mes / 100
+        utilidad_valor_mes = venta_siguiente_item["total"] * utilidad_porcentual_mes if venta_siguiente_item else 0
+        utilidad_valor_mes = round(utilidad_valor_mes)
+        utilidad_porcentual_mes = utilidad_porcentual_mes * 100 if total_ventas_mes != 0 else 0
+        
+        # actualizar en la tabla presupuesto centro operación ventas    
+        PresupuestoCentroOperacionVentas.objects.filter(
+            year=year_siguiente,
+            mes=mes,
+            nombre_centro_operacion=centro
+        ).update(
+            utilidad_valor=utilidad_valor_mes,
+            utilidad_pct=round(utilidad_porcentual_mes, 2)
+        )
+
+   
     
     return JsonResponse({"status": "ok", "mensaje": "Presupuesto por centro de operación actualizado ✅"})
 
@@ -2106,16 +2297,16 @@ def actualizar_presupuesto_centro_segmento_ventas(request):
             segmento=segmento
         ).update(total_proyectado=total_proyectado)
     # ================== 📊 Calcular porcentaje de participación mensual ==================
-    bd2025 = BdVentas2025.objects.values('lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2025 = BdVentas2025.objects.values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_neto')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
     df = pd.DataFrame(list(bd2025))
     # Extraer el año desde 'lapso'
     df['year'] = df['lapso'] // 100
     df['mes'] = df['lapso'] % 100
     # Agrupar por nombre de producto, año, y sumar
-    df_agrupado = df.groupby(['year', 'mes','nombre_centro_de_operacion', 'nombre_clase_cliente'])['suma'].sum().reset_index()
+    df_agrupado = df.groupby(['year', 'mes','nombre_linea_n1','nombre_centro_de_operacion', 'nombre_clase_cliente'])['suma'].sum().reset_index()
     # 🔹 4. Calcular el total anual (todos los meses) por línea, centro y clase
     totales_anuales = (
-        df_agrupado.groupby(['year', 'nombre_centro_de_operacion', 'nombre_clase_cliente'])['suma']
+        df_agrupado.groupby(['year', 'nombre_linea_n1','nombre_centro_de_operacion', 'nombre_clase_cliente'])['suma']
         .sum()
         .reset_index()
         .rename(columns={'suma': 'total_anual'})
@@ -2123,107 +2314,162 @@ def actualizar_presupuesto_centro_segmento_ventas(request):
     # 🔹 5. Unir el total anual a los datos mensuales
     df_final = df_agrupado.merge(
         totales_anuales,
-        on=['year', 'nombre_centro_de_operacion', 'nombre_clase_cliente'],
+        on=['year', 'nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente'],
         how='left'
     )
     # 🔹 Calcular porcentaje de participación mensual sobre el total anual
     df_final['porcentaje_participacion'] = (
         df_final['suma'] / df_final['total_anual'] * 100
     )
+    # promedio utilidad porcentual de agosto, septiembre y octubre
+    # utilidad_pct = df_final.loc[df_final['mes'].isin([8, 9, 10]), 'porcentaje_participacion'].mean()
     
-    # obtener total proyectado por centro y segmento
-    proyectados = {
-        (p["nombre_centro_operacion"], p["segmento"]): p["total_proyectado"]
-        for p in PresupuestoCentroSegmentoVentas.objects.filter(year=year_siguiente)
-        .values("nombre_centro_operacion", "segmento", "total_proyectado")
-        .distinct()
-    }
-    # calcular valor proyectado mensual con el porcentaje de participación de df_final
-    for index, row in df_final.iterrows():
-        centro = row['nombre_centro_de_operacion']
-        segmento = row['nombre_clase_cliente']
-        porcentaje = row['porcentaje_participacion'] or 0
-        total_proyectado = proyectados.get((centro, segmento), 0) or 0
-        valor_proyectado_mes = round((porcentaje / 100) * total_proyectado)
-        df_final.at[index, 'valor_proyectado_mes'] = valor_proyectado_mes
+    # # actualizar meses proyectados (noviembre, diciembre) con el mismo porcentaje de participación
+    # for mes in [11, 12]:
+    #     df_final.loc[df_final['mes'] == mes, 'porcentaje_participacion'] = utilidad_pct
+    
+    # obtener total proyectado  por línea, centro y clase de la tabla presupuesto comercial
+    proyecciones = (
+        PresupuestoComercial.objects.filter(year=year_actual)
+        .values("linea", "nombre_centro_de_operacion", "nombre_clase_cliente")
+        .annotate(total_proyectado=Sum("proyeccion_ventas"))
+    )
+    # calcular el valor proyectado mensual por línea, centro y clase
+    for _, row in df_final.iterrows():
+        linea = row["nombre_linea_n1"]
+        centro = row["nombre_centro_de_operacion"]
+        clase = row["nombre_clase_cliente"]
+        porcentaje = row["porcentaje_participacion"] or 0
+        # buscar el total proyectado correspondiente
+        proyeccion_item = next((p for p in proyecciones if p["linea"] == linea and p["nombre_centro_de_operacion"] == centro and p["nombre_clase_cliente"] == clase), None)
+        total_proyectado = proyeccion_item["total_proyectado"] or 0 if proyeccion_item else 0
+        # valor proyectado mensual
+        valor_proyectado_mes = (porcentaje / 100) * total_proyectado
+        valor_proyectado_mes = round(valor_proyectado_mes)
+        # actualizar en df_final
+        df_final.loc[(_, 'valor_proyectado_mes')] = valor_proyectado_mes
+    # agrupar por año, mes, centro de operación y segmento para obtener el total por mes
+    totales_por_mes_agrupado = (
+        df_final.groupby(['year', 'mes','nombre_centro_de_operacion', 'nombre_clase_cliente'])['valor_proyectado_mes']
+        .sum()
+        .reset_index()
+    )
+    # actualizar tabla PresupuestoCentroSegmentoVentas por año, mes, centro de operación y segmento
+    for _, row in totales_por_mes_agrupado.iterrows():
+        mes = row["mes"]
+        centro = row["nombre_centro_de_operacion"]
+        segmento = row["nombre_clase_cliente"]
+        total_mes = row["valor_proyectado_mes"] or 0
+        PresupuestoCentroSegmentoVentas.objects.filter(
+            year=year_siguiente,
+            mes=mes,
+            nombre_centro_operacion=centro,
+            segmento=segmento
+        ).update(total=total_mes)
+    
+    # sumar todos los meses para obtener el total anual por centro de operación y segmento
+    total_anual_siguiente = PresupuestoCentroSegmentoVentas.objects.filter(year=year_siguiente).values('nombre_centro_operacion', 'segmento').annotate(total_year=Sum('total'))
+    for item in total_anual_siguiente:
+        centro = item['nombre_centro_operacion']
+        segmento = item['segmento']
+        total_year = item['total_year'] or 0
+        # actualizar columna total_year sumando todos los meses del año siguiente  
+        PresupuestoCentroSegmentoVentas.objects.filter(
+            year=year_siguiente,
+            nombre_centro_operacion=centro,
+            segmento=segmento
+        ).update(total_year=total_year)
         
-        # Actualizar registro correspondiente al año siguiente
-        PresupuestoCentroSegmentoVentas.objects.filter(
-            year=year_siguiente,
-            nombre_centro_operacion=centro,
-            segmento=segmento,
-            mes=row['mes']
-        ).update(total=valor_proyectado_mes)
-    
-    # sumar todos los meses para obtener el total anual por centro y segmento
-    centros_segmentos = df_final[['nombre_centro_de_operacion', 'nombre_clase_cliente']].drop_duplicates()
-    for _, cs in centros_segmentos.iterrows():
-        centro = cs['nombre_centro_de_operacion']
-        segmento = cs['nombre_clase_cliente']
-        total_anual_siguiente = PresupuestoCentroSegmentoVentas.objects.filter(
-            year=year_siguiente,
-            nombre_centro_operacion=centro,
-            segmento=segmento
-        ).aggregate(total_year=Sum('total'))['total_year'] or 0
-        # actualizar columna total_year sumando todos los meses del año siguiente
-        PresupuestoCentroSegmentoVentas.objects.filter(
-            year=year_siguiente,
-            nombre_centro_operacion=centro,
-            segmento=segmento
-        ).update(total_year=total_anual_siguiente)
-
-    # df_final.to_excel('df_agrupado_2025.xlsx', index=False)
-    # ================== 🔄 Actualizar total_proyectado (año siguiente) ==================
-    """ 
-    # ================== 📊 Calcular distribución mensual ==================
-    # Paso 1️⃣: Totales por centro, segmento y mes (2025)
-    data = (
-        PresupuestoCentroSegmentoVentas.objects.filter(year=year_actual)
-        .values("nombre_centro_operacion", "segmento", "mes")
-        .annotate(total_mes=Sum("total"))
-    )
-
-    # Paso 2️⃣: Totales por centro, segmento y mes (2025) → base para cálculo de % dentro del mes
-    totales_mes_segmento = (
-        PresupuestoCentroSegmentoVentas.objects.filter(year=year_actual)
-        .values("nombre_centro_operacion", "mes")
-        .annotate(total_mes_centro=Sum("total"))
-    )
-    totales_mes_segmento_dict = {
-        (t["nombre_centro_operacion"], t["mes"]): t["total_mes_centro"]
-        for t in totales_mes_segmento
-    }
-
-    # Paso 3️⃣: Totales proyectados por centro y segmento (2026)
-    proyectados = {
-        (p["nombre_centro_operacion"], p["segmento"]): p["total_proyectado"]
-        for p in PresupuestoCentroSegmentoVentas.objects.filter(year=year_siguiente)
-        .values("nombre_centro_operacion", "segmento", "total_proyectado")
+    # obtener el total por cada mes del año actual de la tabla presupuesto centro operación costos
+    totales_costos_por_mes = (
+        PresupuestoCentroSegmentoCostos.objects
+        .filter(year=year_actual)
+        .values("mes", "nombre_centro_operacion", "segmento", "total")
         .distinct()
-    }
+        .order_by("mes")
+    )
+    # obtener el total por cada mes del año actual de la tabla presupuesto centro operación ventas
+    totales_ventas_por_mes = (
+        PresupuestoCentroSegmentoVentas.objects
+        .filter(year=year_actual)
+        .values("mes", "nombre_centro_operacion", "segmento", "total")
+        .distinct()
+        .order_by("mes")
+    )
+    total_ventas_mes_siguiente = (
+        PresupuestoCentroSegmentoVentas.objects
+        .filter(year=year_siguiente)
+        .values("mes", "nombre_centro_operacion", "segmento", "total")
+        .distinct()
+        .order_by("mes")
+    )
+    # calcular utilidad porcentual y en valor por mes, centro de operación y segmento
+    for venta_item in totales_ventas_por_mes:
+        mes = venta_item["mes"]
+        centro = venta_item["nombre_centro_operacion"]
+        segmento = venta_item["segmento"]
+        total_ventas_mes = venta_item["total"] or 0
+        # buscar el total de costos del mismo mes, centro y segmento
+        costo_item = next((c for c in totales_costos_por_mes if c["mes"] == mes and c["nombre_centro_operacion"] == centro and c["segmento"] == segmento), None)
+        # buscar el total de ventas del mismo mes, centro y segmento en el año siguiente
+        venta_siguiente_item = next((v for v in total_ventas_mes_siguiente if v["mes"] == mes and v["nombre_centro_operacion"] == centro and v["segmento"] == segmento), None)
+        total_costos_mes = costo_item["total"] or 0 if costo_item else 0
+        
+        utilidad_porcentual_mes = 1 - (total_costos_mes / total_ventas_mes) if total_ventas_mes != 0 else 0
 
-    # Paso 4️⃣: Calcular valor proyectado mensual (2026)
-    for item in data:
-        centro = item["nombre_centro_operacion"]
-        segmento = item["segmento"]
-        mes = item["mes"]
-        total_mes_segmento = item["total_mes"] or 0
-        total_mes_centro = totales_mes_segmento_dict.get((centro, mes), 0) or 1  # evitar división por 0
-        total_proyectado = proyectados.get((centro, segmento), 0) or 0
-
-        # proporción de ese segmento dentro del centro en ese mes
-        proporcion = (total_mes_segmento / total_mes_centro) 
-        # valor proyectado mensual = proporción * total proyectado del centro-segmento
-        valor_proyectado_mes = round(total_proyectado * proporcion)
-        print("Centro:", centro, "Segmento:", segmento, "Mes:", mes, "Total mes segmento:", total_mes_segmento, "mes centro:", total_mes_centro, "Proporción:", proporcion, "proyectado mes:", valor_proyectado_mes, "total proyectado:", total_proyectado)
-        # Actualizar registro correspondiente al año siguiente
+        utilidad_porcentual_mes = Decimal(utilidad_porcentual_mes).quantize(Decimal('0.000000000000001'), rounding=ROUND_DOWN)
+        # utilidad_porcentual_mes = utilidad_porcentual_mes / 100
+        utilidad_valor_mes = venta_siguiente_item["total"] * utilidad_porcentual_mes if venta_siguiente_item else 0
+        utilidad_valor_mes = round(utilidad_valor_mes)
+        utilidad_porcentual_mes = utilidad_porcentual_mes * 100 if total_ventas_mes != 0 else 0
+        
+        # actualizar en la tabla presupuesto centro operación ventas
         PresupuestoCentroSegmentoVentas.objects.filter(
             year=year_siguiente,
+            mes=mes,
             nombre_centro_operacion=centro,
-            segmento=segmento,
-            mes=mes
-        ).update(total=valor_proyectado_mes)
-    """
+            segmento=segmento
+        ).update(
+            utilidad_valor=utilidad_valor_mes,
+            utilidad_pct=round(utilidad_porcentual_mes, 2)
+        )
+        
+    # ================== 📊 Obtener el promedio de utilidad_pct de agosto, septiembre y octubre ==================
+    promedios_utilidad = (
+        PresupuestoCentroSegmentoVentas.objects
+        .filter(
+            year=year_siguiente,
+            mes__in=[8, 9, 10]
+        )
+        .values("nombre_centro_operacion", "segmento")
+        .annotate(promedio_utilidad=Avg("utilidad_pct"))
+    )
+
+    # ================== 🔄 Actualizar noviembre y diciembre con el promedio ==================
+    for p in promedios_utilidad:
+        centro = p["nombre_centro_operacion"]
+        segmento = p["segmento"]
+        promedio_utilidad_pct = p["promedio_utilidad"] or 0
+
+        # Buscar los registros de noviembre y diciembre
+        registros_nd = PresupuestoCentroSegmentoVentas.objects.filter(
+            year=year_siguiente,
+            mes__in=[11, 12],
+            nombre_centro_operacion=centro,
+            segmento=segmento
+        )
+
+        for registro in registros_nd:
+            # Recalcular utilidad_valor en base al nuevo porcentaje
+            total_ventas = registro.total or 0
+            utilidad_valor = round(total_ventas * (promedio_utilidad_pct / 100))
+
+            registro.utilidad_pct = promedio_utilidad_pct
+            registro.utilidad_valor = utilidad_valor
+            registro.save(update_fields=["utilidad_pct", "utilidad_valor"])
+    
+        
+        
     return JsonResponse({
         "status": "ok",
         "mensaje": "Presupuesto por centro y segmento actualizado y distribuido por mes ✅"

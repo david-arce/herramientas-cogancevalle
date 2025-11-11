@@ -4,7 +4,7 @@
     <div class="btn-group">
         {% comment %} <button type="button" id="cargarBtnGeneralVentas" class="btn-accion">🔄 Cargar desde histórico</button> {% endcomment %}
         {% comment %} <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button> {% endcomment %}
-        <button type="button" id="actualizarBtn" class="btn-accion btn-actualizar">Actualizar tabla</button>
+        {% comment %} <button type="button" id="actualizarBtn" class="btn-accion btn-actualizar">Actualizar tabla</button> {% endcomment %}
     </div>
 
     <!-- Tabla pivotada -->
@@ -63,17 +63,58 @@ function pivotData(data) {
             };
         } 
         pivot[row.year][meses[row.mes]] = row.total; 
-        {% comment %} if (!pivot["R2"]) {
-            pivot["R2"] = { 
-                year: "R2" ,
-                total_year: 0,
-                variacion_valor: 0,
-                variacion_pct: 0
-            };
-        } 
-        pivot["R2"][meses[row.mes]] = row.r2;  {% endcomment %}
     }); 
-    return Object.values(pivot); 
+
+     // Convertir en array ordenado
+    let pivotArray = Object.values(pivot).sort((a,b) => a.year - b.year);
+
+    // 🔹 Buscar año actual y crear fila de utilidad debajo
+    const añoActual = new Date().getFullYear();
+    const añoSiguiente = añoActual + 1;
+    const indexActual = pivotArray.findIndex(p => p.year === añoSiguiente);
+
+    if (indexActual !== -1) {
+        const filaBase = pivotArray[indexActual];
+
+        // ==============================
+        // 🔸 Fila 1: Utilidad %
+        // ==============================
+        const filaUtilidadPct = { year: "Margen % " + añoActual };
+        Object.keys(meses).forEach(num => {
+            const mes = meses[num];
+            const registroMes = data.find(r => r.year === añoSiguiente && r.mes === parseInt(num));
+            filaUtilidadPct[mes] = registroMes ? registroMes.utilidad_pct : null;
+        });
+        filaUtilidadPct.total_year = null;
+        filaUtilidadPct.total_year_costos = null;
+        filaUtilidadPct.variacion_valor = null;
+        filaUtilidadPct.variacion_pct = null;
+        filaUtilidadPct.utilidad_pct = null;
+        filaUtilidadPct.utilidad_valor = null;
+        filaUtilidadPct.total_proyectado = null;
+
+        // ==============================
+        // 🔸 Fila 2: Utilidad Valor
+        // ==============================
+        const filaUtilidadValor = { year: "Utilidad Valor " + añoSiguiente };
+        Object.keys(meses).forEach(num => {
+            const mes = meses[num];
+            const registroMes = data.find(r => r.year === añoSiguiente && r.mes === parseInt(num));
+            filaUtilidadValor[mes] = registroMes ? registroMes.utilidad_valor : null;
+        });
+        filaUtilidadValor.total_year = null;
+        filaUtilidadValor.total_year_costos = null;
+        filaUtilidadValor.variacion_valor = null;
+        filaUtilidadValor.variacion_pct = null;
+        filaUtilidadValor.utilidad_pct = null;
+        filaUtilidadValor.utilidad_valor = null;
+        filaUtilidadValor.total_proyectado = null;
+
+        // Insertar justo debajo del año siguiente
+        pivotArray.splice(indexActual + 1, 0, filaUtilidadPct, filaUtilidadValor);
+    }
+
+    return pivotArray; 
 }
 
 function unpivotData(tableData) {
