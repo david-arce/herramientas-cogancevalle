@@ -207,7 +207,7 @@
 
     $(document).ready(function() {
         // boton actualizar 
-        document.getElementById("actualizarBtnCentroSegmento").addEventListener("click", function () {
+        {% comment %} document.getElementById("actualizarBtnCentroSegmento").addEventListener("click", function () {
             // llamada AJAX para actualizar presupuesto general ventas
             $.ajax({
                 url: "{% url 'actualizar_presupuesto_centro_segmento_ventas' %}",
@@ -235,7 +235,7 @@
                     alert("Error al actualizar el presupuesto general de ventas.");
                 }
             });
-        });
+        }); {% endcomment %}
         let table = null;
         let allData = []; // almacenar todos los datos cargados
 

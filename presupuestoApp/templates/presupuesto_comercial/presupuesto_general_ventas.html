@@ -138,7 +138,7 @@ function unpivotData(tableData) {
 
 $(document).ready(function() {
     // boton actualizar 
-    document.getElementById("actualizarBtn").addEventListener("click", function () {
+    {% comment %} document.getElementById("actualizarBtn").addEventListener("click", function () {
         // llamada AJAX para actualizar presupuesto general ventas
         $.ajax({
             url: "{% url 'actualizar_presupuesto_general_ventas' %}",
@@ -166,7 +166,7 @@ $(document).ready(function() {
                 alert("Error al actualizar el presupuesto general de ventas.");
             }
         });
-    });
+    }); {% endcomment %}
     let table = null;
 
     function loadTable(data) {
