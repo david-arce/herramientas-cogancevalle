@@ -118,6 +118,8 @@ function pivotData(data, selectedCentro=null) {
 
         // Si existe el año siguiente en este centro
         const filaBase = filas.find(f => f.year === añoSiguiente);
+        // 🔹 Buscar datos del año actual para cálculo del margen
+        const filaAñoActual = filas.find(p => p.year === añoActual);
         if (filaBase) {
             // 🔸 Fila de utilidad %
             const filaPct = { 
@@ -133,7 +135,14 @@ function pivotData(data, selectedCentro=null) {
                 );
                 filaPct[mes] = registroMes ? registroMes.utilidad_pct : null;
             });
-            filaPct.total_year = null;
+            // 🔹 Calcular margen anual (1 - (costos / ventas))
+            const totalVentas = filaAñoActual.total_year || 0;
+            const totalCostos = filaAñoActual.total_year_costos || 0;
+            let margenAnual = (totalVentas > 0) ? 1 - (totalCostos / totalVentas) : null;
+            const totalVentasSiguiente = filaBase.total_year || 0;
+            margenAnual= margenAnual * 100;
+            margenAnual = parseFloat(margenAnual.toFixed(2));
+            filaPct.total_year = margenAnual;
             filaPct.total_year_costos = null;
             filaPct.variacion_valor = null;
             filaPct.variacion_pct = null;
@@ -155,7 +164,7 @@ function pivotData(data, selectedCentro=null) {
                 );
                 filaValor[mes] = registroMes ? registroMes.utilidad_valor : null;
             });
-            filaValor.total_year = null;
+            filaValor.total_year = Math.round(totalVentasSiguiente * (margenAnual/100));
             filaValor.total_year_costos = null;
             filaValor.variacion_valor = null;
             filaValor.variacion_pct = null;

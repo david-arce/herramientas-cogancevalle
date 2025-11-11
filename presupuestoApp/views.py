@@ -2119,7 +2119,7 @@ def actualizar_presupuesto_general_ventas(request):
         utilidad_valor_mes = venta_siguiente_item["total"] * utilidad_porcentual_mes if venta_siguiente_item else 0
         utilidad_valor_mes = round(utilidad_valor_mes)
         utilidad_porcentual_mes = utilidad_porcentual_mes * 100 if total_ventas_mes != 0 else 0
-        print(f"Mes: {mes}, Ventas: {total_ventas_mes}, Costos: {total_costos_mes}, Utilidad Valor: {utilidad_valor_mes}, Utilidad %: {utilidad_porcentual_mes}")
+        
         # actualizar en la tabla presupuesto general ventas
         PresupuestoGeneralVentas.objects.filter(
             year=year_siguiente,
@@ -2128,6 +2128,7 @@ def actualizar_presupuesto_general_ventas(request):
             utilidad_valor=utilidad_valor_mes,
             utilidad_pct=round(utilidad_porcentual_mes, 2)
         )
+    
         
     
     return JsonResponse({"status": "ok", "mensaje": "Presupuesto general de ventas actualizado ✅"})
