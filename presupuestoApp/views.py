@@ -2522,6 +2522,139 @@ def actualizar_presupuesto_centro_segmento_ventas(request):
         "mensaje": "Presupuesto por centro y segmento actualizado y distribuido por mes ✅"
     })
 
+@csrf_exempt
+def importar_crecimiento_ventas(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    file = request.FILES.get('file')
+    if not file:
+        return JsonResponse({'error': 'No se recibió archivo'}, status=400)
+
+    try:
+        df = pd.read_excel(file)
+    except Exception as e:
+        return JsonResponse({'error': f'Error al leer el archivo: {str(e)}'}, status=400)
+
+    columnas_requeridas = [
+        'linea',
+        'año',
+        'centro de operación',
+        'clase cliente',
+        'crecimiento ventas proyectado'
+    ]
+    faltantes = [col for col in columnas_requeridas if col not in df.columns]
+    if faltantes:
+        return JsonResponse({'error': f'Faltan columnas en el Excel: {", ".join(faltantes)}'}, status=400)
+
+    # 🔹 Limpieza y normalización
+    df = df[columnas_requeridas].dropna(subset=['linea', 'año', 'centro de operación', 'clase cliente'])
+    df['linea'] = df['linea'].astype(str).str.strip()
+    df['centro de operación'] = df['centro de operación'].astype(str).str.strip()
+    df['clase cliente'] = df['clase cliente'].astype(str).str.strip()
+
+    try:
+        df['año'] = df['año'].astype(int)
+    except ValueError:
+        return JsonResponse({'error': 'La columna "año" debe contener solo números enteros'}, status=400)
+
+    try:
+        df['crecimiento ventas proyectado'] = df['crecimiento ventas proyectado'].astype(float)
+    except ValueError:
+        return JsonResponse({'error': 'La columna "crecimiento ventas proyectado" debe ser numérica'}, status=400)
+
+    actualizados = 0
+    no_encontrados = []
+
+    with transaction.atomic():
+        for _, row in df.iterrows():
+            obj = PresupuestoComercial.objects.filter(
+                linea=row['linea'],
+                year=row['año'],
+                nombre_centro_de_operacion=row['centro de operación'],
+                nombre_clase_cliente=row['clase cliente']
+            ).first()
+
+            if obj:
+                crecimiento = row['crecimiento ventas proyectado']
+                obj.crecimiento_ventas = crecimiento
+
+                # 🔹 Calcular proyección de ventas
+                proyeccion_ventas = obj.ventas + (obj.ventas * (crecimiento / 100))
+                obj.proyeccion_ventas = round(proyeccion_ventas)
+
+                # 🔹 Calcular utilidad proyectada
+                utilidad_valor = obj.proyeccion_ventas - obj.proyeccion_costos
+                obj.utilidad_valor = round(utilidad_valor)
+
+                # 🔹 Calcular utilidad porcentual
+                obj.utilidad_porcentual = (
+                    (utilidad_valor / obj.proyeccion_ventas) * 100 if obj.proyeccion_ventas != 0 else 0
+                )
+
+                # 🔹 Calcular variaciones proyectadas
+                obj.variacion_proyectada_valor = obj.utilidad_valor - obj.utilidad_valor_actual
+                obj.variacion_proyectada_porcentual = (
+                    obj.utilidad_porcentual - obj.utilidad_porcentual_actual
+                )
+
+                obj.save(update_fields=[
+                    'crecimiento_ventas',
+                    'proyeccion_ventas',
+                    'utilidad_valor',
+                    'utilidad_porcentual',
+                    'variacion_proyectada_valor',
+                    'variacion_proyectada_porcentual'
+                ])
+                actualizados += 1
+            else:
+                no_encontrados.append({
+                    'linea': row['linea'],
+                    'año': row['año'],
+                    'centro': row['centro de operación'],
+                    'clase': row['clase cliente']
+                })
+
+    mensaje = f"✅ {actualizados} registros actualizados correctamente."
+    if no_encontrados:
+        mensaje += f" ⚠️ {len(no_encontrados)} filas no se encontraron en la base de datos."
+
+    return JsonResponse({'mensaje': mensaje})
+
+def exportar_crecimiento_ventas(request):
+    year_actual = timezone.now().year
+
+    # 🔹 Consultar datos del año actual con el nuevo campo incluido
+    qs = PresupuestoComercial.objects.filter(year=year_actual).values(
+        'linea',
+        'year',
+        'nombre_centro_de_operacion',
+        'nombre_clase_cliente',
+        'crecimiento_ventas',
+    )
+
+    if not qs.exists():
+        return HttpResponse("No hay datos para exportar", status=400)
+
+    # 🔹 Convertir a DataFrame
+    df = pd.DataFrame(qs)
+
+    # Renombrar columnas para el Excel final
+    df.rename(columns={
+        'year': 'año',
+        'nombre_centro_de_operacion': 'centro de operación',
+        'nombre_clase_cliente': 'clase cliente',
+        'crecimiento_ventas': 'crecimiento ventas proyectado',
+    }, inplace=True)
+
+    # 🔹 Crear archivo Excel
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="crecimiento_ventas_2025.xlsx"'
+
+    df.to_excel(response, index=False)
+
+    return response
+
 def obtener_presupuesto_comercial(request):
     data = list(PresupuestoComercial.objects.values())
     return JsonResponse(data, safe=False)

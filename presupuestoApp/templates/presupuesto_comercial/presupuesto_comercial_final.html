@@ -112,6 +112,11 @@
     <div class="btn-group">
         {% comment %} <button type="button" id="cargarBtnGeneral" class="btn-accion">🔄 Cargar desde histórico</button> {% endcomment %}
         <button type="button" id="guardarBtnGeneral" class="btn-guardar">💾 Guardar cambios <span class="spinner" style="display:none; margin-left:8px;"></span></button>
+        <!-- 🆕 Botón para subir Excel -->
+        <input type="file" id="excelUpload" accept=".xlsx, .xls" style="display:none;">
+        <button type="button" id="uploadExcelBtn" class="btn-guardar" style="background-color:#007bff;">📤 Subir Excel</button>
+        <button type="button" id="exportarBtn" class="btn-accion">📤 Exportar base 2025</button>
+
     </div>
 
    <!-- 🎯 FILTROS -->
@@ -176,6 +181,55 @@
 
 {% block js %}
 <script>
+    document.getElementById("exportarBtn").addEventListener("click", function () {
+        window.location.href = "/presupuesto/exportar-crecimiento-ventas/";
+    });
+
+    // 📤 Botón subir Excel
+    $('#uploadExcelBtn').on('click', function() {
+        $('#excelUpload').click();
+    });
+
+    // 🧾 Al seleccionar archivo
+    $('#excelUpload').on('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Validar extensión
+        const validExt = ['xls', 'xlsx'];
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!validExt.includes(ext)) {
+            alert('❌ Solo se permiten archivos Excel (.xls o .xlsx)');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        $.ajax({
+            url: "{% url 'importar_crecimiento_ventas' %}",
+            type: "POST",
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: { "X-CSRFToken": "{{ csrf_token }}" },
+            beforeSend: function() {
+                $('#uploadExcelBtn').prop('disabled', true).text('⏳ Cargando...');
+            },
+            success: function(resp) {
+                alert('✅ ' + resp.mensaje);
+                $('#presupuestoTable').DataTable().ajax.reload();
+            },
+            error: function(xhr) {
+                alert('❌ Error al procesar el archivo:\n' + xhr.responseText);
+            },
+            complete: function() {
+                $('#uploadExcelBtn').prop('disabled', false).text('📤 Subir Excel');
+                $('#excelUpload').val('');
+            }
+        });
+    });
+
     function numberFormat(data, type, row) {
         if (type === 'display' && !isNaN(data)) {
             return new Intl.NumberFormat('es-ES').format(data);
