@@ -4,8 +4,19 @@
 {% block css %}
 <style>
     table.dataTable thead th {
-      background-color: #007bff;
+      background-color: #0055afff;
       color: white;
+    }
+    /* 🔹 Altura fija para filas del cuerpo */
+    table.dataTable tbody tr {
+        height: 38px; /* ajusta el valor */
+    }
+
+    /* 🔹 Alinear verticalmente el contenido de las celdas */
+    table.dataTable tbody td {
+        vertical-align: middle;
+        padding-top: 4px;
+        padding-bottom: 4px;
     }
     .excel-filter {
         display: none;
