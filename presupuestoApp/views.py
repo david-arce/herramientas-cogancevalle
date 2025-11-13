@@ -867,6 +867,7 @@ def cargar_presupuesto_centro_segmento_ventas(request):
     data = list(PresupuestoCentroSegmentoVentas.objects.values())
     return JsonResponse(data, safe=False)
 
+
 @csrf_exempt
 def guardar_presupuesto_centro_segmento_ventas(request):
     if request.method == "POST":
@@ -1419,6 +1420,51 @@ def cargar_presupuesto_centro_segmento_costos(request):
     
     data = list(PresupuestoCentroSegmentoCostos.objects.values())
     return JsonResponse(data, safe=False)
+
+def cargar_presupuesto_centro_segmento_linea_costos(request):
+    bd2020 = BdVentas2020.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2021 = BdVentas2021.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2025 = BdVentas2025.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    
+    df1 = pd.DataFrame(list(bd2020))
+    df2 = pd.DataFrame(list(bd2021))
+    df3 = pd.DataFrame(list(bd2022))
+    df4 = pd.DataFrame(list(bd2023))
+    df5 = pd.DataFrame(list(bd2024))
+    df6 = pd.DataFrame(list(bd2025))
+    year_actual = timezone.now().year
+    year_siguiente = timezone.now().year + 1
+    
+    df_total = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
+    df_centro_operacion_segmento = df_total.groupby(['nombre_linea_n1','nombre_clase_cliente', 'nombre_centro_de_operacion', 'lapso'])['suma'].sum().reset_index()
+    # Extraer año y mes
+    df_centro_operacion_segmento['year'] = df_centro_operacion_segmento['lapso'] // 100
+    df_centro_operacion_segmento['mes'] = df_centro_operacion_segmento['lapso'] % 100
+    
+    df_proyeccion_centro_operacion_segmento = df_centro_operacion_segmento.sort_values(['nombre_linea_n1','nombre_centro_de_operacion', 'nombre_clase_cliente', 'lapso']).reset_index(drop=True)
+    
+    df_proyeccion_centro_operacion_segmento['suma'] = df_centro_operacion_segmento['suma'].round().astype(int)
+    
+    # ================= TOTAL_YEAR POR CENTRO Y CLASE CLIENTE ===================
+    df_total_year_centro_clase = (
+        df_proyeccion_centro_operacion_segmento
+        .groupby(['nombre_linea_n1','nombre_centro_de_operacion', 'nombre_clase_cliente', 'year'])['suma']
+        .sum()
+        .reset_index()
+        .rename(columns={'suma': 'total_year'})
+    )
+    
+    # ======== Parámetros de paginación =========
+    
+    data= list(df_proyeccion_centro_operacion_segmento.to_dict('records'))
+
+    return JsonResponse(data, safe=False)
+
+def vista_presupuesto_centro_segmento_linea_costos(request):
+    return render(request, 'presupuesto_comercial/presupuesto_centro_segmento_linea_costos.html')
 
 @csrf_exempt
 def guardar_presupuesto_centro_segmento_costos(request):

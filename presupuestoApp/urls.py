@@ -54,6 +54,10 @@ urlpatterns = [
     path('obtener-presupuesto-centro-segmento-costos/', views.obtener_presupuesto_centro_segmento_costos, name='obtener_presupuesto_centro_segmento_costos'),
     path('cargar-presupuesto-centro-segmento-costos/', views.cargar_presupuesto_centro_segmento_costos, name='cargar_presupuesto_centro_segmento_costos'),
     
+    # presupuesto centro - segmento linea costos
+    path('cargar-centro-segmento-linea-costos/', views.cargar_presupuesto_centro_segmento_linea_costos, name='cargarCentroSegmentoLineaCostos'),
+    path('vista-centro-segmento-linea-costos/', views.vista_presupuesto_centro_segmento_linea_costos, name='vistaPresupuestoCentroSegmentoLineaCostos'),
+    
     # presupuesto comercial
     path('presupuesto-comercial/', views.vista_presupuesto_comercial, name='presupuestoComercial'),
     path('guardar-presupuesto-comercial/', views.guardar_presupuesto_comercial, name='guardar_presupuesto_comercial'),

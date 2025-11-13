@@ -1,3 +1,45 @@
+{% extends "presupuesto_comercial/base_presupuesto_comercial.html" %}
+{% load static %}
+
+{% block css %}
+<style>
+    table.dataTable thead th {
+      background-color: #007bff;
+      color: white;
+    }
+    .excel-filter {
+        display: none;
+        position: absolute;
+        background: white;
+        border: 1px solid #ccc;
+        padding: 6px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        z-index: 1000;
+        max-height: 200px;
+        overflow-y: auto;
+        border-radius: 6px;
+        width: 150px !important;   /* ajusta a lo que necesites */
+        min-width: 80px;          /* opcional */
+    }
+    .excel-filter input[type="text"] {
+        width: 95%;
+        margin-bottom: 6px;
+        padding: 3px;
+    }
+    .excel-filter-btn {
+        width: 100%;
+        padding: 4px 6px;
+        background: #f4f4f4;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        text-align: left;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
 <div class="bloque-vista">
     <h2>📊 Proyección presupuesto centro operacion - Costos</h2>
 
@@ -30,336 +72,239 @@
         </thead>
     </table>
 </div>
+{% endblock %}
 
-<style>
-.fila-r2 { background-color: #f4f4f4; font-weight: bold; }
-</style>
-
+{% block js %}
 <script>
-function numberFormat(data, type, row) {
-    if (type === 'display' && !isNaN(data)) {
-        return new Intl.NumberFormat('es-ES').format(data);
-    }
-    return data;
-}
-
-// 🔄 Pivotar datos y separar fila R2 por centro
-function pivotData(data, selectedCentro=null) {
-    let pivot = {};
-    let meses = { 1:"Ene",2:"Feb",3:"Mar",4:"Abr",5:"May",6:"Jun",7:"Jul",8:"Ago",9:"Sep",10:"Oct",11:"Nov",12:"Dic" };
-
-    data.forEach(row => {
-        let key = row.year + "_" + row.nombre_centro_operacion;
-        if (!pivot[key]) {
-            pivot[key] = { 
-                year: row.year, 
-                nombre_centro_operacion: row.nombre_centro_operacion, 
-                total_year: row.total_year, 
-                variacion_valor: row.variacion_valor, 
-                variacion_pct: row.variacion_pct 
-            };
+    function numberFormat(data, type, row) {
+        if (type === 'display' && !isNaN(data)) {
+            return new Intl.NumberFormat('es-ES').format(data);
         }
-        pivot[key][meses[row.mes]] = row.total;
+        return data;
+    }
 
-        {% comment %} let r2Key = "R2_" + row.nombre_centro_operacion;
-        if (!pivot[r2Key]) pivot[r2Key] = { year: "R2", nombre_centro_operacion: row.nombre_centro_operacion, total_year: 0, variacion_valor: 0, variacion_pct: 0 };
-        pivot[r2Key][meses[row.mes]] = row.r2; {% endcomment %}
-    });
-
-    let result = Object.values(pivot);
-
-    // Si hay filtro de centro, mostrar solo R2 de ese centro; otros R2 vacíos
-    {% comment %} if (selectedCentro !== null) {
-        result = result.map(r => {
-            if(r.year === "R2" && r.nombre_centro_operacion !== selectedCentro) {
-                let emptyR2 = {...r};
-                Object.values(meses).forEach(m => emptyR2[m] = "");
-                return emptyR2;
-            }
-            return r;
-        });
-    } {% endcomment %}
-
-    return result;
-}
-
-// 🔄 Deshacer pivot para enviar al backend
-function unpivotData(tableData) {
-    let meses = { "Ene":1,"Feb":2,"Mar":3,"Abr":4,"May":5,"Jun":6,"Jul":7,"Ago":8,"Sep":9,"Oct":10,"Nov":11,"Dic":12 };
-    let result = [];
-    tableData.forEach(row => {
-        if(row.year === "R2") return;
-        Object.keys(meses).forEach(m => {
-            if(row[m] !== undefined && row[m] !== "") {
-                result.push({
-                    year: parseInt(row.year),
-                    mes: meses[m],
-                    nombre_centro_operacion: row.nombre_centro_operacion,
-                    total: parseInt(row[m]),
-                    r2: 0 // recalcular en backend
-                });
-            }
-        });
-    });
-    return result;
-}
-
-$(function () {
-    let table = null;
-    let allData = [];
-
-    function pivotDataR2Final(data) {
-        let meses = {1:"Ene",2:"Feb",3:"Mar",4:"Abr",5:"May",6:"Jun",7:"Jul",8:"Ago",9:"Sep",10:"Oct",11:"Nov",12:"Dic"};
+    // 🔄 Pivotar datos y separar fila R2 por centro
+    function pivotData(data, selectedCentro=null) {
         let pivot = {};
-        let r2Rows = [];
+        let meses = { 1:"Ene",2:"Feb",3:"Mar",4:"Abr",5:"May",6:"Jun",7:"Jul",8:"Ago",9:"Sep",10:"Oct",11:"Nov",12:"Dic" };
 
-        // Crear pivot por año + centro
         data.forEach(row => {
             let key = row.year + "_" + row.nombre_centro_operacion;
-            if(!pivot[key]) pivot[key] = { year: row.year, nombre_centro_operacion: row.nombre_centro_operacion, total_year: row.total, variacion_valor: row.variacion_valor, variacion_pct: row.variacion_pct };
+            if (!pivot[key]) {
+                pivot[key] = { 
+                    year: row.year, 
+                    nombre_centro_operacion: row.nombre_centro_operacion, 
+                    total_year: row.total_year, 
+                    variacion_valor: row.variacion_valor, 
+                    variacion_pct: row.variacion_pct 
+                };
+            }
             pivot[key][meses[row.mes]] = row.total;
 
-            // R2 separado
-            if(!pivot["R2_"+row.nombre_centro_operacion]) pivot["R2_"+row.nombre_centro_operacion] = { year:"R2", nombre_centro_operacion: row.nombre_centro_operacion, total_year: 0, variacion_valor: 0, variacion_pct: 0 };
-            pivot["R2_"+row.nombre_centro_operacion][meses[row.mes]] = row.r2;
+            {% comment %} let r2Key = "R2_" + row.nombre_centro_operacion;
+            if (!pivot[r2Key]) pivot[r2Key] = { year: "R2", nombre_centro_operacion: row.nombre_centro_operacion, total_year: 0, variacion_valor: 0, variacion_pct: 0 };
+            pivot[r2Key][meses[row.mes]] = row.r2; {% endcomment %}
         });
 
-        // Generar array final con R2 al final de cada centro
-        let groupedByCentro = {};
-        Object.values(pivot).forEach(r => {
-            if(r.year === "R2") {
-                if(!groupedByCentro[r.nombre_centro_operacion]) groupedByCentro[r.nombre_centro_operacion] = { rows:[], r2: r };
-                else groupedByCentro[r.nombre_centro_operacion].r2 = r;
-            } else {
-                if(!groupedByCentro[r.nombre_centro_operacion]) groupedByCentro[r.nombre_centro_operacion] = { rows:[], r2:{} };
-                groupedByCentro[r.nombre_centro_operacion].rows.push(r);
-            }
-        });
+        let result = Object.values(pivot);
 
-        let finalData = [];
-        Object.values(groupedByCentro).forEach(g => {
-            finalData.push(...g.rows);
-            if(g.r2) finalData.push(g.r2);
-        });
+        // Si hay filtro de centro, mostrar solo R2 de ese centro; otros R2 vacíos
+        {% comment %} if (selectedCentro !== null) {
+            result = result.map(r => {
+                if(r.year === "R2" && r.nombre_centro_operacion !== selectedCentro) {
+                    let emptyR2 = {...r};
+                    Object.values(meses).forEach(m => emptyR2[m] = "");
+                    return emptyR2;
+                }
+                return r;
+            });
+        } {% endcomment %}
 
-        return finalData;
+        return result;
     }
 
-    function loadTable(data) {
-        allData = data;
-        let meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-        let columns = [
-            { data: 'year', title: 'Año' },
-            { data: 'nombre_centro_operacion', title: 'Centro de operación' }
-        ];
-        meses.forEach(m => columns.push({ data: m, title: m, render: numberFormat, className:"editable" }));
-
-        columns.push({ data: "total_year", title: "Total Año", render: numberFormat });
-        columns.push({ data: "variacion_valor", title: "Variación Valor", render: numberFormat });
-        columns.push({ data: "variacion_pct", title: "Variación %", render: function(data){ return data ? data.toFixed(2) + "%" : "0%"; }});
-
-        if(table) { 
-            table.destroy(); 
-            $('#presupuestoTableCentroOperacionCostos').empty(); 
-            $(".dt-buttons").remove();           // 🔹 elimina los botones Excel previos
-        }
-
-        table = $('#presupuestoTableCentroOperacionCostos').DataTable({
-            data: pivotData(data),
-            columns: columns,
-            paging:false,
-            scrollX:true,
-            scrollY:"400px",
-            scrollCollapse:true,
-            fixedHeader:true,
-            dom:'Bltip',
-            buttons:[
-                { 
-                    extend:'excelHtml5', 
-                    text:'📥 Exportar a Excel', 
-                    title:'Presupuesto Centro Operación Costos'
-                }
-            ],
-            rowCallback: function(row, data) {
-                if(data.year==="R2") $(row).addClass("fila-r2");
-            },
-            columnDefs:[{
-                targets:0,
-                type:"string",
-                render:function(d,t,row){ return t==='sort'?d==="R2"?"ZZZ":d:d; }
-            }],
-            order:[[1,"asc"],[0,"asc"]], // ordenar por centro y año
-        });
-
-        // Mover botón Excel
-        let wrapper = $(table.table().container());
-        wrapper.find(".dt-buttons").appendTo(wrapper.closest(".bloque-vista").find(".btn-group"));
-
-        // Filtros tipo Excel
-        table.columns().every(function (index) {
-            if (index === 0 || index === 1) {   // 🔹 0 = Año, 1 = Centro de operación
-                let column = this;
-                let filtroId = index === 0 ? "anio" : "centro"; // ID dinámico
-
-                // Botón en el header
-                let button = $(`<button id="excel-filter-btn-${filtroId}" class="excel-filter-btn">
-                                    ${index === 0 ? "Año ⬇" : "Centro ⬇"}
-                                </button>`).appendTo($(column.header()).empty());
-
-                // Contenedor del menú
-                let menu = $(`<div id="excel-filter-${filtroId}" class="excel-filter"></div>`).appendTo("body");
-
-                // Input de búsqueda
-                let searchBox = $('<input type="text" placeholder="Buscar...">').appendTo(menu);
-
-                // Lista de checkboxes
-                let list = $("<div></div>").appendTo(menu);
-
-                // Agregar opciones únicas como checkboxes
-                column.data().unique().sort().each(function (d) {
-                    if (d) {
-                        list.append(`<label><input type="checkbox" value="${d}" checked> ${d}</label><br/>`);
-                    }
-                });
-
-                // Función aplicar filtro
-                function applyFilter() {
-                    let selected = [];
-                    menu.find("input[type='checkbox']:checked").each(function () {
-                        selected.push("^" + $.fn.dataTable.util.escapeRegex($(this).val()) + "$");
+    // 🔄 Deshacer pivot para enviar al backend
+    function unpivotData(tableData) {
+        let meses = { "Ene":1,"Feb":2,"Mar":3,"Abr":4,"May":5,"Jun":6,"Jul":7,"Ago":8,"Sep":9,"Oct":10,"Nov":11,"Dic":12 };
+        let result = [];
+        tableData.forEach(row => {
+            if(row.year === "R2") return;
+            Object.keys(meses).forEach(m => {
+                if(row[m] !== undefined && row[m] !== "") {
+                    result.push({
+                        year: parseInt(row.year),
+                        mes: meses[m],
+                        nombre_centro_operacion: row.nombre_centro_operacion,
+                        total: parseInt(row[m]),
+                        r2: 0 // recalcular en backend
                     });
-                    column.search(selected.length ? selected.join("|") : "", true, false).draw();
                 }
-
-                // Evento checkbox
-                list.on("change", "input[type='checkbox']", applyFilter);
-
-                // Evento búsqueda dentro del menú
-                searchBox.on("keyup", function () {
-                    let val = $(this).val().toLowerCase();
-                    list.find("label").each(function () {
-                        $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
-                    });
-                });
-
-                // Mostrar este menú y ocultar los demás
-                button.on("click", function (e) {
-                    e.stopPropagation();
-
-                    // 🔹 Ocultar otros menús antes de abrir este
-                    $(".excel-filter").not(menu).hide();
-
-                    // Posicionar y mostrar este
-                    let offset = $(this).offset();
-                    menu.css({
-                        top: offset.top + $(this).outerHeight(),
-                        left: offset.left,
-                        width: $(this).outerWidth()
-                    }).toggle();
-                });
-
-                // Cerrar menú al hacer clic fuera
-                $(document).on("click", function (e) {
-                    if (!$(e.target).closest(`#excel-filter-${filtroId}, button`).length) {
-                        menu.hide();
-                    }
-                });
-            }
-        });
-        // Edición doble clic solo 2025
-        let editingCell = null;
-        $('#presupuestoTableCentroOperacionCostos').on('dblclick','td.editable',function(){
-            if(editingCell) return;
-            let cell = table.cell(this);
-            let rowData = table.row(this).data();
-            if(rowData.year!==2025) return;
-            let oldValue = cell.data()||"";
-            $(this).html('<input type="text" class="cell-input" value="'+oldValue+'"/>');
-            let $input = $(this).find("input").focus();
-            editingCell=this;
-            $input[0].setSelectionRange(0,$input.val().length);
-
-            $input.on("keydown",function(e){
-                if(e.key==="Enter"){ 
-                    cell.data($input.val()).draw(false);
-                    editingCell=null;
-
-                    // 🔄 actualizar también en allData
-                    let colName = table.column(cell.index().column).dataSrc(); // "Ene", "Feb", etc.
-                    let meses = { "Ene":1,"Feb":2,"Mar":3,"Abr":4,"May":5,"Jun":6,"Jul":7,"Ago":8,"Sep":9,"Oct":10,"Nov":11,"Dic":12 };
-                    let mesNum = meses[colName];
-
-                    if (mesNum) {
-                        let match = allData.find(d => 
-                            d.year == rowData.year &&
-                            d.nombre_centro_operacion == rowData.nombre_centro_operacion &&
-                            d.mes == mesNum
-                        );
-                        if (match) {
-                            match.total = parseInt($input.val().replace(/\./g,'')) || 0; // limpiar formato
-                        }
-                    } 
-                }
-                else if(e.key==="Escape"){ cell.data(oldValue).draw(false); editingCell=null; }
             });
         });
-        $(document).on("click",function(e){
-            if(editingCell){
-                let $cell=$(editingCell);
-                let $input=$cell.find("input");
-                if($input.length && !$(e.target).closest("#presupuestoTableCentroOperacionCostos").length){
-                    let cell=table.cell(editingCell);
-                    cell.data($input.val()).draw(false);
-                    editingCell=null;
-                }
-            }
-        });
+        return result;
     }
 
-    // Cargar histórico
-    $(document).on("click","#cargarBtn",function(){
-        let boton=$(this); boton.prop("disabled",true).append('<span class="spinner"></span>');
+    $(document).ready(function () {
+        let table = null;
+        let allData = [];
+
+        function loadTable(data) {
+            allData = data;
+            let meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+            let columns = [
+                { data: 'year', title: 'Año' },
+                { data: 'nombre_centro_operacion', title: 'Centro de operación' }
+            ];
+            meses.forEach(m => columns.push({ data: m, title: m, render: numberFormat, className:"editable" }));
+
+            columns.push({ data: "total_year", title: "Total Año", render: numberFormat });
+            columns.push({ data: "variacion_valor", title: "Variación Valor", render: numberFormat });
+            columns.push({ data: "variacion_pct", title: "Variación %", render: function(data){ return data ? data.toFixed(2) + "%" : "0%"; }});
+
+            table = $('#presupuestoTableCentroOperacionCostos').DataTable({
+                data: pivotData(data),
+                columns: columns,
+                scrollX:true,
+                scrollCollapse:true,
+                fixedHeader:true,
+                dom:'Bltip',
+                buttons:[
+                    { 
+                        extend:'excelHtml5', 
+                        text:'📥 Exportar a Excel', 
+                        title:'Presupuesto Centro Operación Costos'
+                    }
+                ],
+                columnDefs:[{
+                    targets:0,
+                    type:"string",
+                    render:function(d,t,row){ return t==='sort'?d==="R2"?"ZZZ":d:d; }
+                }],
+                order:[[1,"asc"],[0,"asc"]], // ordenar por centro y año
+            });
+
+            // Mover botón Excel
+            let wrapper = $(table.table().container());
+            wrapper.find(".dt-buttons").appendTo(wrapper.closest(".bloque-vista").find(".btn-group"));
+
+            // Filtros tipo Excel
+            table.columns().every(function (index) {
+                if (index === 0 || index === 1) {   // 🔹 0 = Año, 1 = Centro de operación
+                    let column = this;
+                    let filtroId = index === 0 ? "anio" : "centro"; // ID dinámico
+
+                    // Botón en el header
+                    let button = $(`<button id="excel-filter-btn-${filtroId}" class="excel-filter-btn">
+                                        ${index === 0 ? "Año ⬇" : "Centro ⬇"}
+                                    </button>`).appendTo($(column.header()).empty());
+
+                    // Contenedor del menú
+                    let menu = $(`<div id="excel-filter-${filtroId}" class="excel-filter"></div>`).appendTo("body");
+
+                    // Input de búsqueda
+                    let searchBox = $('<input type="text" placeholder="Buscar...">').appendTo(menu);
+
+                    // Lista de checkboxes
+                    let list = $("<div></div>").appendTo(menu);
+
+                    // Agregar opciones únicas como checkboxes
+                    column.data().unique().sort().each(function (d) {
+                        if (d) {
+                            list.append(`<label><input type="checkbox" value="${d}" checked> ${d}</label><br/>`);
+                        }
+                    });
+
+                    // Función aplicar filtro
+                    function applyFilter() {
+                        let selected = [];
+                        menu.find("input[type='checkbox']:checked").each(function () {
+                            selected.push("^" + $.fn.dataTable.util.escapeRegex($(this).val()) + "$");
+                        });
+                        column.search(selected.length ? selected.join("|") : "", true, false).draw();
+                    }
+
+                    // Evento checkbox
+                    list.on("change", "input[type='checkbox']", applyFilter);
+
+                    // Evento búsqueda dentro del menú
+                    searchBox.on("keyup", function () {
+                        let val = $(this).val().toLowerCase();
+                        list.find("label").each(function () {
+                            $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+                        });
+                    });
+
+                    // Mostrar este menú y ocultar los demás
+                    button.on("click", function (e) {
+                        e.stopPropagation();
+
+                        // 🔹 Ocultar otros menús antes de abrir este
+                        $(".excel-filter").not(menu).hide();
+
+                        // Posicionar y mostrar este
+                        let offset = $(this).offset();
+                        menu.css({
+                            top: offset.top + $(this).outerHeight(),
+                            left: offset.left,
+                            width: $(this).outerWidth()
+                        }).toggle();
+                    });
+
+                    // Cerrar menú al hacer clic fuera
+                    $(document).on("click", function (e) {
+                        if (!$(e.target).closest(`#excel-filter-${filtroId}, button`).length) {
+                            menu.hide();
+                        }
+                    });
+                }
+            });
+            
+        }
+
+        // Cargar histórico
+        $(document).on("click","#cargarBtn",function(){
+            let boton=$(this); boton.prop("disabled",true).append('<span class="spinner"></span>');
+            $.ajax({
+                url:"{% url 'cargar_presupuesto_centro_costos' %}",
+                type:"GET",
+                dataType:"json",
+                success:function(resp){ let datos=Array.isArray(resp)?resp:resp.data; loadTable(datos); },
+                complete:function(){ boton.prop("disabled",false).find(".spinner").remove(); }
+            });
+        });
+
+        // Guardar cambios
+        $(document).on("click", "#guardarBtn", function () {
+            if (!table) return;
+            let boton = $(this);
+            boton.prop("disabled", true).append('<span class="spinner"></span>');
+            let data = unpivotData(pivotData(allData));
+
+            $.ajax({
+                url: "{% url 'guardar_presupuesto_centro_costos' %}",
+                type: "POST",
+                data: JSON.stringify(data),
+                contentType: "application/json",
+                headers: { "X-CSRFToken": "{{ csrf_token }}" },
+                success: function(resp) { 
+                    // si el servidor devuelve {data: [...]}
+                    let datos = Array.isArray(resp) ? resp : resp.data;
+                    console.log(datos);
+                    loadTable(datos); 
+                },
+                complete: function() {
+                    boton.prop("disabled", false).find(".spinner").remove();
+                }
+            });
+        });
+
+        // Carga inicial
         $.ajax({
-            url:"{% url 'cargar_presupuesto_centro_costos' %}",
+            url:"{% url 'obtener_presupuesto_centro_costos' %}",
             type:"GET",
             dataType:"json",
-            success:function(resp){ let datos=Array.isArray(resp)?resp:resp.data; loadTable(datos); },
-            complete:function(){ boton.prop("disabled",false).find(".spinner").remove(); }
+            success:function(resp){ let datos=Array.isArray(resp)?resp:resp.data; loadTable(datos); }
         });
     });
-
-    // Guardar cambios
-    $(document).on("click", "#guardarBtn", function () {
-        if (!table) return;
-        let boton = $(this);
-        boton.prop("disabled", true).append('<span class="spinner"></span>');
-        let data = unpivotData(pivotData(allData));
-
-        $.ajax({
-            url: "{% url 'guardar_presupuesto_centro_costos' %}",
-            type: "POST",
-            data: JSON.stringify(data),
-            contentType: "application/json",
-            headers: { "X-CSRFToken": "{{ csrf_token }}" },
-            success: function(resp) { 
-                // si el servidor devuelve {data: [...]}
-                let datos = Array.isArray(resp) ? resp : resp.data;
-                console.log(datos);
-                loadTable(datos); 
-            },
-            complete: function() {
-                boton.prop("disabled", false).find(".spinner").remove();
-            }
-        });
-    });
-
-    // Carga inicial
-    $.ajax({
-        url:"{% url 'obtener_presupuesto_centro_costos' %}",
-        type:"GET",
-        dataType:"json",
-        success:function(resp){ let datos=Array.isArray(resp)?resp:resp.data; loadTable(datos); }
-    });
-});
-
 </script>
+{% endblock %}

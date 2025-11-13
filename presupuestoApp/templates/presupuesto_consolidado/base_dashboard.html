@@ -9,8 +9,8 @@
   <!-- Google Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
   
-    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
-    {% block css%}{% endblock %}
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
+  {% block css%}{% endblock %}
 </head>
 <body>
   <div class="app-container">
@@ -43,7 +43,7 @@
         </div>
       </header>
       
-        {% block content %}{% endblock %}
+      {% block content %}{% endblock %}
       
     </main>
   </div>
@@ -124,7 +124,7 @@
         }, 300);
       });
     });
-  </script>
+</script>
 
 </body>
 </html>

@@ -1,72 +1,41 @@
-<div class="bloque-vista">
-    <h2>📊 Proyección presupuesto general</h2>
+{% extends "presupuesto_comercial/base_presupuesto_comercial.html" %}
+{% load static %}
 
-    <div class="btn-group">
-        {% comment %} <button type="button" id="cargarBtnGeneral" class="btn-accion">🔄 Cargar desde histórico</button> {% endcomment %}
-        {% comment %} <button type="button" id="guardarBtnGeneral" class="btn-accion btn-guardar">💾 Guardar cambios</button> {% endcomment %}
-    </div>
-
-   <!-- 🎯 FILTROS -->
-<div class="filtros">
-    <label>📌 Línea:
-        <details class="dropdown">
-            <summary>Seleccionar</summary>
-            <div class="opciones" id="filtroLinea"></div>
-        </details>
-    </label>
-    <label>📅 Año:
-        <details class="dropdown">
-            <summary>Seleccionar</summary>
-            <div class="opciones" id="filtroYear"></div>
-        </details>
-    </label>
-    <label>🏭 Centro de operación:
-        <details class="dropdown">
-            <summary>Seleccionar</summary>
-            <div class="opciones" id="filtroCentro"></div>
-        </details>
-    </label>
-    <label>👥 Clase cliente:
-        <details class="dropdown">
-            <summary>Seleccionar</summary>
-            <div class="opciones" id="filtroClase"></div>
-        </details>
-    </label>
-</div>
-
-    <table id="presupuestoTable" class="display" style="width:100%">
-        <thead>
-            <tr>
-                <th>Línea N1</th>
-                <th>Año</th>
-                <th>Centro de operación</th>
-                <th>Clase cliente</th>
-                <th>Ventas</th>
-                <th>Costos</th>
-                <th>Variación ventas %</th>
-                <th>Variación costos %</th>
-                <th>Variación ventas $</th>
-                <th>Variación costos $</th>
-                <th>Variación mes ventas $</th>
-                <th>Variación mes costos $</th>
-                <th>Variación precios ventas $</th>
-                <th>Variación precios costos $</th>
-                <th>Crecimiento ventas proyectado</th> 
-                <th>Proyección ventas</th>
-                <th>Crecimiento costos proyectado</th> 
-                <th>Proyección costos</th>
-                <th>Margen proyectado %</th>
-                <th>Margen valor proyectado $</th>
-                <th>Margen actual %</th>
-                <th>Margen valor actual $</th>
-                <th>Variación %</th>
-                <th>Variación $</th>
-            </tr>
-        </thead>
-    </table>
-</div>
-
+{% block css %}
 <style>
+    table.dataTable thead th {
+      background-color: #007bff;
+      color: white;
+    }
+    .excel-filter {
+        display: none;
+        position: absolute;
+        background: white;
+        border: 1px solid #ccc;
+        padding: 6px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        z-index: 1000;
+        max-height: 200px;
+        overflow-y: auto;
+        border-radius: 6px;
+        width: 150px !important;   /* ajusta a lo que necesites */
+        min-width: 80px;          /* opcional */
+    }
+    .excel-filter input[type="text"] {
+        width: 95%;
+        margin-bottom: 6px;
+        padding: 3px;
+    }
+    .excel-filter-btn {
+        width: 100%;
+        padding: 4px 6px;
+        background: #f4f4f4;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        text-align: left;
+    }
     .dropdown {
     display: inline-block;
     position: relative;
@@ -110,9 +79,91 @@
     border-radius: 6px;
     padding: 6px 10px;
     margin-left: 8px;
-}
-
+    }
+    .btn-guardar {
+        background-color: #28a745; 
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 12px;
+        cursor: pointer;
+    }
+    .btn-guardar:hover {
+        background-color: #218838;
+    }
 </style>
+{% endblock %}
+
+{% block content %}
+<div class="bloque-vista">
+    <h2>📊 Proyección presupuesto general</h2>
+
+    <div class="btn-group">
+        <button type="button" id="cargarBtnGeneral" class="btn-accion">🔄 Cargar desde histórico</button>
+        <button type="button" id="guardarBtnGeneral" class="btn-guardar">💾 Guardar cambios <span class="spinner" style="display:none; margin-left:8px;"></span></button>
+    </div>
+
+   <!-- 🎯 FILTROS -->
+<div class="filtros">
+    <label>📌 Línea:
+        <details class="dropdown">
+            <summary>Seleccionar</summary>
+            <div class="opciones" id="filtroLinea"></div>
+        </details>
+    </label>
+    <label>📅 Año:
+        <details class="dropdown">
+            <summary>Seleccionar</summary>
+            <div class="opciones" id="filtroYear"></div>
+        </details>
+    </label>
+    <label>🏭 Centro de operación:
+        <details class="dropdown">
+            <summary>Seleccionar</summary>
+            <div class="opciones" id="filtroCentro"></div>
+        </details>
+    </label>
+    <label>👥 Clase cliente:
+        <details class="dropdown">
+            <summary>Seleccionar</summary>
+            <div class="opciones" id="filtroClase"></div>
+        </details>
+    </label>
+</div>
+    <table id="presupuestoTable" class="display" style="width:100%">
+        <thead>
+            <tr>
+                <th>Línea N1</th>
+                <th>Año</th>
+                <th>Centro de operación</th>
+                <th>Clase cliente</th>
+                <th>Ventas</th>
+                <th>Costos</th>
+                <th>Variación ventas %</th>
+                <th>Variación costos %</th>
+                <th>Variación ventas $</th>
+                <th>Variación costos $</th>
+                <th>Variación mes ventas $</th>
+                <th>Variación mes costos $</th>
+                <th>Variación precios ventas $</th>
+                <th>Variación precios costos $</th>
+                <th>Crecimiento ventas proyectado</th> 
+                <th>Proyección ventas</th>
+                <th>Crecimiento costos proyectado</th> 
+                <th>Proyección costos</th>
+                <th>Margen proyectado %</th>
+                <th>Margen valor proyectado $</th>
+                <th>Margen actual %</th>
+                <th>Margen valor actual $</th>
+                <th>Variación %</th>
+                <th>Variación $</th>
+            </tr>
+        </thead>
+    </table>
+</div>
+{% endblock %}
+
+{% block js %}
 <script>
     function numberFormat(data, type, row) {
         if (type === 'display' && !isNaN(data)) {
@@ -144,7 +195,7 @@
         return data;
     }
 
-    $(function () {   // ⚡ $(function() {}) == $(document).ready()
+    $(document).ready(function () {   
         let table = $('#presupuestoTable').DataTable({
             ajax: {
                 url: "{% url 'obtener_presupuesto_comercial' %}",
@@ -474,9 +525,12 @@
         // 💾 Botón guardar cambios
         $(document).on("click", "#guardarBtnGeneral", function () {
             if (!table) return;
-            let boton = $(this);
-            boton.prop("disabled", true).append('<span class="spinner"></span>');
+            let $btn = $(this);
+            let $spinner = $btn.find('.spinner');
             let data = table.rows().data().toArray();
+            // Mostrar spinner
+            $spinner.show();
+            $btn.prop("disabled", true);
             // solo filas modificadas
             $.ajax({
                 url: "{% url 'guardar_presupuesto_comercial' %}",
@@ -491,10 +545,13 @@
                     alert("Error al guardar ❌: " + xhr.responseText);
                 },
                 complete: function() {
-                    boton.prop("disabled", false).find(".spinner").remove();
+                    // Ocultar spinner y reactivar botón
+                    $spinner.hide();
+                    $btn.prop("disabled", false);
                 }
             });
         });
         
     });
 </script>
+{% endblock %}

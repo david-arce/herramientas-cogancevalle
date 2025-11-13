@@ -1,3 +1,45 @@
+{% extends "presupuesto_comercial/base_presupuesto_comercial.html" %}
+{% load static %}
+
+{% block css %}
+<style>
+    table.dataTable thead th {
+      background-color: #007bff;
+      color: white;
+    }
+    .excel-filter {
+        display: none;
+        position: absolute;
+        background: white;
+        border: 1px solid #ccc;
+        padding: 6px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        z-index: 1000;
+        max-height: 200px;
+        overflow-y: auto;
+        border-radius: 6px;
+        width: 150px !important;   /* ajusta a lo que necesites */
+        min-width: 80px;          /* opcional */
+    }
+    .excel-filter input[type="text"] {
+        width: 95%;
+        margin-bottom: 6px;
+        padding: 3px;
+    }
+    .excel-filter-btn {
+        width: 100%;
+        padding: 4px 6px;
+        background: #f4f4f4;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        text-align: left;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
 <div class="bloque-vista">  
     <h2>📊 Proyección presupuesto general - Ventas</h2>
 
@@ -36,463 +78,383 @@
         <tbody></tbody>
     </table>
 </div>
+{% endblock %}
 
+{% block js %}
 <script>
-function numberFormat(data, type, row) {
-    if (type === 'display' && !isNaN(data)) {
-        return new Intl.NumberFormat('es-ES').format(data);
-    }
-    return data;
-}
-
-// 🔄 Pivotar datos y separar fila R2
-function pivotData(data) { 
-    let pivot = {}; 
-    let meses = { 1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic" }; 
-    data.forEach(row => { 
-        if (!pivot[row.year]) {
-            pivot[row.year] = { 
-                year: row.year,
-                total_year: row.total_year || 0,
-                total_year_costos: row.total_year_costos || 0,
-                variacion_valor: row.variacion_valor || 0,
-                variacion_pct: row.variacion_pct || 0,
-                utilidad_pct: row.utilidad_pct || 0,
-                utilidad_valor: row.utilidad_valor || 0,
-                total_proyectado: row.total_proyectado || 0
-            };
-        } 
-        pivot[row.year][meses[row.mes]] = row.total; 
-    }); 
-
-     // Convertir en array ordenado
-    let pivotArray = Object.values(pivot).sort((a,b) => a.year - b.year);
-
-    // 🔹 Buscar año actual y crear fila de utilidad debajo
-    const añoActual = new Date().getFullYear();
-    const añoSiguiente = añoActual + 1;
-    const indexAñoSiguiente  = pivotArray.findIndex(p => p.year === añoSiguiente);
-    // 🔹 Buscar datos del año actual para cálculo del margen
-    const filaAñoActual = pivotArray.find(p => p.year === añoActual);
-    if (indexAñoSiguiente  !== -1) {
-        const filaBase = pivotArray[indexAñoSiguiente ];
-
-        // ==============================
-        // 🔸 Fila 1: Utilidad %
-        // ==============================
-        const filaUtilidadPct = { year: "Margen % " + añoActual };
-        Object.keys(meses).forEach(num => {
-            const mes = meses[num];
-            const registroMes = data.find(r => r.year === añoSiguiente && r.mes === parseInt(num));
-            filaUtilidadPct[mes] = registroMes ? registroMes.utilidad_pct : null;
-        });
-        // 🔹 Calcular margen anual (1 - (costos / ventas))
-        const totalVentas = filaAñoActual.total_year || 0;
-        const totalCostos = filaAñoActual.total_year_costos || 0;
-        const margenAnual = (totalVentas > 0) ? 1 - (totalCostos / totalVentas) : null;
-        const totalVentasSiguiente = filaBase.total_year || 0;
-       
-        filaUtilidadPct.total_year = margenAnual * 100;
-        filaUtilidadPct.total_year_costos = null;
-        filaUtilidadPct.variacion_valor = null;
-        filaUtilidadPct.variacion_pct = null;
-        filaUtilidadPct.utilidad_pct = null;
-        filaUtilidadPct.utilidad_valor = null;
-        filaUtilidadPct.total_proyectado = null;
-
-        // ==============================
-        // 🔸 Fila 2: Utilidad Valor
-        // ==============================
-        const filaUtilidadValor = { year: "Utilidad Valor " + añoSiguiente };
-        Object.keys(meses).forEach(num => {
-            const mes = meses[num];
-            const registroMes = data.find(r => r.year === añoSiguiente && r.mes === parseInt(num));
-            filaUtilidadValor[mes] = registroMes ? registroMes.utilidad_valor : null;
-        });
-        filaUtilidadValor.total_year = Math.round(totalVentasSiguiente * margenAnual);
-        filaUtilidadValor.total_year_costos = null;
-        filaUtilidadValor.variacion_valor = null;
-        filaUtilidadValor.variacion_pct = null;
-        filaUtilidadValor.utilidad_pct = null;
-        filaUtilidadValor.utilidad_valor = null;
-        filaUtilidadValor.total_proyectado = null;
-
-        // Insertar justo debajo del año siguiente
-        pivotArray.splice(indexAñoSiguiente  + 1, 0, filaUtilidadPct, filaUtilidadValor);
+    function numberFormat(data, type, row) {
+        if (type === 'display' && !isNaN(data)) {
+            return new Intl.NumberFormat('es-ES').format(data);
+        }
+        return data;
     }
 
-    return pivotArray; 
-}
+    // 🔄 Pivotar datos y separar fila R2
+    function pivotData(data) { 
+        let pivot = {}; 
+        let meses = { 1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic" }; 
+        data.forEach(row => { 
+            if (!pivot[row.year]) {
+                pivot[row.year] = { 
+                    year: row.year,
+                    total_year: row.total_year || 0,
+                    total_year_costos: row.total_year_costos || 0,
+                    variacion_valor: row.variacion_valor || 0,
+                    variacion_pct: row.variacion_pct || 0,
+                    utilidad_pct: row.utilidad_pct || 0,
+                    utilidad_valor: row.utilidad_valor || 0,
+                    total_proyectado: row.total_proyectado || 0
+                };
+            } 
+            pivot[row.year][meses[row.mes]] = row.total; 
+        }); 
 
-function unpivotData(tableData) {
-    let meses = { "Ene":1, "Feb":2, "Mar":3, "Abr":4, "May":5, "Jun":6, "Jul":7, "Ago":8, "Sep":9, "Oct":10, "Nov":11, "Dic":12 };
-    let result = [];
-    tableData.forEach(row => {
-        {% comment %} if(row.year === "R2") return;  {% endcomment %}
-        Object.keys(meses).forEach(m => {
-            if(row[m] !== undefined){
-                result.push({
-                    year: parseInt(row.year),
-                    mes: meses[m],
-                    total: parseInt(row[m]),
-                    r2: 0 // se recalculará en el backend
-                });
-            }
-        });
-    });
-    return result;
-}
+        // Convertir en array ordenado
+        let pivotArray = Object.values(pivot).sort((a,b) => a.year - b.year);
 
-$(document).ready(function() {
-    // boton actualizar 
-    {% comment %} document.getElementById("actualizarBtn").addEventListener("click", function () {
-        // llamada AJAX para actualizar presupuesto general ventas
-        $.ajax({
-            url: "{% url 'actualizar_presupuesto_general_ventas' %}",
-            type: "GET",
-            dataType: "json",
-            success: function(resp) {
-                if (resp.status === "ok") {
-                    alert("Presupuesto general de ventas actualizado correctamente.");
-                    // recargar tabla
-                    $.ajax({
-                        url: "{% url 'obtener_presupuesto_general_ventas' %}",
-                        type: "GET",
-                        dataType: "json",
-                        success: function(resp) {
-                            let datos = Array.isArray(resp) ? resp : resp.data;
-                            loadTable(datos);
-                        }
-                    });
-                } else {
-                    alert("Error al actualizar el presupuesto general de ventas.");
-                }
-            },
-            error: function(err) {
-                console.error("Error AJAX:", err);
-                alert("Error al actualizar el presupuesto general de ventas.");
-            }
-        });
-    }); {% endcomment %}
-    let table = null;
+        // 🔹 Buscar año actual y crear fila de utilidad debajo
+        const añoActual = new Date().getFullYear();
+        const añoSiguiente = añoActual + 1;
+        const indexAñoSiguiente  = pivotArray.findIndex(p => p.year === añoSiguiente);
+        // 🔹 Buscar datos del año actual para cálculo del margen
+        const filaAñoActual = pivotArray.find(p => p.year === añoActual);
+        if (indexAñoSiguiente  !== -1) {
+            const filaBase = pivotArray[indexAñoSiguiente ];
 
-    function loadTable(data) {
-        let meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-        let columns = [{ data: 'year', title: 'Año' }];
-        meses.forEach(m => {
-            columns.push({ data: m, title: m, render: numberFormat, className: "editable" });
-        });
-        // ➕ columnas extra
-        columns.push({ data: "total_year", title: "Total Año Ventas", render: numberFormat });
-        columns.push({ data: "total_year_costos", title: "Total Año Costos", render: numberFormat });
-        columns.push({ data: "variacion_valor", title: "Variación Valor Ventas", render: numberFormat });
-        columns.push({ data: "variacion_pct", title: "Variación Ventas%", render: function(data){ return data ? data.toFixed(2) + "%" : "0%"; }});
-        columns.push({ data: "utilidad_pct", title: "Margen %", render: function(data){ return data ? data.toFixed(2) + "%" : "0%"; }});
-        columns.push({ data: "utilidad_valor", title: "Margen Valor", render: numberFormat });
-        columns.push({ data: "total_proyectado", title: "Total proyectado", render: numberFormat });
+            // ==============================
+            // 🔸 Fila 1: Utilidad %
+            // ==============================
+            const filaUtilidadPct = { year: "Margen % " + añoActual };
+            Object.keys(meses).forEach(num => {
+                const mes = meses[num];
+                const registroMes = data.find(r => r.year === añoSiguiente && r.mes === parseInt(num));
+                filaUtilidadPct[mes] = registroMes ? registroMes.utilidad_pct : null;
+            });
+            // 🔹 Calcular margen anual (1 - (costos / ventas))
+            const totalVentas = filaAñoActual.total_year || 0;
+            const totalCostos = filaAñoActual.total_year_costos || 0;
+            const margenAnual = (totalVentas > 0) ? 1 - (totalCostos / totalVentas) : null;
+            const totalVentasSiguiente = filaBase.total_year || 0;
+        
+            filaUtilidadPct.total_year = margenAnual * 100;
+            filaUtilidadPct.total_year_costos = null;
+            filaUtilidadPct.variacion_valor = null;
+            filaUtilidadPct.variacion_pct = null;
+            filaUtilidadPct.utilidad_pct = null;
+            filaUtilidadPct.utilidad_valor = null;
+            filaUtilidadPct.total_proyectado = null;
 
-        if (table) {
-            table.destroy();
-            $('#presupuestoTableProyeccionGeneral').empty();
-            $("#excel-filter-ventas").remove();  // 🔹 elimina menús anteriores
-            $(".dt-buttons").remove();           // 🔹 elimina los botones Excel previos
+            // ==============================
+            // 🔸 Fila 2: Utilidad Valor
+            // ==============================
+            const filaUtilidadValor = { year: "Utilidad Valor " + añoSiguiente };
+            Object.keys(meses).forEach(num => {
+                const mes = meses[num];
+                const registroMes = data.find(r => r.year === añoSiguiente && r.mes === parseInt(num));
+                filaUtilidadValor[mes] = registroMes ? registroMes.utilidad_valor : null;
+            });
+            filaUtilidadValor.total_year = Math.round(totalVentasSiguiente * margenAnual);
+            filaUtilidadValor.total_year_costos = null;
+            filaUtilidadValor.variacion_valor = null;
+            filaUtilidadValor.variacion_pct = null;
+            filaUtilidadValor.utilidad_pct = null;
+            filaUtilidadValor.utilidad_valor = null;
+            filaUtilidadValor.total_proyectado = null;
+
+            // Insertar justo debajo del año siguiente
+            pivotArray.splice(indexAñoSiguiente  + 1, 0, filaUtilidadPct, filaUtilidadValor);
         }
 
-        table = $('#presupuestoTableProyeccionGeneral').DataTable({
-            data: pivotData(data),
-            columns: columns,
-            paging: false,
-            scrollX: true,
-            dom: 'Bltip',
-            buttons: [
-                {
-                    extend: 'excelHtml5',
-                    text: '📥 Exportar a Excel',
-                    title: 'Presupuesto General Ventas',
-                exportOptions: {
-                columns: ':visible',
-                format: {
-                    body: function (data, row, column, node) {
-                    // Helper: quitar etiquetas HTML y trim
-                    function stripHtml(input) {
-                        if (input === null || input === undefined) return '';
-                        if (typeof input !== 'string') return input;
-                        return input.replace(/<\/?[^>]+(>|$)/g, "").trim();
-                    }
+        return pivotArray; 
+    }
 
-                    var txt = stripHtml(data);
-
-                    // Índices de tus columnas numéricas según tu DataTable (0-based)
-                    var moneyCols = [1,2,3,4,5,8,9,10,11,12,13,15,19,20];
-                    var percentCols = [16,17,18];
-
-                    // Si es columna de dinero: quitar separadores de miles, símbolo y ajustar decimal
-                    if (moneyCols.indexOf(column) !== -1) {
-                        txt = String(txt)
-                                .replace(/\s/g,'')    // quita espacios
-                                .replace(/\$/g,'')    // quita signo peso (si lo hubiera)
-                                .replace(/\./g,'')    // quita separador de miles
-                                .replace(/,/g,'.')    // cambia coma decimal por punto
-                                .replace(/[^0-9.-]/g,''); // deja sólo números, punto y signo
-                        return txt === '' ? 0 : txt;
-                    }
-
-                    // Si es columna de porcentaje: quitar % y normalizar decimal
-                    if (percentCols.indexOf(column) !== -1) {
-                        txt = String(txt)
-                                .replace(/\s/g,'')
-                                .replace(/%/g,'')
-                                .replace(/\./g,'')
-                                .replace(/,/g,'.')
-                                .replace(/[^0-9.-]/g,'');
-                        return txt === '' ? 0 : txt;
-                    }
-
-                    // Columnas de texto: devolver el texto limpio (sin HTML)
-                    return txt;
-                    }
-                }
-                }
-                }
-            ],
-            {% comment %} rowCallback: function(row, data) {
-                if (data.year === "R2") $(row).addClass("fila-r2");
-            }, {% endcomment %}
-            columnDefs: [
-                {
-                    targets: 0,
-                    type: "string",
-                    render: function (data, type, row) {
-                        if (type === 'sort') return data === "R2" ? "ZZZ" : data;
-                        return data;
-                    }
-                }
-            ],
-            order: [[0, "asc"]]
-        });
-
-        // Mover botón Excel
-        {% comment %} let wrapper = $(table.table().container()); 
-        wrapper.find(".dt-buttons").appendTo(wrapper.closest(".bloque-vista").find(".btn-group")); {% endcomment %}
-
-        // Filtro en columna Año
-        table.columns().every(function (index) {
-            if (index === 0) {
-                let column = this;
-
-                // Botón en el header
-                let button = $('<button id="excel-filter-btn-ventas" class="excel-filter-btn">Año ⬇</button>')
-                    .appendTo($(column.header()).empty());
-
-                // Contenedor del menú
-                let menu = $('<div id="excel-filter-ventas" class="excel-filter"></div>').appendTo('body');
-
-                // Input de búsqueda
-                let searchBox = $('<input type="text" placeholder="Buscar...">').appendTo(menu);
-
-                // Seleccionar todo / deseleccionar todo
-                let selectAllDiv = $('<div class="select-all-container"></div>').appendTo(menu);
-                selectAllDiv.append('<label><input type="checkbox" id="selectAllYears" checked> <strong>Seleccionar todo</strong></label><br/>');
-
-                // Lista de checkboxes
-                let list = $('<div class="checkbox-list"></div>').appendTo(menu);
-
-                // Agregar opciones únicas como checkboxes
-                column.data().unique().sort().each(function (d) {
-                    if (d) {
-                        list.append('<label><input type="checkbox" value="' + d + '" checked> ' + d + '</label><br/>');
-                    }
-                });
-
-                // Función aplicar filtro (si no hay seleccionados -> no mostrar filas)
-                function applyFilter() {
-                    let selected = [];
-                    menu.find('.checkbox-list input[type="checkbox"]:checked').each(function () {
-                        selected.push('^' + $.fn.dataTable.util.escapeRegex($(this).val()) + '$');
+    function unpivotData(tableData) {
+        let meses = { "Ene":1, "Feb":2, "Mar":3, "Abr":4, "May":5, "Jun":6, "Jul":7, "Ago":8, "Sep":9, "Oct":10, "Nov":11, "Dic":12 };
+        let result = [];
+        tableData.forEach(row => {
+            {% comment %} if(row.year === "R2") return;  {% endcomment %}
+            Object.keys(meses).forEach(m => {
+                if(row[m] !== undefined){
+                    result.push({
+                        year: parseInt(row.year),
+                        mes: meses[m],
+                        total: parseInt(row[m]),
+                        r2: 0 // se recalculará en el backend
                     });
+                }
+            });
+        });
+        return result;
+    }
 
-                    if (selected.length === 0) {
-                        // Ningún año seleccionado -> forzar resultado vacío
-                        column.search('^$', true, false).draw();
+    $(document).ready(function() {
+        // boton actualizar 
+        {% comment %} document.getElementById("actualizarBtn").addEventListener("click", function () {
+            // llamada AJAX para actualizar presupuesto general ventas
+            $.ajax({
+                url: "{% url 'actualizar_presupuesto_general_ventas' %}",
+                type: "GET",
+                dataType: "json",
+                success: function(resp) {
+                    if (resp.status === "ok") {
+                        alert("Presupuesto general de ventas actualizado correctamente.");
+                        // recargar tabla
+                        $.ajax({
+                            url: "{% url 'obtener_presupuesto_general_ventas' %}",
+                            type: "GET",
+                            dataType: "json",
+                            success: function(resp) {
+                                let datos = Array.isArray(resp) ? resp : resp.data;
+                                loadTable(datos);
+                            }
+                        });
                     } else {
-                        column.search(selected.join('|'), true, false).draw();
+                        alert("Error al actualizar el presupuesto general de ventas.");
                     }
+                },
+                error: function(err) {
+                    console.error("Error AJAX:", err);
+                    alert("Error al actualizar el presupuesto general de ventas.");
                 }
+            });
+        }); {% endcomment %}
+        let table = null;
 
-                // Evento seleccionar/deseleccionar todo (actúa sobre elementos visibles primero)
-                menu.on('change', '#selectAllYears', function () {
-                    let checked = $(this).is(':checked');
-                    let visibleItems = list.find('label:visible input[type="checkbox"]');
-                    if (visibleItems.length) visibleItems.prop('checked', checked);
-                    else list.find('input[type="checkbox"]').prop('checked', checked);
-                    applyFilter();
-                });
+        function loadTable(data) {
+            let meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+            let columns = [{ data: 'year', title: 'Año' }];
+            meses.forEach(m => {
+                columns.push({ data: m, title: m, render: numberFormat, className: "editable" });
+            });
+            // ➕ columnas extra
+            columns.push({ data: "total_year", title: "Total Año Ventas", render: numberFormat });
+            columns.push({ data: "total_year_costos", title: "Total Año Costos", render: numberFormat });
+            columns.push({ data: "variacion_valor", title: "Variación Valor Ventas", render: numberFormat });
+            columns.push({ data: "variacion_pct", title: "Variación Ventas%", render: function(data){ return data ? data.toFixed(2) + "%" : "0%"; }});
+            columns.push({ data: "utilidad_pct", title: "Margen %", render: function(data){ return data ? data.toFixed(2) + "%" : "0%"; }});
+            columns.push({ data: "utilidad_valor", title: "Margen Valor", render: numberFormat });
+            columns.push({ data: "total_proyectado", title: "Total proyectado", render: numberFormat });
 
-                // Evento individual checkbox
-                list.on('change', 'input[type="checkbox"]', function () {
-                    let totalVisible = list.find('label:visible input[type="checkbox"]').length;
-                    let checkedVisible = list.find('label:visible input[type="checkbox"]:checked').length;
+            table = $('#presupuestoTableProyeccionGeneral').DataTable({
+                data: pivotData(data),
+                columns: columns,
+                paging: false,
+                scrollX: true,
+                dom: 'Bltip',
+                buttons: [
+                    {
+                        extend: 'excelHtml5',
+                        text: '📥 Exportar a Excel',
+                        title: 'Presupuesto General Ventas',
+                    exportOptions: {
+                    columns: ':visible',
+                    format: {
+                        body: function (data, row, column, node) {
+                        // Helper: quitar etiquetas HTML y trim
+                        function stripHtml(input) {
+                            if (input === null || input === undefined) return '';
+                            if (typeof input !== 'string') return input;
+                            return input.replace(/<\/?[^>]+(>|$)/g, "").trim();
+                        }
 
-                    if (totalVisible === 0) {
-                        totalVisible = list.find('input[type="checkbox"]').length;
-                        checkedVisible = list.find('input[type="checkbox"]:checked').length;
+                        var txt = stripHtml(data);
+
+                        // Índices de tus columnas numéricas según tu DataTable (0-based)
+                        var moneyCols = [1,2,3,4,5,8,9,10,11,12,13,15,19,20];
+                        var percentCols = [16,17,18];
+
+                        // Si es columna de dinero: quitar separadores de miles, símbolo y ajustar decimal
+                        if (moneyCols.indexOf(column) !== -1) {
+                            txt = String(txt)
+                                    .replace(/\s/g,'')    // quita espacios
+                                    .replace(/\$/g,'')    // quita signo peso (si lo hubiera)
+                                    .replace(/\./g,'')    // quita separador de miles
+                                    .replace(/,/g,'.')    // cambia coma decimal por punto
+                                    .replace(/[^0-9.-]/g,''); // deja sólo números, punto y signo
+                            return txt === '' ? 0 : txt;
+                        }
+
+                        // Si es columna de porcentaje: quitar % y normalizar decimal
+                        if (percentCols.indexOf(column) !== -1) {
+                            txt = String(txt)
+                                    .replace(/\s/g,'')
+                                    .replace(/%/g,'')
+                                    .replace(/\./g,'')
+                                    .replace(/,/g,'.')
+                                    .replace(/[^0-9.-]/g,'');
+                            return txt === '' ? 0 : txt;
+                        }
+
+                        // Columnas de texto: devolver el texto limpio (sin HTML)
+                        return txt;
+                        }
                     }
+                    }
+                    }
+                ],
+                order: [[0, "asc"]]
+            });
 
-                    $('#selectAllYears').prop('checked', totalVisible === checkedVisible);
-                    applyFilter();
-                });
+            // Filtro en columna Año
+            table.columns().every(function (index) {
+                if (index === 0) {
+                    let column = this;
 
-                // Búsqueda dentro del menú (oculta/ muestra checkboxes)
-                searchBox.on('keyup', function () {
-                    let val = $(this).val().toLowerCase();
-                    list.find("label").each(function () {
-                        $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+                    // Botón en el header
+                    let button = $('<button id="excel-filter-btn-ventas" class="excel-filter-btn">Año ⬇</button>')
+                        .appendTo($(column.header()).empty());
+
+                    // Contenedor del menú
+                    let menu = $('<div id="excel-filter-ventas" class="excel-filter"></div>').appendTo('body');
+
+                    // Input de búsqueda
+                    let searchBox = $('<input type="text" placeholder="Buscar...">').appendTo(menu);
+
+                    // Seleccionar todo / deseleccionar todo
+                    let selectAllDiv = $('<div class="select-all-container"></div>').appendTo(menu);
+                    selectAllDiv.append('<label><input type="checkbox" id="selectAllYears" checked> <strong>Seleccionar todo</strong></label><br/>');
+
+                    // Lista de checkboxes
+                    let list = $('<div class="checkbox-list"></div>').appendTo(menu);
+
+                    // Agregar opciones únicas como checkboxes
+                    column.data().unique().sort().each(function (d) {
+                        if (d) {
+                            list.append('<label><input type="checkbox" value="' + d + '" checked> ' + d + '</label><br/>');
+                        }
                     });
 
-                    // actualizar estado de "Seleccionar todo" según elementos visibles
-                    let totalVisible = list.find('label:visible input[type="checkbox"]').length;
-                    let checkedVisible = list.find('label:visible input[type="checkbox"]:checked').length;
-                    $('#selectAllYears').prop('checked', totalVisible > 0 && totalVisible === checkedVisible);
-                });
+                    // Función aplicar filtro (si no hay seleccionados -> no mostrar filas)
+                    function applyFilter() {
+                        let selected = [];
+                        menu.find('.checkbox-list input[type="checkbox"]:checked').each(function () {
+                            selected.push('^' + $.fn.dataTable.util.escapeRegex($(this).val()) + '$');
+                        });
 
-                // Mostrar/ocultar menú (posicionar)
-                button.on('click', function (e) {
-                    e.stopPropagation();
-                    let offset = $(this).offset();
-                    menu.css({
-                        top: offset.top + $(this).outerHeight(),
-                        left: offset.left,
-                        width: $(this).outerWidth()
-                    }).toggle();
-                });
-
-                // Cerrar menú al hacer clic fuera (específico para este botón/menú)
-                $(document).on('click', function (e) {
-                    if (!$(e.target).closest('#excel-filter-ventas, #excel-filter-btn-ventas').length) {
-                        menu.hide();
+                        if (selected.length === 0) {
+                            // Ningún año seleccionado -> forzar resultado vacío
+                            column.search('^$', true, false).draw();
+                        } else {
+                            column.search(selected.join('|'), true, false).draw();
+                        }
                     }
-                });
-            }
-        });
 
-        // Edición doble clic solo 2025
-        let editingCell = null;
-        $('#presupuestoTableProyeccionGeneral').on('dblclick', 'td.editable', function () {
-            if (editingCell) return;
-            let cell = table.cell(this);
-            let rowData = table.row(this).data();
-            if (rowData.year !== 2026) return;
+                    // Evento seleccionar/deseleccionar todo (actúa sobre elementos visibles primero)
+                    menu.on('change', '#selectAllYears', function () {
+                        let checked = $(this).is(':checked');
+                        let visibleItems = list.find('label:visible input[type="checkbox"]');
+                        if (visibleItems.length) visibleItems.prop('checked', checked);
+                        else list.find('input[type="checkbox"]').prop('checked', checked);
+                        applyFilter();
+                    });
 
-            let oldValue = cell.data() || "";
-            $(this).html('<input type="text" class="cell-input" value="'+ oldValue +'"/>');
-            let $input = $(this).find("input").focus();
-            editingCell = this;
-            $input[0].setSelectionRange(0, $input.val().length);
+                    // Evento individual checkbox
+                    list.on('change', 'input[type="checkbox"]', function () {
+                        let totalVisible = list.find('label:visible input[type="checkbox"]').length;
+                        let checkedVisible = list.find('label:visible input[type="checkbox"]:checked').length;
 
-            $input.on("keydown", function(e) {
-                if (e.key === "Enter") { cell.data($input.val()).draw(false); editingCell = null; }
-                else if (e.key === "Escape") { cell.data(oldValue).draw(false); editingCell = null; }
+                        if (totalVisible === 0) {
+                            totalVisible = list.find('input[type="checkbox"]').length;
+                            checkedVisible = list.find('input[type="checkbox"]:checked').length;
+                        }
+
+                        $('#selectAllYears').prop('checked', totalVisible === checkedVisible);
+                        applyFilter();
+                    });
+
+                    // Búsqueda dentro del menú (oculta/ muestra checkboxes)
+                    searchBox.on('keyup', function () {
+                        let val = $(this).val().toLowerCase();
+                        list.find("label").each(function () {
+                            $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+                        });
+
+                        // actualizar estado de "Seleccionar todo" según elementos visibles
+                        let totalVisible = list.find('label:visible input[type="checkbox"]').length;
+                        let checkedVisible = list.find('label:visible input[type="checkbox"]:checked').length;
+                        $('#selectAllYears').prop('checked', totalVisible > 0 && totalVisible === checkedVisible);
+                    });
+
+                    // Mostrar/ocultar menú (posicionar)
+                    button.on('click', function (e) {
+                        e.stopPropagation();
+                        let offset = $(this).offset();
+                        menu.css({
+                            top: offset.top + $(this).outerHeight(),
+                            left: offset.left,
+                            width: $(this).outerWidth()
+                        }).toggle();
+                    });
+
+                    // Cerrar menú al hacer clic fuera (específico para este botón/menú)
+                    $(document).on('click', function (e) {
+                        if (!$(e.target).closest('#excel-filter-ventas, #excel-filter-btn-ventas').length) {
+                            menu.hide();
+                        }
+                    });
+                }
+            });
+
+        }
+
+        // 🔄 Cargar desde histórico
+        $(document).on("click", "#cargarBtnGeneralVentas", function () {
+            let boton = $(this);
+            boton.prop("disabled", true).append('<span class="spinner"></span>');
+
+            $.ajax({
+                url: "{% url 'cargar_presupuesto_general_ventas' %}",
+                type: "GET",
+                dataType: "json", // <- importante
+                success: function(resp) {
+                    // si el servidor devuelve {data: [...]}
+                    let datos = Array.isArray(resp) ? resp : resp.data;
+                    loadTable(datos);
+                },
+                error: function(err) {
+                    console.error("Error AJAX:", err);
+                },
+                complete: function() {
+                    boton.prop("disabled", false).find(".spinner").remove();
+                }
             });
         });
 
-        // Guardar al hacer clic fuera
-        $(document).on("click", function(e) {
-            if (editingCell) {
-                let $cell = $(editingCell);
-                let $input = $cell.find("input");
-                if ($input.length && !$(e.target).closest("#presupuestoTableProyeccionGeneral").length) {
-                    let cell = table.cell(editingCell);
-                    cell.data($input.val()).draw(false);
-                    editingCell = null;
+        // 💾 Guardar cambios
+        $(document).on("click", "#guardarBtn", function () {
+            if (!table) return;
+            let boton = $(this);
+            boton.prop("disabled", true).append('<span class="spinner"></span>');
+            let data = unpivotData(table.rows().data().toArray());
+
+            $.ajax({
+                url: "{% url 'guardar_presupuesto_general_ventas' %}",
+                type: "POST",
+                data: JSON.stringify(data),
+                contentType: "application/json",
+                headers: { "X-CSRFToken": "{{ csrf_token }}" },
+                success: function(resp) { 
+                    // si el servidor devuelve {data: [...]}
+                    let datos = Array.isArray(resp) ? resp : resp.data;
+                    loadTable(datos); 
+                },
+                complete: function() {
+                    boton.prop("disabled", false).find(".spinner").remove();
                 }
-            }
+            });
         });
-    }
 
-    // 🔄 Cargar desde histórico
-    $(document).on("click", "#cargarBtnGeneralVentas", function () {
-        let boton = $(this);
-        boton.prop("disabled", true).append('<span class="spinner"></span>');
-
+        // Primera carga automática
         $.ajax({
-            url: "{% url 'cargar_presupuesto_general_ventas' %}",
+            url: "{% url 'obtener_presupuesto_general_ventas' %}",
             type: "GET",
-            dataType: "json", // <- importante
+            dataType: "json",
             success: function(resp) {
-                // si el servidor devuelve {data: [...]}
                 let datos = Array.isArray(resp) ? resp : resp.data;
                 loadTable(datos);
-            },
-            error: function(err) {
-                console.error("Error AJAX:", err);
-            },
-            complete: function() {
-                boton.prop("disabled", false).find(".spinner").remove();
             }
         });
     });
-
-    // 💾 Guardar cambios
-    $(document).on("click", "#guardarBtn", function () {
-        if (!table) return;
-        let boton = $(this);
-        boton.prop("disabled", true).append('<span class="spinner"></span>');
-        let data = unpivotData(table.rows().data().toArray());
-
-        $.ajax({
-            url: "{% url 'guardar_presupuesto_general_ventas' %}",
-            type: "POST",
-            data: JSON.stringify(data),
-            contentType: "application/json",
-            headers: { "X-CSRFToken": "{{ csrf_token }}" },
-            success: function(resp) { 
-                // si el servidor devuelve {data: [...]}
-                let datos = Array.isArray(resp) ? resp : resp.data;
-                loadTable(datos); 
-            },
-            complete: function() {
-                boton.prop("disabled", false).find(".spinner").remove();
-            }
-        });
-    });
-
-    // Primera carga automática
-    $.ajax({
-        url: "{% url 'obtener_presupuesto_general_ventas' %}",
-        type: "GET",
-        dataType: "json",
-        success: function(resp) {
-            let datos = Array.isArray(resp) ? resp : resp.data;
-            loadTable(datos);
-        }
-    });
-});
-
-
 </script>
+{% endblock %}
 
-<style>
-.fila-r2 { background-color: #f4f4f4; font-weight: bold; }
-.excel-filter {
-    background: white;
-    border: 1px solid #ccc;
-    padding: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
-    position: absolute;
-    display: none;
-    z-index: 9999;
-    max-height: 300px;
-    overflow-y: auto;
-}
-.excel-filter input[type="text"] {
-    width: 95%;
-    margin-bottom: 6px;
-    padding: 3px;
-}
-.select-all-container {
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 4px;
-    margin-bottom: 4px;
-}
-
-</style>

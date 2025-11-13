@@ -1,52 +1,10 @@
-{% extends "presupuesto_comercial/base_presupuesto_comercial.html" %}
-{% load static %}
-
-{% block css %}
-<style>
-    table.dataTable thead th {
-      background-color: #007bff;
-      color: white;
-    }
-    .excel-filter {
-        display: none;
-        position: absolute;
-        background: white;
-        border: 1px solid #ccc;
-        padding: 6px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        z-index: 1000;
-        max-height: 200px;
-        overflow-y: auto;
-        border-radius: 6px;
-        width: 150px !important;   /* ajusta a lo que necesites */
-        min-width: 80px;          /* opcional */
-    }
-    .excel-filter input[type="text"] {
-        width: 95%;
-        margin-bottom: 6px;
-        padding: 3px;
-    }
-    .excel-filter-btn {
-        width: 100%;
-        padding: 4px 6px;
-        background: #f4f4f4;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        text-align: left;
-    }
-</style>
-{% endblock %}
-
-{% block content %}
 <div class="bloque-vista">
     <h2>📊 Proyección presupuesto centro operacion-segmento Ventas</h2>
 
     <div class="btn-group">
         {% comment %} <button type="button" id="cargarBtnCentroSegVentas" class="btn-accion">🔄 Cargar desde histórico</button> {% endcomment %}
         {% comment %} <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button> {% endcomment %}
-        <button type="button" id="actualizarBtnCentroSegmento" class="btn-accion btn-actualizar">Actualizar tabla</button>
+        {% comment %} <button type="button" id="actualizarBtnCentroSegmento" class="btn-accion btn-actualizar">Actualizar tabla</button> {% endcomment %}
     </div>
 
     <table id="presupuestoTableCentroOperacionSegmento" class="display" style="width:100%">
@@ -78,9 +36,36 @@
          <tbody></tbody>
     </table>
 </div>
-{% endblock %}
 
-{% block js %}
+<style>
+    .fila-r2 {
+        background-color: #f0f0f0;
+        font-weight: bold;
+    }
+    .excel-filter {
+        background: white;
+        border: 1px solid #ccc;
+        padding: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        position: absolute;
+        display: none;
+        z-index: 9999;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .excel-filter input[type="text"] {
+        width: 95%;
+        margin-bottom: 6px;
+        padding: 3px;
+    }
+    .select-all-container {
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 4px;
+        margin-bottom: 4px;
+    }
+
+</style>
+
 <script>
     function numberFormat(data, type, row) {
         if (type === 'display' && !isNaN(data)) {
@@ -254,6 +239,49 @@
         let table = null;
         let allData = []; // almacenar todos los datos cargados
 
+        function pivoDataR2Final(data) {
+            let meses = {1:"Ene",2:"Feb",3:"Mar",4:"Abr",5:"May",6:"Jun",7:"Jul",8:"Ago",9:"Sep",10:"Oct",11:"Nov",12:"Dic"};
+            let pivot = {};
+            let r2Rows = [];
+
+            // crear pivot por año + centro + segmento
+            data.forEach(row => {
+                let key = row.year + '_' + row.nombre_centro_operacion + '_' + row.segmento;
+                if (!pivot[key]) pivot[key] = { year: row.year, nombre_centro_operacion: row.nombre_centro_operacion, segmento: row.segmento, total_year: row.total, variacion_valor: row.variacion_valor, variacion_pct: row.variacion_pct };
+                pivot[key][meses[row.mes]] = row.total;
+
+                // almacenar fila R2 por centro + segmento
+                {% comment %} if (!pivot['R2_' + row.nombre_centro_operacion + '_' + row.segmento]) {
+                    let r2Row = { year: "R2", nombre_centro_operacion: row.nombre_centro_operacion, segmento: row.segmento, total_year: 0, variacion_valor: 0, variacion_pct: 0 };
+                    r2Row[meses[row.mes]] = row.r2;
+                    r2Rows.push(r2Row);
+                    pivot['R2_' + row.nombre_centro_operacion + '_' + row.segmento] = r2Row;
+                } else {
+                    pivot['R2_' + row.nombre_centro_operacion + '_' + row.segmento][meses[row.mes]] = row.r2;
+                } {% endcomment %}
+            });
+
+            // generar array final con R2 al final de cada centro + segmento
+            let groupedByCentroSegmento = {};
+            Object.values(pivot).forEach(row => {
+                {% comment %} if (row.year === "R2") return;  {% endcomment %}
+                let key = row.nombre_centro_operacion + '_' + row.segmento;
+                if (!groupedByCentroSegmento[key]) groupedByCentroSegmento[key] = [];
+                groupedByCentroSegmento[key].push(row);
+            });
+
+            let finalData = [];
+            Object.values(groupedByCentroSegmento).forEach(rows => {
+                finalData = finalData.concat(rows);
+                // agregar fila R2 correspondiente
+                let centro = rows[0].nombre_centro_operacion;
+                let segmento = rows[0].segmento;
+                let r2Row = r2Rows.find(r => r.nombre_centro_operacion === centro && r.segmento === segmento);
+                if (r2Row) finalData.push(r2Row);
+            });
+            return finalData;
+        }
+
         function loadTable(data) {
             allData = data; // almacenar todos los datos cargados
             let meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -272,11 +300,20 @@
             columns.push({ data: "utilidad_valor", title: "Margen Valor", render: numberFormat });
             columns.push({ data: "total_proyectado", title: "Total proyectado", render: numberFormat });
             
+            if (table) {
+                table.destroy();
+                $('#presupuestoTableCentroOperacionSegmento').empty(); 
+                $(".dt-buttons").remove();           // 🔹 elimina los botones Excel previos
+            }
+
             table = $('#presupuestoTableCentroOperacionSegmento').DataTable({
                 data: pivoData(data),
                 columns: columns,
+                paging: false,
                 scrollX: true,
+                scrollY: "400px",
                 scrollCollapse: true,
+                
                 dom: 'Bltip',
                 buttons: [
                     {
@@ -329,8 +366,27 @@
                         }
                     }
                 ],
+                rowCallback: function(row, data) {
+                    if (data.year === "R2") {
+                        $(row).addClass('fila-r2');
+                    }
+                },
+                columnDefs: [
+                    {
+                        targets: 0,
+                        type: "string",
+                        render: function (data, type, row) {
+                            if (type === 'sort') return data === "R2" ? "ZZZ" : data;
+                            return data;
+                        }
+                    }
+                ],
                 order: [[0, "asc"], [1, "asc"], [2, "asc"]]
             });
+
+            // Mover botón Excel
+            {% comment %} let wrapper = $(table.table().container());
+            wrapper.find('.dt-buttons').detach().appendTo('.bloque-vista .btn-group'); {% endcomment %}
 
             // Filtros tipo Excel
             table.columns().every(function (index) {
@@ -416,6 +472,52 @@
                 }
             });
 
+
+            // edición doble clic solo 2025
+            let editingCell = null;
+            $('#presupuestoTableCentroOperacionSegmento').on('dblclick', 'td.editable', function () {
+                if (editingCell) return; // ya hay una celda en edición
+                let cell = table.cell(this);
+                let rowData = table.row(this).data();
+                if (rowData.year !== 2026) return; // solo permitir edición en año
+                let oldValue = cell.data() || "";
+                $(this).html('<input type="text" class="cell-input" value="'+ oldValue +'"/>');
+                let $input = $(this).find('input').focus();
+                editingCell = this;
+                $input[0].setSelectionRange(0, $input.val().length);
+
+                $input.on('keydown', function(e) {
+                    if (e.key === 'Enter') { 
+                        cell.data($input.val()).draw(false); 
+                        editingCell = null;
+                        
+                        // actualizar allData
+                        let colName = table.column(cell.index().column).dataSrc();
+                        let meses = { "Ene":1,"Feb":2,"Mar":3,"Abr":4,"May":5,"Jun":6,"Jul":7,"Ago":8,"Sep":9,"Oct":10,"Nov":11,"Dic":12 };
+                        let mesNum = meses[colName];
+
+                        if (mesNum){
+                            let match = allData.find(d => d.year === rowData.year && d.nombre_centro_operacion === rowData.nombre_centro_operacion && d.segmento === rowData.segmento && d.mes === mesNum);
+                            if (match) {
+                                match.total = parseInt($input.val().replace(/\./g, '')) || 0;
+                            } 
+                        }
+                    }
+                    else if (e.key === 'Escape') { cell.data(oldValue).draw(false); editingCell = null; }
+                });
+            });
+            // Guardar al hacer clic fuera
+            $(document).on('click', function(e) {
+                if (editingCell) {
+                    let $cell = $(editingCell);
+                    let $input = $cell.find('input');
+                    if ($input.length && !$(e.target).closest('#presupuestoTableCentroOperacionSegmento').length) {
+                        let cell = table.cell(editingCell);
+                        cell.data($input.val()).draw(false);
+                        editingCell = null;
+                    }
+                }
+            });
         }
 
         // Cargar historico
@@ -479,4 +581,3 @@
     });
 
 </script>
-{% endblock %}

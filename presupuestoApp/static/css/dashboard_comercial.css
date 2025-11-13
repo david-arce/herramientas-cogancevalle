@@ -1,0 +1,174 @@
+/* ======= RESET ======= */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Inter", "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  background-color: #f4f6f8;
+  color: #333;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+h1 {
+  margin: 20px 0;
+  color: #2c3e50;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+/* ======= LAYOUT PRINCIPAL ======= */
+.app-container {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ======= SIDEBAR ======= */
+.sidebar {
+  width: 260px;
+  background-color: #1f2937; /* gris oscuro */
+  color: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease;
+  position: relative;
+}
+
+.sidebar .logo {
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 1.5rem 1rem;
+  background-color: #111827;
+  letter-spacing: 1px;
+  border-bottom: 1px solid #374151;
+}
+
+/* ======= NAVEGACIÓN ======= */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  margin-top: 1rem;
+  flex: 1;
+}
+
+.sidebar-nav a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.9rem 1.2rem;
+  text-decoration: none;
+  color: #d1d5db;
+  font-size: 0.95rem;
+  border-left: 4px solid transparent;
+  transition: all 0.25s ease;
+}
+
+.sidebar-nav a:hover,
+.sidebar-nav a:focus {
+  background-color: #374151;
+  color: #fff;
+}
+
+.sidebar-nav a.active {
+  background-color: #2563eb;
+  color: #fff;
+  border-left: 4px solid #3b82f6;
+}
+
+.sidebar-nav .material-icons {
+  font-size: 22px;
+}
+
+/* ======= BOTÓN TOGGLE ======= */
+.sidebar-toggle {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 1rem;
+  text-align: center;
+  transition: transform 0.3s ease;
+}
+
+.sidebar-toggle:hover {
+  color: #fff;
+}
+
+.sidebar.collapsed {
+  width: 70px;
+}
+
+.sidebar.collapsed .text {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-toggle span {
+  transform: rotate(180deg);
+}
+
+/* ======= CONTENIDO PRINCIPAL ======= */
+.main-content {
+  flex: 1;
+  background-color: #ffffff;
+  border-radius: 16px 0 0 0;
+  margin: 10px;
+  padding: 20px 30px;
+  overflow-y: auto;
+  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
+}
+
+/* ======= RESPONSIVE ======= */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    z-index: 100;
+    height: 100%;
+    left: -260px;
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  .main-content {
+    margin-left: 0;
+  }
+
+  .sidebar-toggle.desktop {
+    display: none;
+  }
+}
+
+/* ======= SCROLLBAR PERSONALIZADO ======= */
+.main-content::-webkit-scrollbar {
+  width: 8px;
+}
+.main-content::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 4px;
+}
+.main-content::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+
+/* Spinner circular */
+.spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
