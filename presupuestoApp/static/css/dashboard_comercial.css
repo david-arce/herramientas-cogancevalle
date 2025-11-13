@@ -40,14 +40,32 @@ h1 {
   position: relative;
 }
 
-.sidebar .logo {
-  font-size: 1.3rem;
+/* Título del sidebar */
+.title {
+  font-size: 1.5rem;
   font-weight: 700;
   text-align: center;
-  padding: 1.5rem 1rem;
-  background-color: #111827;
-  letter-spacing: 1px;
-  border-bottom: 1px solid #374151;
+  padding: 1.3rem 1rem;
+  border-bottom: 2px solid #374151;
+  background-color: #111827; /* fondo más oscuro para el título */
+  user-select: none;
+}
+
+/* Estado colapsado del título */
+.sidebar.collapsed .title {
+  font-size: 0;
+  padding: 1.3rem 0;
+  border-bottom: none;
+  position: relative;
+}
+
+.sidebar.collapsed .title::after {
+  content: "📊";
+  font-size: 1.5rem;
+  display: block;
+  text-align: center;
+  color: #f9fafb;
+  transition: opacity 0.3s ease;
 }
 
 /* ======= NAVEGACIÓN ======= */
@@ -112,6 +130,7 @@ h1 {
 .sidebar.collapsed .sidebar-toggle span {
   transform: rotate(180deg);
 }
+
 
 /* ======= CONTENIDO PRINCIPAL ======= */
 .main-content {

@@ -36,6 +36,16 @@
         font-size: 12px;
         text-align: left;
     }
+    .btn-actualizar {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-right: 10px;
+    }
 </style>
 {% endblock %}
 
@@ -46,7 +56,7 @@
     <div class="btn-group">
         {% comment %} <button type="button" id="cargarBtnGeneralVentas" class="btn-accion">🔄 Cargar desde histórico</button> {% endcomment %}
         {% comment %} <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button> {% endcomment %}
-        {% comment %} <button type="button" id="actualizarBtn" class="btn-accion btn-actualizar">Actualizar tabla</button> {% endcomment %}
+        <button type="button" id="actualizarBtn" class="btn-actualizar">Actualizar tabla</button>
     </div>
 
     <!-- Tabla pivotada -->
@@ -189,7 +199,7 @@
 
     $(document).ready(function() {
         // boton actualizar 
-        {% comment %} document.getElementById("actualizarBtn").addEventListener("click", function () {
+        document.getElementById("actualizarBtn").addEventListener("click", function () {
             // llamada AJAX para actualizar presupuesto general ventas
             $.ajax({
                 url: "{% url 'actualizar_presupuesto_general_ventas' %}",
@@ -217,7 +227,7 @@
                     alert("Error al actualizar el presupuesto general de ventas.");
                 }
             });
-        }); {% endcomment %}
+        });
         let table = null;
 
         function loadTable(data) {
