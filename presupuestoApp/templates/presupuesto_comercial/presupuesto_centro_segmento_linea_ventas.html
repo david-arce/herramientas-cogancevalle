@@ -74,7 +74,7 @@
                 <th>Variación Ventas%</th>
                 <th>Margen %</th>
                 <th>Margen Valor </th>
-                {% comment %} <th>Total proyectado</th> {% endcomment %}
+                <th>Total proyectado</th>
         </thead>
          <tbody></tbody>
     </table>
@@ -254,7 +254,7 @@
             columns.push({ data: "total_year_costos", title: "Total Año Costos", render: numberFormat });
             columns.push({ data: "utilidad_pct", title: "Margen %", render: function(data){ return data ? data.toFixed(2) + "%" : "0%"; }});
             columns.push({ data: "utilidad_valor", title: "Margen Valor", render: numberFormat });
-            //columns.push({ data: "total_proyectado", title: "Total proyectado", render: numberFormat });
+            columns.push({ data: "total_proyectado", title: "Total proyectado", render: numberFormat });
 
             table = $('#presupuestoTableCentroOperacionSegmentoLineaVentas').DataTable({
                 data: pivoData(data),

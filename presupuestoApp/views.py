@@ -1530,12 +1530,13 @@ def cargar_presupuesto_centro_segmento_linea_costos(request):
         .reset_index()
         .rename(columns={'suma': 'total_year'})
     )
+    print(df_total_year)
     df_merged = df_proyeccion_centro_operacion_segmento.merge(
         df_total_year,
         on=['nombre_linea_n1','nombre_centro_de_operacion','nombre_clase_cliente','year'],
         how='left'
     )
-    
+    print(df_merged)
     data= list(df_merged.to_dict('records'))
 
     return JsonResponse(data, safe=False)
@@ -1625,7 +1626,13 @@ def cargar_presupuesto_centro_segmento_linea_ventas(request):
         .reset_index()
         .rename(columns={'suma': 'total_year'})
     )
-
+    
+    df_merged = df.merge(
+        df_total_year,
+        on=['nombre_linea_n1','nombre_centro_de_operacion','nombre_clase_cliente','year'],
+        how='left'
+    )
+    print(df_merged)
     # ============================
     # 5. Variaciones anuales
     # ============================
@@ -1657,7 +1664,7 @@ def cargar_presupuesto_centro_segmento_linea_ventas(request):
         .pct_change()
         .fillna(0) * 100
     ).round(2)
-
+    
     # ============================
     # 6. COSTOS
     # ============================
@@ -1700,7 +1707,7 @@ def cargar_presupuesto_centro_segmento_linea_ventas(request):
     df_merged['utilidad_valor'] = (
         df_merged['total_year'] - df_merged['total_year_costos']
     ).round().astype(int)
-
+    # print(df_merged)
     # ============================
     # 9. AÑADIR AÑO 2026 (12 meses por centro + segmento)
     # ============================
@@ -1725,7 +1732,8 @@ def cargar_presupuesto_centro_segmento_linea_ventas(request):
                         "variacion_pesos": 0,
                         "variacion_pct": 0,
                         "utilidad_pct": 0,
-                        "utilidad_valor": 0
+                        "utilidad_valor": 0,
+                        "total_proyectado": 0
                     })
 
     df_2026 = pd.DataFrame(filas_2026)
@@ -1744,7 +1752,34 @@ def cargar_presupuesto_centro_segmento_linea_ventas(request):
     #     'proyeccion_centro_segmento_linea_ventas.xlsx',
     #     index=False
     # )
-    print(df_final)
+    # print(df_final)
+    # calcular total proyectado por centro, segmento, linea y año
+    year_actual = timezone.now().year
+    year_siguiente = year_actual + 1
+    # ================== 🔄 Actualizar PresupuestoCentroSegmentoLineaVentas con total_proyectado en el df_final==================
+    proyecciones = (
+        PresupuestoComercial.objects.filter(year=year_actual)
+        .values("year", "linea","nombre_centro_de_operacion", "nombre_clase_cliente")
+        .annotate(total_proyectado=Sum("proyeccion_ventas"))
+    )
+    for item in proyecciones:
+        linea = item["linea"]
+        centro = item["nombre_centro_de_operacion"]
+        segmento = item["nombre_clase_cliente"]
+        total_proyectado = item["total_proyectado"] or 0
+        mask = (
+            (df_final["nombre_linea_n1"] == linea) &
+            (df_final["nombre_centro_de_operacion"] == centro) &
+            (df_final["nombre_clase_cliente"] == segmento) &
+            (df_final["year"] == year_siguiente)
+        )
+        df_final.loc[mask, "total_proyectado"] = total_proyectado
+    
+    df_final.to_excel(
+        'proyeccion_centro_segmento_linea_ventas_final.xlsx',
+        index=False
+    )
+    # print(df_final)
     return JsonResponse(list(df_final.to_dict('records')), safe=False)
 
 def vista_presupuesto_centro_segmento_linea_ventas(request):
@@ -2369,9 +2404,11 @@ def actualizar_presupuesto_general_ventas(request):
         # else:
         #     # Calcular utilidad real a partir de ventas y costos
         utilidad_porcentual_mes = 1 - (total_costos_mes / total_ventas_mes) if total_ventas_mes != 0 else 0
-        utilidad_porcentual_mes = Decimal(utilidad_porcentual_mes).quantize(
-            Decimal('0.000000000000001'), rounding=ROUND_DOWN
-        )
+        # utilidad_porcentual_mes = Decimal(utilidad_porcentual_mes).quantize(
+        #     Decimal('0.000000000000001'), rounding=ROUND_DOWN
+        # )
+        # redondear a 2 decimales
+        utilidad_porcentual_mes = round(utilidad_porcentual_mes, 4)
         # calcular utilidad en valor para el mes siguiente
         utilidad_valor_mes = venta_siguiente_item["total"] * utilidad_porcentual_mes if venta_siguiente_item else 0
         utilidad_valor_mes = round(utilidad_valor_mes)
@@ -2515,8 +2552,9 @@ def actualizar_presupuesto_centro_ventas(request):
         venta_siguiente_item = next((v for v in total_ventas_mes_siguiente if v["mes"] == mes and v["nombre_centro_operacion"] == centro), None)
         total_costos_mes = costo_item["total"] or 0 if costo_item else 0
         utilidad_porcentual_mes = 1 - (total_costos_mes / total_ventas_mes) 
-        utilidad_porcentual_mes = Decimal(utilidad_porcentual_mes).quantize(Decimal('0.000000000000001'), rounding=ROUND_DOWN)
-        # utilidad_porcentual_mes = utilidad_porcentual_mes / 100
+        # utilidad_porcentual_mes = Decimal(utilidad_porcentual_mes).quantize(Decimal('0.000000000000001'), rounding=ROUND_DOWN)
+        # redondear a 2 decimales
+        utilidad_porcentual_mes = round(utilidad_porcentual_mes, 4)
         utilidad_valor_mes = venta_siguiente_item["total"] * utilidad_porcentual_mes if venta_siguiente_item else 0
         utilidad_valor_mes = round(utilidad_valor_mes)
         utilidad_porcentual_mes = utilidad_porcentual_mes * 100 if total_ventas_mes != 0 else 0
@@ -2674,9 +2712,9 @@ def actualizar_presupuesto_centro_segmento_ventas(request):
         total_costos_mes = costo_item["total"] or 0 if costo_item else 0
         
         utilidad_porcentual_mes = 1 - (total_costos_mes / total_ventas_mes) if total_ventas_mes != 0 else 0
-
-        utilidad_porcentual_mes = Decimal(utilidad_porcentual_mes).quantize(Decimal('0.000000000000001'), rounding=ROUND_DOWN)
-        # utilidad_porcentual_mes = utilidad_porcentual_mes / 100
+        # utilidad_porcentual_mes = Decimal(utilidad_porcentual_mes).quantize(Decimal('0.000000000000001'), rounding=ROUND_DOWN)
+        # redondear a 2 decimales
+        utilidad_porcentual_mes = round(utilidad_porcentual_mes, 4)
         utilidad_valor_mes = venta_siguiente_item["total"] * utilidad_porcentual_mes if venta_siguiente_item else 0
         utilidad_valor_mes = round(utilidad_valor_mes)
         utilidad_porcentual_mes = utilidad_porcentual_mes * 100 if total_ventas_mes != 0 else 0
@@ -2732,6 +2770,12 @@ def actualizar_presupuesto_centro_segmento_ventas(request):
         "status": "ok",
         "mensaje": "Presupuesto por centro y segmento actualizado y distribuido por mes ✅"
     })
+
+# def actualizar_presupuesto_centro_segmento_linea_ventas(request):
+    
+        
+        
+        
 
 @csrf_exempt
 def importar_crecimiento_ventas(request):
