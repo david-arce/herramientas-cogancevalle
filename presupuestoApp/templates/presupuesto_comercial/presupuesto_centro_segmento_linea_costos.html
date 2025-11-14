@@ -88,20 +88,20 @@
         let meses = { 1:"Ene",2:"Feb",3:"Mar",4:"Abr",5:"May",6:"Jun",7:"Jul",8:"Ago",9:"Sep",10:"Oct",11:"Nov",12:"Dic" };
 
         data.forEach(row => {
-            let key = row.year + '_' + row.nombre_linea_n1 + '_' + row.nombre_centro_de_operacion + '_' + row.nombre_clase_cliente;
+            let key = row.year + '_' + row.linea + '_' + row.nombre_centro_operacion + '_' + row.segmento;
             if (!pivot[key]) {
                 pivot[key] = { 
                     year: row.year, 
-                    nombre_linea_n1: row.nombre_linea_n1,
-                    nombre_centro_de_operacion: row.nombre_centro_de_operacion, 
-                    nombre_clase_cliente: row.nombre_clase_cliente,
+                    linea: row.linea,
+                    nombre_centro_operacion: row.nombre_centro_operacion, 
+                    segmento: row.segmento,
                     total_year: row.total_year || 0, 
                 };
                 // 👉 Inicializar TODOS los meses en 0
                 Object.values(meses).forEach(m => pivot[key][m] = 0);
             } 
             let month = parseInt(row.mes);
-            pivot[key][meses[month]] = row.suma;
+            pivot[key][meses[month]] = row.total;
 
         });
         let result = Object.values(pivot);
@@ -118,9 +118,9 @@
             }
             let meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
             let columns = [{ data: 'year', title: 'Año' },
-                        { data: 'nombre_linea_n1', title: 'Linea' },
-                        { data: 'nombre_clase_cliente', title: 'Segmento' },
-                        { data: 'nombre_centro_de_operacion', title: 'Centro de operacion' }];
+                        { data: 'linea', title: 'Linea' },
+                        { data: 'segmento', title: 'Segmento' },
+                        { data: 'nombre_centro_operacion', title: 'Centro de operacion' }];
             meses.forEach(m => 
                 columns.push({ data: m, title: m, render: numberFormat, className: "editable" }));
             
@@ -265,7 +265,7 @@
 
         // Cargar inicialmente la tabla con datos vacíos
         $.ajax({
-            url:"{% url 'cargarCentroSegmentoLineaCostos' %}",
+            url:"{% url 'obtener_presupuesto_centro_segmento_linea_costos' %}",
             type:"GET",
             dataType:"json",
             success:function(resp){ let datos=Array.isArray(resp)?resp:resp.data; loadTable(datos); }

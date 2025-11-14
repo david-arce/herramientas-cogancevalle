@@ -1325,7 +1325,42 @@ class PresupuestoCentroSegmentoCostos(models.Model):
     class Meta:
         db_table = 'presupuesto_centro_segmento_costos'
         
-        
+class PresupuestoCentroSegLineaVentas(models.Model):
+    year = models.IntegerField()
+    mes = models.IntegerField()
+    nombre_centro_operacion = models.CharField(max_length=100, null=True, blank=True)
+    segmento = models.CharField(max_length=100)
+    linea = models.CharField(max_length=100)
+    total = models.BigIntegerField(default=0)
+    r2 = models.FloatField(default=0)
+    total_year = models.BigIntegerField(default=0)
+    total_year_costos = models.BigIntegerField(default=0)
+    variacion_pct = models.FloatField(default=0)
+    variacion_valor = models.BigIntegerField(default=0)
+    utilidad_pct = models.FloatField(default=0)
+    utilidad_valor = models.BigIntegerField(default=0)
+    total_proyectado = models.BigIntegerField(default=0)
+    
+    class Meta:
+        db_table = 'presupuesto_centro_seg_linea_ventas'
+
+class PresupuestoCentroSegLineaCostos(models.Model):
+    year = models.IntegerField()
+    mes = models.IntegerField()
+    nombre_centro_operacion = models.CharField(max_length=100, null=True, blank=True)
+    segmento = models.CharField(max_length=100)
+    linea = models.CharField(max_length=100)
+    total = models.BigIntegerField(default=0)
+    r2 = models.FloatField(default=0)
+    total_year = models.BigIntegerField(default=0)
+    variacion_pct = models.FloatField(default=0)
+    variacion_valor = models.BigIntegerField(default=0)
+    utilidad_pct = models.FloatField(default=0)
+    utilidad_valor = models.BigIntegerField(default=0)
+    
+    class Meta:
+        db_table = 'presupuesto_centro_seg_linea_costos'
+
 #--------------------- TABLAS PARA PRESUPUESTO GENERAL-----------------------
 class PresupuestoTecnologia(models.Model):
     centro_tra = models.CharField(blank=True, null=True)  

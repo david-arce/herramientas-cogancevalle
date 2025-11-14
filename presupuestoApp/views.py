@@ -6,7 +6,7 @@ from pyexpat.errors import messages
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 import pandas as pd
-from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoBolsaConsumibles, PresupuestoBolsaConsumiblesAux, PresupuestoAuxilioTBCKIT, PresupuestoAuxilioTCBKITAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado, PresupuestoServiciosTecnicos, PresupuestoServiciosTecnicosAux, PresupuestoServiciosTecnicosAprobado, PresupuestoLogistica, PresupuestoLogisticaAux, PresupuestoLogisticaAprobado, PresupuestoGestionRiesgos, PresupuestoGestionRiesgosAux, PresupuestoGestionRiesgosAprobado, PresupuestoGH, PresupuestoGHAux, PresupuestoGHAprobado, PresupuestoAlmacenTulua, PresupuestoAlmacenTuluaAux, PresupuestoAlmacenTuluaAprobado, PresupuestoAlmacenBuga, PresupuestoAlmacenBugaAux, PresupuestoAlmacenBugaAprobado, PresupuestoAlmacenCartago, PresupuestoAlmacenCartagoAux, PresupuestoAlmacenCartagoAprobado, PresupuestoAlmacenCali, PresupuestoAlmacenCaliAux, PresupuestoAlmacenCaliAprobado, PresupuestoComunicaciones, PresupuestoComunicacionesAux, PresupuestoComunicacionesAprobado, PresupuestoComercialCostos, PresupuestoComercialCostosAux, PresupuestoComercialCostosAprobado, PresupuestoContabilidad, PresupuestoContabilidadAux, PresupuestoContabilidadAprobado, PresupuestoGerencia, PresupuestoGerenciaAux, PresupuestoGerenciaAprobado, Cuenta5, Cuenta5Base
+from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoBolsaConsumibles, PresupuestoBolsaConsumiblesAux, PresupuestoAuxilioTBCKIT, PresupuestoAuxilioTCBKITAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado, PresupuestoServiciosTecnicos, PresupuestoServiciosTecnicosAux, PresupuestoServiciosTecnicosAprobado, PresupuestoLogistica, PresupuestoLogisticaAux, PresupuestoLogisticaAprobado, PresupuestoGestionRiesgos, PresupuestoGestionRiesgosAux, PresupuestoGestionRiesgosAprobado, PresupuestoGH, PresupuestoGHAux, PresupuestoGHAprobado, PresupuestoAlmacenTulua, PresupuestoAlmacenTuluaAux, PresupuestoAlmacenTuluaAprobado, PresupuestoAlmacenBuga, PresupuestoAlmacenBugaAux, PresupuestoAlmacenBugaAprobado, PresupuestoAlmacenCartago, PresupuestoAlmacenCartagoAux, PresupuestoAlmacenCartagoAprobado, PresupuestoAlmacenCali, PresupuestoAlmacenCaliAux, PresupuestoAlmacenCaliAprobado, PresupuestoComunicaciones, PresupuestoComunicacionesAux, PresupuestoComunicacionesAprobado, PresupuestoComercialCostos, PresupuestoComercialCostosAux, PresupuestoComercialCostosAprobado, PresupuestoContabilidad, PresupuestoContabilidadAux, PresupuestoContabilidadAprobado, PresupuestoGerencia, PresupuestoGerenciaAux, PresupuestoGerenciaAprobado, Cuenta5, Cuenta5Base, PresupuestoCentroSegLineaCostos, PresupuestoCentroSegLineaVentas
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.db.models.functions import Concat
 from django.db.models import Sum, Max, Q
@@ -1530,15 +1530,36 @@ def cargar_presupuesto_centro_segmento_linea_costos(request):
         .reset_index()
         .rename(columns={'suma': 'total_year'})
     )
-    print(df_total_year)
     df_merged = df_proyeccion_centro_operacion_segmento.merge(
         df_total_year,
         on=['nombre_linea_n1','nombre_centro_de_operacion','nombre_clase_cliente','year'],
         how='left'
     )
-    print(df_merged)
-    data= list(df_merged.to_dict('records'))
+    # guardar en la bd
+    registros = []
+    for _, row in df_merged.iterrows():
+        registros.append(
+            PresupuestoCentroSegLineaCostos(
+                linea=row['nombre_linea_n1'],
+                nombre_centro_operacion=row['nombre_centro_de_operacion'],
+                segmento=row['nombre_clase_cliente'],
+                year=int(row['year']),
+                mes=int(row['mes']),
+                total=int(row['suma']),
+                total_year=row['total_year'] if row['total_year'] is not None else
+                0
+            )
+        )
+    # Opcional: limpiar tabla antes de insertar para evitar duplicados
+    with transaction.atomic():
+        PresupuestoCentroSegLineaCostos.objects.all().delete()
+        PresupuestoCentroSegLineaCostos.objects.bulk_create(registros)
+    data = list(PresupuestoCentroSegLineaCostos.objects.values())
 
+    return JsonResponse(data, safe=False)
+
+def obtener_presupuesto_centro_segmento_linea_costos(request):
+    data = list(PresupuestoCentroSegLineaCostos.objects.values())
     return JsonResponse(data, safe=False)
 
 def aux_presupuesto_centro_segmento_linea_costos():
@@ -1615,7 +1636,7 @@ def cargar_presupuesto_centro_segmento_linea_ventas(request):
     # ============================
     # 4. Cálculo anual (total_year)
     # ============================
-    df_total_year = (
+    df_total_anual = (
         df.groupby([
             'nombre_linea_n1',
             'nombre_centro_de_operacion',
@@ -1627,12 +1648,12 @@ def cargar_presupuesto_centro_segmento_linea_ventas(request):
         .rename(columns={'suma': 'total_year'})
     )
     
-    df_merged = df.merge(
-        df_total_year,
+    df_total_year = df.merge(
+        df_total_anual,
         on=['nombre_linea_n1','nombre_centro_de_operacion','nombre_clase_cliente','year'],
         how='left'
     )
-    print(df_merged)
+    
     # ============================
     # 5. Variaciones anuales
     # ============================
@@ -1664,7 +1685,6 @@ def cargar_presupuesto_centro_segmento_linea_ventas(request):
         .pct_change()
         .fillna(0) * 100
     ).round(2)
-    
     # ============================
     # 6. COSTOS
     # ============================
@@ -1672,9 +1692,10 @@ def cargar_presupuesto_centro_segmento_linea_ventas(request):
         columns={'total_year': 'total_year_costos'}
     )
 
-    # Merge ANUAL + COSTOS
-    df_merged = pd.merge(
-        df_total_year,
+    # ============================
+    # UNIR VENTAS CON COSTOS
+    # ============================
+    df_merged = df_total_year.merge(
         df_costos[
             [
                 'nombre_linea_n1',
@@ -1683,7 +1704,7 @@ def cargar_presupuesto_centro_segmento_linea_ventas(request):
                 'year',
                 'total_year_costos'
             ]
-        ],
+        ].drop_duplicates(),
         on=[
             'nombre_linea_n1',
             'nombre_centro_de_operacion',
@@ -1721,6 +1742,7 @@ def cargar_presupuesto_centro_segmento_linea_ventas(request):
             for segmento in segmentos:
                 for mes in range(1, 13):
                     filas_2026.append({
+                        "lapso": 202600 + mes,
                         "nombre_linea_n1": linea,
                         "nombre_centro_de_operacion": centro,
                         "nombre_clase_cliente": segmento,
@@ -1738,49 +1760,43 @@ def cargar_presupuesto_centro_segmento_linea_ventas(request):
 
     df_2026 = pd.DataFrame(filas_2026)
 
-    df_final = pd.concat([df_merged, df_2026], ignore_index=True)
+    df_final_linea = pd.concat([df_merged, df_2026], ignore_index=True)
 
     # ============================
     # 10. Rellenar NaN
     # ============================
-    df_final = df_final.fillna(0)
+    df_final_linea = df_final_linea.fillna(0)
 
-    # ============================
-    # 11. Export y Response
-    # ============================
-    # df_final.to_excel(
-    #     'proyeccion_centro_segmento_linea_ventas.xlsx',
-    #     index=False
-    # )
-    # print(df_final)
-    # calcular total proyectado por centro, segmento, linea y año
-    year_actual = timezone.now().year
-    year_siguiente = year_actual + 1
-    # ================== 🔄 Actualizar PresupuestoCentroSegmentoLineaVentas con total_proyectado en el df_final==================
-    proyecciones = (
-        PresupuestoComercial.objects.filter(year=year_actual)
-        .values("year", "linea","nombre_centro_de_operacion", "nombre_clase_cliente")
-        .annotate(total_proyectado=Sum("proyeccion_ventas"))
-    )
-    for item in proyecciones:
-        linea = item["linea"]
-        centro = item["nombre_centro_de_operacion"]
-        segmento = item["nombre_clase_cliente"]
-        total_proyectado = item["total_proyectado"] or 0
-        mask = (
-            (df_final["nombre_linea_n1"] == linea) &
-            (df_final["nombre_centro_de_operacion"] == centro) &
-            (df_final["nombre_clase_cliente"] == segmento) &
-            (df_final["year"] == year_siguiente)
+    # guardar en la bd
+    registros = []
+    for _, row in df_final_linea.iterrows():
+        registros.append(
+            PresupuestoCentroSegLineaVentas(
+                linea=row['nombre_linea_n1'],
+                nombre_centro_operacion=row['nombre_centro_de_operacion'],
+                segmento=row['nombre_clase_cliente'],
+                year=int(row['year']),
+                mes=int(row['mes']),
+                total=int(row['suma']),
+                total_year=row['total_year'] if row['total_year'] is not None else 0,
+                total_year_costos=row['total_year_costos'] if row['total_year_costos'] is not None else 0,
+                variacion_valor=row['variacion_pesos'] if row['variacion_pesos'] is not None else 0,
+                variacion_pct=row['variacion_pct'] if row['variacion_pct'] is not None else 0,
+                utilidad_valor=row['utilidad_valor'] if row['utilidad_valor'] is not None else 0,
+                utilidad_pct=row['utilidad_pct'] if row['utilidad_pct'] is not None else 0.0,
+            )
         )
-        df_final.loc[mask, "total_proyectado"] = total_proyectado
+    # Opcional: limpiar tabla antes de insertar para evitar duplicados
+    with transaction.atomic():
+        PresupuestoCentroSegLineaVentas.objects.all().delete()
+        PresupuestoCentroSegLineaVentas.objects.bulk_create(registros)
+    data = list(PresupuestoCentroSegLineaVentas.objects.values())
     
-    df_final.to_excel(
-        'proyeccion_centro_segmento_linea_ventas_final.xlsx',
-        index=False
-    )
-    # print(df_final)
-    return JsonResponse(list(df_final.to_dict('records')), safe=False)
+    return JsonResponse(data, safe=False)
+
+def obtener_presupuesto_centro_segmento_linea_ventas(request):
+    data = list(PresupuestoCentroSegLineaVentas.objects.values())
+    return JsonResponse(data, safe=False)
 
 def vista_presupuesto_centro_segmento_linea_ventas(request):
     return render(request, 'presupuesto_comercial/presupuesto_centro_segmento_linea_ventas.html')
