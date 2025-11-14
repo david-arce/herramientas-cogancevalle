@@ -33,13 +33,14 @@
     <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
       <div class="title" tabindex="0">PRESUPUESTO COMERCIAL</div>
       <nav class="sidebar-nav" role="navigation" aria-label="Menú principal">
-        {% comment %} <a href="{% url 'presupuestoGeneralVentas'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto general ventas</span></a>
+        <a href="{% url 'presupuestoGeneralVentas'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto general ventas</span></a>
         <a href="{% url 'presupuestoCentroVentas'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto centro operacion ventas</span></a>
         <a href="{% url 'presupuestoCentroSegmentoVentas'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto centro operacion-segmento ventas</span></a>
-        <a href="{% url 'presupuestoGeneralCostos'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto general costos</span></a>
+        {% comment %} <a href="{% url 'presupuestoGeneralCostos'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto general costos</span></a>
         <a href="{% url 'presupuestoCentroCostos'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto centro operacion costos</span></a>
         <a href="{% url 'presupuestoCentroSegmentoCostos'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto centro operacion-segmento costos</span></a>
         <a href="{% url 'vistaPresupuestoCentroSegmentoLineaCostos'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto centro operacion-segmento linea costos</span></a> {% endcomment %}
+        {% comment %} <a href="{% url 'vistaPresupuestoCentroSegmentoLineaVentas'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto centro operacion-segmento linea ventas</span></a> {% endcomment %}
         <a href="{% url 'presupuestoComercial'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto comercial</span></a>
 
       </nav>

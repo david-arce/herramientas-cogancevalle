@@ -36,6 +36,16 @@
         font-size: 12px;
         text-align: left;
     }
+    .btn-actualizar {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-right: 10px;
+    }
 </style>
 {% endblock %}
 
@@ -44,9 +54,9 @@
     <h2>📊 Proyección presupuesto centro operacion-segmento Ventas</h2>
 
     <div class="btn-group">
-        {% comment %} <button type="button" id="cargarBtnCentroSegVentas" class="btn-accion">🔄 Cargar desde histórico</button> {% endcomment %}
+        <button type="button" id="cargarBtnCentroSegVentas" class="btn-accion">🔄 Cargar desde histórico</button>
         {% comment %} <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button> {% endcomment %}
-        <button type="button" id="actualizarBtnCentroSegmento" class="btn-accion btn-actualizar">Actualizar tabla</button>
+        <button type="button" id="actualizarBtnCentroSegmento" class="btn-actualizar">Actualizar tabla</button>
     </div>
 
     <table id="presupuestoTableCentroOperacionSegmento" class="display" style="width:100%">
@@ -198,31 +208,9 @@
         return finalRows;
     }
 
-    // 🔄 Despivotar datos ignorando fila R2 para enviar al backend
-    function unpivotData(tableData) {
-        let meses = { "Ene":1,"Feb":2,"Mar":3,"Abr":4,"May":5,"Jun":6,"Jul":7,"Ago":8,"Sep":9,"Oct":10,"Nov":11,"Dic":12 };
-        let result = [];
-        tableData.forEach(row => {
-            {% comment %} if(row.year === "R2") return;  {% endcomment %}
-            Object.keys(meses).forEach(m => {
-                if(row[m] !== undefined){
-                    result.push({
-                        year: parseInt(row.year),
-                        mes: meses[m],
-                        segmento: row.segmento,
-                        nombre_centro_operacion: row.nombre_centro_operacion,
-                        total: parseInt(row[m]),
-                        r2: 0 // se recalculará en el backend
-                    });
-                }
-            });
-        });
-        return result;
-    }
-
     $(document).ready(function() {
         // boton actualizar 
-        {% comment %} document.getElementById("actualizarBtnCentroSegmento").addEventListener("click", function () {
+        document.getElementById("actualizarBtnCentroSegmento").addEventListener("click", function () {
             // llamada AJAX para actualizar presupuesto general ventas
             $.ajax({
                 url: "{% url 'actualizar_presupuesto_centro_segmento_ventas' %}",
@@ -250,12 +238,14 @@
                     alert("Error al actualizar el presupuesto general de ventas.");
                 }
             });
-        }); {% endcomment %}
+        });
         let table = null;
-        let allData = []; // almacenar todos los datos cargados
 
         function loadTable(data) {
-            allData = data; // almacenar todos los datos cargados
+            if ($.fn.DataTable.isDataTable('#presupuestoTableCentroOperacionSegmento')) {
+                $('#presupuestoTableCentroOperacionSegmento').DataTable().clear().destroy();
+                $('#presupuestoTableCentroOperacionSegmento').empty();  // 🔥 IMPORTANTE: limpiar thead/tbody
+            }
             let meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
             let columns = [{ data: 'year', title: 'Año' },
                         { data: 'segmento', title: 'Segmento' },
@@ -447,7 +437,6 @@
             if (!table) return;
             let boton = $(this);
             boton.prop('disabled', true).append('<span class="spinner"></span>');
-            let data = unpivotData(pivoData(allData)); 
 
             $.ajax({
                 url: "{% url 'guardar_presupuesto_centro_segmento_ventas' %}",

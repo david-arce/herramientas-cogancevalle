@@ -65,7 +65,7 @@
     <h2>📊 Proyección presupuesto general - Ventas</h2>
 
     <div class="btn-group">
-        {% comment %} <button type="button" id="cargarBtnGeneralVentas" class="btn-accion">🔄 Cargar desde histórico</button> {% endcomment %}
+        <button type="button" id="cargarBtnGeneralVentas">🔄 Cargar desde histórico</button>
         {% comment %} <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button> {% endcomment %}
         <button type="button" id="actualizarBtn" class="btn-actualizar">Actualizar tabla</button>
     </div>
@@ -242,6 +242,11 @@
         let table = null;
 
         function loadTable(data) {
+            if ($.fn.DataTable.isDataTable('#presupuestoTableProyeccionGeneral')) {
+                $('#presupuestoTableProyeccionGeneral').DataTable().clear().destroy();
+                $('#presupuestoTableProyeccionGeneral').empty();  // 🔥 IMPORTANTE: limpiar thead/tbody
+            }
+
             let meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
             let columns = [{ data: 'year', title: 'Año' }];
             meses.forEach(m => {

@@ -1421,51 +1421,6 @@ def cargar_presupuesto_centro_segmento_costos(request):
     data = list(PresupuestoCentroSegmentoCostos.objects.values())
     return JsonResponse(data, safe=False)
 
-def cargar_presupuesto_centro_segmento_linea_costos(request):
-    bd2020 = BdVentas2020.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2021 = BdVentas2021.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    bd2025 = BdVentas2025.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
-    
-    df1 = pd.DataFrame(list(bd2020))
-    df2 = pd.DataFrame(list(bd2021))
-    df3 = pd.DataFrame(list(bd2022))
-    df4 = pd.DataFrame(list(bd2023))
-    df5 = pd.DataFrame(list(bd2024))
-    df6 = pd.DataFrame(list(bd2025))
-    year_actual = timezone.now().year
-    year_siguiente = timezone.now().year + 1
-    
-    df_total = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
-    df_centro_operacion_segmento = df_total.groupby(['nombre_linea_n1','nombre_clase_cliente', 'nombre_centro_de_operacion', 'lapso'])['suma'].sum().reset_index()
-    # Extraer año y mes
-    df_centro_operacion_segmento['year'] = df_centro_operacion_segmento['lapso'] // 100
-    df_centro_operacion_segmento['mes'] = df_centro_operacion_segmento['lapso'] % 100
-    
-    df_proyeccion_centro_operacion_segmento = df_centro_operacion_segmento.sort_values(['nombre_linea_n1','nombre_centro_de_operacion', 'nombre_clase_cliente', 'lapso']).reset_index(drop=True)
-    
-    df_proyeccion_centro_operacion_segmento['suma'] = df_centro_operacion_segmento['suma'].round().astype(int)
-    
-    # ================= TOTAL_YEAR POR CENTRO Y CLASE CLIENTE ===================
-    df_total_year_centro_clase = (
-        df_proyeccion_centro_operacion_segmento
-        .groupby(['nombre_linea_n1','nombre_centro_de_operacion', 'nombre_clase_cliente', 'year'])['suma']
-        .sum()
-        .reset_index()
-        .rename(columns={'suma': 'total_year'})
-    )
-    
-    # ======== Parámetros de paginación =========
-    
-    data= list(df_proyeccion_centro_operacion_segmento.to_dict('records'))
-
-    return JsonResponse(data, safe=False)
-
-def vista_presupuesto_centro_segmento_linea_costos(request):
-    return render(request, 'presupuesto_comercial/presupuesto_centro_segmento_linea_costos.html')
-
 @csrf_exempt
 def guardar_presupuesto_centro_segmento_costos(request):
     if request.method == "POST":
@@ -1538,6 +1493,262 @@ def obtener_presupuesto_centro_segmento_costos(request):
 
 def vista_presupuesto_centro_segmento_costos(request):
     return render(request, 'presupuesto_comercial/presupuesto_centro_segmento_costos.html')
+
+# --------------------------PRESUPUESTO CENTRO OPERACION - SEGMENTO - LINEA COSTOS---------------
+def cargar_presupuesto_centro_segmento_linea_costos(request):
+    # bd2020 = BdVentas2020.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    # bd2021 = BdVentas2021.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    # bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    # bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    # bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2025 = BdVentas2025.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    
+    # df1 = pd.DataFrame(list(bd2020))
+    # df2 = pd.DataFrame(list(bd2021))
+    # df3 = pd.DataFrame(list(bd2022))
+    # df4 = pd.DataFrame(list(bd2023))
+    # df5 = pd.DataFrame(list(bd2024))
+    df6 = pd.DataFrame(list(bd2025))
+    year_actual = timezone.now().year
+    year_siguiente = timezone.now().year + 1
+    
+    df_total = df6
+    df_centro_operacion_segmento = df_total.groupby(['nombre_linea_n1','nombre_clase_cliente', 'nombre_centro_de_operacion', 'lapso'])['suma'].sum().reset_index()
+    # Extraer año y mes
+    df_centro_operacion_segmento['year'] = df_centro_operacion_segmento['lapso'] // 100
+    df_centro_operacion_segmento['mes'] = df_centro_operacion_segmento['lapso'] % 100
+    
+    df_proyeccion_centro_operacion_segmento = df_centro_operacion_segmento.sort_values(['nombre_linea_n1','nombre_centro_de_operacion', 'nombre_clase_cliente', 'lapso']).reset_index(drop=True)
+    
+    df_proyeccion_centro_operacion_segmento['suma'] = df_centro_operacion_segmento['suma'].round().astype(int)
+    
+    # ================= TOTAL_YEAR POR CENTRO Y CLASE CLIENTE ===================
+    df_total_year = (
+        df_proyeccion_centro_operacion_segmento
+        .groupby(['nombre_linea_n1','nombre_centro_de_operacion', 'nombre_clase_cliente', 'year'])['suma']
+        .sum()
+        .reset_index()
+        .rename(columns={'suma': 'total_year'})
+    )
+    df_merged = df_proyeccion_centro_operacion_segmento.merge(
+        df_total_year,
+        on=['nombre_linea_n1','nombre_centro_de_operacion','nombre_clase_cliente','year'],
+        how='left'
+    )
+    
+    data= list(df_merged.to_dict('records'))
+
+    return JsonResponse(data, safe=False)
+
+def aux_presupuesto_centro_segmento_linea_costos():
+    # bd2020 = BdVentas2020.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    # bd2021 = BdVentas2021.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    # bd2022 = BdVentas2022.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    # bd2023 = BdVentas2023.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    # bd2024 = BdVentas2024.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    bd2025 = BdVentas2025.objects.values('nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente').annotate(suma=Sum('valor_costo')).values('nombre_linea_n1','lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'suma')
+    
+    # df1 = pd.DataFrame(list(bd2020))
+    # df2 = pd.DataFrame(list(bd2021))
+    # df3 = pd.DataFrame(list(bd2022))
+    # df4 = pd.DataFrame(list(bd2023))
+    # df5 = pd.DataFrame(list(bd2024))
+    df6 = pd.DataFrame(list(bd2025))
+    year_actual = timezone.now().year
+    year_siguiente = timezone.now().year + 1
+    
+    df_total = df6
+    df_centro_operacion_segmento = df_total.groupby(['nombre_linea_n1','nombre_clase_cliente', 'nombre_centro_de_operacion', 'lapso'])['suma'].sum().reset_index()
+    # Extraer año y mes
+    df_centro_operacion_segmento['year'] = df_centro_operacion_segmento['lapso'] // 100
+    df_centro_operacion_segmento['mes'] = df_centro_operacion_segmento['lapso'] % 100
+    
+    df_proyeccion_centro_operacion_segmento = df_centro_operacion_segmento.sort_values(['nombre_linea_n1','nombre_centro_de_operacion', 'nombre_clase_cliente', 'lapso']).reset_index(drop=True)
+    
+    df_proyeccion_centro_operacion_segmento['suma'] = df_centro_operacion_segmento['suma'].round().astype(int)
+    
+    # ================= TOTAL_YEAR POR CENTRO Y CLASE CLIENTE ===================
+    df_total_year = (
+        df_proyeccion_centro_operacion_segmento
+        .groupby(['nombre_linea_n1','nombre_centro_de_operacion', 'nombre_clase_cliente', 'year'])['suma']
+        .sum()
+        .reset_index()
+        .rename(columns={'suma': 'total_year'})
+    )
+    df_merged = df_proyeccion_centro_operacion_segmento.merge(
+        df_total_year,
+        on=['nombre_linea_n1','nombre_centro_de_operacion','nombre_clase_cliente','year'],
+        how='left'
+    )
+    
+    return df_merged
+
+def vista_presupuesto_centro_segmento_linea_costos(request):
+    return render(request, 'presupuesto_comercial/presupuesto_centro_segmento_linea_costos.html')
+
+# --------------------------PRESUPUESTO CENTRO OPERACION - SEGMENTO - LINEA VENTAS---------------
+def cargar_presupuesto_centro_segmento_linea_ventas(request):
+
+    # ============================
+    # 1. Obtener ventas 2025
+    # ============================
+    bd2025 = BdVentas2025.objects.values(
+        'nombre_linea_n1', 
+        'lapso', 
+        'nombre_centro_de_operacion', 
+        'nombre_clase_cliente'
+    ).annotate(
+        suma=Sum('valor_neto')
+    )
+
+    df = pd.DataFrame(list(bd2025))
+    if df.empty:
+        return JsonResponse([], safe=False)
+
+    # ============================
+    # 2. Extraer año y mes
+    # ============================
+    df['year'] = df['lapso'] // 100
+    df['mes']  = df['lapso'] % 100
+
+    # ============================
+    # 4. Cálculo anual (total_year)
+    # ============================
+    df_total_year = (
+        df.groupby([
+            'nombre_linea_n1',
+            'nombre_centro_de_operacion',
+            'nombre_clase_cliente',
+            'year'
+        ])['suma']
+        .sum()
+        .reset_index()
+        .rename(columns={'suma': 'total_year'})
+    )
+
+    # ============================
+    # 5. Variaciones anuales
+    # ============================
+    df_total_year = df_total_year.sort_values([
+        'nombre_linea_n1',
+        'nombre_centro_de_operacion',
+        'nombre_clase_cliente',
+        'year'
+    ])
+
+    df_total_year['variacion_pesos'] = (
+        df_total_year.groupby([
+            'nombre_linea_n1',
+            'nombre_centro_de_operacion',
+            'nombre_clase_cliente'
+        ])['total_year']
+        .diff()
+        .fillna(0)
+        .round()
+        .astype('Int64')
+    )
+
+    df_total_year['variacion_pct'] = (
+        df_total_year.groupby([
+            'nombre_linea_n1',
+            'nombre_centro_de_operacion',
+            'nombre_clase_cliente'
+        ])['total_year']
+        .pct_change()
+        .fillna(0) * 100
+    ).round(2)
+
+    # ============================
+    # 6. COSTOS
+    # ============================
+    df_costos = aux_presupuesto_centro_segmento_linea_costos().rename(
+        columns={'total_year': 'total_year_costos'}
+    )
+
+    # Merge ANUAL + COSTOS
+    df_merged = pd.merge(
+        df_total_year,
+        df_costos[
+            [
+                'nombre_linea_n1',
+                'nombre_centro_de_operacion',
+                'nombre_clase_cliente',
+                'year',
+                'total_year_costos'
+            ]
+        ],
+        on=[
+            'nombre_linea_n1',
+            'nombre_centro_de_operacion',
+            'nombre_clase_cliente',
+            'year'
+        ],
+        how='left'
+    )
+
+    df_merged['total_year_costos'] = df_merged['total_year_costos'].fillna(0)
+
+    # ============================
+    # 7. UTILIDAD
+    # ============================
+    df_merged['utilidad_pct'] = (
+        1 - (df_merged['total_year_costos'] / df_merged['total_year'])
+    ).replace([np.inf, -np.inf], 0).fillna(0) * 100
+
+    df_merged['utilidad_pct'] = df_merged['utilidad_pct'].round(2)
+
+    df_merged['utilidad_valor'] = (
+        df_merged['total_year'] - df_merged['total_year_costos']
+    ).round().astype(int)
+
+    # ============================
+    # 9. AÑADIR AÑO 2026 (12 meses por centro + segmento)
+    # ============================
+    centros = df['nombre_centro_de_operacion'].unique()
+    segmentos = df['nombre_clase_cliente'].unique()
+    lineas = df['nombre_linea_n1'].unique()
+
+    filas_2026 = []
+    for linea in lineas:
+        for centro in centros:
+            for segmento in segmentos:
+                for mes in range(1, 13):
+                    filas_2026.append({
+                        "nombre_linea_n1": linea,
+                        "nombre_centro_de_operacion": centro,
+                        "nombre_clase_cliente": segmento,
+                        "year": 2026,
+                        "mes": mes,
+                        "suma": 0,
+                        "total_year": 0,
+                        "total_year_costos": 0,
+                        "variacion_pesos": 0,
+                        "variacion_pct": 0,
+                        "utilidad_pct": 0,
+                        "utilidad_valor": 0
+                    })
+
+    df_2026 = pd.DataFrame(filas_2026)
+
+    df_final = pd.concat([df_merged, df_2026], ignore_index=True)
+
+    # ============================
+    # 10. Rellenar NaN
+    # ============================
+    df_final = df_final.fillna(0)
+
+    # ============================
+    # 11. Export y Response
+    # ============================
+    # df_final.to_excel(
+    #     'proyeccion_centro_segmento_linea_ventas.xlsx',
+    #     index=False
+    # )
+    print(df_final)
+    return JsonResponse(list(df_final.to_dict('records')), safe=False)
+
+def vista_presupuesto_centro_segmento_linea_ventas(request):
+    return render(request, 'presupuesto_comercial/presupuesto_centro_segmento_linea_ventas.html')
 
 #----------------PRESUPUESTO COMERCIAL PRINCIPAL-----------------------
 def aux_presupuesto_comercial_costos():

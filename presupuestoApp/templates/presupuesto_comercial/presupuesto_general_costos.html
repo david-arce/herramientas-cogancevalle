@@ -87,37 +87,27 @@
         let pivot = {}; 
         let meses = { 1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic" }; 
         data.forEach(row => { 
-            if (!pivot[row.year]) pivot[row.year] = { year: row.year, total_year: row.total_year, variacion_valor: row.variacion_valor, variacion_pct: row.variacion_pct }; 
+            if (!pivot[row.year]) {
+                pivot[row.year] = { 
+                    year: row.year, 
+                    total_year: row.total_year, 
+                    variacion_valor: row.variacion_valor, 
+                    variacion_pct: row.variacion_pct 
+                }; 
+            }
             pivot[row.year][meses[row.mes]] = row.total; 
-            {% comment %} if (!pivot["R2"]) pivot["R2"] = { year: "R2", total_year: 0, variacion_valor: 0, variacion_pct: 0 }; 
-            pivot["R2"][meses[row.mes]] = row.r2;  {% endcomment %}
         }); 
         return Object.values(pivot); 
-    }
-
-    function unpivotData(tableData) {
-        let meses = { "Ene":1, "Feb":2, "Mar":3, "Abr":4, "May":5, "Jun":6, "Jul":7, "Ago":8, "Sep":9, "Oct":10, "Nov":11, "Dic":12 };
-        let result = [];
-        tableData.forEach(row => {
-            {% comment %} if(row.year === "R2") return;  {% endcomment %}
-            Object.keys(meses).forEach(m => {
-                if(row[m] !== undefined){
-                    result.push({
-                        year: parseInt(row.year),
-                        mes: meses[m],
-                        total: parseInt(row[m]),
-                        r2: 0 // se recalculará en el backend
-                    });
-                }
-            });
-        });
-        return result;
     }
 
     $(document).ready(function () {
         let table = null;
 
         function loadTable(data) {
+            if ($.fn.DataTable.isDataTable('#presupuestoTableProyeccionGeneralCostos')) {
+                $('#presupuestoTableProyeccionGeneralCostos').DataTable().clear().destroy();
+                $('#presupuestoTableProyeccionGeneralCostos').empty();  // 🔥 IMPORTANTE: limpiar thead/tbody
+            }
             let meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
             let columns = [{ data: 'year', title: 'Año' }];
             meses.forEach(m => {
@@ -128,13 +118,6 @@
             columns.push({ data: "total_year", title: "Total Año", render: numberFormat });
             columns.push({ data: "variacion_valor", title: "Variación Valor", render: numberFormat });
             columns.push({ data: "variacion_pct", title: "Variación %", render: function(data){ return data ? data.toFixed(2) + "%" : "0%"; }});
-
-            if (table) {
-                table.destroy();
-                $('#presupuestoTableProyeccionGeneralCostos').empty();
-                $("#excel-filter-costos").remove();  // 🔹 elimina menús anteriores
-                $(".dt-buttons").remove();           // 🔹 elimina los botones Excel previos
-            }
 
             table = $('#presupuestoTableProyeccionGeneralCostos').DataTable({
                 data: pivotData(data),
@@ -148,19 +131,6 @@
                         extend: 'excelHtml5',
                         text: '📥 Exportar a Excel',
                         title: 'Presupuesto General Costos'
-                    }
-                ],
-                {% comment %} rowCallback: function(row, data) {
-                    if (data.year === "R2") $(row).addClass("fila-r2");
-                }, {% endcomment %}
-                columnDefs: [
-                    {
-                        targets: 0,
-                        type: "string",
-                        render: function (data, type, row) {
-                            if (type === 'sort') return data === "R2" ? "ZZZ" : data;
-                            return data;
-                        }
                     }
                 ],
                 order: [[0, "asc"]]
@@ -233,38 +203,6 @@
                 }
             });
 
-            // Edición doble clic solo 2025
-            let editingCell = null;
-            $('#presupuestoTableProyeccionGeneralCostos').on('dblclick', 'td.editable', function () {
-                if (editingCell) return;
-                let cell = table.cell(this);
-                let rowData = table.row(this).data();
-                if (rowData.year !== 2025) return;
-
-                let oldValue = cell.data() || "";
-                $(this).html('<input type="text" class="cell-input" value="'+ oldValue +'"/>');
-                let $input = $(this).find("input").focus();
-                editingCell = this;
-                $input[0].setSelectionRange(0, $input.val().length);
-
-                $input.on("keydown", function(e) {
-                    if (e.key === "Enter") { cell.data($input.val()).draw(false); editingCell = null; }
-                    else if (e.key === "Escape") { cell.data(oldValue).draw(false); editingCell = null; }
-                });
-            });
-
-            // Guardar al hacer clic fuera
-            $(document).on("click", function(e) {
-                if (editingCell) {
-                    let $cell = $(editingCell);
-                    let $input = $cell.find("input");
-                    if ($input.length && !$(e.target).closest("#presupuestoTableProyeccionGeneralCostos").length) {
-                        let cell = table.cell(editingCell);
-                        cell.data($input.val()).draw(false);
-                        editingCell = null;
-                    }
-                }
-            });
         }
 
         // 🔄 Cargar desde histórico

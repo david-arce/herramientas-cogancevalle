@@ -1,14 +1,57 @@
+{% extends "presupuesto_comercial/base_presupuesto_comercial.html" %}
+{% load static %}
+
+{% block css %}
+<style>
+    table.dataTable thead th {
+      background-color: #007bff;
+      color: white;
+    }
+    .excel-filter {
+        display: none;
+        position: absolute;
+        background: white;
+        border: 1px solid #ccc;
+        padding: 6px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        z-index: 1000;
+        max-height: 200px;
+        overflow-y: auto;
+        border-radius: 6px;
+        width: 150px !important;   /* ajusta a lo que necesites */
+        min-width: 80px;          /* opcional */
+    }
+    .excel-filter input[type="text"] {
+        width: 95%;
+        margin-bottom: 6px;
+        padding: 3px;
+    }
+    .excel-filter-btn {
+        width: 100%;
+        padding: 4px 6px;
+        background: #f4f4f4;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        text-align: left;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
 <div class="bloque-vista">
-    <h2>📊 Proyección presupuesto centro operacion-segmento Costos</h2>
+    <h2>📊 Proyección presupuesto centro operacion-linea-segmento Costos</h2>
 
     <div class="btn-group">
         <button type="button" id="cargarBtn" class="btn-accion">🔄 Cargar desde histórico</button>
     </div>
 
-    <table id="presupuestoTableCentroOperacionSegmentoCostos" class="display" style="width:100%">
+    <table id="presupuestoTableCentroOperacionSegmentoLineaCostos" class="display" style="width:100%">
         <thead>
             <tr>
                 <th>Año</th>
+                <th>Linea</th>
                 <th>Segmento</th>
                 <th>Centro de operacion</th>
                 <th>Ene</th>
@@ -24,21 +67,13 @@
                 <th>Nov</th>
                 <th>Dic</th>
                 <th>Total Año</th>
-                <th>Variación Valor</th>
-                <th>Variación %</th>
         </thead>
          <tbody></tbody>
     </table>
 </div>
+{% endblock %}
 
-<style>
-    .fila-r2 {
-        background-color: #f0f0f0;
-        font-weight: bold;
-    }
-</style>
-
-
+{% block js %}
 <script>
     function numberFormat(data, type, row) {
         if (type === 'display' && !isNaN(data)) {
@@ -53,31 +88,37 @@
         let meses = { 1:"Ene",2:"Feb",3:"Mar",4:"Abr",5:"May",6:"Jun",7:"Jul",8:"Ago",9:"Sep",10:"Oct",11:"Nov",12:"Dic" };
 
         data.forEach(row => {
-            let key = row.year + '_' + row.nombre_centro_de_operacion + '_' + row.nombre_clase_cliente + '_' + row.nombre_linea_n1;
+            let key = row.year + '_' + row.nombre_linea_n1 + '_' + row.nombre_centro_de_operacion + '_' + row.nombre_clase_cliente;
             if (!pivot[key]) {
                 pivot[key] = { 
                     year: row.year, 
                     nombre_linea_n1: row.nombre_linea_n1,
                     nombre_centro_de_operacion: row.nombre_centro_de_operacion, 
                     nombre_clase_cliente: row.nombre_clase_cliente,
-                    total_year: row.total_year, 
+                    total_year: row.total_year || 0, 
                 };
+                // 👉 Inicializar TODOS los meses en 0
+                Object.values(meses).forEach(m => pivot[key][m] = 0);
             } 
-            pivot[key][meses[row.mes]] = row.suma; 
+            let month = parseInt(row.mes);
+            pivot[key][meses[month]] = row.suma;
+
         });
         let result = Object.values(pivot);
-
         return result;
     }
 
     $(function () {
         let table = null;
-        let allData = []; // almacenar todos los datos cargados
 
         function loadTable(data) {
-            allData = data; // almacenar todos los datos cargados
+            if ($.fn.DataTable.isDataTable('#presupuestoTableCentroOperacionSegmentoLineaCostos')) {
+                $('#presupuestoTableCentroOperacionSegmentoLineaCostos').DataTable().clear().destroy();
+                $('#presupuestoTableCentroOperacionSegmentoLineaCostos').empty();  // 🔥 IMPORTANTE: limpiar thead/tbody
+            }
             let meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
             let columns = [{ data: 'year', title: 'Año' },
+                        { data: 'nombre_linea_n1', title: 'Linea' },
                         { data: 'nombre_clase_cliente', title: 'Segmento' },
                         { data: 'nombre_centro_de_operacion', title: 'Centro de operacion' }];
             meses.forEach(m => 
@@ -85,33 +126,34 @@
             
             // ➕ columnas extra
             columns.push({ data: "total_year", title: "Total Año", render: numberFormat });
-    
-            if (table) {
-                table.destroy();
-                $('#presupuestoTableCentroOperacionSegmentoCostos').empty();
-                $(".dt-buttons").remove();           // 🔹 elimina los botones Excel previos 
-            }
 
-            table = $('#presupuestoTableCentroOperacionSegmentoCostos').DataTable({
+            table = $('#presupuestoTableCentroOperacionSegmentoLineaCostos').DataTable({
                 data: pivoData(data),
                 columns: columns,
                 scrollX: true,
-                scrollY: "300px",
                 scrollCollapse: true,
                 fixedHeader: true,
                 dom: 'Bltip',
-                buttons:[{ extend:'excelHtml5', text:'📥 Exportar a Excel', title:'Presupuesto Centro Operación Segmento Costos'}],
-                
-                columnDefs: [
-                    {
-                        targets: 0,
-                        type: "string",
-                        render: function (data, type, row) {
-                            if (type === 'sort') return data === "R2" ? "ZZZ" : data;
-                            return data;
-                        }
+                buttons:[
+                    { 
+                        extend:'excelHtml5', 
+                        text:'📥 Exportar a Excel', 
+                        title:'Centro Operación Segmento linea Costos',
+                        exportOptions: {
+                            format: {
+                                body: function (data, row, column, node) {
+                                    // ❗ Si el valor está renderizado con puntos o comas, eliminar formato
+                                    if (typeof data === "string") {
+                                        // Quitar puntos de miles y dejar coma decimal o viceversa
+                                        return data.replace(/\./g, '').replace(/,/g, '.');
+                                    }
+                                    return data;
+                                }
+                            }
+                        } 
                     }
                 ],
+                
                 order: [[0, "asc"], [1, "asc"], [2, "asc"]]
             });
 
@@ -192,18 +234,6 @@
                 }
             });
 
-            // Guardar al hacer clic fuera
-            $(document).on('click', function(e) {
-                if (editingCell) {
-                    let $cell = $(editingCell);
-                    let $input = $cell.find('input');
-                    if ($input.length && !$(e.target).closest('#presupuestoTableCentroOperacionSegmentoCostos').length) {
-                        let cell = table.cell(editingCell);
-                        cell.data($input.val()).draw(false);
-                        editingCell = null;
-                    }
-                }
-            });
         }
 
         // 🔄 Cargar histórico desde el backend
@@ -218,7 +248,9 @@
                 success: function(resp) {
                     // si el servidor devuelve {data: [...]}
                     let datos = Array.isArray(resp) ? resp : resp.data;
-                    console.log("Datos cargados:", datos);
+                    console.log("📥 DATOS RECIBIDOS DEL BACKEND (primeros 5):");
+                    console.log(JSON.stringify(datos.slice(0, 5), null, 2));
+
                     loadTable(datos);
                 },
                 error: function(err) {
@@ -231,8 +263,15 @@
 
         });
 
+        // Cargar inicialmente la tabla con datos vacíos
+        $.ajax({
+            url:"{% url 'cargarCentroSegmentoLineaCostos' %}",
+            type:"GET",
+            dataType:"json",
+            success:function(resp){ let datos=Array.isArray(resp)?resp:resp.data; loadTable(datos); }
+        });
 
-        
     });
 
 </script>
+{% endblock %}

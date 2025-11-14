@@ -103,45 +103,9 @@
             } 
             pivot[key][meses[row.mes]] = row.total; 
 
-            {% comment %} let r2Key = 'R2_' + row.nombre_centro_operacion + '_' + row.segmento;
-            if (!pivot[r2Key]) pivot[r2Key] = { year: "R2", nombre_centro_operacion: row.nombre_centro_operacion, segmento: row.segmento, total_year: 0, variacion_valor: 0, variacion_pct: 0 }; 
-            pivot[r2Key][meses[row.mes]] = row.r2;  {% endcomment %}
         });
         let result = Object.values(pivot);
 
-        // si hay filtro de centro o segmento, agregar fila R2 al final
-        {% comment %} if (selectedCentro != null || selectedSegmento != null) {
-            result = result.map(r => {
-                if (r.year === "R2" && r.nombre_centro_operacion === selectedCentro && r.segmento === selectedSegmento) {
-                    let emptyR2 = {...r};
-                    Object.keys(meses).forEach(m => emptyR2[meses[m]] = "");
-                    return emptyR2;
-                }
-                return r;
-            });
-        } {% endcomment %}
-        return result;
-    }
-
-    // 🔄 Despivotar datos ignorando fila R2 para enviar al backend
-    function unpivotData(tableData) {
-        let meses = { "Ene":1,"Feb":2,"Mar":3,"Abr":4,"May":5,"Jun":6,"Jul":7,"Ago":8,"Sep":9,"Oct":10,"Nov":11,"Dic":12 };
-        let result = [];
-        tableData.forEach(row => {
-            {% comment %} if(row.year === "R2") return;  {% endcomment %}
-            Object.keys(meses).forEach(m => {
-                if(row[m] !== undefined){
-                    result.push({
-                        year: parseInt(row.year),
-                        mes: meses[m],
-                        segmento: row.segmento,
-                        nombre_centro_operacion: row.nombre_centro_operacion,
-                        total: parseInt(row[m]),
-                        r2: 0 // se recalculará en el backend
-                    });
-                }
-            });
-        });
         return result;
     }
 
@@ -150,7 +114,10 @@
         let allData = []; // almacenar todos los datos cargados
 
         function loadTable(data) {
-            allData = data; // almacenar todos los datos cargados
+            if ($.fn.DataTable.isDataTable('#presupuestoTableCentroOperacionSegmentoCostos')) {
+                $('#presupuestoTableCentroOperacionSegmentoCostos').DataTable().clear().destroy();
+                $('#presupuestoTableCentroOperacionSegmentoCostos').empty();  // 🔥 IMPORTANTE: limpiar thead/tbody
+            }
             let meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
             let columns = [{ data: 'year', title: 'Año' },
                         { data: 'segmento', title: 'Segmento' },
@@ -171,16 +138,7 @@
                 fixedHeader: true,
                 dom: 'Bltip',
                 buttons:[{ extend:'excelHtml5', text:'📥 Exportar a Excel', title:'Presupuesto Centro Operación Segmento Costos'}],
-                columnDefs: [
-                    {
-                        targets: 0,
-                        type: "string",
-                        render: function (data, type, row) {
-                            if (type === 'sort') return data === "R2" ? "ZZZ" : data;
-                            return data;
-                        }
-                    }
-                ],
+                
                 order: [[0, "asc"], [1, "asc"], [2, "asc"]]
             });
 
@@ -286,33 +244,6 @@
             });
         });
 
-        // Guardar cambios
-        $('#guardarBtn').on('click', function() {
-            if (!table) return;
-            let boton = $(this);
-            boton.prop('disabled', true).append('<span class="spinner"></span>');
-            let data = unpivotData(pivoData(allData)); 
-
-            $.ajax({
-                url: "{% url 'guardar_presupuesto_centro_segmento_costos' %}",
-                method: "POST",
-                contentType: "application/json",
-                data: JSON.stringify(data),
-                headers: { "X-CSRFToken": "{{ csrf_token }}" },
-                success: function(resp) {
-                    // si el servidor devuelve {data: [...]}
-                    let datos = Array.isArray(resp) ? resp : resp.data;
-                    alert("Presupuesto guardado correctamente ✅");
-                    loadTable(datos); // recargar tabla con datos actualizados
-                },
-                error: function(err) {
-                    alert("Error al guardar datos: " + (err.responseJSON?.mensaje || err.statusText));
-                },
-                complete: function() {
-                    boton.prop('disabled', false).find('.spinner').remove();
-                }
-            });
-        });
         // Carga inicial
         $.ajax({
             url:"{% url 'obtener_presupuesto_centro_segmento_costos' %}",

@@ -36,6 +36,16 @@
         font-size: 12px;
         text-align: left;
     }
+    .btn-actualizar {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-right: 10px;
+    }
 </style>
 {% endblock %}
 
@@ -44,9 +54,9 @@
     <h2>📊 Proyección presupuesto centro operacion - Ventas</h2>
 
     <div class="btn-group">
-        {% comment %} <button type="button" id="cargarBtnCentroVentas" class="btn-accion">🔄 Cargar desde histórico</button> {% endcomment %}
+        <button type="button" id="cargarBtnCentroVentas" class="btn-accion">🔄 Cargar desde histórico</button>
         {% comment %} <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button> {% endcomment %}
-        {% comment %} <button type="button" id="actualizarBtnCentro" class="btn-accion btn-actualizar">Actualizar tabla</button> {% endcomment %}
+        <button type="button" id="actualizarBtnCentro" class="btn-actualizar">Actualizar tabla</button>
     </div>
 
     <table id="presupuestoTableCentroOperacion" class="display" style="width:100%">
@@ -220,7 +230,7 @@
 
     $(document).ready(function() {
         // boton actualizar 
-        {% comment %} document.getElementById("actualizarBtnCentro").addEventListener("click", function () {
+        document.getElementById("actualizarBtnCentro").addEventListener("click", function () {
             // llamada AJAX para actualizar presupuesto general ventas
             $.ajax({
                 url: "{% url 'actualizar_presupuesto_centro_ventas' %}",
@@ -248,11 +258,15 @@
                     alert("Error al actualizar el presupuesto general de ventas.");
                 }
             });
-        }); {% endcomment %}
+        });
         let table = null;
         let allData = [];
 
         function loadTable(data) {
+            if ($.fn.DataTable.isDataTable('#presupuestoTableCentroOperacion')) {
+                $('#presupuestoTableCentroOperacion').DataTable().clear().destroy();
+                $('#presupuestoTableCentroOperacion').empty();  // 🔥 IMPORTANTE: limpiar thead/tbody
+            }
             allData = data;
             let meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
             let columns = [

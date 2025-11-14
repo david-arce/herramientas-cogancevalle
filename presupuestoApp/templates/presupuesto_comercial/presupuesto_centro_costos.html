@@ -123,33 +123,14 @@
         return result;
     }
 
-    // 🔄 Deshacer pivot para enviar al backend
-    function unpivotData(tableData) {
-        let meses = { "Ene":1,"Feb":2,"Mar":3,"Abr":4,"May":5,"Jun":6,"Jul":7,"Ago":8,"Sep":9,"Oct":10,"Nov":11,"Dic":12 };
-        let result = [];
-        tableData.forEach(row => {
-            if(row.year === "R2") return;
-            Object.keys(meses).forEach(m => {
-                if(row[m] !== undefined && row[m] !== "") {
-                    result.push({
-                        year: parseInt(row.year),
-                        mes: meses[m],
-                        nombre_centro_operacion: row.nombre_centro_operacion,
-                        total: parseInt(row[m]),
-                        r2: 0 // recalcular en backend
-                    });
-                }
-            });
-        });
-        return result;
-    }
-
     $(document).ready(function () {
         let table = null;
-        let allData = [];
 
         function loadTable(data) {
-            allData = data;
+            if ($.fn.DataTable.isDataTable('#presupuestoTableCentroOperacionCostos')) {
+                $('#presupuestoTableCentroOperacionCostos').DataTable().clear().destroy();
+                $('#presupuestoTableCentroOperacionCostos').empty();  // 🔥 IMPORTANTE: limpiar thead/tbody
+            }
             let meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
             let columns = [
                 { data: 'year', title: 'Año' },
@@ -270,31 +251,6 @@
                 dataType:"json",
                 success:function(resp){ let datos=Array.isArray(resp)?resp:resp.data; loadTable(datos); },
                 complete:function(){ boton.prop("disabled",false).find(".spinner").remove(); }
-            });
-        });
-
-        // Guardar cambios
-        $(document).on("click", "#guardarBtn", function () {
-            if (!table) return;
-            let boton = $(this);
-            boton.prop("disabled", true).append('<span class="spinner"></span>');
-            let data = unpivotData(pivotData(allData));
-
-            $.ajax({
-                url: "{% url 'guardar_presupuesto_centro_costos' %}",
-                type: "POST",
-                data: JSON.stringify(data),
-                contentType: "application/json",
-                headers: { "X-CSRFToken": "{{ csrf_token }}" },
-                success: function(resp) { 
-                    // si el servidor devuelve {data: [...]}
-                    let datos = Array.isArray(resp) ? resp : resp.data;
-                    console.log(datos);
-                    loadTable(datos); 
-                },
-                complete: function() {
-                    boton.prop("disabled", false).find(".spinner").remove();
-                }
             });
         });
 
