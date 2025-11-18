@@ -163,75 +163,102 @@
 
             // Filtros tipo Excel
             table.columns().every(function (index) {
-                if (index === 0 || index === 1 || index === 2) {   // 🔹 0 = Año, 1 = segmento, 2 = Centro de operación
-                    let column = this;
-                    // id dinamico
-                    let filtroId = index === 0 ? "año" : (index === 1 ? "segmento" : "centro");
 
-                    // Botón en el header
-                    let button = $(`<button id="excel-filter-btn-${filtroId}" class="excel-filter-btn">
-                                        ${index === 0 ? "Año ⬇" : (index === 1 ? "Segmento ⬇" : "Centro ⬇")}
-                                    </button>`).appendTo($(column.header()).empty());
+                // Columnas a filtrar: 0 = Año, 1 = Línea, 2 = Segmento, 3 = Centro
+                if (![0, 1, 2, 3].includes(index)) return;
 
-                    // Contenedor del menú
-                    let menu = $(`<div id="excel-filter-${filtroId}" class="excel-filter"></div>`).appendTo("body");
+                let column = this;
 
-                    // Input de búsqueda
-                    let searchBox = $('<input type="text" placeholder="Buscar...">').appendTo(menu);
+                // Diccionario para nombres
+                const headers = {
+                    0: "Año",
+                    1: "Línea",
+                    2: "Segmento",
+                    3: "Centro"
+                };
 
-                    // Lista de checkboxes
-                    let list = $("<div></div>").appendTo(menu);
+                const filtroId = "filtro_" + index;
 
-                    // Agregar opciones únicas como checkboxes
-                    column.data().unique().sort().each(function (d) {
-                        if (d) {
-                            list.append(`<label><input type="checkbox" value="${d}" checked> ${d}</label><br/>`);
-                        }
-                    });
+                // Crear botón dentro del header
+                let button = $(`
+                    <button id="excel-filter-btn-${filtroId}" class="excel-filter-btn">
+                        ${headers[index]} ⬇
+                    </button>
+                `).appendTo($(column.header()).empty());
 
-                    // Función aplicar filtro
-                    function applyFilter() {
-                        let selected = [];
-                        menu.find("input[type='checkbox']:checked").each(function () {
-                            selected.push("^" + $.fn.dataTable.util.escapeRegex($(this).val()) + "$");
-                        });
-                        column.search(selected.length ? selected.join("|") : "", true, false).draw();
+                // Crear menú flotante
+                let menu = $(`<div id="excel-filter-${filtroId}" class="excel-filter"></div>`).appendTo("body");
+
+                let searchBox = $('<input type="text" placeholder="Buscar...">').appendTo(menu);
+
+                let list = $("<div></div>").appendTo(menu);
+
+                // Opción seleccionar todo
+                list.prepend(`
+                    <label><input type="checkbox" class="select-all" checked> (Seleccionar todo)</label><br/>
+                `);
+
+                // Agregar valores únicos como checkboxes
+                let uniqueValues = column.data().unique().sort();
+                uniqueValues.each(function (value) {
+                    if (value !== undefined && value !== null && value !== "") {
+                        list.append(`
+                            <label><input type="checkbox" value="${value}" checked> ${value}</label><br/>
+                        `);
                     }
+                });
 
-                    // Evento checkbox
-                    list.on("change", "input[type='checkbox']", applyFilter);
+                // Función que aplica el filtro
+                function applyFilter() {
+                    let selected = [];
 
-                    // Evento búsqueda dentro del menú
-                    searchBox.on("keyup", function () {
-                        let val = $(this).val().toLowerCase();
-                        list.find("label").each(function () {
-                            $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
-                        });
+                    list.find("input[type='checkbox']:checked").not(".select-all").each(function () {
+                        selected.push("^" + $.fn.dataTable.util.escapeRegex($(this).val()) + "$");
                     });
 
-                    // Mostrar este menú y ocultar los demás
-                    button.on("click", function (e) {
-                        e.stopPropagation();
-
-                        // 🔹 Ocultar otros menús antes de abrir este
-                        $(".excel-filter").not(menu).hide();
-
-                        // Posicionar y mostrar este
-                        let offset = $(this).offset();
-                        menu.css({
-                            top: offset.top + $(this).outerHeight(),
-                            left: offset.left,
-                            width: $(this).outerWidth()
-                        }).toggle();
-                    });
-
-                    // Cerrar menú al hacer clic fuera
-                    $(document).on("click", function (e) {
-                        if (!$(e.target).closest(`#excel-filter-${filtroId}, button`).length) {
-                            menu.hide();
-                        }
-                    });
+                    column.search(selected.length ? selected.join("|") : "", true, false).draw();
                 }
+
+                // Seleccionar todo
+                menu.find(".select-all").on("change", function () {
+                    const checked = $(this).is(":checked");
+                    list.find("input[type='checkbox']").not(this).prop("checked", checked);
+                    applyFilter();
+                });
+
+                // Click en cada checkbox individual
+                list.on("change", "input[type='checkbox']:not(.select-all)", applyFilter);
+
+                // Buscar dentro del menú
+                searchBox.on("keyup", function () {
+                    let val = $(this).val().toLowerCase();
+                    list.find("label").each(function () {
+                        $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+                    });
+                });
+
+                // Mostrar menú
+                button.on("click", function (e) {
+                    e.stopPropagation();
+
+                    // Cerrar otros menús
+                    $(".excel-filter").not(menu).hide();
+
+                    let offset = $(this).offset();
+                    menu.css({
+                        top: offset.top + $(this).outerHeight(),
+                        left: offset.left,
+                        width: $(this).outerWidth()
+                    }).toggle();
+                });
+
+                // Cerrar al hacer click fuera
+                $(document).on("click", function (e) {
+                    if (!$(e.target).closest(`#excel-filter-${filtroId}, button`).length) {
+                        menu.hide();
+                    }
+                });
+
             });
 
         }

@@ -63,6 +63,7 @@ urlpatterns = [
     path('cargar-centro-segmento-linea-ventas/', views.cargar_presupuesto_centro_segmento_linea_ventas, name='cargarCentroSegmentoLineaVentas'),
     path('vista-centro-segmento-linea-ventas/', views.vista_presupuesto_centro_segmento_linea_ventas, name='vistaPresupuestoCentroSegmentoLineaVentas'),
     path('obtener-presupuesto-centro-segmento-linea-ventas/', views.obtener_presupuesto_centro_segmento_linea_ventas, name='obtener_presupuesto_centro_segmento_linea_ventas'),
+    path('actualizar-presupuesto-centro-segmento-linea-ventas/', views.actualizar_presupuesto_centro_segmento_linea_ventas, name='actualizar_presupuesto_centro_segmento_linea_ventas'),
     
     #importar porcentajes del presupuesto desde excel
     path('importar_crecimiento_ventas/', views.importar_crecimiento_ventas, name='importar_crecimiento_ventas'),

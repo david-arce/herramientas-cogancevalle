@@ -36,6 +36,15 @@
         font-size: 12px;
         text-align: left;
     }
+    .btn-actualizar {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+    } 
 </style>
 {% endblock %}
 
@@ -44,9 +53,9 @@
     <h2>📊 Proyección presupuesto centro operacion-segmento-linea Ventas</h2>
 
     <div class="btn-group">
-        <button type="button" id="cargarBtnCentroSegVentas" class="btn-accion">🔄 Cargar desde histórico</button>
+        {% comment %} <button type="button" id="cargarBtnCentroSegVentas" class="btn-accion">🔄 Cargar desde histórico</button> {% endcomment %}
         {% comment %} <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button> {% endcomment %}
-        {% comment %} <button type="button" id="actualizarBtnCentroSegmento" class="btn-accion btn-actualizar">Actualizar tabla</button> {% endcomment %}
+        <button type="button" id="actualizarBtnCentroSegmento" class="btn-actualizar">Actualizar tabla <span class="spinner" style="display:none; margin-left:8px;"></span></button>
     </div>
 
     <table id="presupuestoTableCentroOperacionSegmentoLineaVentas" class="display" style="width:100%">
@@ -122,7 +131,7 @@
 
         });
         let result = Object.values(pivot);
-        /*
+        
         // 🔹 Año actual y siguiente dinámicos
         const añoActual = new Date().getFullYear();
         const añoSiguiente = añoActual + 1;
@@ -130,7 +139,7 @@
         // 🔹 Agrupar por centro + segmento
         const agrupado = {};
         result.forEach(r => {
-            const key = `${r.nombre_centro_operacion}_${r.segmento}`;
+        const key = `${r.nombre_centro_operacion}_${r.segmento}_${r.linea}`;
             if (!agrupado[key]) agrupado[key] = [];
             agrupado[key].push(r);
         });
@@ -143,14 +152,15 @@
             filas.forEach(f => finalRows.push(f));
 
             const filaBase = filas.find(f => f.year === añoSiguiente);
-            const [centro, segmento] = key.split("_");
+            const [centro, segmento, linea] = key.split("_");
 
             if (filaBase) {
                 // 🔸 Fila de utilidad %
                 const filaPct = { 
                     year: "Margen % " + añoActual, 
                     nombre_centro_operacion: centro, 
-                    segmento: segmento
+                    segmento: segmento,
+                    linea: linea
                 };
                 Object.keys(meses).forEach(num => {
                     const mes = meses[num];
@@ -158,7 +168,8 @@
                         r.year === añoSiguiente && 
                         r.mes === parseInt(num) &&
                         r.nombre_centro_operacion === centro &&
-                        r.segmento === segmento
+                        r.segmento === segmento &&
+                        r.linea === linea
                     );
                     filaPct[mes] = registroMes ? registroMes.utilidad_pct : null;
                 });
@@ -174,7 +185,8 @@
                 const filaValor = { 
                     year: "Utilidad Valor " + añoSiguiente, 
                     nombre_centro_operacion: centro, 
-                    segmento: segmento
+                    segmento: segmento,
+                    linea: linea
                 };
                 Object.keys(meses).forEach(num => {
                     const mes = meses[num];
@@ -182,11 +194,21 @@
                         r.year === añoSiguiente && 
                         r.mes === parseInt(num) &&
                         r.nombre_centro_operacion === centro &&
-                        r.segmento === segmento
+                        r.segmento === segmento &&
+                        r.linea === linea
                     );
                     filaValor[mes] = registroMes ? registroMes.utilidad_valor : null;
                 });
-                filaValor.total_year = filaBase.utilidad_valor || null;
+                // 🔸 Calcular total proyectado = suma de los valores mensuales
+                const total_anual = Object.keys(meses)
+                    .map(num => {
+                        const mes = meses[num];
+                        return filaValor[mes] ? Number(filaValor[mes]) : 0;
+                    })
+                    .reduce((a, b) => a + b, 0);
+
+                // Asignar total anual
+                filaValor.total_year = total_anual;
                 filaValor.total_year_costos = null;
                 filaValor.variacion_valor = null;
                 filaValor.variacion_pct = null;
@@ -197,29 +219,35 @@
                 finalRows.push(filaPct, filaValor);
             }
         });
-*/
-        return result;
+
+        return finalRows;
     }
 
     $(document).ready(function() {
         // boton actualizar 
-        {% comment %} document.getElementById("actualizarBtnCentroSegmento").addEventListener("click", function () {
+        document.getElementById("actualizarBtnCentroSegmento").addEventListener("click", function () {
+            const boton = $(this);
+            const spinner = boton.find(".spinner");
+            boton.prop("disabled", true);
+            spinner.show();
             // llamada AJAX para actualizar presupuesto general ventas
             $.ajax({
-                url: "{% url 'actualizar_presupuesto_centro_segmento_ventas' %}",
+                url: "{% url 'actualizar_presupuesto_centro_segmento_linea_ventas' %}",
                 type: "GET",
                 dataType: "json",
                 success: function(resp) {
                     if (resp.status === "ok") {
-                        alert("Presupuesto centro operación actualizado correctamente.");
+                        alert("Presupuesto centro segmento linea actualizado correctamente.");
                         // recargar tabla
                         $.ajax({
-                            url: "{% url 'obtener_presupuesto_centro_segmento_ventas' %}",
+                            url: "{% url 'obtener_presupuesto_centro_segmento_linea_ventas' %}",
                             type: "GET",
                             dataType: "json",
                             success: function(resp) {
                                 let datos = Array.isArray(resp) ? resp : resp.data;
                                 loadTable(datos);
+                                boton.prop("disabled", false);
+                                spinner.hide();
                             }
                         });
                     } else {
@@ -231,7 +259,7 @@
                     alert("Error al actualizar el presupuesto general de ventas.");
                 }
             });
-        }); {% endcomment %}
+        });
         let table = null;
 
         function loadTable(data) {
@@ -243,7 +271,7 @@
             let columns = [{ data: 'year', title: 'Año' },
                         { data: 'linea', title: 'Linea' },
                         { data: 'segmento', title: 'Segmento' },
-                        { data: 'nombre_centro_de_operacion', title: 'Centro de operacion' }];
+                        { data: 'nombre_centro_operacion', title: 'Centro de operacion' }];
             meses.forEach(m => 
                 columns.push({ data: m, title: m, render: numberFormat, className: "editable" }));
             
@@ -259,9 +287,8 @@
             table = $('#presupuestoTableCentroOperacionSegmentoLineaVentas').DataTable({
                 data: pivoData(data),
                 columns: columns,
-                paging: false,
                 scrollX: true,
-                scrollY: "400px",
+                scrollY: "600px",
                 scrollCollapse: true,
                 
                 dom: 'Bltip',
@@ -321,87 +348,104 @@
 
             // Filtros tipo Excel
             table.columns().every(function (index) {
-                if (index === 0 || index === 1 || index === 2) {   // 🔹 0 = Año, 1 = Segmento, 2 = Centro de operación
-                    let column = this;
-                    // id dinámico
-                    let filtroId = index === 0 ? "año" : (index === 1 ? "segmento" : "centro");
 
-                    // Botón en el header
-                    let button = $(`<button id="excel-filter-btn-${filtroId}" class="excel-filter-btn">
-                                        ${index === 0 ? "Año ⬇" : (index === 1 ? "Segmento ⬇" : "Centro ⬇")}
-                                    </button>`).appendTo($(column.header()).empty());
+                // Columnas a filtrar: 0 = Año, 1 = Línea, 2 = Segmento, 3 = Centro
+                if (![0, 1, 2, 3].includes(index)) return;
 
-                    // Contenedor del menú
-                    let menu = $(`<div id="excel-filter-${filtroId}" class="excel-filter"></div>`).appendTo("body");
+                let column = this;
 
-                    // Input de búsqueda
-                    let searchBox = $('<input type="text" placeholder="Buscar...">').appendTo(menu);
+                // Diccionario para nombres
+                const headers = {
+                    0: "Año",
+                    1: "Línea",
+                    2: "Segmento",
+                    3: "Centro"
+                };
 
-                    // Lista de checkboxes
-                    let list = $("<div></div>").appendTo(menu);
+                const filtroId = "filtro_" + index;
 
-                    // ✅ Agregar opción “Seleccionar todo”
-                    list.prepend(`<label><input type="checkbox" class="select-all" checked> (Seleccionar todo)</label><br/>`);
+                // Crear botón dentro del header
+                let button = $(`
+                    <button id="excel-filter-btn-${filtroId}" class="excel-filter-btn">
+                        ${headers[index]} ⬇
+                    </button>
+                `).appendTo($(column.header()).empty());
 
-                    // Agregar opciones únicas como checkboxes
-                    column.data().unique().sort().each(function (d) {
-                        if (d) {
-                            list.append(`<label><input type="checkbox" value="${d}" checked> ${d}</label><br/>`);
-                        }
-                    });
+                // Crear menú flotante
+                let menu = $(`<div id="excel-filter-${filtroId}" class="excel-filter"></div>`).appendTo("body");
 
-                    // Función aplicar filtro
-                    function applyFilter() {
-                        let selected = [];
-                        menu.find("input[type='checkbox']:checked").not(".select-all").each(function () {
-                            selected.push("^" + $.fn.dataTable.util.escapeRegex($(this).val()) + "$");
-                        });
-                        column.search(selected.length ? selected.join("|") : "", true, false).draw();
+                let searchBox = $('<input type="text" placeholder="Buscar...">').appendTo(menu);
+
+                let list = $("<div></div>").appendTo(menu);
+
+                // Opción seleccionar todo
+                list.prepend(`
+                    <label><input type="checkbox" class="select-all" checked> (Seleccionar todo)</label><br/>
+                `);
+
+                // Agregar valores únicos como checkboxes
+                let uniqueValues = column.data().unique().sort();
+                uniqueValues.each(function (value) {
+                    if (value !== undefined && value !== null && value !== "") {
+                        list.append(`
+                            <label><input type="checkbox" value="${value}" checked> ${value}</label><br/>
+                        `);
                     }
+                });
 
-                    // ✅ Evento marcar/desmarcar todo
-                    menu.find(".select-all").on("change", function() {
-                        let checked = $(this).is(":checked");
-                        list.find("input[type='checkbox']").not(this).prop("checked", checked);
-                        applyFilter();
+                // Función que aplica el filtro
+                function applyFilter() {
+                    let selected = [];
+
+                    list.find("input[type='checkbox']:checked").not(".select-all").each(function () {
+                        selected.push("^" + $.fn.dataTable.util.escapeRegex($(this).val()) + "$");
                     });
 
-                    // ✅ Evento checkbox individual (excepto seleccionar todo)
-                    list.on("change", "input[type='checkbox']:not(.select-all)", applyFilter);
-
-
-                    // Evento búsqueda dentro del menú
-                    searchBox.on("keyup", function () {
-                        let val = $(this).val().toLowerCase();
-                        list.find("label").each(function () {
-                            $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
-                        });
-                    });
-
-                    // Mostrar este menú y ocultar los demás
-                    button.on("click", function (e) {
-                        e.stopPropagation();
-
-                        // 🔹 Ocultar otros menús antes de abrir este
-                        $(".excel-filter").not(menu).hide();
-
-                        // Posicionar y mostrar este
-                        let offset = $(this).offset();
-                        menu.css({
-                            top: offset.top + $(this).outerHeight(),
-                            left: offset.left,
-                            width: $(this).outerWidth()
-                        }).toggle();
-                    });
-
-                    // Cerrar menú al hacer clic fuera
-                    $(document).on("click", function (e) {
-                        if (!$(e.target).closest(`#excel-filter-${filtroId}, button`).length) {
-                            menu.hide();
-                        }
-                    });
+                    column.search(selected.length ? selected.join("|") : "", true, false).draw();
                 }
+
+                // Seleccionar todo
+                menu.find(".select-all").on("change", function () {
+                    const checked = $(this).is(":checked");
+                    list.find("input[type='checkbox']").not(this).prop("checked", checked);
+                    applyFilter();
+                });
+
+                // Click en cada checkbox individual
+                list.on("change", "input[type='checkbox']:not(.select-all)", applyFilter);
+
+                // Buscar dentro del menú
+                searchBox.on("keyup", function () {
+                    let val = $(this).val().toLowerCase();
+                    list.find("label").each(function () {
+                        $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
+                    });
+                });
+
+                // Mostrar menú
+                button.on("click", function (e) {
+                    e.stopPropagation();
+
+                    // Cerrar otros menús
+                    $(".excel-filter").not(menu).hide();
+
+                    let offset = $(this).offset();
+                    menu.css({
+                        top: offset.top + $(this).outerHeight(),
+                        left: offset.left,
+                        width: $(this).outerWidth()
+                    }).toggle();
+                });
+
+                // Cerrar al hacer click fuera
+                $(document).on("click", function (e) {
+                    if (!$(e.target).closest(`#excel-filter-${filtroId}, button`).length) {
+                        menu.hide();
+                    }
+                });
+
             });
+
 
         }
 
