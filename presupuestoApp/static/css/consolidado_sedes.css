@@ -1,0 +1,6 @@
+table.dataTable thead th {
+    background-color: #3e64e0;
+    color: #fff;
+    font-size: 0.9rem;
+    padding: 6px 10px;
+}

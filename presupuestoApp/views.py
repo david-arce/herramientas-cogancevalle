@@ -10769,6 +10769,7 @@ def obtener_cuenta5_base(request):
     except Exception as e:
         print(f"❌ Error en obtener_cuenta5_base: {e}")
         return JsonResponse({'error': str(e)}, status=500) 
+    
 def cargar_cuenta5_base(request):
     # limpio tabla cuenta 5 antes de recalcular
     Cuenta5Base.objects.all().delete()
@@ -10868,4 +10869,57 @@ def borrar_cuenta5_base(request):
         Cuenta5Base.objects.all().delete()
         return JsonResponse({"status": "ok", "message": "Datos de cuenta 5 eliminados"})
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+@login_required
+def consolidado_tulua(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuesto_consolidado/consolidado_tulua.html")
+
+# retornar cuentas contables
+def obtener_cuentas_contables(request):
+    cuentas = CuentasContables.objects.all().values("cuenta", "nom_cuenta")
+    
+    columns = [
+    'cuenta','enero','febrero','marzo','abril','mayo','junio',
+    'julio','agosto','septiembre','octubre','noviembre','diciembre',
+    'total'
+    ]
+    qs1 = PresupuestotecnologiaAprobado.objects.values(*columns)
+    qs2 = PresupuestoOcupacionalAprobado.objects.values(*columns)
+    qs3 = PresupuestoServiciosTecnicosAprobado.objects.values(*columns)
+    qs4 = PresupuestoLogisticaAprobado.objects.values(*columns)
+    qs5 = PresupuestoGestionRiesgosAprobado.objects.values(*columns)
+    qs6 = PresupuestoGHAprobado.objects.values(*columns)
+    qs7 = PresupuestoAlmacenTuluaAprobado.objects.values(*columns)
+    qs8 = PresupuestoAlmacenBugaAprobado.objects.values(*columns)
+    qs9 = PresupuestoAlmacenCartagoAprobado.objects.values(*columns)
+    qs10 = PresupuestoAlmacenCaliAprobado.objects.values(*columns)
+    qs11 = PresupuestoComunicacionesAprobado.objects.values(*columns)
+    qs12 = PresupuestoComercialCostosAprobado.objects.values(*columns)
+    qs13 = PresupuestoContabilidadAprobado.objects.values(*columns)
+    qs14 = PresupuestoGerenciaAprobado.objects.values(*columns)
+    
+    df1 = pd.DataFrame(list(qs1))
+    df2 = pd.DataFrame(list(qs2))
+    df3 = pd.DataFrame(list(qs3))
+    df4 = pd.DataFrame(list(qs4))
+    df5 = pd.DataFrame(list(qs5))
+    df6 = pd.DataFrame(list(qs6))
+    df7 = pd.DataFrame(list(qs7))
+    df8 = pd.DataFrame(list(qs8))
+    df9 = pd.DataFrame(list(qs9))
+    df10 = pd.DataFrame(list(qs10))
+    df11 = pd.DataFrame(list(qs11))
+    df12 = pd.DataFrame(list(qs12))
+    df13 = pd.DataFrame(list(qs13))
+    df14 = pd.DataFrame(list(qs14))
+
+    df = pd.concat([df1, df2, df3, df4, df5, df6, df7, df8, df9, df10, df11, df12, df13, df14], ignore_index=True)
+
+    resultado = df.groupby("cuenta").sum().reset_index()
+    # convertir resultado a lista de diccionarios
+    presupuesto_consolidado = resultado.to_dict(orient="records") 
+    return JsonResponse(list(presupuesto_consolidado), safe=False)
 

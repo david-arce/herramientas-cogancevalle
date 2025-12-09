@@ -17,13 +17,13 @@
     <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
       <div class="logo" tabindex="0">PRESUPUESTO</div>
       <nav class="sidebar-nav" role="navigation" aria-label="Menú principal">
-        <a href="{% url 'dashboardPresupuesto'%}" class="active" tabindex="0"><span class="material-icons" aria-hidden="true">note_alt</span><span class="text">Presupuestos</span></a>
+        <a href="{% url 'dashboardPresupuesto'%}" class="{% if request.resolver_match.url_name == 'dashboardPresupuesto' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">note_alt</span><span class="text">Presupuestos</span></a>
         {% comment %} botón para exportar a excel {% endcomment %}
         <a href="{% url 'exportar_excel_presupuestos' %}" tabindex="0" ><span class="material-icons" aria-hidden="true">file_download</span><span class="text">Exportar a Excel Presupuestos Aprobados</span></a>
         <a href="{% url 'exportar_nomina_vertical' %}" tabindex="0" ><span class="material-icons" aria-hidden="true">file_download</span><span class="text">Exportar a Excel Presupuesto Nomina</span></a>
-        <a href="{% url 'cuenta5' %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Cuenta 5</span></a>
-        {% comment %} <a href="#" tabindex="0"><span class="material-icons" aria-hidden="true">search</span><span class="text">Buscar</span></a>
-        <a href="#" tabindex="0"><span class="material-icons" aria-hidden="true">settings</span><span class="text">Configuración</span></a> {% endcomment %}
+        <a href="{% url 'cuenta5' %}" class="{% if request.resolver_match.url_name == 'cuenta5' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Cuenta 5</span></a>
+        <a href="{% url 'consolidado_tulua' %}" class="{% if request.resolver_match.url_name == 'consolidado_tulua' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado tulua</span></a>
+        
       </nav>
       <button aria-label="Colapsar barra lateral" class="sidebar-toggle desktop" id="sidebarToggle">
         <span class="material-icons" aria-hidden="true">chevron_left</span>
@@ -38,7 +38,7 @@
           <span class="material-icons search-icon" aria-hidden="true">search</span>
         </div> {% endcomment %}
         <div class="user-profile" tabindex="0" aria-label="Perfil de usuario">
-          <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/a5df9cd9-ddcf-4863-9290-dff3ca408c6b.png" alt="Avatar del usuario" />
+          <span class="material-icons" aria-hidden="true">account_circle</span>
           <span class="user-name">Nicolas</span>
         </div>
       </header>
@@ -114,15 +114,7 @@
         });
       });
 
-      // ===== Search debounce =====
-      const searchInput = document.getElementById('searchInput');
-      let searchTimeout;
-      searchInput.addEventListener('input', () => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-          console.log('Buscar:', searchInput.value);
-        }, 300);
-      });
+      
     });
 </script>
 

@@ -446,9 +446,12 @@ urlpatterns = [
     path('subir-presupuesto-gerencia/', views.subir_presupuesto_gerencia, name='subir_presupuesto_gerencia'),
     path('borrar_presupuesto_gerencia/', views.borrar_presupuesto_gerencia, name='borrar_presupuesto_gerencia'),
     
+    # consolidado general
+    path('consolidado-tulua/', views.consolidado_tulua, name='consolidado_tulua'),
+    path('obtener-consolidado-tulua/', views.obtener_cuentas_contables, name='obtener_consolidado_tulua'),
+    
     #------------------PRESUPUESTO CONSOLIDADO---------------------------
     path('<str:area>/', views.presupuesto_consolidado, name='presupuesto_consolidado'),
     path('<str:area>/obtener-presupuesto-consolidado/', views.obtener_presupuesto_consolidado, name='obtener_presupuesto_consolidado'),
     path('<str:area>/guardar/', views.guardar_presupuesto_consolidado, name='guardar_presupuesto_consolidado'),
-    
 ]
