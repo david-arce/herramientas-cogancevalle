@@ -10878,7 +10878,7 @@ def consolidado_tulua(request):
     return render(request, "presupuesto_consolidado/consolidado_tulua.html")
 
 # retornar cuentas contables
-def obtener_cuentas_contables(request):
+def obtener_consolidado_tulua(request):
     cuentas = CuentasContables.objects.all().values("cuenta", "nom_cuenta")
     
     columns = [

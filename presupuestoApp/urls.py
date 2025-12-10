@@ -448,7 +448,7 @@ urlpatterns = [
     
     # consolidado general
     path('consolidado-tulua/', views.consolidado_tulua, name='consolidado_tulua'),
-    path('obtener-consolidado-tulua/', views.obtener_cuentas_contables, name='obtener_consolidado_tulua'),
+    path('obtener-consolidado-tulua/', views.obtener_consolidado_tulua, name='obtener_consolidado_tulua'),
     
     #------------------PRESUPUESTO CONSOLIDADO---------------------------
     path('<str:area>/', views.presupuesto_consolidado, name='presupuesto_consolidado'),
