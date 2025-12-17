@@ -5,10 +5,7 @@
 <!-- CSS de FixedHeader -->
 <meta name="csrf-token" content="{{ csrf_token }}">
 {% comment %} <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css"> {% endcomment %}
-<link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.dataTables.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/columncontrol/1.1.1/css/columnControl.dataTables.min.css">
-<!-- DataTables Buttons CSS -->
-<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+
 <link rel="stylesheet" href="{% static 'css/consolidado_sedes.css' %}">
 {% endblock %}
 {% block content %}
@@ -26,19 +23,11 @@
                 <tr>
                     <th><input type="checkbox" id="checkAllIPC" title="Seleccionar todo"></th>
                     <th>CUENTA</th>
-                    <th>ENERO</th>
-                    <th>FEBRERO</th>
-                    <th>MARZO</th>
-                    <th>ABRIL</th>
-                    <th>MAYO</th>
-                    <th>JUNIO</th>
-                    <th>JULIO</th>
-                    <th>AGOSTO</th>
-                    <th>SEPTIEMBRE</th>
-                    <th>OCTUBRE</th>
-                    <th>NOVIEMBRE</th>
-                    <th>DICIEMBRE</th>
-                    <th>TOTAL</th>
+                    <th>NOMBRE CUENTA</th>
+                    <th>FECHA</th>
+                    <th>SALDO</th>
+                    <th>TOTAL DEBITO</th>
+                    <th>TOTAL CREDITO</th>
                 </tr>
             </thead>
         </table>

@@ -10,7 +10,7 @@ $(document).ready(function() {
     let table = new DataTable('#table', {
         ajax: {
             url: url_obtener_consolidado_tulua,
-            dataSrc: ''
+            dataSrc: 'data'
         },
         columns: [
             {   // 🔥 Columna de selección
@@ -18,20 +18,12 @@ $(document).ready(function() {
                 defaultContent: `<input type="checkbox" class="row-check">`,
                 orderable: false
             },
-            { data: 'cuenta' },
-            { data: 'enero' },
-            { data: 'febrero' },
-            { data: 'marzo' },
-            { data: 'abril' },
-            { data: 'mayo' },
-            { data: 'junio' },
-            { data: 'julio' },
-            { data: 'agosto' },
-            { data: 'septiembre'},
-            { data: 'octubre'},
-            { data: 'noviembre'},
-            { data: 'diciembre'},
-            { data: 'total' }
+            { data: 'mcncuenta' },
+            { data: 'ctanombre' },
+            { data: 'fecha' },
+            { data: 'saldo' },
+            { data: 'total_debito' },
+            { data: 'total_credito' },
         ],
         language: {
             url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'

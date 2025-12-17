@@ -17,6 +17,7 @@ from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.db import models
 from django.core.paginator import Paginator
+import calendar
 
 def exportar_excel_nomina(request):
     # Obtener datos de cada tabla
@@ -10742,6 +10743,15 @@ def cuenta5(request):
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     return render(request, "presupuesto_consolidado/cuenta5.html")
 
+def excel_serial_to_date(serial):
+    if serial is None:
+        return None
+    try:
+        base_date = datetime.datetime(1899, 12, 30)
+        return (base_date + datetime.timedelta(days=int(serial))).date().isoformat()
+    except Exception:
+        return None
+
 @csrf_exempt
 def obtener_cuenta5_base(request):
     try:
@@ -10759,6 +10769,10 @@ def obtener_cuenta5_base(request):
 
         data = list(page.object_list.values())
 
+        # 🔹 Convertir fecha Excel a fecha normal
+        for row in data:
+            row['mcnfecha'] = excel_serial_to_date(row.get('mcnfecha'))
+        print(data)
         return JsonResponse({
             'draw': draw,
             'recordsTotal': total,
@@ -10879,47 +10893,80 @@ def consolidado_tulua(request):
 
 # retornar cuentas contables
 def obtener_consolidado_tulua(request):
-    cuentas = CuentasContables.objects.all().values("cuenta", "nom_cuenta")
+    try:
+        params = request.POST or request.GET
+        draw = int(params.get('draw') or 1)
+
+        queryset = Cuenta5Base.objects.values(
+            'mcncuenta',
+            'mcnfecha',
+            'mcnvaldebi',
+            'mcnvalcred'
+        )
+
+        consolidado = defaultdict(lambda: {
+            'total_debito': 0,
+            'total_credito': 0
+        })
+
+        # 🔹 1. Convertir fecha
+        # 🔹 2. Consolidar por fecha convertida
+        for row in queryset:
+            fecha = excel_serial_to_date(row['mcnfecha'])
+            if not fecha:
+                continue
+            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            # mes = fecha.strftime('%Y-%m')  # 👉 2025-01
+            MESES_ES = {
+                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+            }
+
+            mes = MESES_ES[fecha.month]
+            cuenta = row['mcncuenta'] or 'SIN CUENTA'
+            
+            key = (mes, cuenta)
+
+            consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
+            consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
+
+        # 🔹 salida ordenada
+        data = []
+        for (mes, cuenta) in sorted(consolidado.keys()):
+            total_debito = consolidado[(mes, cuenta)]['total_debito']
+            total_credito = consolidado[(mes, cuenta)]['total_credito']
+
+            data.append({
+                'mcncuenta': cuenta,
+                'fecha': mes,                 # 2025-01
+                'total_debito': total_debito,
+                'total_credito': total_credito,
+                'saldo': total_debito - total_credito
+            })
+        cuentas_qs = Cuenta5Base.objects.values(
+            'mcncuenta',
+            'ctanombre'
+        ).distinct()
+        cuentas_dict = {
+            c['mcncuenta']: c['ctanombre']
+            for c in cuentas_qs
+        }
+        for item in data:
+            item['ctanombre'] = cuentas_dict.get(
+                item['mcncuenta'],
+                'SIN NOMBRE'
+            )
+        print(data)
+        return JsonResponse({
+            'data': data
+        })
+        
+
+    except Exception as e:
+        print(f"❌ Error en obtener_consolidado_tulua: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+def obtener_consolidado_cuenta5(request):
     
-    columns = [
-    'cuenta','enero','febrero','marzo','abril','mayo','junio',
-    'julio','agosto','septiembre','octubre','noviembre','diciembre',
-    'total'
-    ]
-    qs1 = PresupuestotecnologiaAprobado.objects.values(*columns)
-    qs2 = PresupuestoOcupacionalAprobado.objects.values(*columns)
-    qs3 = PresupuestoServiciosTecnicosAprobado.objects.values(*columns)
-    qs4 = PresupuestoLogisticaAprobado.objects.values(*columns)
-    qs5 = PresupuestoGestionRiesgosAprobado.objects.values(*columns)
-    qs6 = PresupuestoGHAprobado.objects.values(*columns)
-    qs7 = PresupuestoAlmacenTuluaAprobado.objects.values(*columns)
-    qs8 = PresupuestoAlmacenBugaAprobado.objects.values(*columns)
-    qs9 = PresupuestoAlmacenCartagoAprobado.objects.values(*columns)
-    qs10 = PresupuestoAlmacenCaliAprobado.objects.values(*columns)
-    qs11 = PresupuestoComunicacionesAprobado.objects.values(*columns)
-    qs12 = PresupuestoComercialCostosAprobado.objects.values(*columns)
-    qs13 = PresupuestoContabilidadAprobado.objects.values(*columns)
-    qs14 = PresupuestoGerenciaAprobado.objects.values(*columns)
-    
-    df1 = pd.DataFrame(list(qs1))
-    df2 = pd.DataFrame(list(qs2))
-    df3 = pd.DataFrame(list(qs3))
-    df4 = pd.DataFrame(list(qs4))
-    df5 = pd.DataFrame(list(qs5))
-    df6 = pd.DataFrame(list(qs6))
-    df7 = pd.DataFrame(list(qs7))
-    df8 = pd.DataFrame(list(qs8))
-    df9 = pd.DataFrame(list(qs9))
-    df10 = pd.DataFrame(list(qs10))
-    df11 = pd.DataFrame(list(qs11))
-    df12 = pd.DataFrame(list(qs12))
-    df13 = pd.DataFrame(list(qs13))
-    df14 = pd.DataFrame(list(qs14))
-
-    df = pd.concat([df1, df2, df3, df4, df5, df6, df7, df8, df9, df10, df11, df12, df13, df14], ignore_index=True)
-
-    resultado = df.groupby("cuenta").sum().reset_index()
-    # convertir resultado a lista de diccionarios
-    presupuesto_consolidado = resultado.to_dict(orient="records") 
-    return JsonResponse(list(presupuesto_consolidado), safe=False)
-
+    qs = Cuenta5Base.objects.values("mcncuenta", "ccnombre")
