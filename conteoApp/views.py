@@ -321,7 +321,7 @@ def asignar_tareas(request):
         bodega = '0401'
 
     # usuarios que se mostraran en el select de la vista
-    usuarios = User.objects.exclude(username="admin").filter(usercity__ciudad=ciudad) # retornar todos los usuarios
+    usuarios = User.objects.exclude(username="admin").filter(usercity__ciudad=ciudad, is_active=True) # retornar todos los usuarios
     
     productos = list(Venta.objects.filter(sku__regex=r'^\d+$',bod = bodega,fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
     
@@ -336,7 +336,6 @@ def asignar_tareas(request):
     return render(request, 'conteoApp/asignar_tareas.html', {
         # 'form': form,
         'tareas': tareas,
-        'selected_users': selected_users,
         'cant_tareas_por_usuario': cant_tareas_por_usuario,
         'usuarios_con_tareas': usuarios_con_tareas,
         'total_tareas_usuarios': total_tareas_usuarios,
