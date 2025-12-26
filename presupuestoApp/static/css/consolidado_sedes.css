@@ -1,6 +1,20 @@
-table.dataTable thead th {
-    background-color: #3e64e0;
+table thead th {
+    background-color: #4f6ed3;
     color: #fff;
+    font-size: 0.8rem;
+    padding: 4px 8px;
+}
+
+#table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+#table th,
+#table td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 4px 8px;
     font-size: 0.9rem;
-    padding: 6px 10px;
 }

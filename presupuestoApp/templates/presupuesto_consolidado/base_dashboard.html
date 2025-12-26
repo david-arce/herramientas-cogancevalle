@@ -28,7 +28,10 @@
         <a href="{% url 'exportar_nomina_vertical' %}" tabindex="0" ><span class="material-icons" aria-hidden="true">file_download</span><span class="text">Exportar a Excel Presupuesto Nomina</span></a>
         <a href="{% url 'cuenta5' %}" class="{% if request.resolver_match.url_name == 'cuenta5' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Cuenta 5</span></a>
         <a href="{% url 'consolidado_tulua' %}" class="{% if request.resolver_match.url_name == 'consolidado_tulua' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado tulua</span></a>
-        
+        <a href="{% url 'consolidado_buga' %}" class="{% if request.resolver_match.url_name == 'consolidado_buga' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado buga</span></a>
+        <a href="{% url 'consolidado_cartago' %}" class="{% if request.resolver_match.url_name == 'consolidado_cartago' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado cartago</span></a>
+        <a href="{% url 'consolidado_cali' %}" class="{% if request.resolver_match.url_name == 'consolidado_cali' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado cali</span></a>
+        <a href="{% url 'consolidado_total_base' %}" class="{% if request.resolver_match.url_name == 'consolidado_total_base' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado total base</span></a>
       </nav>
       <button aria-label="Colapsar barra lateral" class="sidebar-toggle desktop" id="sidebarToggle">
         <span class="material-icons" aria-hidden="true">chevron_left</span>
@@ -60,7 +63,6 @@
   </button>
   
 <script>
-    
     document.addEventListener('DOMContentLoaded', function () {
       const sidebar = document.getElementById('sidebar');
       const sidebarToggle = document.getElementById('sidebarToggle');

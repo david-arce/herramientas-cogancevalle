@@ -4,8 +4,6 @@
 {% block css%}
 <!-- CSS de FixedHeader -->
 <meta name="csrf-token" content="{{ csrf_token }}">
-{% comment %} <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css"> {% endcomment %}
-
 <link rel="stylesheet" href="{% static 'css/consolidado_sedes.css' %}">
 {% endblock %}
 {% block content %}
@@ -24,7 +22,6 @@
                     <th><input type="checkbox" id="checkAllIPC" title="Seleccionar todo"></th>
                     <th>CUENTA</th>
                     <th>CENTRO DE COSTO</th>
-                    <th>ZONA</th>
                     <th>NOMBRE CUENTA</th>
                     <th>ENERO</th>
                     <th>FEBRERO</th>
@@ -38,6 +35,7 @@
                     <th>OCTUBRE</th>
                     <th>NOVIEMBRE</th>
                     <th>DICIEMBRE</th>
+                    <th>TOTAL</th>
                 </tr>
             </thead>
         </table>
@@ -87,9 +85,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <script>
-        const url_obtener_consolidado_tulua = "{% url 'obtener_consolidado_tulua' %}";
+        const url_obtener_consolidado_total_base = "{% url 'obtener_consolidado_total_base' %}";
     </script>
-    <script src="{% static 'js/consolidado_tulua.js' %}"></script>
+    <script src="{% static 'js/consolidado_total_base.js' %}"></script>
    
     {% endblock %}
 

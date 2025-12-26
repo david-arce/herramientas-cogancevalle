@@ -10891,14 +10891,46 @@ def consolidado_tulua(request):
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     return render(request, "presupuesto_consolidado/consolidado_tulua.html")
 
+@login_required
+def consolidado_buga(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuesto_consolidado/consolidado_buga.html")
+
+@login_required
+def consolidado_cartago(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuesto_consolidado/consolidado_cartago.html")
+
+@login_required
+def consolidado_cali(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuesto_consolidado/consolidado_cali.html")
+
+@login_required
+def consolidado_total_base(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuesto_consolidado/consolidado_total_base.html")
+
 # retornar cuentas contables
 def obtener_consolidado_tulua(request):
     try:
         params = request.POST or request.GET
         draw = int(params.get('draw') or 1)
 
-        queryset = Cuenta5Base.objects.values(
+        queryset = Cuenta5Base.objects.filter(
+            zonnombre__icontains='TULUA'
+        ).values(
+            'zonnombre',
             'mcncuenta',
+            'mcnccosto',
             'mcnfecha',
             'mcnvaldebi',
             'mcnvalcred'
@@ -10908,15 +10940,13 @@ def obtener_consolidado_tulua(request):
             'total_debito': 0,
             'total_credito': 0
         })
-
-        # 🔹 1. Convertir fecha
-        # 🔹 2. Consolidar por fecha convertida
+        # 🔹 1. Convertir fecha y consolidar
         for row in queryset:
             fecha = excel_serial_to_date(row['mcnfecha'])
             if not fecha:
                 continue
             fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
-            # mes = fecha.strftime('%Y-%m')  # 👉 2025-01
+            
             MESES_ES = {
                 1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
                 5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
@@ -10925,25 +10955,13 @@ def obtener_consolidado_tulua(request):
 
             mes = MESES_ES[fecha.month]
             cuenta = row['mcncuenta'] or 'SIN CUENTA'
-            
-            key = (mes, cuenta)
-
+            costo = row['mcnccosto'] or 'SIN COSTO'
+            zona = row['zonnombre'] or 'SIN ZONA'
+            key = (mes, cuenta, costo, zona)
             consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
             consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
 
-        # 🔹 salida ordenada
-        data = []
-        for (mes, cuenta) in sorted(consolidado.keys()):
-            total_debito = consolidado[(mes, cuenta)]['total_debito']
-            total_credito = consolidado[(mes, cuenta)]['total_credito']
-
-            data.append({
-                'mcncuenta': cuenta,
-                'fecha': mes,                 # 2025-01
-                'total_debito': total_debito,
-                'total_credito': total_credito,
-                'saldo': total_debito - total_credito
-            })
+        # 🔹 2. Obtener nombres de cuentas
         cuentas_qs = Cuenta5Base.objects.values(
             'mcncuenta',
             'ctanombre'
@@ -10952,12 +10970,39 @@ def obtener_consolidado_tulua(request):
             c['mcncuenta']: c['ctanombre']
             for c in cuentas_qs
         }
-        for item in data:
-            item['ctanombre'] = cuentas_dict.get(
-                item['mcncuenta'],
-                'SIN NOMBRE'
-            )
-        print(data)
+
+        # 🔹 3. Pivotar: agrupar por cuenta-costo y crear columnas por mes
+        pivot_data = defaultdict(lambda: {
+            'mcncuenta': '',
+            'mcnccosto': '',
+            'ctanombre': ''
+        })
+        
+        meses_unicos = set()
+        
+        for (mes, cuenta, costo, zona) in consolidado.keys():
+            key = (cuenta, costo)
+            meses_unicos.add(mes)
+            
+            total_debito = consolidado[(mes, cuenta, costo, zona)]['total_debito']
+            total_credito = consolidado[(mes, cuenta, costo, zona)]['total_credito']
+            saldo = total_debito - total_credito
+            
+            pivot_data[key]['mcncuenta'] = cuenta
+            pivot_data[key]['mcnccosto'] = costo
+            pivot_data[key]['ctanombre'] = cuentas_dict.get(cuenta, 'SIN NOMBRE')
+            pivot_data[key]['zonnombre'] = zona
+            pivot_data[key][mes] = round(saldo)
+
+        # 🔹 4. Convertir a lista ordenada
+        data = []
+        for key in sorted(pivot_data.keys()):
+            row = pivot_data[key]
+            # Asegurar que todos los meses existan en cada fila (con 0 si no hay datos)
+            for mes in meses_unicos:
+                if mes not in row:
+                    row[mes] = 0
+            data.append(row)
         return JsonResponse({
             'data': data
         })
@@ -10965,6 +11010,444 @@ def obtener_consolidado_tulua(request):
 
     except Exception as e:
         print(f"❌ Error en obtener_consolidado_tulua: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+def obtener_consolidado_buga(request):
+    try:
+        params = request.POST or request.GET
+        draw = int(params.get('draw') or 1)
+
+        queryset = Cuenta5Base.objects.filter(
+            zonnombre__icontains='BUGA'
+        ).values(
+            'zonnombre',
+            'mcncuenta',
+            'mcnccosto',
+            'mcnfecha',
+            'mcnvaldebi',
+            'mcnvalcred'
+        )
+
+        consolidado = defaultdict(lambda: {
+            'total_debito': 0,
+            'total_credito': 0
+        })
+        # 🔹 1. Convertir fecha y consolidar
+        for row in queryset:
+            fecha = excel_serial_to_date(row['mcnfecha'])
+            if not fecha:
+                continue
+            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            
+            MESES_ES = {
+                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+            }
+
+            mes = MESES_ES[fecha.month]
+            cuenta = row['mcncuenta'] or 'SIN CUENTA'
+            costo = row['mcnccosto'] or 'SIN COSTO'
+            zona = row['zonnombre'] or 'SIN ZONA'
+            key = (mes, cuenta, costo, zona)
+            consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
+            consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
+
+        # 🔹 2. Obtener nombres de cuentas
+        cuentas_qs = Cuenta5Base.objects.values(
+            'mcncuenta',
+            'ctanombre'
+        ).distinct()
+        cuentas_dict = {
+            c['mcncuenta']: c['ctanombre']
+            for c in cuentas_qs
+        }
+
+        # 🔹 3. Pivotar: agrupar por cuenta-costo y crear columnas por mes
+        pivot_data = defaultdict(lambda: {
+            'mcncuenta': '',
+            'mcnccosto': '',
+            'ctanombre': ''
+        })
+        
+        meses_unicos = set()
+        
+        for (mes, cuenta, costo, zona) in consolidado.keys():
+            key = (cuenta, costo)
+            meses_unicos.add(mes)
+            
+            total_debito = consolidado[(mes, cuenta, costo, zona)]['total_debito']
+            total_credito = consolidado[(mes, cuenta, costo, zona)]['total_credito']
+            saldo = total_debito - total_credito
+            
+            pivot_data[key]['mcncuenta'] = cuenta
+            pivot_data[key]['mcnccosto'] = costo
+            pivot_data[key]['ctanombre'] = cuentas_dict.get(cuenta, 'SIN NOMBRE')
+            pivot_data[key]['zonnombre'] = zona
+            pivot_data[key][mes] = round(saldo)
+
+        # 🔹 4. Convertir a lista ordenada
+        data = []
+        for key in sorted(pivot_data.keys()):
+            row = pivot_data[key]
+            # Asegurar que todos los meses existan en cada fila (con 0 si no hay datos)
+            for mes in meses_unicos:
+                if mes not in row:
+                    row[mes] = 0
+            data.append(row)
+        return JsonResponse({
+            'data': data
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en obtener_consolidado_buga: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+def obtener_consolidado_cartago(request):
+    try:
+        params = request.POST or request.GET
+        draw = int(params.get('draw') or 1)
+
+        queryset = Cuenta5Base.objects.filter(
+            zonnombre__icontains='CARTAGO'
+        ).values(
+            'zonnombre',
+            'mcncuenta',
+            'mcnccosto',
+            'mcnfecha',
+            'mcnvaldebi',
+            'mcnvalcred'
+        )
+
+        consolidado = defaultdict(lambda: {
+            'total_debito': 0,
+            'total_credito': 0
+        })
+        # 🔹 1. Convertir fecha y consolidar
+        for row in queryset:
+            fecha = excel_serial_to_date(row['mcnfecha'])
+            if not fecha:
+                continue
+            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            
+            MESES_ES = {
+                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+            }
+
+            mes = MESES_ES[fecha.month]
+            cuenta = row['mcncuenta'] or 'SIN CUENTA'
+            costo = row['mcnccosto'] or 'SIN COSTO'
+            zona = row['zonnombre'] or 'SIN ZONA'
+            key = (mes, cuenta, costo, zona)
+            consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
+            consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
+
+        # 🔹 2. Obtener nombres de cuentas
+        cuentas_qs = Cuenta5Base.objects.values(
+            'mcncuenta',
+            'ctanombre'
+        ).distinct()
+        cuentas_dict = {
+            c['mcncuenta']: c['ctanombre']
+            for c in cuentas_qs
+        }
+
+        # 🔹 3. Pivotar: agrupar por cuenta-costo y crear columnas por mes
+        pivot_data = defaultdict(lambda: {
+            'mcncuenta': '',
+            'mcnccosto': '',
+            'ctanombre': ''
+        })
+        
+        meses_unicos = set()
+        
+        for (mes, cuenta, costo, zona) in consolidado.keys():
+            key = (cuenta, costo)
+            meses_unicos.add(mes)
+            
+            total_debito = consolidado[(mes, cuenta, costo, zona)]['total_debito']
+            total_credito = consolidado[(mes, cuenta, costo, zona)]['total_credito']
+            saldo = total_debito - total_credito
+            
+            pivot_data[key]['mcncuenta'] = cuenta
+            pivot_data[key]['mcnccosto'] = costo
+            pivot_data[key]['ctanombre'] = cuentas_dict.get(cuenta, 'SIN NOMBRE')
+            pivot_data[key]['zonnombre'] = zona
+            pivot_data[key][mes] = round(saldo)
+
+        # 🔹 4. Convertir a lista ordenada
+        data = []
+        for key in sorted(pivot_data.keys()):
+            row = pivot_data[key]
+            # Asegurar que todos los meses existan en cada fila (con 0 si no hay datos)
+            for mes in meses_unicos:
+                if mes not in row:
+                    row[mes] = 0
+            data.append(row)
+        return JsonResponse({
+            'data': data
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en obtener_consolidado_cartago: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+def obtener_consolidado_cali(request):
+    try:
+        params = request.POST or request.GET
+        draw = int(params.get('draw') or 1)
+
+        queryset = Cuenta5Base.objects.filter(
+            zonnombre__icontains='CALI'
+        ).values(
+            'zonnombre',
+            'mcncuenta',
+            'mcnccosto',
+            'mcnfecha',
+            'mcnvaldebi',
+            'mcnvalcred'
+        )
+
+        consolidado = defaultdict(lambda: {
+            'total_debito': 0,
+            'total_credito': 0
+        })
+        # 🔹 1. Convertir fecha y consolidar
+        for row in queryset:
+            fecha = excel_serial_to_date(row['mcnfecha'])
+            if not fecha:
+                continue
+            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            
+            MESES_ES = {
+                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+            }
+
+            mes = MESES_ES[fecha.month]
+            cuenta = row['mcncuenta'] or 'SIN CUENTA'
+            costo = row['mcnccosto'] or 'SIN COSTO'
+            zona = row['zonnombre'] or 'SIN ZONA'
+            key = (mes, cuenta, costo, zona)
+            consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
+            consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
+
+        # 🔹 2. Obtener nombres de cuentas
+        cuentas_qs = Cuenta5Base.objects.values(
+            'mcncuenta',
+            'ctanombre'
+        ).distinct()
+        cuentas_dict = {
+            c['mcncuenta']: c['ctanombre']
+            for c in cuentas_qs
+        }
+
+        # 🔹 3. Pivotar: agrupar por cuenta-costo y crear columnas por mes
+        pivot_data = defaultdict(lambda: {
+            'mcncuenta': '',
+            'mcnccosto': '',
+            'ctanombre': ''
+        })
+        
+        meses_unicos = set()
+        
+        for (mes, cuenta, costo, zona) in consolidado.keys():
+            key = (cuenta, costo)
+            meses_unicos.add(mes)
+            
+            total_debito = consolidado[(mes, cuenta, costo, zona)]['total_debito']
+            total_credito = consolidado[(mes, cuenta, costo, zona)]['total_credito']
+            saldo = total_debito - total_credito
+            
+            pivot_data[key]['mcncuenta'] = cuenta
+            pivot_data[key]['mcnccosto'] = costo
+            pivot_data[key]['ctanombre'] = cuentas_dict.get(cuenta, 'SIN NOMBRE')
+            pivot_data[key]['zonnombre'] = zona
+            pivot_data[key][mes] = round(saldo)
+
+        # 🔹 4. Convertir a lista ordenada
+        data = []
+        for key in sorted(pivot_data.keys()):
+            row = pivot_data[key]
+            # Asegurar que todos los meses existan en cada fila (con 0 si no hay datos)
+            for mes in meses_unicos:
+                if mes not in row:
+                    row[mes] = 0
+            data.append(row)
+        return JsonResponse({
+            'data': data
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en obtener_consolidado_cali: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+def obtener_consolidado_total_base(request):
+    try:
+        params = request.POST or request.GET
+        draw = int(params.get('draw') or 1)
+
+        queryset = Cuenta5Base.objects.values(
+            'mcncuenta',
+            'mcnccosto',
+            'mcnfecha',
+            'mcnvaldebi',
+            'mcnvalcred'
+        )
+
+        consolidado = defaultdict(lambda: {
+            'total_debito': 0,
+            'total_credito': 0
+        })
+        
+        # 🔹 1. Convertir fecha y consolidar
+        for row in queryset:
+            fecha = excel_serial_to_date(row['mcnfecha'])
+            if not fecha:
+                continue
+            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            
+            MESES_ES = {
+                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+            }
+
+            mes = MESES_ES[fecha.month]
+            cuenta = row['mcncuenta'] or 'SIN CUENTA'
+            costo = row['mcnccosto'] or 'SIN COSTO'
+            # 🔹 Agrupar cuentas que comienzan con '541001'
+            if cuenta.startswith('541001'):
+                cuenta = '541001'
+            
+            # 🔹 Agrupar cuentas específicas 'Tasas Bomberil-otras'
+            tasasBomberil_otras = ['54100207', '54100208', '54100209', '54100210']
+            # agrupar cuentas de la 541009 y 541033 Adecuación e Instalaciones-Reparac locat
+            adecuacion_instalaciones = ['541009', '541033', '54103301', '54103302']
+            # agrupar cuentas 541015 - 541016 Utiles - Papelería- Fotocopias
+            papelaria_fotocopias = ['541015', '541016']
+            # agrupar cuentas 511015 - 511016 Papelería y Utiles de Oficina
+            papeleria_utiles_oficina = ['511015', '511016']
+            if cuenta in tasasBomberil_otras:
+                cuenta = '54100207_54100210'
+            if cuenta in adecuacion_instalaciones:
+                cuenta = '541009_541033'
+            if cuenta in papelaria_fotocopias:
+                cuenta = '541015_541016'
+            if cuenta in papeleria_utiles_oficina:
+                cuenta = '511015_511016'
+            # agrupar cuentas 541003 Arrendamientos
+            if cuenta.startswith('541003'):
+                cuenta = '541003'
+            
+            # agrupar cuentas 541005 Seguros
+            if cuenta.startswith('541005'):
+                cuenta = '541005'
+                
+            # agrupar cuentas 541006 Mantenimiento y Reparaciónes
+            if cuenta.startswith('541006'):
+                cuenta = '541006'
+            
+            # agrupar cuentas 541024 Gastos Legales
+            if cuenta.startswith('541024'):
+                cuenta = '541024'
+            
+            # agrupar cuentas 541027 Gastos de Viaje
+            if cuenta.startswith('541027'):
+                cuenta = '541027'
+            
+            # agrupar cuentas 5415 Depreciación
+            if cuenta.startswith('5415'):
+                cuenta = '5415'
+                
+            # agrupar cuentas 5405 Gastos de Personal
+            if costo == '020201':
+                cuenta = '5405'
+            
+            key = (mes, cuenta, costo)
+            consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
+            consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
+
+        # 🔹 2. Obtener nombres de cuentas
+        cuentas_qs = Cuenta5Base.objects.values(
+            'mcncuenta',
+            'ctanombre'
+        ).distinct()
+        cuentas_dict = {
+            c['mcncuenta']: c['ctanombre']
+            for c in cuentas_qs
+        }
+
+        # 🔹 3. Pivotar: agrupar por cuenta-costo y crear columnas por mes
+        pivot_data = defaultdict(lambda: {
+            'mcncuenta': '',
+            'mcnccosto': '',
+            'ctanombre': ''
+        })
+        
+        meses_unicos = set()
+        
+        for (mes, cuenta, costo) in consolidado.keys():
+            key = (cuenta, costo)
+            meses_unicos.add(mes)
+            
+            total_debito = consolidado[(mes, cuenta, costo)]['total_debito']
+            total_credito = consolidado[(mes, cuenta, costo)]['total_credito']
+            saldo = total_debito - total_credito
+            
+            pivot_data[key]['mcncuenta'] = cuenta
+            pivot_data[key]['mcnccosto'] = costo
+            # 🔹 Asignar nombre especial para cuentas '541001'
+            if cuenta == '541001':
+                pivot_data[key]['ctanombre'] = 'Honorarios'
+            elif cuenta == '54100207_54100210':
+                pivot_data[key]['ctanombre'] = 'Tasas Bomberil-otras'
+            elif cuenta == '541003':
+                pivot_data[key]['ctanombre'] = 'Arrendamientos'
+            elif cuenta == '541005':
+                pivot_data[key]['ctanombre'] = 'Seguros'
+            elif cuenta == '541006':
+                pivot_data[key]['ctanombre'] = 'Mantenimiento y Reparaciónes'
+            elif cuenta == '541009_541033':
+                pivot_data[key]['ctanombre'] = 'Adecuación e Instalaciones-Reparac locat'
+            elif cuenta == '541015_541016':
+                pivot_data[key]['ctanombre'] = 'Utiles - Papelería- Fotocopias'
+            elif cuenta == '541024':
+                pivot_data[key]['ctanombre'] = 'Gastos Legales'
+            elif cuenta == '541027':
+                pivot_data[key]['ctanombre'] = 'Gastos de Viaje'
+            elif cuenta == '5415':
+                pivot_data[key]['ctanombre'] = 'Depreciación'
+            elif cuenta == '511015_511016':
+                pivot_data[key]['ctanombre'] = 'Papelería y Utiles de Oficina'
+            elif cuenta == '5405':
+                pivot_data[key]['ctanombre'] = 'Gastos de Personal'
+            else:
+                pivot_data[key]['ctanombre'] = cuentas_dict.get(cuenta, 'SIN NOMBRE')
+            
+            pivot_data[key][mes] = round(saldo)
+
+        # 🔹 4. Convertir a lista ordenada
+        data = []
+        for key in sorted(pivot_data.keys()):
+            row = pivot_data[key]
+            total_anual = 0
+            # Asegurar que todos los meses existan en cada fila (con 0 si no hay datos)
+            for mes in meses_unicos:
+                if mes not in row:
+                    row[mes] = 0
+                else:
+                    total_anual += row[mes]
+            row['total_anual'] = total_anual
+            data.append(row)
+        return JsonResponse({
+            'data': data
+        })
+    except Exception as e:
+        print(f"❌ Error en obtener_consolidado_total: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 def obtener_consolidado_cuenta5(request):

@@ -9,7 +9,7 @@ $(document).ready(function() {
 
     let table = new DataTable('#table', {
         ajax: {
-            url: url_obtener_consolidado_tulua,
+            url: url_obtener_consolidado_cartago,
             dataSrc: 'data'
         },
         columns: [

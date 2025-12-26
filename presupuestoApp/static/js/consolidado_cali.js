@@ -9,7 +9,7 @@ $(document).ready(function() {
 
     let table = new DataTable('#table', {
         ajax: {
-            url: url_obtener_consolidado_tulua,
+            url: url_obtener_consolidado_cali,
             dataSrc: 'data'
         },
         columns: [
@@ -39,7 +39,7 @@ $(document).ready(function() {
             { width: '35px', targets: 0 },      // Checkbox
             { width: '120px', targets: [1,2,3] },     // CUENTA y CENTRO DE COSTO
             { width: '120px', targets: 4 },     // NOMBRE CUENTA
-            { width: '100px', targets: [5,6,7,8,9,10,11,12,13,14,15,16], className: 'dt-body-right', render: numberFormat },
+            { width: '100px', targets: [5,6,7,8,9,10,11,12,13,14,15,16], className: 'dt-body-right', render: numberFormat }, // SALDO, DEBITO, CREDITO
         ],
         autoWidth: false,  // 🔥 IMPORTANTE: Desactiva el ancho automático
         paging: false,
