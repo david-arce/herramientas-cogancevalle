@@ -2637,3 +2637,10 @@ class Cuenta5Base(models.Model):
 
     class Meta:
         db_table = 'cuenta_5_base'
+
+class ConsolidadoTotalBase(models.Model):
+    mcncuenta = models.CharField(blank=True, null=True)
+    mcnccosto = models.CharField(blank=True, null=True)
+    ctanombre = models.CharField(blank=True, null=True)
+    mcnfecha = models.DateField(blank=True, null=True)
+    total_anual = models.BigIntegerField(blank=True, null=True)
