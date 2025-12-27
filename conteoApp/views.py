@@ -24,7 +24,7 @@ def asignar_tareas(request):
         fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
     else:
         fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-    fecha_asignar =  '20251224'
+    # fecha_asignar =  '20251224'
     
     if request.user.username != "DBENITEZ" and request.user.username != "CHINCAPI" and request.user.username != "FDUQUE" and request.user.username != "LAMAYA" and request.user.username != "AGRAJALE"  and request.user.username != "admin":
         raise PermissionDenied("No tienes permiso para acceder a esta vista.")
@@ -354,7 +354,7 @@ def lista_tareas(request):
         fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
     else:
         fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-    fecha_asignar =  '20251224'
+    # fecha_asignar =  '20251224'
     fecha_especifica = datetime.date.today() 
     try:
         ciudad = request.user.usercity.ciudad
