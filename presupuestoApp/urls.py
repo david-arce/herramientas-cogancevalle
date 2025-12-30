@@ -455,8 +455,12 @@ urlpatterns = [
     path('obtener-consolidado-cartago/', views.obtener_consolidado_cartago, name='obtener_consolidado_cartago'),
     path('consolidado-cali/', views.consolidado_cali, name='consolidado_cali'),
     path('obtener-consolidado-cali/', views.obtener_consolidado_cali, name='obtener_consolidado_cali'),
-    path('consolidado-total-base/', views.consolidado_total_base, name='consolidado_total_base'),
+   
+    path('consolidado-total-base/', views.consolidado_total_base, name='consolidado_total_base'), 
     path('obtener-consolidado-total-base/', views.obtener_consolidado_total_base, name='obtener_consolidado_total_base'),
+    path('calcular-consolidado-total-base/', views.calcular_y_guardar_consolidado, name='calcular_consolidado_total_base'),
+    path('guardar-fila-consolidado/', views.guardar_fila_consolidado, name='guardar_fila_consolidado'),
+    path('eliminar-fila-consolidado/', views.eliminar_fila_consolidado, name='eliminar_fila_consolidado'),
     
     #------------------PRESUPUESTO CONSOLIDADO---------------------------
     path('<str:area>/', views.presupuesto_consolidado, name='presupuesto_consolidado'),

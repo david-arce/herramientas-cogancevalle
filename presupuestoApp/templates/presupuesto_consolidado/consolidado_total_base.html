@@ -8,13 +8,10 @@
 {% endblock %}
 {% block content %}
 <section class="cuenta5-container">
-    <div class="btn-group_bd">
-        <!-- Grupo: Guardar / Subir presupuesto -->
-        <div class="btn-section1">
-            {% comment %} <button id="guardarTempBtn">💾 Guardar cambios</button> {% endcomment %}
-        </div>
+    <div class="btn-section1">
+        <button id="agregarFilaBtn">➕ Agregar Fila</button>
+        <button id="calcularConsolidadoBtn">🔄 Calcular y Guardar Consolidado</button>
     </div>
-
     <div id="tableContainer" style="overflow-x:auto; max-width:100%;">
         <table id="table" class="display cell-border">
             <thead>
@@ -86,6 +83,9 @@
 
     <script>
         const url_obtener_consolidado_total_base = "{% url 'obtener_consolidado_total_base' %}";
+        const url_calcular_consolidado_total_base = "{% url 'calcular_consolidado_total_base' %}";
+        const url_guardar_fila_consolidado = "{% url 'guardar_fila_consolidado' %}";
+        const url_eliminar_fila_consolidado = "{% url 'eliminar_fila_consolidado' %}";
     </script>
     <script src="{% static 'js/consolidado_total_base.js' %}"></script>
    
