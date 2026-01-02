@@ -54,3 +54,29 @@ table thead th {
 .toast-info {
     background: #17a2b8;
 }
+
+/* estilos para cuenta que empiecen en 54 */
+.cuenta-54 {
+    background-color: #aadbff !important; /* Azul claro */
+}
+
+.cuenta-54:hover {
+    background-color: #bbdefb !important; /* Más oscuro al hover */
+}
+
+.cuenta-54.editing {
+    background-color: #fff9c4 !important; /* Amarillo en edición */
+    border-left: 4px solid #2196F3 !important; /* Borde azul distintivo */
+}
+
+/* estilos para cuenta que empiecen en 51 */
+.cuenta-51 {
+    background-color: #d4ffa3 !important; /* Verde claro */
+}
+.cuenta-51:hover {
+    background-color: #dcedc8 !important; /* Más oscuro al hover */
+}
+.cuenta-51.editing {
+    background-color: #fff9c4 !important; /* Amarillo en edición */
+    border-left: 4px solid #4CAF50 !important; /* Borde verde distintivo */
+}

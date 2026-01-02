@@ -11511,6 +11511,7 @@ def guardar_fila_consolidado(request):
                             mcnccosto=nueva_data['mcnccosto'],
                             ctanombre=nueva_data.get('ctanombre', ''),
                             mcnfecha=fecha,
+                            valor = valor_mes,
                             total_anual=total_anual
                         )
                     )
@@ -11730,6 +11731,7 @@ def calcular_y_guardar_consolidado(request):
                             mcnccosto=row['mcnccosto'],
                             ctanombre=row['ctanombre'],
                             mcnfecha=fecha,
+                            valor = valor,
                             total_anual=total_anual
                         )
                     )
@@ -11763,11 +11765,10 @@ def obtener_consolidado_total_base(request):
     ).values(
         'mcncuenta',
         'mcnccosto',
-        'ctanombre'
-    ).annotate(
-        mes=ExtractMonth('mcnfecha'),
-        total=Sum('total_anual')
-    ).order_by('mcncuenta', 'mcnccosto', 'mes')
+        'ctanombre',
+        'mcnfecha__month',
+        'valor'
+    ).order_by('mcncuenta', 'mcnccosto', 'mcnfecha__month')
     
     # Estructurar datos para pivot
     pivot_data = defaultdict(lambda: {
@@ -11804,13 +11805,30 @@ def obtener_consolidado_total_base(request):
         pivot_data[key]['mcnccosto'] = row['mcnccosto']
         pivot_data[key]['ctanombre'] = row['ctanombre']
         
-        mes_nombre = meses.get(row['mes'])
-        if mes_nombre and row['total']:
-            pivot_data[key][mes_nombre] = row['total']
-            pivot_data[key]['total'] += row['total']
+        mes_nombre = meses.get(row['mcnfecha__month'])
+        if mes_nombre and row['valor'] is not None:
+            pivot_data[key][mes_nombre] = row['valor']
+            pivot_data[key]['total'] += row['valor']
     
     # Convertir a lista para JSON
     result = list(pivot_data.values())
+    
+     # 🔥 Función de ordenamiento personalizada
+    def orden_cuenta(item):
+        cuenta = item['mcncuenta'] or ''
+        
+        # Prioridad: 54 -> 51 -> 52 -> resto
+        if cuenta.startswith('54'):
+            return (1, cuenta)  # Primero las 54
+        elif cuenta.startswith('51'):
+            return (2, cuenta)  # Luego las 51
+        elif cuenta.startswith('52'):
+            return (3, cuenta)  # Luego las 52
+        else:
+            return (4, cuenta)  # El resto al final
+    
+    # Aplicar ordenamiento
+    result.sort(key=orden_cuenta)
     
     return JsonResponse({
         'data': result,

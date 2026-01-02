@@ -2643,6 +2643,7 @@ class ConsolidadoTotalBase(models.Model):
     mcnccosto = models.CharField(blank=True, null=True)
     ctanombre = models.CharField(blank=True, null=True)
     mcnfecha = models.DateField(blank=True, null=True)
+    valor = models.BigIntegerField(blank=True, null=True)
     total_anual = models.BigIntegerField(blank=True, null=True)
     
     class Meta:
@@ -2653,6 +2654,7 @@ class ConsolidadoTulua(models.Model):
     mcnccosto = models.CharField(blank=True, null=True)
     ctanombre = models.CharField(blank=True, null=True)
     mcnfecha = models.DateField(blank=True, null=True)
+    valor = models.BigIntegerField(blank=True, null=True)
     total_anual = models.BigIntegerField(blank=True, null=True)
     
     class Meta:
@@ -2663,6 +2665,7 @@ class ConsolidadoBuga(models.Model):
     mcnccosto = models.CharField(blank=True, null=True)
     ctanombre = models.CharField(blank=True, null=True)
     mcnfecha = models.DateField(blank=True, null=True)
+    valor = models.BigIntegerField(blank=True, null=True)
     total_anual = models.BigIntegerField(blank=True, null=True)
     
     class Meta:
@@ -2673,6 +2676,7 @@ class ConsolidadoCartago(models.Model):
     mcnccosto = models.CharField(blank=True, null=True)
     ctanombre = models.CharField(blank=True, null=True)
     mcnfecha = models.DateField(blank=True, null=True)
+    valor = models.BigIntegerField(blank=True, null=True)
     total_anual = models.BigIntegerField(blank=True, null=True)
     
     class Meta:
@@ -2683,6 +2687,7 @@ class ConsolidadoCali(models.Model):
     mcnccosto = models.CharField(blank=True, null=True)
     ctanombre = models.CharField(blank=True, null=True)
     mcnfecha = models.DateField(blank=True, null=True)
+    valor = models.BigIntegerField(blank=True, null=True)
     total_anual = models.BigIntegerField(blank=True, null=True)
     
     class Meta:

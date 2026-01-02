@@ -58,11 +58,23 @@ $(document).ready(function() {
             indicators: false,
             handler: false
         },
+        rowCallback: function(row, data) {
+            // Agregar clase si la cuenta empieza con 54
+            if (data.mcncuenta && data.mcncuenta.toString().startsWith('54')) {
+                $(row).addClass('cuenta-54');
+            }
+            // agregar clase si la cuenta empieza con 51
+            if (data.mcncuenta && data.mcncuenta.toString().startsWith('51')) {
+                $(row).addClass('cuenta-51');
+            }
+        }
     });
     // ============================================
     // 🔥 AGREGAR NUEVA FILA
     // ============================================
-    $('#agregarFilaBtn').on('click', function() {
+    $('#agregarFilaBtn').on('click', function(e) {
+        e.stopPropagation(); // Prevenir propagación del evento
+        acabaDeAgregar = true; // Marcar que acabamos de agregar una fila
         const nuevaFila = {
             mcncuenta: '',
             mcnccosto: '',
@@ -84,6 +96,10 @@ $(document).ready(function() {
         hacerFilaEditable($row, nuevaFila);
         // Scroll hacia arriba para ver la nueva fila
         $('#tableContainer').animate({ scrollTop: 0 }, 300);
+        // Resetear la bandera después de un momento
+        setTimeout(function() {
+            acabaDeAgregar = false;
+        }, 500);
     });
 
     // ============================================
@@ -149,8 +165,15 @@ $(document).ready(function() {
     // ============================================
     // 🔥 CANCELAR EDICIÓN AL HACER CLIC FUERA
     // ============================================
+    let acabaDeAgregar = false;
     $(document).on('click', function(e) {
         const $target = $(e.target);
+
+        // Si acaba de agregar una fila, ignorar este clic
+        if (acabaDeAgregar) {
+            acabaDeAgregar = false;
+            return;
+        }
         
         // Si el clic es fuera del datatable y fuera de los inputs
         if (!$target.closest('#table').length && !$target.closest('.edit-input').length) {
