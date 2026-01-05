@@ -559,7 +559,7 @@
                             var txt = stripHtml(data);
 
                             // Índices de tus columnas numéricas según tu DataTable (0-based)
-                            var moneyCols = [4,5,6,7,8,9,10,11,12,13,14,15,16];
+                            var moneyCols = [5,6,7,8,9,10,11,12,13,14,15,16,17];
                             
 
                             // Si es columna de dinero: quitar separadores de miles, símbolo y ajustar decimal
@@ -837,7 +837,8 @@
                 let opciones = Object.keys(mapaCuentaMayor); // 🔥 ahora son las claves (códigos)
                 let row = table.row($(this).closest("tr"));
                 let rowData = row.data();
-                
+                // 🔹 Clave actual según el valor guardado
+                let valorActual = rowData["cuenta"] || "";
                 // 🔥 Si el nombre_cen es ADMINISTRACIÓN → solo mostrar claves que empiezan con 51
                 if (rowData["nombre_cen"] && rowData["nombre_cen"].toUpperCase() === "ADMINISTRACIÓN") {
                     opciones = opciones.filter(o => o.startsWith("51"));
@@ -860,7 +861,7 @@
                 let htmlSelect = `<select class="cell-select">` +
                 opciones.map(o => {
                     let leyenda = mapaCuentaMayor[o] || "";
-                    return `<option value="${o}" ${o==oldValue ? "selected":""}>${o} - ${leyenda}</option>`;
+                    return `<option value="${o}" ${o==valorActual ? "selected":""}>${o} - ${leyenda}</option>`;
                 }).join("") +
                 `</select>`;
 
@@ -883,7 +884,6 @@
                     if ((nuevoValor === "540531" || nuevoValor === "54059503") && (rowData["nombre_cen"] === "SERVICIOS TÉCNICOS")){
                         rowData["codcosto"] = "020301";
                     }
-
 
                     setTimeout(() => {
                         row.data(rowData).draw(false);
