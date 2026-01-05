@@ -11812,23 +11812,35 @@ def obtener_consolidado_total_base(request):
     
     # Convertir a lista para JSON
     result = list(pivot_data.values())
-    
-     # 🔥 Función de ordenamiento personalizada
-    def orden_cuenta(item):
-        cuenta = item['mcncuenta'] or ''
+    print(result)
+    # orden_personalizado = [
+    #     '5405',                    # 1º - Gastos de Personal
+    #     '541001',                  # 2º - Honorarios
+    #     '541003',                  # 3º - Arrendamientos
+    #     '541005',                  # 4º - Seguros
+    #     '541006',                  # 5º - Mantenimiento y Reparaciónes
+    #     '541009_541033',           # 6º - Adecuación e Instalaciones-Reparac locat
+    #     '54100207_54100210',       # 7º - Tasas Bomberil-otras
+    #     '541015_541016',           # 8º - Utiles - Papelería- Fotocopias
+    #     '511015_511016',           # 9º - Papelería y Utiles de Oficina
+    #     '541024',                  # 10º - Gastos Legales
+    #     '541027',                  # 11º - Gastos de Viaje
+    #     '5415',                    # 12º - Depreciación
+    # ]
+    #  # 🔥 Función de ordenamiento personalizada
+    # def orden_cuenta(item):
+    #     cuenta = item['mcncuenta'] or ''
         
-        # Prioridad: 54 -> 51 -> 52 -> resto
-        if cuenta.startswith('54'):
-            return (1, cuenta)  # Primero las 54
-        elif cuenta.startswith('51'):
-            return (2, cuenta)  # Luego las 51
-        elif cuenta.startswith('52'):
-            return (3, cuenta)  # Luego las 52
-        else:
-            return (4, cuenta)  # El resto al final
+    #     # Buscar si la cuenta está en el orden personalizado
+    #     try:
+    #         indice = orden_personalizado.index(cuenta)
+    #         return indice  # Solo retorna el índice
+    #     except ValueError:
+    #         # Si no está en la lista, ponerlo al final
+    #         return len(orden_personalizado)
     
-    # Aplicar ordenamiento
-    result.sort(key=orden_cuenta)
+    # # Aplicar ordenamiento
+    # result.sort(key=orden_cuenta)
     
     return JsonResponse({
         'data': result,
