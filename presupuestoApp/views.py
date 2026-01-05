@@ -11758,7 +11758,7 @@ def obtener_consolidado_total_base(request):
     """
     # Obtener el año del request o usar el año actual
     year = request.GET.get('year', datetime.datetime.now().year)
-    
+    year=2025
     # Consulta base
     queryset = ConsolidadoTotalBase.objects.filter(
         mcnfecha__year=year
@@ -11812,35 +11812,34 @@ def obtener_consolidado_total_base(request):
     
     # Convertir a lista para JSON
     result = list(pivot_data.values())
-    print(result)
-    # orden_personalizado = [
-    #     '5405',                    # 1º - Gastos de Personal
-    #     '541001',                  # 2º - Honorarios
-    #     '541003',                  # 3º - Arrendamientos
-    #     '541005',                  # 4º - Seguros
-    #     '541006',                  # 5º - Mantenimiento y Reparaciónes
-    #     '541009_541033',           # 6º - Adecuación e Instalaciones-Reparac locat
-    #     '54100207_54100210',       # 7º - Tasas Bomberil-otras
-    #     '541015_541016',           # 8º - Utiles - Papelería- Fotocopias
-    #     '511015_511016',           # 9º - Papelería y Utiles de Oficina
-    #     '541024',                  # 10º - Gastos Legales
-    #     '541027',                  # 11º - Gastos de Viaje
-    #     '5415',                    # 12º - Depreciación
-    # ]
-    #  # 🔥 Función de ordenamiento personalizada
-    # def orden_cuenta(item):
-    #     cuenta = item['mcncuenta'] or ''
+    orden_personalizado = [
+        '5405',                    # 1º - Gastos de Personal
+        '541001',                  # 2º - Honorarios
+        '541003',                  # 3º - Arrendamientos
+        '541005',                  # 4º - Seguros
+        '541006',                  # 5º - Mantenimiento y Reparaciónes
+        '541009_541033',           # 6º - Adecuación e Instalaciones-Reparac locat
+        '54100207_54100210',       # 7º - Tasas Bomberil-otras
+        '541015_541016',           # 8º - Utiles - Papelería- Fotocopias
+        '511015_511016',           # 9º - Papelería y Utiles de Oficina
+        '541024',                  # 10º - Gastos Legales
+        '541027',                  # 11º - Gastos de Viaje
+        '5415',                    # 12º - Depreciación
+    ]
+     # 🔥 Función de ordenamiento personalizada
+    def orden_cuenta(item):
+        cuenta = item['mcncuenta'] or ''
         
-    #     # Buscar si la cuenta está en el orden personalizado
-    #     try:
-    #         indice = orden_personalizado.index(cuenta)
-    #         return indice  # Solo retorna el índice
-    #     except ValueError:
-    #         # Si no está en la lista, ponerlo al final
-    #         return len(orden_personalizado)
+        # Buscar si la cuenta está en el orden personalizado
+        try:
+            indice = orden_personalizado.index(cuenta)
+            return indice  # Solo retorna el índice
+        except ValueError:
+            # Si no está en la lista, ponerlo al final
+            return len(orden_personalizado)
     
-    # # Aplicar ordenamiento
-    # result.sort(key=orden_cuenta)
+    # Aplicar ordenamiento
+    result.sort(key=orden_cuenta)
     
     return JsonResponse({
         'data': result,
