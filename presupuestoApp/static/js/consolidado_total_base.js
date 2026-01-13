@@ -10,8 +10,18 @@ $(document).ready(function() {
     let table = new DataTable('#table', {
         ajax: {
             url: url_obtener_consolidado_total_base,
-            dataSrc: 'data'
+            dataSrc: function(json) {
+                const data = json.data;
+                const totales54 = calcularTotalesPorPrefijo(data, '54');
+                const totales51 = calcularTotalesPorPrefijo(data, '51');
+                const totalesVentasNetas = calcularTotalesPorLista(data, ['1','2','41750201']);
+                return insertarFilasTotales(data, totales54, totales51, totalesVentasNetas);
+            }
         },
+        
+        paging: false,
+        autoWidth: false,  //Desactiva el ancho automático
+
         columns: [
             {   // 🔥 Columna de selección
                 data: null,
@@ -47,9 +57,6 @@ $(document).ready(function() {
             { width: '200px', targets: 3 },     // NOMBRE CUENTA
             { width: '120px', targets: [4,5,6,7,8,9,10,11,12,13,14,15,16], className: 'dt-body-right', render: numberFormat }, 
         ],
-        autoWidth: false,  // 🔥 IMPORTANTE: Desactiva el ancho automático
-        paging: false,
-        // scrollX: true,
         language: {
             url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
         },
@@ -67,8 +74,214 @@ $(document).ready(function() {
             if (data.mcncuenta && data.mcncuenta.toString().startsWith('51')) {
                 $(row).addClass('cuenta-51');
             }
+            // Identificar fila de totales
+            if (data.isTotalRow) {
+                if (data.tipoTotal === '54') {
+                    $(row).addClass('total-row-54');
+                } else if (data.tipoTotal === '51') {
+                    $(row).addClass('total-row-51');
+                } else if (data.tipoTotal === 'VentasNetas') {
+                    $(row).addClass('total-row-ventas-netas');
+                }
+            }
+        },
+        createdRow: function(row, data, dataIndex) {
+            // Deshabilitar acciones para fila de totales
+            if (data.isTotalRow) {
+                $(row).find('.action-buttons').html('<span style="color: #666;">—</span>');
+            }
         }
     });
+    // Función para calcular totales por prefijo de cuenta
+    function calcularTotalesPorPrefijo(data, prefijo) {
+        const totales = {
+            enero: 0, febrero: 0, marzo: 0, abril: 0,
+            mayo: 0, junio: 0, julio: 0, agosto: 0,
+            septiembre: 0, octubre: 0, noviembre: 0, diciembre: 0,
+            total: 0
+        };
+
+        data.forEach(row => {
+            if (row.mcncuenta && row.mcncuenta.toString().startsWith(prefijo)) {
+                totales.enero += parseFloat(row.enero) || 0;
+                totales.febrero += parseFloat(row.febrero) || 0;
+                totales.marzo += parseFloat(row.marzo) || 0;
+                totales.abril += parseFloat(row.abril) || 0;
+                totales.mayo += parseFloat(row.mayo) || 0;
+                totales.junio += parseFloat(row.junio) || 0;
+                totales.julio += parseFloat(row.julio) || 0;
+                totales.agosto += parseFloat(row.agosto) || 0;
+                totales.septiembre += parseFloat(row.septiembre) || 0;
+                totales.octubre += parseFloat(row.octubre) || 0;
+                totales.noviembre += parseFloat(row.noviembre) || 0;
+                totales.diciembre += parseFloat(row.diciembre) || 0;
+                totales.total += parseFloat(row.total) || 0;
+            }
+        });
+
+        return totales;
+    }
+
+    // Función para calcular totales de una lista específica de códigos
+    function calcularTotalesPorLista(data, listaCodigos) {
+        const totales = {
+            enero: 0, febrero: 0, marzo: 0, abril: 0,
+            mayo: 0, junio: 0, julio: 0, agosto: 0,
+            septiembre: 0, octubre: 0, noviembre: 0, diciembre: 0,
+            total: 0
+        };
+
+        data.forEach(row => {
+            if (row.mcncuenta) {
+                const cuenta = row.mcncuenta.toString();
+                // Verificar si la cuenta comienza con alguno de los códigos de la lista
+                const coincide = listaCodigos.some(codigo => cuenta.startsWith(codigo));
+                
+                if (coincide) {
+                    totales.enero += parseFloat(row.enero) || 0;
+                    totales.febrero += parseFloat(row.febrero) || 0;
+                    totales.marzo += parseFloat(row.marzo) || 0;
+                    totales.abril += parseFloat(row.abril) || 0;
+                    totales.mayo += parseFloat(row.mayo) || 0;
+                    totales.junio += parseFloat(row.junio) || 0;
+                    totales.julio += parseFloat(row.julio) || 0;
+                    totales.agosto += parseFloat(row.agosto) || 0;
+                    totales.septiembre += parseFloat(row.septiembre) || 0;
+                    totales.octubre += parseFloat(row.octubre) || 0;
+                    totales.noviembre += parseFloat(row.noviembre) || 0;
+                    totales.diciembre += parseFloat(row.diciembre) || 0;
+                    totales.total += parseFloat(row.total) || 0;
+                }
+            }
+        });
+
+        return totales;
+    }
+
+    // Función para calcular el porcentaje del costo de ventas
+    function calcularPorcentajeCostoVentas(costoVentas, ventasNetas) {
+        const porcentajes = {
+            enero: 0, febrero: 0, marzo: 0, abril: 0,
+            mayo: 0, junio: 0, julio: 0, agosto: 0,
+            septiembre: 0, octubre: 0, noviembre: 0, diciembre: 0,
+            total: 0
+        };
+
+        const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                       'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre', 'total'];
+
+        meses.forEach(mes => {
+            const costo = parseFloat(costoVentas[mes]) || 0;
+            const ventas = parseFloat(ventasNetas[mes]) || 0;
+            
+            // Evitar división por cero
+            if (ventas !== 0) {
+                porcentajes[mes] = (costo / ventas) * 100;
+            } else {
+                porcentajes[mes] = 0;
+            }
+        });
+
+        return porcentajes;
+    }
+
+    // Función para insertar filas de totales al inicio de cada grupo
+    function insertarFilasTotales(data, totales54, totales51, totalesVentasNetas) {
+        const resultado = [];
+        let primeraPos54 = -1;
+        let primeraPos51 = -1;
+        let primeraPosVentasNetas = -1;
+
+        // Encontrar las primeras posiciones de cada tipo de cuenta
+        for (let i = 0; i < data.length; i++) {
+            if (primeraPos54 === -1 && data[i].mcncuenta && data[i].mcncuenta.toString().startsWith('54')) {
+                primeraPos54 = i;
+            }
+            if (primeraPos51 === -1 && data[i].mcncuenta && data[i].mcncuenta.toString().startsWith('51')) {
+                primeraPos51 = i;
+            }
+            if (primeraPosVentasNetas === -1 && data[i].mcncuenta && data[i].mcncuenta.toString().startsWith('1')) { 
+                primeraPosVentasNetas = i;
+            }
+        }
+
+        // Insertar filas con sus respectivos totales
+        for (let i = 0; i < data.length; i++) {
+            if (i === primeraPos54) {
+                resultado.push({
+                    mcncuenta: '',
+                    mcnccosto: '',
+                    ctanombre: 'GASTOS DE VENTAS',
+                    enero: totales54.enero,
+                    febrero: totales54.febrero,
+                    marzo: totales54.marzo,
+                    abril: totales54.abril,
+                    mayo: totales54.mayo,
+                    junio: totales54.junio,
+                    julio: totales54.julio,
+                    agosto: totales54.agosto,
+                    septiembre: totales54.septiembre,
+                    octubre: totales54.octubre,
+                    noviembre: totales54.noviembre,
+                    diciembre: totales54.diciembre,
+                    total: totales54.total,
+                    isTotalRow: true,
+                    tipoTotal: '54'
+                });
+            }
+            
+            if (i === primeraPos51) {
+                resultado.push({
+                    mcncuenta: '',
+                    mcnccosto: '',
+                    ctanombre: 'GASTOS  DE ADMINISTRACION',
+                    enero: totales51.enero,
+                    febrero: totales51.febrero,
+                    marzo: totales51.marzo,
+                    abril: totales51.abril,
+                    mayo: totales51.mayo,
+                    junio: totales51.junio,
+                    julio: totales51.julio,
+                    agosto: totales51.agosto,
+                    septiembre: totales51.septiembre,
+                    octubre: totales51.octubre,
+                    noviembre: totales51.noviembre,
+                    diciembre: totales51.diciembre,
+                    total: totales51.total,
+                    isTotalRow: true,
+                    tipoTotal: '51'
+                });
+            }
+
+            if (i === primeraPosVentasNetas) {
+                resultado.push({
+                    mcncuenta: '',
+                    mcnccosto: '',
+                    ctanombre: 'VENTAS NETAS',
+                    enero: totalesVentasNetas.enero,
+                    febrero: totalesVentasNetas.febrero,
+                    marzo: totalesVentasNetas.marzo,
+                    abril: totalesVentasNetas.abril,
+                    mayo: totalesVentasNetas.mayo,
+                    junio: totalesVentasNetas.junio,
+                    julio: totalesVentasNetas.julio,
+                    agosto: totalesVentasNetas.agosto,
+                    septiembre: totalesVentasNetas.septiembre,
+                    octubre: totalesVentasNetas.octubre,
+                    noviembre: totalesVentasNetas.noviembre,
+                    diciembre: totalesVentasNetas.diciembre,
+                    total: totalesVentasNetas.total,
+                    isTotalRow: true,
+                    tipoTotal: 'VentasNetas'
+                });
+            }
+            
+            resultado.push(data[i]);
+        }
+
+        return resultado;
+    }
+
     // ============================================
     // 🔥 AGREGAR NUEVA FILA
     // ============================================
@@ -348,56 +561,56 @@ $(document).ready(function() {
         });
     }
 
-    // Botón para calcular y guardar consolidado
-    $('#calcularConsolidadoBtn').on('click', function() {
-        const btn = $(this);
-        const originalText = btn.html();
+    // // Botón para calcular y guardar consolidado
+    // $('#calcularConsolidadoBtn').on('click', function() {
+    //     const btn = $(this);
+    //     const originalText = btn.html();
         
-        // Confirmar acción
-        if (!confirm('¿Está seguro de recalcular y guardar el consolidado? Esto eliminará los datos actuales y creará nuevos registros.')) {
-            return;
-        }
+    //     // Confirmar acción
+    //     if (!confirm('¿Está seguro de recalcular y guardar el consolidado? Esto eliminará los datos actuales y creará nuevos registros.')) {
+    //         return;
+    //     }
         
-        // Deshabilitar botón y mostrar loading
-        btn.prop('disabled', true).html('⏳ Calculando...');
+    //     // Deshabilitar botón y mostrar loading
+    //     btn.prop('disabled', true).html('⏳ Calculando...');
         
-        // Obtener CSRF token
-        const csrftoken = document.querySelector('[name=csrf-token]').content;
+    //     // Obtener CSRF token
+    //     const csrftoken = document.querySelector('[name=csrf-token]').content;
         
-        $.ajax({
-            url: url_calcular_consolidado_total_base,  // 👈 Usar la variable definida en el template
-            type: 'POST',
-            headers: {
-                'X-CSRFToken': csrftoken
-            },
-            success: function(response) {
-                if (response.success) {
-                    showToast(response.mensaje, 'success');
+    //     $.ajax({
+    //         url: url_calcular_consolidado_total_base,  // 👈 Usar la variable definida en el template
+    //         type: 'POST',
+    //         headers: {
+    //             'X-CSRFToken': csrftoken
+    //         },
+    //         success: function(response) {
+    //             if (response.success) {
+    //                 showToast(response.mensaje, 'success');
                     
-                    // Recargar la tabla después de 1 segundo
-                    setTimeout(function() {
-                        table.ajax.reload(null, false);  // 👈 Usar la variable table directamente
-                    }, 1000);
-                } else {
-                    showToast('Error: ' + (response.error || 'Error desconocido'), 'error');
-                }
-            },
-            error: function(xhr) {
-                let errorMsg = 'Error al calcular consolidado';
-                if (xhr.responseJSON && xhr.responseJSON.error) {
-                    errorMsg = xhr.responseJSON.error;
-                } else if (xhr.statusText) {
-                    errorMsg += ': ' + xhr.statusText;
-                }
-                showToast(errorMsg, 'error');
-                console.error('Error completo:', xhr);
-            },
-            complete: function() {
-                // Restaurar botón
-                btn.prop('disabled', false).html(originalText);
-            }
-        });
-    });
+    //                 // Recargar la tabla después de 1 segundo
+    //                 setTimeout(function() {
+    //                     table.ajax.reload(null, false);  // 👈 Usar la variable table directamente
+    //                 }, 1000);
+    //             } else {
+    //                 showToast('Error: ' + (response.error || 'Error desconocido'), 'error');
+    //             }
+    //         },
+    //         error: function(xhr) {
+    //             let errorMsg = 'Error al calcular consolidado';
+    //             if (xhr.responseJSON && xhr.responseJSON.error) {
+    //                 errorMsg = xhr.responseJSON.error;
+    //             } else if (xhr.statusText) {
+    //                 errorMsg += ': ' + xhr.statusText;
+    //             }
+    //             showToast(errorMsg, 'error');
+    //             console.error('Error completo:', xhr);
+    //         },
+    //         complete: function() {
+    //             // Restaurar botón
+    //             btn.prop('disabled', false).html(originalText);
+    //         }
+    //     });
+    // });
 
     // 🔥 Función para mostrar toasts
     function showToast(message, type = 'info') {

@@ -10,14 +10,13 @@
 <section class="cuenta5-container">
     <div class="btn-section1">
         <button id="agregarFilaBtn">➕ Agregar Fila</button>
-        <button id="calcularConsolidadoBtn">🔄 Calcular y Guardar Consolidado</button>
     </div>
     <div id="tableContainer" style="overflow-x:auto; max-width:100%;">
         <table id="table" class="display cell-border">
             <thead>
                 <tr>
                     <th><input type="checkbox" id="checkAllIPC" title="Seleccionar todo"></th>
-                    <th>CUENTA</th>
+                    <th>CONCEPTO</th>
                     <th>CENTRO DE COSTO</th>
                     <th>NOMBRE CUENTA</th>
                     <th>ENERO</th>
@@ -70,11 +69,7 @@
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
     <!-- DataTables JS -->
-    <script src="https://cdn.datatables.net/2.3.5/js/dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/columncontrol/1.1.1/js/dataTables.columnControl.min.js"></script>
-    <script src="https://cdn.datatables.net/columncontrol/1.1.1/js/columnControl.dataTables.js"></script>
-    <!-- JS de FixedHeader -->
-    {% comment %} <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script> {% endcomment %}
+    
     <!-- DataTables Buttons JS -->
     {% comment %} <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script> {% endcomment %}
     {% comment %} <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script> {% endcomment %}
@@ -83,7 +78,6 @@
 
     <script>
         const url_obtener_consolidado_total_base = "{% url 'obtener_consolidado_total_base' %}";
-        const url_calcular_consolidado_total_base = "{% url 'calcular_consolidado_total_base' %}";
         const url_guardar_fila_consolidado = "{% url 'guardar_fila_consolidado' %}";
         const url_eliminar_fila_consolidado = "{% url 'eliminar_fila_consolidado' %}";
     </script>

@@ -11476,8 +11476,19 @@ def guardar_fila_consolidado(request):
                 'error': 'Cuenta y Centro de Costo son obligatorios'
             }, status=400)
         
-        year = datetime.datetime.now().year
-        
+        # tomar año de la cuenta 5 
+        queryset = Cuenta5Base.objects.values(
+                'mcncuenta',
+                'mcnccosto',
+                'mcnfecha',
+            )
+        year = 0
+        for row in queryset:
+            fecha = excel_serial_to_date(row['mcnfecha'])
+            if not fecha:
+                continue
+            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            year = fecha.year
         # Mapeo de meses
         meses_mapping = {
             'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
@@ -11585,6 +11596,331 @@ def eliminar_fila_consolidado(request):
             'error': str(e)
         }, status=500)
 
+def calcular_consolidado():
+    """
+    Realiza todos los cálculos de consolidación y retorna los resultados
+    sin guardar en base de datos
+    """
+    try:
+        queryset = Cuenta5Base.objects.values(
+            'mcncuenta',
+            'mcnccosto',
+            'mcnfecha',
+            'mcnvaldebi',
+            'mcnvalcred'
+        )
+
+        consolidado = defaultdict(lambda: {
+            'total_debito': 0,
+            'total_credito': 0
+        })
+        
+        MESES_ES = {
+            1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+            5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+            9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+        }
+        year = 0
+        
+        # 1. Convertir fecha y consolidar
+        for row in queryset:
+            fecha = excel_serial_to_date(row['mcnfecha'])
+            if not fecha:
+                continue
+            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+
+            mes = MESES_ES[fecha.month]
+            year = fecha.year
+            cuenta = row['mcncuenta'] or 'SIN CUENTA'
+            costo = row['mcnccosto'] or 'SIN COSTO'
+            
+            # Aplicar agrupaciones de cuentas
+            if cuenta.startswith('541001'):
+                cuenta = '541001'
+            
+            tasasBomberil_otras = ['54100207', '54100208', '54100209', '54100210']
+            adecuacion_instalaciones = ['541009', '541033', '54103301', '54103302']
+            papelaria_fotocopias = ['541015', '541016']
+            papeleria_utiles_oficina = ['511015', '511016']
+            gastos_fondos_sociales = ['51109501', '51109502']
+            
+            if cuenta in tasasBomberil_otras:
+                cuenta = '54100207_54100210'
+            if cuenta in adecuacion_instalaciones:
+                cuenta = '541009_541033'
+            if cuenta in papelaria_fotocopias:
+                cuenta = '541015_541016'
+            if cuenta in papeleria_utiles_oficina:
+                cuenta = '511015_511016'
+            if cuenta in gastos_fondos_sociales:
+                cuenta = '51109501_51109502'
+                
+            if cuenta.startswith('541003'):
+                cuenta = '541003'
+            if cuenta.startswith('541005'):
+                cuenta = '541005'
+            if cuenta.startswith('541006'):
+                cuenta = '541006'
+            if cuenta.startswith('541024'):
+                cuenta = '541024'
+            if cuenta.startswith('541027'):
+                cuenta = '541027'
+            if cuenta.startswith('5415'):
+                cuenta = '5415'
+            if costo == '020201':
+                cuenta = '5405'
+            
+            # gastos de administración
+            if costo == '0101':
+                cuenta = '5105'
+            
+            key = (mes, cuenta, costo)
+            consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
+            consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
+        
+        # 2. Eliminar registros con cuentas que inicien con 5405 después de la agrupación
+        costos_a_eliminar = ['020302', '020402', '020301']
+        cuentas_a_eliminar = ['51109501']
+        keys_to_remove = [
+            key for key in consolidado.keys()
+            if (key[1].startswith('5405') and key[1]!='5405') or (key[2] in costos_a_eliminar) or (key[1] in cuentas_a_eliminar)
+        ]
+        for key in keys_to_remove:
+            del consolidado[key]
+        
+        # 3. Obtener nombres de cuentas
+        cuentas_qs = Cuenta5Base.objects.values(
+            'mcncuenta',
+            'ctanombre'
+        ).distinct()
+        cuentas_dict = {
+            c['mcncuenta']: c['ctanombre']
+            for c in cuentas_qs
+        }
+
+        # 4. Preparar datos para retornar
+        registros_por_cuenta_costo = defaultdict(lambda: {
+            'mcncuenta': '',
+            'mcnccosto': '',
+            'ctanombre': '',
+            'meses': {}
+        })
+        
+        for (mes, cuenta, costo) in consolidado.keys():
+            key = (cuenta, costo)
+            
+            total_debito = consolidado[(mes, cuenta, costo)]['total_debito']
+            total_credito = consolidado[(mes, cuenta, costo)]['total_credito']
+            saldo = total_debito - total_credito
+            
+            registros_por_cuenta_costo[key]['mcncuenta'] = cuenta
+            registros_por_cuenta_costo[key]['mcnccosto'] = costo
+            
+            # Asignar nombre especial para cuentas agrupadas
+            nombres_especiales = {
+                '541001': 'Honorarios',
+                '54100207_54100210': 'Tasas Bomberil-otras',
+                '541003': 'Arrendamientos',
+                '541005': 'Seguros',
+                '541006': 'Mantenimiento y Reparaciónes',
+                '541009_541033': 'Adecuación e Instalaciones-Reparac locat',
+                '541015_541016': 'Utiles - Papelería- Fotocopias',
+                '541024': 'Gastos Legales',
+                '541027': 'Gastos de Viaje',
+                '5415': 'Depreciación',
+                '511015_511016': 'Papelería y Utiles de Oficina',
+                '5405': 'Gastos de Personal',
+                '5105': 'Gastos de Personal',
+                '51109501_51109502': 'Gastos de Fondos Sociales'
+            }
+            
+            registros_por_cuenta_costo[key]['ctanombre'] = nombres_especiales.get(
+                cuenta, 
+                cuentas_dict.get(cuenta, 'SIN NOMBRE')
+            )
+            
+            registros_por_cuenta_costo[key]['meses'][mes] = round(saldo)
+        
+        return {
+            'success': True,
+            'data': registros_por_cuenta_costo
+        }
+        
+    except Exception as e:
+        print(f"❌ Error en calcular_consolidado: {e}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+def obtener_consolidado_total_base(request):
+    """
+    Vista que retorna datos pivoteados con meses en horizontal
+    Llama a la función de cálculo en lugar de consultar la base de datos
+    """
+    # Obtener datos calculados
+    resultado_calculo = calcular_consolidado()
+    
+    if not resultado_calculo['success']:
+        return JsonResponse({
+            'error': resultado_calculo.get('error', 'Error al calcular consolidado')
+        }, status=500)
+    
+    registros_por_cuenta_costo = resultado_calculo['data']
+    
+    # Estructurar datos para pivot
+    pivot_data = defaultdict(lambda: {
+        'mcncuenta': '',
+        'mcnccosto': '',
+        'ctanombre': '',
+        'enero': 0,
+        'febrero': 0,
+        'marzo': 0,
+        'abril': 0,
+        'mayo': 0,
+        'junio': 0,
+        'julio': 0,
+        'agosto': 0,
+        'septiembre': 0,
+        'octubre': 0,
+        'noviembre': 0,
+        'diciembre': 0,
+        'total': 0
+    })
+    
+    # Mapeo de nombres de mes a nombres en minúscula
+    meses_map = {
+        'Enero': 'enero',
+        'Febrero': 'febrero',
+        'Marzo': 'marzo',
+        'Abril': 'abril',
+        'Mayo': 'mayo',
+        'Junio': 'junio',
+        'Julio': 'julio',
+        'Agosto': 'agosto',
+        'Septiembre': 'septiembre',
+        'Octubre': 'octubre',
+        'Noviembre': 'noviembre',
+        'Diciembre': 'diciembre'
+    }
+    
+    # Llenar el pivot
+    for key, row in registros_por_cuenta_costo.items():
+        pivot_key = f"{row['mcncuenta']}_{row['mcnccosto']}"
+        
+        pivot_data[pivot_key]['mcncuenta'] = row['mcncuenta']
+        pivot_data[pivot_key]['mcnccosto'] = row['mcnccosto']
+        pivot_data[pivot_key]['ctanombre'] = row['ctanombre']
+        
+        # Recorrer los meses del registro
+        for mes, valor in row['meses'].items():
+            mes_nombre = meses_map.get(mes)
+            if mes_nombre:
+                pivot_data[pivot_key][mes_nombre] = valor
+                pivot_data[pivot_key]['total'] += valor
+    
+    # Convertir a lista para JSON
+    result = list(pivot_data.values())
+    
+    orden_personalizado = [
+        '1',
+        '2',
+        '41750201',	        # Descuentos otorgados x pto pago 
+        '613522',	        # COSTO DE VENTAS 
+        '4240900101',	        # Descuentos x Pto Pago Proveed 
+        '4240909502',	        # Bonificación de Proveedores 
+        '5405',                     # 1º - Gastos de Personal
+        '541001',                   # 2º - Honorarios
+        '54100201',                 # Impto. Industria y Comercio
+        '54100202',	                # Impto Predial
+        '54100204',	                # Impuesto a las ventas (I.VA)
+        '54100205',	                # Impuesto al consumo
+        '54100206',	                # Avisos y Tableros
+        '54100207_54100210',        # Tasas Bomberil-otras
+        '541003',               # 3º - Arrendamientos
+        '541005',               # 4º - Seguros
+        '541006',               # 5º - Mantenimiento y Reparaciónes
+        '541009_541033',        # 6º - Adecuación e Instalaciones-Reparac locat
+        '541010',	            # Aseo y elementos
+        '541011',	            # Casino y Restaurante
+        '54101201',	            # Acueducto y Alcantarillado
+        '54101202',	            # Energía Eléctrica
+        '54101203',	            # Teléfono
+        '54101204',	            # Servicio de Gas
+        '541013',	            # Correo Portes y Cables
+        '541014',	            # Transporte, Fletes y Acarreos
+        '541015_541016',        # 8º - Utiles - Papelería- Fotocopias
+        '541018',	            # Publicidad y Propaganda
+        '541023',	            # Gastos Reuniones  y Conferencias
+        '541024',               # 10º - Gastos Legales
+        '541027',               # 11º - Gastos de Viaje
+        '541029',	            # Vigilancia privada
+        '541032',	            # Libros, Suscripciones y Revistas
+        '541035',	            # Procesamiento Electrónico 
+        '54109501',	            # Cargue y Descargue
+        '54109502',	            # Combustible y Lubricantes
+        '54109503',	            # Envases y Empaques
+        '54109504',	            # Taxis y Buses
+        '54109505',	            # Estampillas
+        '54109506',	            # Parqueaderos
+        '54109507',	            # Obsequios
+        '54109508',	            # Atenciones Sociales
+        '54109509',	            # Inventarios Dados de Baja 
+        '54109510',	            # Ajustes Múltiplos de 1000
+        '5415',                 # 12º - Depreciación
+        '542005',	            # Amortización de intangibles
+        '54100203',	            # impuesto derechos ins
+        '54100211',             # pro-deporte
+        # gastos de administración
+        '5105',	        # Gastos de Personal
+        '511001',	    # Honorarios
+        '511002',	    # Impuestos
+        '511003',	    # Arrendamientos
+        '511005',	    # Seguros
+        '511006',	    # Mantenimiento y Reparaciones
+        '511009',	    # Reparaciones Locativas
+        '511010',	    # Aseo y elementos
+        '511011',	    # Casino y Restaurante
+        '511012',	    # Servicios Públicos
+        '511013',	    # Correo
+        '511015_511016',	    # Papelería y Utiles de Oficina
+        '511018',	    # Publicidad y Propaganda
+        '511019',	    # Contribuciones y afiliaciones
+        '511020',	    # Gastos de Asamblea
+        '511021',	    # Gastos Directivos
+        '511022',	    # Gastos de Comités
+        '511023',	    # Reuniones y Conferencias
+        '511024',	    # Gastos Legales
+        '511026',	    # Gastos de Representación
+        '511027',	    # Gastos de Viajes
+        '511031',	    # Cuotas de Sostenimiento
+        '511033',	    # Adecuación e Instalación
+        '511035',	    # Procesamiento Electrónico 
+        '51109502',	    # Gastos de Fondos Sociales
+        '511512',	    # Deterioro de Inventario
+        '511534',	    # Deterioro de Cartera
+    ]
+    
+    # Función de ordenamiento personalizada
+    def orden_cuenta(item):
+        cuenta = item['mcncuenta'] or ''
+        
+        try:
+            indice = orden_personalizado.index(cuenta)
+            return indice
+        except ValueError:
+            return len(orden_personalizado)
+    
+    # Aplicar ordenamiento
+    result.sort(key=orden_cuenta)
+    
+    return JsonResponse({
+        'data': result,
+        'recordsTotal': len(result),
+        'recordsFiltered': len(result)
+    })
+
+'''
 def calcular_y_guardar_consolidado(request):
     """
     Realiza todos los cálculos de consolidación y guarda los resultados 
@@ -11613,7 +11949,7 @@ def calcular_y_guardar_consolidado(request):
                 5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
                 9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
             }
-            
+            year = 0
             # 1. Convertir fecha y consolidar
             for row in queryset:
                 fecha = excel_serial_to_date(row['mcnfecha'])
@@ -11622,6 +11958,7 @@ def calcular_y_guardar_consolidado(request):
                 fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
 
                 mes = MESES_ES[fecha.month]
+                year = fecha.year
                 cuenta = row['mcncuenta'] or 'SIN CUENTA'
                 costo = row['mcnccosto'] or 'SIN COSTO'
                 
@@ -11633,6 +11970,7 @@ def calcular_y_guardar_consolidado(request):
                 adecuacion_instalaciones = ['541009', '541033', '54103301', '54103302']
                 papelaria_fotocopias = ['541015', '541016']
                 papeleria_utiles_oficina = ['511015', '511016']
+                gastos_fondos_sociales = ['51109501', '51109502']
                 
                 if cuenta in tasasBomberil_otras:
                     cuenta = '54100207_54100210'
@@ -11642,6 +11980,8 @@ def calcular_y_guardar_consolidado(request):
                     cuenta = '541015_541016'
                 if cuenta in papeleria_utiles_oficina:
                     cuenta = '511015_511016'
+                if cuenta in gastos_fondos_sociales:
+                    cuenta = '51109501_51109502'
                     
                 if cuenta.startswith('541003'):
                     cuenta = '541003'
@@ -11655,14 +11995,25 @@ def calcular_y_guardar_consolidado(request):
                     cuenta = '541027'
                 if cuenta.startswith('5415'):
                     cuenta = '5415'
-                    
                 if costo == '020201':
                     cuenta = '5405'
+                
+                # gastos de administración
+                if costo == '0101':
+                    cuenta = '5105'
                 
                 key = (mes, cuenta, costo)
                 consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
                 consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
-
+            # 2. Eliminar registros con cuentas que inicien con 5405 después de la agrupación
+            costos_a_eliminar = ['020302', '020402', '020301']
+            cuentas_a_eliminar = ['51109501']
+            keys_to_remove = [
+                key for key in consolidado.keys()
+                if (key[1].startswith('5405') and key[1]!='5405') or (key[2] in costos_a_eliminar) or (key[1] in cuentas_a_eliminar) # key[1] es la cuenta, key[2] es el costo
+            ]
+            for key in keys_to_remove:
+                del consolidado[key]
             # 2. Obtener nombres de cuentas
             cuentas_qs = Cuenta5Base.objects.values(
                 'mcncuenta',
@@ -11704,7 +12055,9 @@ def calcular_y_guardar_consolidado(request):
                     '541027': 'Gastos de Viaje',
                     '5415': 'Depreciación',
                     '511015_511016': 'Papelería y Utiles de Oficina',
-                    '5405': 'Gastos de Personal'
+                    '5405': 'Gastos de Personal',
+                    '5105': 'Gastos de Personal',
+                    '51109501_51109502': 'Gastos de Fondos Sociales'
                 }
                 
                 registros_por_cuenta_costo[key]['ctanombre'] = nombres_especiales.get(
@@ -11713,36 +12066,35 @@ def calcular_y_guardar_consolidado(request):
                 )
                 
                 registros_por_cuenta_costo[key]['meses'][mes] = round(saldo)
-
+            
             # 4. Guardar en base de datos
-            registros_nuevos = []
-            for key in registros_por_cuenta_costo.keys():
-                row = registros_por_cuenta_costo[key]
-                total_anual = sum(row['meses'].values())
+            # registros_nuevos = []
+            # for key in registros_por_cuenta_costo.keys():
+            #     row = registros_por_cuenta_costo[key]
+            #     total_anual = sum(row['meses'].values())
                 
-                # Crear un registro por cada mes con datos
-                for mes, valor in row['meses'].items():
-                    mes_num = list(MESES_ES.keys())[list(MESES_ES.values()).index(mes)]
-                    fecha = datetime.date(datetime.datetime.now().year, mes_num, 1)
+            #     # Crear un registro por cada mes con datos
+            #     for mes, valor in row['meses'].items():
+            #         mes_num = list(MESES_ES.keys())[list(MESES_ES.values()).index(mes)]
+            #         fecha = datetime.date(year, mes_num, 1)
                     
-                    registros_nuevos.append(
-                        ConsolidadoTotalBase(
-                            mcncuenta=row['mcncuenta'],
-                            mcnccosto=row['mcnccosto'],
-                            ctanombre=row['ctanombre'],
-                            mcnfecha=fecha,
-                            valor = valor,
-                            total_anual=total_anual
-                        )
-                    )
+            #         registros_nuevos.append(
+            #             ConsolidadoTotalBase(
+            #                 mcncuenta=row['mcncuenta'],
+            #                 mcnccosto=row['mcnccosto'],
+            #                 ctanombre=row['ctanombre'],
+            #                 mcnfecha=fecha,
+            #                 valor = valor,
+            #                 total_anual=total_anual
+            #             )
+            #         )
             
-            # Insertar todos los registros en una sola operación
-            ConsolidadoTotalBase.objects.bulk_create(registros_nuevos)
-            
+            # # Insertar todos los registros en una sola operación
+            # ConsolidadoTotalBase.objects.bulk_create(registros_nuevos)
+        
         return JsonResponse({
             'success': True,
-            'mensaje': f'✅ Consolidado calculado y guardado exitosamente. {len(registros_nuevos)} registros creados.',
-            'registros_creados': len(registros_nuevos)
+            'data': registros_por_cuenta_costo
         })
         
     except Exception as e:
@@ -11769,7 +12121,6 @@ def obtener_consolidado_total_base(request):
         'mcnfecha__month',
         'valor'
     ).order_by('mcncuenta', 'mcnccosto', 'mcnfecha__month')
-    
     # Estructurar datos para pivot
     pivot_data = defaultdict(lambda: {
         'mcncuenta': '',
@@ -11813,18 +12164,85 @@ def obtener_consolidado_total_base(request):
     # Convertir a lista para JSON
     result = list(pivot_data.values())
     orden_personalizado = [
-        '5405',                    # 1º - Gastos de Personal
-        '541001',                  # 2º - Honorarios
-        '541003',                  # 3º - Arrendamientos
-        '541005',                  # 4º - Seguros
-        '541006',                  # 5º - Mantenimiento y Reparaciónes
-        '541009_541033',           # 6º - Adecuación e Instalaciones-Reparac locat
-        '54100207_54100210',       # 7º - Tasas Bomberil-otras
-        '541015_541016',           # 8º - Utiles - Papelería- Fotocopias
-        '511015_511016',           # 9º - Papelería y Utiles de Oficina
-        '541024',                  # 10º - Gastos Legales
-        '541027',                  # 11º - Gastos de Viaje
-        '5415',                    # 12º - Depreciación
+        '1',
+        '2',
+        '41750201',	        # Descuentos otorgados x pto pago 
+        '613522',	        # COSTO DE VENTAS 
+        '4240900101',	        # Descuentos x Pto Pago Proveed 
+        '4240909502',	        # Bonificación de Proveedores 
+        '5405',                     # 1º - Gastos de Personal
+        '541001',                   # 2º - Honorarios
+        '54100201',                 # Impto. Industria y Comercio
+        '54100202',	                # Impto Predial
+        '54100204',	                # Impuesto a las ventas (I.VA)
+        '54100205',	                # Impuesto al consumo
+        '54100206',	                # Avisos y Tableros
+        '54100207_54100210',        # Tasas Bomberil-otras
+        '541003',               # 3º - Arrendamientos
+        '541005',               # 4º - Seguros
+        '541006',               # 5º - Mantenimiento y Reparaciónes
+        '541009_541033',        # 6º - Adecuación e Instalaciones-Reparac locat
+        '541010',	            # Aseo y elementos
+        '541011',	            # Casino y Restaurante
+        '54101201',	            # Acueducto y Alcantarillado
+        '54101202',	            # Energía Eléctrica
+        '54101203',	            # Teléfono
+        '54101204',	            # Servicio de Gas
+        '541013',	            # Correo Portes y Cables
+        '541014',	            # Transporte, Fletes y Acarreos
+        '541015_541016',        # 8º - Utiles - Papelería- Fotocopias
+        '541018',	            # Publicidad y Propaganda
+        '541023',	            # Gastos Reuniones  y Conferencias
+        '541024',               # 10º - Gastos Legales
+        '541027',               # 11º - Gastos de Viaje
+        '541029',	            # Vigilancia privada
+        '541032',	            # Libros, Suscripciones y Revistas
+        '541035',	            # Procesamiento Electrónico 
+        '54109501',	            # Cargue y Descargue
+        '54109502',	            # Combustible y Lubricantes
+        '54109503',	            # Envases y Empaques
+        '54109504',	            # Taxis y Buses
+        '54109505',	            # Estampillas
+        '54109506',	            # Parqueaderos
+        '54109507',	            # Obsequios
+        '54109508',	            # Atenciones Sociales
+        '54109509',	            # Inventarios Dados de Baja 
+        '54109510',	            # Ajustes Múltiplos de 1000
+        '5415',                 # 12º - Depreciación
+        '542005',	            # Amortización de intangibles
+        
+        '54100203',	            # impuesto derechos ins
+        '54100211',             # pro-deporte
+        
+        # gastos de administración
+        '5105',	        # Gastos de Personal
+        '511001',	    # Honorarios
+        '511002',	    # Impuestos
+        '511003',	    # Arrendamientos
+        '511005',	    # Seguros
+        '511006',	    # Mantenimiento y Reparaciones
+        '511009',	    # Reparaciones Locativas
+        '511010',	    # Aseo y elementos
+        '511011',	    # Casino y Restaurante
+        '511012',	    # Servicios Públicos
+        '511013',	    # Correo
+        '511015_511016',	    # Papelería y Utiles de Oficina
+        '511018',	    # Publicidad y Propaganda
+        '511019',	    # Contribuciones y afiliaciones
+        '511020',	    # Gastos de Asamblea
+        '511021',	    # Gastos Directivos
+        '511022',	    # Gastos de Comités
+        '511023',	    # Reuniones y Conferencias
+        '511024',	    # Gastos Legales
+        '511026',	    # Gastos de Representación
+        '511027',	    # Gastos de Viajes
+        '511031',	    # Cuotas de Sostenimiento
+        '511033',	    # Adecuación e Instalación
+        '511035',	    # Procesamiento Electrónico 
+        '51109502',	    # Gastos de Fondos Sociales
+        '511512',	    # Deterioro de Inventario
+        '511534',	    # Deterioro de Cartera
+
     ]
      # 🔥 Función de ordenamiento personalizada
     def orden_cuenta(item):
@@ -11840,13 +12258,10 @@ def obtener_consolidado_total_base(request):
     
     # Aplicar ordenamiento
     result.sort(key=orden_cuenta)
-    
     return JsonResponse({
         'data': result,
         'recordsTotal': len(result),
         'recordsFiltered': len(result)
     })
         
-def obtener_consolidado_cuenta5(request):
-    
-    qs = Cuenta5Base.objects.values("mcncuenta", "ccnombre")
+'''

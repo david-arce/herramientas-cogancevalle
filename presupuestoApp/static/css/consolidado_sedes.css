@@ -80,3 +80,20 @@ table thead th {
     background-color: #fff9c4 !important; /* Amarillo en edición */
     border-left: 4px solid #4CAF50 !important; /* Borde verde distintivo */
 }
+/* estilos para fila total de cuentas que empiecen en 54 */
+.total-row-54 {
+    background-color: #f0f0f0;
+    font-weight: bold;
+    border-top: 2px solid #333;
+    border-bottom: 2px solid #333;
+}
+.total-row-51 {
+    background-color: #f3e5f5;
+    font-weight: bold;
+    border-top: 2px solid #7b1fa2;
+}
+.total-row-ventas-netas {
+    background-color: #ffe0b2;
+    font-weight: bold;
+    border-top: 2px solid #fb8c00;
+}

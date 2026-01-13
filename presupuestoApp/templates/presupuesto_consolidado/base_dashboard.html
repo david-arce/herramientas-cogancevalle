@@ -8,9 +8,9 @@
   
   <!-- Google Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.dataTables.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/2.3.6/css/dataTables.dataTables.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/columncontrol/1.1.1/css/columnControl.dataTables.min.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/4.0.5/css/fixedHeader.dataTables.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
   <!-- DataTables Buttons CSS -->
   <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
@@ -61,69 +61,74 @@
     style="display:none; position: fixed; top:16px; left:16px; z-index:1100; background:#3f51b5; color:#fff; border:none; width:44px; height:44px; border-radius:50%; box-shadow:0 8px 20px rgba(63,81,181,0.4);">
     <span class="material-icons" aria-hidden="true">menu</span>
   </button>
-  
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-      const sidebar = document.getElementById('sidebar');
-      const sidebarToggle = document.getElementById('sidebarToggle');
-      const sidebarToggleMobile = document.getElementById('sidebarToggleMobile');
-      const mqMobile = window.matchMedia("(max-width: 639px)");
 
-      // ===== Toggle desktop =====
-      sidebarToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('collapsed');
-        document.querySelector('.app-container').classList.toggle('collapsed'); 
-        const icon = sidebarToggle.querySelector('.material-icons');
-        icon.textContent = sidebar.classList.contains('collapsed') ? 'chevron_right' : 'chevron_left';
-    
-      });
+  <script src="https://cdn.datatables.net/2.3.6/js/dataTables.js"></script>
+  <script src="https://cdn.datatables.net/fixedheader/4.0.5/js/dataTables.fixedHeader.js"></script>
+  <script src="https://cdn.datatables.net/fixedheader/4.0.5/js/fixedHeader.dataTables.js"></script>
+  <script src="https://cdn.datatables.net/columncontrol/1.1.1/js/dataTables.columnControl.min.js"></script>
+  <script src="https://cdn.datatables.net/columncontrol/1.1.1/js/columnControl.dataTables.js"></script>
+  <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebarToggleMobile = document.getElementById('sidebarToggleMobile');
+        const mqMobile = window.matchMedia("(max-width: 639px)");
 
-      // ===== Toggle mobile =====
-      function toggleMobileSidebar() {
-        sidebar.classList.toggle('visible');
-        sidebarToggleMobile.style.display = sidebar.classList.contains('visible') ? 'none' : 'block';
-      }
-      sidebarToggleMobile.addEventListener('click', toggleMobileSidebar);
-
-      // ===== Responsive handler =====
-      function handleResponsive() {
-        if (mqMobile.matches) {
-          sidebar.classList.remove('collapsed');
-          sidebar.style.width = '240px';
-          sidebarToggleMobile.style.display = 'block';
-          sidebarToggle.style.display = 'none';
-        } else {
-          sidebar.classList.remove('visible');
-          sidebarToggleMobile.style.display = 'none';
-          sidebarToggle.style.display = 'flex';
-          sidebar.style.width = sidebar.classList.contains('collapsed') ? '64px' : '280px';
-        }
-      }
-      window.addEventListener('resize', handleResponsive);
-      handleResponsive();
-
-      // ===== Keyboard accessibility =====
-      const navLinks = document.querySelectorAll('nav.sidebar-nav a');
-      navLinks.forEach(link => {
-        link.addEventListener('keydown', e => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            link.click();
-          }
-        });
-      });
-
-      // ===== Focus main al navegar =====
-      const mainContent = document.getElementById('main');
-      navLinks.forEach(link => {
-        link.addEventListener('click', () => {
-          setTimeout(() => mainContent.focus(), 100);
-        });
-      });
-
+        // ===== Toggle desktop =====
+        sidebarToggle.addEventListener('click', () => {
+          sidebar.classList.toggle('collapsed');
+          document.querySelector('.app-container').classList.toggle('collapsed'); 
+          const icon = sidebarToggle.querySelector('.material-icons');
+          icon.textContent = sidebar.classList.contains('collapsed') ? 'chevron_right' : 'chevron_left';
       
-    });
-</script>
+        });
+
+        // ===== Toggle mobile =====
+        function toggleMobileSidebar() {
+          sidebar.classList.toggle('visible');
+          sidebarToggleMobile.style.display = sidebar.classList.contains('visible') ? 'none' : 'block';
+        }
+        sidebarToggleMobile.addEventListener('click', toggleMobileSidebar);
+
+        // ===== Responsive handler =====
+        function handleResponsive() {
+          if (mqMobile.matches) {
+            sidebar.classList.remove('collapsed');
+            sidebar.style.width = '240px';
+            sidebarToggleMobile.style.display = 'block';
+            sidebarToggle.style.display = 'none';
+          } else {
+            sidebar.classList.remove('visible');
+            sidebarToggleMobile.style.display = 'none';
+            sidebarToggle.style.display = 'flex';
+            sidebar.style.width = sidebar.classList.contains('collapsed') ? '64px' : '280px';
+          }
+        }
+        window.addEventListener('resize', handleResponsive);
+        handleResponsive();
+
+        // ===== Keyboard accessibility =====
+        const navLinks = document.querySelectorAll('nav.sidebar-nav a');
+        navLinks.forEach(link => {
+          link.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              link.click();
+            }
+          });
+        });
+
+        // ===== Focus main al navegar =====
+        const mainContent = document.getElementById('main');
+        navLinks.forEach(link => {
+          link.addEventListener('click', () => {
+            setTimeout(() => mainContent.focus(), 100);
+          });
+        });
+
+        
+      });
+  </script>
 
 </body>
 </html>
