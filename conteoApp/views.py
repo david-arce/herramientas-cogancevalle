@@ -24,7 +24,7 @@ def asignar_tareas(request):
         fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
     else:
         fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-    fecha_asignar =  '20260110'
+    fecha_asignar =  '20250909'
     
     if request.user.username != "DBENITEZ" and request.user.username != "CHINCAPI" and request.user.username != "FDUQUE" and request.user.username != "LAMAYA" and request.user.username != "AGRAJALE"  and request.user.username != "admin":
         raise PermissionDenied("No tienes permiso para acceder a esta vista.")
@@ -134,6 +134,7 @@ def asignar_tareas(request):
                                     usuario=usuario,
                                     producto=producto,
                                     observacion='',
+                                    inventario=producto.inv_saldo
                                 ))
                             producto_index += 1 
                 Tarea.objects.bulk_create(tareas_a_crear)
@@ -216,7 +217,7 @@ def asignar_tareas(request):
                     return redirect('asignar_tareas')
                 
                 # Crear un DataFrame con las tareas
-                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'producto__inv_saldo', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion','verificado')))
+                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'inventario', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion','verificado')))
                 
                 # Validar si el DataFrame quedó vacío
                 if df.empty:
@@ -233,7 +234,7 @@ def asignar_tareas(request):
                     'producto__sku': 'Item',
                     'producto__sku_nom': 'Nombre Producto',
                     'producto__lpt': 'Fecha Vencimiento',
-                    'producto__inv_saldo': 'Inventario',
+                    'inventario': 'Inventario',
                     'conteo': 'Conteo',
                     'diferencia': 'Diferencia',
                     'producto__vlr_unit': 'Valor Unitario',
@@ -264,7 +265,7 @@ def asignar_tareas(request):
                     return redirect('asignar_tareas')
                 
                 # Crear un DataFrame con las tareas
-                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'producto__inv_saldo', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion', 'verificado')))
+                df = pd.DataFrame(list(tareas.values('usuario__first_name','usuario__last_name', 'producto__marca_nom', 'producto__sku','producto__sku_nom','producto__lpt', 'inventario', 'conteo', 'diferencia','producto__vlr_unit', 'consolidado', 'observacion', 'fecha_asignacion', 'verificado')))
                 
                 # Validar si el DataFrame quedó vacío
                 if df.empty:
@@ -281,7 +282,7 @@ def asignar_tareas(request):
                     'producto__sku': 'Item',
                     'producto__sku_nom': 'Nombre Producto',
                     'producto__lpt': 'Fecha Vencimiento',
-                    'producto__inv_saldo': 'Inventario',
+                    'inventario': 'Inventario',
                     'conteo': 'Conteo',
                     'diferencia': 'Diferencia',
                     'producto__vlr_unit': 'Valor Unitario',
@@ -298,7 +299,36 @@ def asignar_tareas(request):
                 fecha_asignacion = request.session.pop('fecha_asignacion', None)
                 return response
             # return redirect('asignar_tareas')
+        
+        if 'filter_all_users' in request.POST:
+            # Obtener todos los usuarios de la sede
+            usuarios_sede = User.objects.filter(usercity__ciudad=ciudad, is_active=True).exclude(username="admin")
+            selected_users = usuarios_sede
             
+            # Obtener la fecha seleccionada
+            fecha_asignacion_filter = request.POST.get('fecha_asignacion')
+            
+            # Validar que se haya seleccionado una fecha
+            if not fecha_asignacion_filter:
+                messages.error(request, "Por favor selecciona una fecha.")
+                return redirect('asignar_tareas')
+            
+            # Guardar los datos en la sesión
+            request.session['selected_user_ids'] = list(usuarios_sede.values_list('id', flat=True))
+            request.session['fecha_asignacion'] = fecha_asignacion_filter
+            
+            # Filtrar las tareas por todos los usuarios de la sede en esa fecha
+            tareas = Tarea.objects.filter(
+                usuario__in=usuarios_sede, 
+                fecha_asignacion=fecha_asignacion_filter
+            )
+            
+            # Si quieres agrupar y contar tareas por usuario:
+            cant_tareas_por_usuario = (
+                Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion_filter)
+                .values('usuario__username', 'usuario__first_name', 'usuario__last_name')
+                .annotate(total_tareas=Count('id'))
+            )
     # Limpiar usuarios seleccionados y mostrar tareas si `assigned=1`
     if 'assigned' in request.GET:
         tareas = Tarea.objects.filter(usuario__in=selected_users) if selected_users else None
@@ -354,7 +384,7 @@ def lista_tareas(request):
         fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
     else:
         fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-    fecha_asignar =   '20260110'
+    fecha_asignar =   '20250909'
     fecha_especifica = datetime.date.today() 
     try:
         ciudad = request.user.usercity.ciudad
@@ -453,6 +483,9 @@ def lista_tareas(request):
                         conteo = tarea.conteo or 0
                         
                         try:
+                            # Si no tiene inventario asignado, asignarlo ahora
+                            if tarea.inventario is None:  # ← AÑADIR ESTE BLOQUE
+                                tarea.inventario = saldo
                             tarea.diferencia = conteo - saldo
                             tarea.consolidado = round(vrunit * tarea.diferencia, 2)
                             tareas_a_actualizar.append(tarea)
@@ -462,7 +495,7 @@ def lista_tareas(request):
                     # Guardar todos los cambios en una sola operación
                     if tareas_a_actualizar:
                         Tarea.objects.bulk_update(
-                            tareas_a_actualizar, ['conteo', 'observacion', 'diferencia', 'consolidado']
+                            tareas_a_actualizar, ['conteo', 'observacion', 'diferencia', 'consolidado', 'inventario']
                         )
                 try:
                 #-------------------------------------------------------------------------------

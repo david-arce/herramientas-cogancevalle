@@ -168,27 +168,71 @@ document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('filter_users_form');
     const modal = document.getElementById('customAlert');
     const closeAlertButton = document.getElementById('closeAlert');
+    const alertMessage = document.getElementById('alertMessage');
 
     // Verificar si el formulario existe
     if (form) {
         form.addEventListener('submit', function (event) {
-            const checkboxes = document.querySelectorAll('input[name="usuarios"]:checked');
+            // Detectar qué botón fue presionado
+            const submitButton = event.submitter;
+            
+            // Solo validar checkboxes si se presiona el botón "Filtrar usuarios seleccionados"
+            if (submitButton && submitButton.name === 'filter_users') {
+                const checkboxes = document.querySelectorAll('#checkboxList_homework .user-checkbox-homework:checked');
+                const fechaInput = document.getElementById('fecha_asignacion');
 
-            // Validar que haya al menos un checkbox seleccionado
-            if (checkboxes.length === 0) {
-                event.preventDefault(); // Evitar el envío del formulario
+                // Validar que haya al menos un checkbox seleccionado
+                if (checkboxes.length === 0) {
+                    event.preventDefault(); // Evitar el envío del formulario
 
-                // Mostrar el modal de alerta si existe
-                if (modal) {
-                    modal.style.display = 'block';
-
-                    // Cerrar el modal al hacer clic en el botón "Aceptar"
-                    if (closeAlertButton) {
-                        closeAlertButton.addEventListener('click', function () {
-                            modal.style.display = 'none';
-                        });
+                    // Mostrar el modal de alerta si existe
+                    if (modal && alertMessage) {
+                        alertMessage.textContent = 'Por favor, selecciona al menos un usuario.';
+                        modal.style.display = 'block';
                     }
+                    return;
                 }
+
+                // Validar que se haya seleccionado una fecha
+                if (!fechaInput.value) {
+                    event.preventDefault();
+                    
+                    if (modal && alertMessage) {
+                        alertMessage.textContent = 'Por favor, selecciona una fecha.';
+                        modal.style.display = 'block';
+                    }
+                    return;
+                }
+            }
+            
+            // Si se presiona "Filtrar todos los usuarios", solo validar la fecha
+            if (submitButton && submitButton.name === 'filter_all_users') {
+                const fechaInput = document.getElementById('fecha_asignacion');
+
+                // Validar que se haya seleccionado una fecha
+                if (!fechaInput.value) {
+                    event.preventDefault();
+                    
+                    if (modal && alertMessage) {
+                        alertMessage.textContent = 'Por favor, selecciona una fecha.';
+                        modal.style.display = 'block';
+                    }
+                    return;
+                }
+            }
+        });
+
+        // Cerrar el modal al hacer clic en el botón "Aceptar"
+        if (closeAlertButton && modal) {
+            closeAlertButton.addEventListener('click', function () {
+                modal.style.display = 'none';
+            });
+        }
+
+        // Cerrar el modal al hacer clic fuera de él
+        window.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                modal.style.display = 'none';
             }
         });
     }
@@ -361,4 +405,38 @@ document.addEventListener("DOMContentLoaded", function () {
       btn.disabled = false;
     });
   });
+});
+
+// Seleccionar/Deseleccionar todos - Primera lista (Asignar tareas)
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('#checkboxList .user-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+    });
+});
+
+// Actualizar el estado del checkbox "Seleccionar todos" si se deselecciona alguno manualmente
+document.querySelectorAll('#checkboxList .user-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const allCheckboxes = document.querySelectorAll('#checkboxList .user-checkbox');
+        const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+        document.getElementById('selectAll').checked = allChecked;
+    });
+});
+
+// Seleccionar/Deseleccionar todos - Segunda lista (Historial)
+document.getElementById('selectAllHomework').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('#checkboxList_homework .user-checkbox-homework');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+    });
+});
+
+// Actualizar el estado del checkbox "Seleccionar todos" en historial
+document.querySelectorAll('#checkboxList_homework .user-checkbox-homework').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const allCheckboxes = document.querySelectorAll('#checkboxList_homework .user-checkbox-homework');
+        const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+        document.getElementById('selectAllHomework').checked = allChecked;
+    });
 });

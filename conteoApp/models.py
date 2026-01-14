@@ -115,6 +115,7 @@ class Tarea(models.Model):
     consolidado = models.FloatField(null=True, blank=True, default=0)
     activo = models.BooleanField(default=True)
     verificado = models.BooleanField(default=False)
+    inventario = models.IntegerField(null=True, blank=True)
 
     class Meta:
         db_table = 'tarea'

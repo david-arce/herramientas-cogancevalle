@@ -208,6 +208,24 @@
     top: 1px;
 }
 
+/* Estilos para un botón eliminar */
+.button-delete{
+    background-color: #ce0000be;
+    color: white;
+    border: none;
+    padding: 5px 5px;
+    border-radius: 15px;
+    cursor: pointer;
+    margin: 5px 5px;
+}
+.button-delete:hover {
+    background-color: #940000;
+}
+.button-delete:active{
+    position: relative;
+    top: 1px;
+}
+
 /* estilos para la tabla */
 .table-container {
     width: 100%;

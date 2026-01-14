@@ -14,12 +14,15 @@
             <h4 style="max-width:350px">Asignar o eliminar productos</h4>
             <input type="text" id="searchInput" class="search-box" placeholder="Buscar usuarios...">
                 <div id="checkboxList" class="dropdown-content">
+                    <label style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 5px;">
+                        <input type="checkbox" id="selectAll"> Seleccionar todos
+                    </label>
                     {% for usuario in usuarios %}
-                        <label><input type="checkbox" name="usuarios" value="{{ usuario.id }}"> {{ usuario.first_name }} {{usuario.last_name}}</label>
+                        <label><input type="checkbox" name="usuarios" value="{{ usuario.id }}" class="user-checkbox"> {{ usuario.first_name }} {{usuario.last_name}}</label>
                     {% endfor %}
                 </div>
             <button type="submit" name="assign_task" id="assignButton" class="button-generic">Asignar Tareas</button>
-            <button type="button" name="delete_task" id="openConfirmModal" class="button-generic">Deshacer todas las tareas</button>
+            <button type="button" name="delete_task" id="openConfirmModal" class="button-delete">Eliminar productos asignados</button>
         </div>
     </form>
 
@@ -30,14 +33,18 @@
             <p style="max-width:350px; font-size:15px">Seleccione usuarios para buscar el historico de tareas asignadas</p>
             <input type="text" id="searchInput_homework" class="search-box" placeholder="Buscar usuarios...">
                 <div id="checkboxList_homework" class="dropdown-content">
+                    <label style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 5px;">
+                        <input type="checkbox" id="selectAllHomework"> Seleccionar todos
+                    </label>
                     {% for usuario in usuarios %}
-                        <label><input type="checkbox" name="usuarios" value="{{ usuario.id }}"> {{ usuario.first_name }} {{usuario.last_name}}</label>
+                        <label><input type="checkbox" name="usuarios" value="{{ usuario.id }}" class="user-checkbox-homework"> {{ usuario.first_name }} {{usuario.last_name}}</label>
                     {% endfor %}
                 </div>
                 <!-- Campo de selección de fecha -->
                 <label for="fecha_asignacion">Selecciona una fecha:</label>
                 <input type="date" id="fecha_asignacion" name="fecha_asignacion" required>
-            <button name="filter_users" class="button-generic">Filtrar tareas</button>
+            <button name="filter_users" class="button-generic">Filtrar productos por usuario</button>
+            <button name="filter_all_users" class="button-generic">Filtrar productos de todos los usuarios</button>
         </div>
     </form>
 
@@ -52,7 +59,7 @@
     <!-- Modal de confirmación de eliminación de tareas -->
     <div id="confirmModal" class="modal">
         <div class="modal-content">
-            <p>¿Estás seguro de que deseas eliminar las tareas seleccionadas?</p>
+            <p>¿Estás seguro de que deseas eliminar los productos asignados? Esta acción no se puede deshacer</p>
             <button class="buttonModal" id="confirmDelete">Sí</button>
             <button class="buttonModalClose" id="cancelDelete">No</button>
         </div>
@@ -149,7 +156,7 @@
                     <td>{{ tarea.producto.sku }}</td>
                     <td>{{ tarea.producto.sku_nom }}</td>
                     <td>{{ tarea.producto.lpt }}</td>
-                    <td>{{ tarea.producto.inv_saldo }}</td>
+                    <td>{{ tarea.inventario }}</td>
                     <td>{{ tarea.conteo|default_if_none:'' }}</td>
                     <td>{{ tarea.producto.vlr_unit }}</td>
                     <td>{{ tarea.diferencia|default_if_none:'' }}</td>
