@@ -122,9 +122,21 @@
     <!-- Contenedor de botones -->
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
         <button id="btnTabla">Ir a tabla auxiliar de presupuesto</button>
-        {% comment %} <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
-            Borrar Presupuesto
-        </button> {% endcomment %}
+        <button
+            id="btnTablaAprovado"
+            class="btn-main"
+            style="
+                background-color: #198754;
+                color: #ffffff;
+                border: none;
+                padding: 10px 16px;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+            ">
+            ✅ Ver presupuesto aprobado
+        </button>
     </div>
     
     <table id="presupuestoTable" class="display">
@@ -292,6 +304,10 @@
     // Botón Ir a la tabla de sueldos
     document.getElementById("btnTabla").addEventListener("click", function () {
         window.location.href = "{% url 'tabla_auxiliar_almacen_cali' %}";
+    });
+    // Botón Ir a la tabla presupuesto AlmacenCali aprovado
+    document.getElementById("btnTablaAprovado").addEventListener("click", function() {
+        window.location.href = "{% url 'presupuestoAprobadoAlmacenCali' %}";
     });
     </script>
     <!-- DataTables Buttons JS -->
