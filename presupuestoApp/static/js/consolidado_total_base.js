@@ -35,7 +35,6 @@ $(document).ready(function() {
                 orderable: false
             },
             { data: 'mcncuenta' },
-            { data: 'mcnccosto' },
             { data: 'ctanombre' },
             { data: 'enero' },
             { data: 'febrero' },
@@ -53,9 +52,9 @@ $(document).ready(function() {
         ],
         columnDefs: [
             { width: '120px', targets: 0 },      // Checkbox
-            { width: '160px', targets: [1,2] },     // CUENTA y CENTRO DE COSTO
-            { width: '200px', targets: 3 },     // NOMBRE CUENTA
-            { width: '120px', targets: [4,5,6,7,8,9,10,11,12,13,14,15,16], className: 'dt-body-right', render: numberFormat }, 
+            { width: '160px', targets: [1] },     // CUENTA y CENTRO DE COSTO
+            { width: '200px', targets: 2 },     // NOMBRE CUENTA
+            { width: '120px', targets: [4,5,6,7,8,9,10,11,12,13,14,15], className: 'dt-body-right', render: numberFormat }, 
         ],
         language: {
             url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
@@ -90,8 +89,46 @@ $(document).ready(function() {
             if (data.isTotalRow) {
                 $(row).find('.action-buttons').html('<span style="color: #666;">—</span>');
             }
+        },
+        drawCallback: function() {
+            // Aplicar bordes a las cuentas 54 después de cada redibujado
+            aplicarBordesCuenta54();
+            aplicarBordesCuenta51();
         }
     });
+
+    // ============================================
+    // FUNCIÓN PARA APLICAR BORDES A CUENTAS 54
+    // ============================================
+    function aplicarBordesCuenta54() {
+        const filas54 = $('#table tbody tr.cuenta-54');
+        
+        // Remover clases previas
+        filas54.removeClass('cuenta-54-first cuenta-54-last');
+        
+        if (filas54.length > 0) {
+            // Agregar clase a la primera fila
+            $(filas54[0]).addClass('cuenta-54-first');
+            
+            // Agregar clase a la última fila
+            $(filas54[filas54.length - 1]).addClass('cuenta-54-last');
+        }
+    }
+
+    // función para aplicar bordes a cuentas 51
+    function aplicarBordesCuenta51() {
+        const filas51 = $('#table tbody tr.cuenta-51');
+
+        // Remover clases previas
+        filas51.removeClass('cuenta-51-first cuenta-51-last');
+        if (filas51.length > 0) {
+            // Agregar clase a la primera fila
+            $(filas51[0]).addClass('cuenta-51-first');
+            // Agregar clase a la última fila
+            $(filas51[filas51.length - 1]).addClass('cuenta-51-last');
+        }
+    }
+
     // Función para calcular totales por prefijo de cuenta
     function calcularTotalesPorPrefijo(data, prefijo) {
         const totales = {
@@ -209,8 +246,7 @@ $(document).ready(function() {
         for (let i = 0; i < data.length; i++) {
             if (i === primeraPos54) {
                 resultado.push({
-                    mcncuenta: '',
-                    mcnccosto: '',
+                    mcncuenta: '54',
                     ctanombre: 'GASTOS DE VENTAS',
                     enero: totales54.enero,
                     febrero: totales54.febrero,
@@ -232,8 +268,7 @@ $(document).ready(function() {
             
             if (i === primeraPos51) {
                 resultado.push({
-                    mcncuenta: '',
-                    mcnccosto: '',
+                    mcncuenta: '51',
                     ctanombre: 'GASTOS  DE ADMINISTRACION',
                     enero: totales51.enero,
                     febrero: totales51.febrero,
@@ -256,7 +291,6 @@ $(document).ready(function() {
             if (i === primeraPosVentasNetas) {
                 resultado.push({
                     mcncuenta: '',
-                    mcnccosto: '',
                     ctanombre: 'VENTAS NETAS',
                     enero: totalesVentasNetas.enero,
                     febrero: totalesVentasNetas.febrero,
@@ -290,7 +324,6 @@ $(document).ready(function() {
         acabaDeAgregar = true; // Marcar que acabamos de agregar una fila
         const nuevaFila = {
             mcncuenta: '',
-            mcnccosto: '',
             ctanombre: '',
             enero: 0, febrero: 0, marzo: 0, abril: 0,
             mayo: 0, junio: 0, julio: 0, agosto: 0,
@@ -428,7 +461,6 @@ $(document).ready(function() {
     function guardarEdicion($row, oldData) {
         const nuevaData = {
             mcncuenta: $row.find('td').eq(1).find('input').val(),
-            mcnccosto: $row.find('td').eq(2).find('input').val(),
             ctanombre: $row.find('td').eq(3).find('input').val(),
             enero: parseFloat($row.find('td').eq(4).find('input').val()) || 0,
             febrero: parseFloat($row.find('td').eq(5).find('input').val()) || 0,
@@ -449,9 +481,9 @@ $(document).ready(function() {
                           nuevaData.mayo + nuevaData.junio + nuevaData.julio + nuevaData.agosto +
                           nuevaData.septiembre + nuevaData.octubre + nuevaData.noviembre + nuevaData.diciembre;
         
-        // Validar que cuenta y centro de costo no estén vacíos
-        if (!nuevaData.mcncuenta || !nuevaData.mcnccosto) {
-            showToast('❌ Cuenta y Centro de Costo son obligatorios', 'error');
+        // Validar que cuenta no esté vacío
+        if (!nuevaData.mcncuenta) {
+            showToast('❌ Cuenta es obligatorio', 'error');
             return;
         }
         
@@ -483,7 +515,7 @@ $(document).ready(function() {
         const $row = $(this).closest('tr');
         const rowData = table.row($row).data();
         
-        if (confirm(`¿Está seguro de eliminar la fila?\nCuenta: ${rowData.mcncuenta}\nCentro Costo: ${rowData.mcnccosto}`)) {
+        if (confirm(`¿Está seguro de eliminar la fila?\nCuenta: ${rowData.mcncuenta}`)) {
             eliminarFilaBackend(rowData).then(success => {
                 if (success) {
                     table.row($row).remove().draw(false);
@@ -539,8 +571,7 @@ $(document).ready(function() {
             headers: { 'X-CSRFToken': csrftoken },
             contentType: 'application/json',
             data: JSON.stringify({
-                mcncuenta: rowData.mcncuenta,
-                mcnccosto: rowData.mcnccosto
+                mcncuenta: rowData.mcncuenta
             }),
             success: function(response) {
                 if (!response.success) {

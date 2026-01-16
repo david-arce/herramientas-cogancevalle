@@ -57,7 +57,7 @@ table thead th {
 
 /* estilos para cuenta que empiecen en 54 */
 .cuenta-54 {
-    background-color: #aadbff !important; /* Azul claro */
+    background-color: #bde2fd !important; /* Azul claro */
 }
 
 .cuenta-54:hover {
@@ -65,8 +65,25 @@ table thead th {
 }
 
 .cuenta-54.editing {
-    background-color: #fff9c4 !important; /* Amarillo en edición */
+    background-color: #fffce1 !important; /* Amarillo en edición */
     border-left: 4px solid #2196F3 !important; /* Borde azul distintivo */
+}
+
+/* Bordes para formar un cuadrado alrededor del grupo de cuentas 54 */
+.cuenta-54-first td{
+    border-top: 2px solid #000000 !important;
+}
+
+.cuenta-54-last td{
+    border-bottom: 2px solid #000000 !important;
+}
+
+.cuenta-54 td:first-child{
+    border-left: 2px solid #000000 !important;
+}
+
+.cuenta-54 td:last-child {
+    border-right: 2px solid #000000 !important;
 }
 
 /* estilos para cuenta que empiecen en 51 */
@@ -80,6 +97,21 @@ table thead th {
     background-color: #fff9c4 !important; /* Amarillo en edición */
     border-left: 4px solid #4CAF50 !important; /* Borde verde distintivo */
 }
+
+/* Bordes para formar un cuadrado alrededor del grupo de cuentas 51 */
+.cuenta-51-first td{
+    border-top: 2px solid #000000 !important;
+}
+.cuenta-51-last td{
+    border-bottom: 2px solid #000000 !important;
+}
+.cuenta-51 td:first-child{
+    border-left: 2px solid #000000 !important;
+}
+.cuenta-51 td:last-child {
+    border-right: 2px solid #000000 !important;
+}
+
 /* estilos para fila total de cuentas que empiecen en 54 */
 .total-row-54 {
     background-color: #f0f0f0;

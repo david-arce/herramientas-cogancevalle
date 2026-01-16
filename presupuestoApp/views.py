@@ -11558,12 +11558,11 @@ def eliminar_fila_consolidado(request):
     try:
         data = json.loads(request.body)
         mcncuenta = data.get('mcncuenta')
-        mcnccosto = data.get('mcnccosto')
         
-        if not mcncuenta or not mcnccosto:
+        if not mcncuenta:
             return JsonResponse({
                 'success': False,
-                'error': 'Cuenta y Centro de Costo son obligatorios'
+                'error': 'Cuenta es obligatoria'
             }, status=400)
         
         year = datetime.datetime.now().year
@@ -11572,7 +11571,6 @@ def eliminar_fila_consolidado(request):
             # Eliminar todos los registros de esa cuenta/costo
             registros_eliminados = ConsolidadoTotalBase.objects.filter(
                 mcncuenta=mcncuenta,
-                mcnccosto=mcnccosto,
                 mcnfecha__year=year
             ).delete()
             
@@ -11771,7 +11769,6 @@ def obtener_consolidado_total_base(request):
     # Estructurar datos para pivot
     pivot_data = defaultdict(lambda: {
         'mcncuenta': '',
-        'mcnccosto': '',
         'ctanombre': '',
         'enero': 0,
         'febrero': 0,
@@ -11899,6 +11896,7 @@ def obtener_consolidado_total_base(request):
         '51109502',	    # Gastos de Fondos Sociales
         '511512',	    # Deterioro de Inventario
         '511534',	    # Deterioro de Cartera
+        '51109501_51109502', #   Gastos de Fondos Sociales
     ]
     
     # Función de ordenamiento personalizada
@@ -11919,6 +11917,205 @@ def obtener_consolidado_total_base(request):
         'recordsTotal': len(result),
         'recordsFiltered': len(result)
     })
+
+def obtener_tabla_dinamica_agrupada(request):
+    """
+    Vista que retorna datos en formato de tabla dinámica
+    Agrupa por: ctanombre, vinnombre y mcndestino
+    Columnas: meses del año
+    Valores: saldo (débito - crédito)
+    """
+    try:
+        # Obtener datos base
+        queryset = Cuenta5Base.objects.values(
+            'mcncuenta',
+            'mcnccosto',
+            'mcnfecha',
+            'mcnvaldebi',
+            'mcnvalcred',
+            'ctanombre',
+            'vinnombre',
+            'mcndestino'
+        )
+
+        # Estructura para consolidar datos
+        tabla_dinamica = defaultdict(lambda: {
+            'ctanombre': '',
+            'vinnombre': '',
+            'mcndestino': '',
+            'enero': 0,
+            'febrero': 0,
+            'marzo': 0,
+            'abril': 0,
+            'mayo': 0,
+            'junio': 0,
+            'julio': 0,
+            'agosto': 0,
+            'septiembre': 0,
+            'octubre': 0,
+            'noviembre': 0,
+            'diciembre': 0,
+            'total': 0
+        })
+        
+        MESES_ES = {
+            1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril',
+            5: 'mayo', 6: 'junio', 7: 'julio', 8: 'agosto',
+            9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre'
+        }
+        
+        # Procesar cada registro
+        for row in queryset:
+            # Convertir fecha
+            fecha = excel_serial_to_date(row['mcnfecha'])
+            if not fecha:
+                continue
+            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            
+            mes = MESES_ES[fecha.month]
+            
+            # Obtener valores de agrupación (manejar nulos)
+            ctanombre = row['ctanombre'] or 'SIN NOMBRE'
+            vinnombre = row['vinnombre'] or 'SIN VINCULO'
+            mcndestino = row['mcndestino'] or 'SIN DESTINO'
+            
+            # Calcular saldo
+            debito = row['mcnvaldebi'] or 0
+            credito = row['mcnvalcred'] or 0
+            saldo = debito - credito
+            
+            # Crear clave única para la agrupación
+            key = (ctanombre, vinnombre, mcndestino)
+            
+            # Acumular valores
+            tabla_dinamica[key]['ctanombre'] = ctanombre
+            tabla_dinamica[key]['vinnombre'] = vinnombre
+            tabla_dinamica[key]['mcndestino'] = mcndestino
+            tabla_dinamica[key][mes] += saldo
+            tabla_dinamica[key]['total'] += saldo
+        
+        # Redondear valores
+        for key in tabla_dinamica:
+            for mes in MESES_ES.values():
+                tabla_dinamica[key][mes] = round(tabla_dinamica[key][mes])
+            tabla_dinamica[key]['total'] = round(tabla_dinamica[key]['total'])
+        
+        # Convertir a lista
+        result = list(tabla_dinamica.values())
+        
+        # Ordenar por ctanombre, luego vinnombre, luego mcndestino
+        result.sort(key=lambda x: (x['ctanombre'], x['vinnombre'], x['mcndestino']))
+        
+        return JsonResponse({
+            'data': result,
+            'recordsTotal': len(result),
+            'recordsFiltered': len(result)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en obtener_tabla_dinamica_agrupada: {e}")
+        return JsonResponse({
+            'error': str(e)
+        }, status=500)
+
+
+def obtener_tabla_dinamica_flexible(request):
+    """
+    Versión flexible que permite especificar los campos de agrupación
+    vía parámetros GET
+    
+    Parámetros:
+    - group_by: campos separados por coma (ej: "ctanombre,vinnombre,mcndestino")
+    - order_by: campo para ordenar (opcional)
+    """
+    try:
+        # Obtener parámetros de agrupación
+        group_by_param = request.GET.get('group_by', 'ctanombre,vinnombre,mcndestino')
+        campos_agrupacion = [campo.strip() for campo in group_by_param.split(',')]
+        
+        # Validar campos
+        campos_validos = ['ctanombre', 'vinnombre', 'mcndestino', 'mcncuenta', 'mcnccosto']
+        campos_agrupacion = [c for c in campos_agrupacion if c in campos_validos]
+        
+        if not campos_agrupacion:
+            return JsonResponse({
+                'error': 'No se especificaron campos válidos para agrupar'
+            }, status=400)
+        
+        # Campos base que siempre necesitamos
+        campos_select = list(set(campos_agrupacion + [
+            'mcnfecha', 'mcnvaldebi', 'mcnvalcred'
+        ]))
+        
+        # Obtener datos
+        queryset = Cuenta5Base.objects.values(*campos_select)
+        
+        # Estructura para consolidar
+        tabla_dinamica = defaultdict(lambda: {
+            **{campo: '' for campo in campos_agrupacion},
+            'enero': 0, 'febrero': 0, 'marzo': 0, 'abril': 0,
+            'mayo': 0, 'junio': 0, 'julio': 0, 'agosto': 0,
+            'septiembre': 0, 'octubre': 0, 'noviembre': 0, 'diciembre': 0,
+            'total': 0
+        })
+        
+        MESES_ES = {
+            1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril',
+            5: 'mayo', 6: 'junio', 7: 'julio', 8: 'agosto',
+            9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre'
+        }
+        
+        # Procesar registros
+        for row in queryset:
+            # Convertir fecha
+            fecha = excel_serial_to_date(row['mcnfecha'])
+            if not fecha:
+                continue
+            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            mes = MESES_ES[fecha.month]
+            
+            # Crear clave de agrupación
+            key_values = []
+            for campo in campos_agrupacion:
+                valor = row.get(campo) or f'SIN_{campo.upper()}'
+                key_values.append(valor)
+            key = tuple(key_values)
+            
+            # Calcular saldo
+            saldo = (row['mcnvaldebi'] or 0) - (row['mcnvalcred'] or 0)
+            
+            # Actualizar valores
+            for i, campo in enumerate(campos_agrupacion):
+                tabla_dinamica[key][campo] = key_values[i]
+            
+            tabla_dinamica[key][mes] += saldo
+            tabla_dinamica[key]['total'] += saldo
+        
+        # Redondear valores
+        for key in tabla_dinamica:
+            for mes in MESES_ES.values():
+                tabla_dinamica[key][mes] = round(tabla_dinamica[key][mes])
+            tabla_dinamica[key]['total'] = round(tabla_dinamica[key]['total'])
+        
+        # Convertir a lista y ordenar
+        result = list(tabla_dinamica.values())
+        result.sort(key=lambda x: tuple(x[campo] for campo in campos_agrupacion))
+        
+        return JsonResponse({
+            'data': result,
+            'recordsTotal': len(result),
+            'recordsFiltered': len(result),
+            'grouped_by': campos_agrupacion
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en obtener_tabla_dinamica_flexible: {e}")
+        return JsonResponse({
+            'error': str(e)
+        }, status=500)
+
+def tabla_dinamica_view(request):
+    return render(request, 'presupuesto_consolidado/tabla_dinamica.html')
 
 '''
 def calcular_y_guardar_consolidado(request):
