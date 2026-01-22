@@ -460,7 +460,7 @@ urlpatterns = [
     path('obtener-consolidado-total-base/', views.obtener_consolidado_total_base, name='obtener_consolidado_total_base'),
     path('guardar-fila-consolidado/', views.guardar_fila_consolidado, name='guardar_fila_consolidado'),
     path('eliminar-fila-consolidado/', views.eliminar_fila_consolidado, name='eliminar_fila_consolidado'),
-    path('obtener-tabla-dinamica-agrupada/', views.obtener_tabla_dinamica_agrupada, name='obtener_tabla_dinamica_agrupada'),
+    path('obtener-valores-filtros/', views.obtener_valores_filtros, name='obtener_valores_filtros'),
     path('obtener-tabla-dinamica-flexible/', views.obtener_tabla_dinamica_flexible, name='obtener_tabla_dinamica_flexible'),
     path('tabla-dinamica/', views.tabla_dinamica_view, name='tabla_dinamica'),
     #------------------PRESUPUESTO CONSOLIDADO---------------------------
