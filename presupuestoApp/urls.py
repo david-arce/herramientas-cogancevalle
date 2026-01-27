@@ -446,9 +446,25 @@ urlpatterns = [
     path('subir-presupuesto-gerencia/', views.subir_presupuesto_gerencia, name='subir_presupuesto_gerencia'),
     path('borrar_presupuesto_gerencia/', views.borrar_presupuesto_gerencia, name='borrar_presupuesto_gerencia'),
     
+    # consolidado general
+    path('consolidado-tulua/', views.consolidado_tulua, name='consolidado_tulua'),
+    path('obtener-consolidado-tulua/', views.obtener_consolidado_tulua, name='obtener_consolidado_tulua'),
+    path('consolidado-buga/', views.consolidado_buga, name='consolidado_buga'),
+    path('obtener-consolidado-buga/', views.obtener_consolidado_buga, name='obtener_consolidado_buga'),
+    path('consolidado-cartago/', views.consolidado_cartago, name='consolidado_cartago'),
+    path('obtener-consolidado-cartago/', views.obtener_consolidado_cartago, name='obtener_consolidado_cartago'),
+    path('consolidado-cali/', views.consolidado_cali, name='consolidado_cali'),
+    path('obtener-consolidado-cali/', views.obtener_consolidado_cali, name='obtener_consolidado_cali'),
+   
+    path('consolidado-total-base/', views.consolidado_total_base, name='consolidado_total_base'), 
+    path('obtener-consolidado-total-base/', views.obtener_consolidado_total_base, name='obtener_consolidado_total_base'),
+    path('guardar-fila-consolidado/', views.guardar_fila_consolidado, name='guardar_fila_consolidado'),
+    path('eliminar-fila-consolidado/', views.eliminar_fila_consolidado, name='eliminar_fila_consolidado'),
+    path('obtener-valores-filtros/', views.obtener_valores_filtros, name='obtener_valores_filtros'),
+    path('obtener-tabla-dinamica-flexible/', views.obtener_tabla_dinamica_flexible, name='obtener_tabla_dinamica_flexible'),
+    path('tabla-dinamica/', views.tabla_dinamica_view, name='tabla_dinamica'),
     #------------------PRESUPUESTO CONSOLIDADO---------------------------
     path('<str:area>/', views.presupuesto_consolidado, name='presupuesto_consolidado'),
     path('<str:area>/obtener-presupuesto-consolidado/', views.obtener_presupuesto_consolidado, name='obtener_presupuesto_consolidado'),
     path('<str:area>/guardar/', views.guardar_presupuesto_consolidado, name='guardar_presupuesto_consolidado'),
-    
 ]

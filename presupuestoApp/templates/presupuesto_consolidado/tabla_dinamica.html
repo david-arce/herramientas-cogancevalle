@@ -1,0 +1,583 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabla Dinámica - Consolidado</title>
+    <link rel="stylesheet" href="{% static 'css/tabla_dinamica.css' %}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Tabla Dinámica - Consolidado Financiero</h1>
+            <p>Jerarquía: Cuenta → Vínculo → Detalle</p>
+        </div>
+
+        <!-- SECCIÓN DE FILTROS -->
+        <div class="filters-section">
+            <h3>🔍 Filtros</h3>
+            <div class="filters-grid">
+                <!-- Filtro Cuenta -->
+                <div class="filter-group">
+                    <label>Cuenta</label>
+                    <div class="filter-dropdown">
+                        <button class="filter-btn" onclick="toggleFilter('cuenta')">
+                            <span id="cuenta-text">Todos</span>
+                            <span class="arrow">▼</span>
+                        </button>
+                        <div id="filter-cuenta" class="filter-panel">
+                            <div class="filter-search">
+                                <input type="text" id="search-cuenta" placeholder="Buscar..." onkeyup="filtrarOpciones('cuenta')">
+                            </div>
+                            <div class="filter-options">
+                                <label class="filter-option">
+                                    <input type="checkbox" class="select-all" onchange="seleccionarTodos('cuenta', this.checked)">
+                                    <span>(Seleccionar todo)</span>
+                                </label>
+                                <div id="options-cuenta"></div>
+                            </div>
+                            <div class="filter-actions">
+                                <button onclick="aplicarFiltro('cuenta')">Aplicar</button>
+                                <button onclick="limpiarFiltro('cuenta')">Limpiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtro Zona -->
+                <div class="filter-group">
+                    <label>Zona</label>
+                    <div class="filter-dropdown">
+                        <button class="filter-btn" onclick="toggleFilter('zona')">
+                            <span id="zona-text">Todos</span>
+                            <span class="arrow">▼</span>
+                        </button>
+                        <div id="filter-zona" class="filter-panel">
+                            <div class="filter-search">
+                                <input type="text" id="search-zona" placeholder="Buscar..." onkeyup="filtrarOpciones('zona')">
+                            </div>
+                            <div class="filter-options">
+                                <label class="filter-option">
+                                    <input type="checkbox" class="select-all" onchange="seleccionarTodos('zona', this.checked)">
+                                    <span>(Seleccionar todo)</span>
+                                </label>
+                                <div id="options-zona"></div>
+                            </div>
+                            <div class="filter-actions">
+                                <button onclick="aplicarFiltro('zona')">Aplicar</button>
+                                <button onclick="limpiarFiltro('zona')">Limpiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtro Destino -->
+                <div class="filter-group">
+                    <label>Destino</label>
+                    <div class="filter-dropdown">
+                        <button class="filter-btn" onclick="toggleFilter('destino')">
+                            <span id="destino-text">Todos</span>
+                            <span class="arrow">▼</span>
+                        </button>
+                        <div id="filter-destino" class="filter-panel">
+                            <div class="filter-search">
+                                <input type="text" id="search-destino" placeholder="Buscar..." onkeyup="filtrarOpciones('destino')">
+                            </div>
+                            <div class="filter-options">
+                                <label class="filter-option">
+                                    <input type="checkbox" class="select-all" onchange="seleccionarTodos('destino', this.checked)">
+                                    <span>(Seleccionar todo)</span>
+                                </label>
+                                <div id="options-destino"></div>
+                            </div>
+                            <div class="filter-actions">
+                                <button onclick="aplicarFiltro('destino')">Aplicar</button>
+                                <button onclick="limpiarFiltro('destino')">Limpiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtro Costo -->
+                <div class="filter-group">
+                    <label>Costo</label>
+                    <div class="filter-dropdown">
+                        <button class="filter-btn" onclick="toggleFilter('costo')">
+                            <span id="costo-text">Todos</span>
+                            <span class="arrow">▼</span>
+                        </button>
+                        <div id="filter-costo" class="filter-panel">
+                            <div class="filter-search">
+                                <input type="text" id="search-costo" placeholder="Buscar..." onkeyup="filtrarOpciones('costo')">
+                            </div>
+                            <div class="filter-options">
+                                <label class="filter-option">
+                                    <input type="checkbox" class="select-all" onchange="seleccionarTodos('costo', this.checked)">
+                                    <span>(Seleccionar todo)</span>
+                                </label>
+                                <div id="options-costo"></div>
+                            </div>
+                            <div class="filter-actions">
+                                <button onclick="aplicarFiltro('costo')">Aplicar</button>
+                                <button onclick="limpiarFiltro('costo')">Limpiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="cargarDatos()">
+                🔄 Cargar Datos
+            </button>
+
+            <button class="btn btn-primary" onclick="expandirTodo()">
+                ➕ Expandir Todo
+            </button>
+
+            <button class="btn btn-primary" onclick="colapsarTodo()">
+                ➖ Colapsar Todo
+            </button>
+
+            <button class="btn btn-export" onclick="exportarExcel()">
+                📥 Exportar a Excel
+            </button>
+        </div>
+
+        <div class="table-container">
+            <div id="loading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Cargando datos...</p>
+            </div>
+            
+            <table id="tablaDinamica" class="pivot-table">
+                <thead>
+                    <tr>
+                        <th style="min-width: 300px;">Etiquetas de fila</th>
+                        <th>Enero</th>
+                        <th>Febrero</th>
+                        <th>Marzo</th>
+                        <th>Abril</th>
+                        <th>Mayo</th>
+                        <th>Junio</th>
+                        <th>Julio</th>
+                        <th>Agosto</th>
+                        <th>Septiembre</th>
+                        <th>Octubre</th>
+                        <th>Noviembre</th>
+                        <th>Diciembre</th>
+                        <th class="total-column">Total</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaBody">
+                </tbody>
+            </table>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Total Cuentas</h3>
+                <div class="value" id="totalCuentas">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Anual</h3>
+                <div class="value" id="totalAnual">$0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Promedio Mensual</h3>
+                <div class="value" id="promedioMensual">$0</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let datosGlobales = [];
+        let filtrosActivos = {
+            cuenta: [],
+            zona: [],
+            destino: [],
+            costo: []
+        };
+        let valoresFiltros = {
+            cuenta: [],
+            zona: [],
+            destino: [],
+            costo: []
+        };
+        const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                       'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+        function formatearNumero(numero) {
+            if (numero === 0) return '-';
+            return new Intl.NumberFormat('es-CO', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(numero);
+        }
+
+        // Cargar valores de filtros
+        async function cargarValoresFiltros() {
+            const campos = ['mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto'];
+            const nombres = ['cuenta', 'zona', 'destino', 'costo'];
+            
+            for (let i = 0; i < campos.length; i++) {
+                try {
+                    const response = await fetch(`../obtener-valores-filtros/?campo=${campos[i]}`);
+                    const data = await response.json();
+                    valoresFiltros[nombres[i]] = data.valores || [];
+                    renderizarOpcionesFiltro(nombres[i], data.valores || []);
+                } catch (error) {
+                    console.error(`Error cargando filtro ${nombres[i]}:`, error);
+                }
+            }
+        }
+
+        function renderizarOpcionesFiltro(tipo, valores) {
+            const container = document.getElementById(`options-${tipo}`);
+            container.innerHTML = '';
+            
+            valores.forEach(valor => {
+                const label = document.createElement('label');
+                label.className = 'filter-option';
+                label.innerHTML = `
+                    <input type="checkbox" value="${valor}" onchange="actualizarContador('${tipo}')">
+                    <span>${valor}</span>
+                `;
+                container.appendChild(label);
+            });
+        }
+
+        function toggleFilter(tipo) {
+            // Cerrar otros filtros
+            ['cuenta', 'zona', 'destino', 'costo'].forEach(t => {
+                if (t !== tipo) {
+                    document.getElementById(`filter-${t}`).classList.remove('show');
+                }
+            });
+            
+            const panel = document.getElementById(`filter-${tipo}`);
+            panel.classList.toggle('show');
+        }
+
+        function filtrarOpciones(tipo) {
+            const busqueda = document.getElementById(`search-${tipo}`).value.toLowerCase();
+            const opciones = document.querySelectorAll(`#options-${tipo} .filter-option`);
+            
+            opciones.forEach(opcion => {
+                const texto = opcion.textContent.toLowerCase();
+                opcion.style.display = texto.includes(busqueda) ? '' : 'none';
+            });
+        }
+
+        function seleccionarTodos(tipo, checked) {
+            const checkboxes = document.querySelectorAll(`#options-${tipo} input[type="checkbox"]`);
+            checkboxes.forEach(cb => {
+                if (cb.parentElement.style.display !== 'none') {
+                    cb.checked = checked;
+                }
+            });
+            actualizarContador(tipo);
+        }
+
+        function actualizarContador(tipo) {
+            const checkboxes = document.querySelectorAll(`#options-${tipo} input[type="checkbox"]:checked`);
+            const selectAll = document.querySelector(`#filter-${tipo} .select-all`);
+            const total = document.querySelectorAll(`#options-${tipo} input[type="checkbox"]`).length;
+            
+            selectAll.checked = checkboxes.length === total;
+            selectAll.indeterminate = checkboxes.length > 0 && checkboxes.length < total;
+        }
+
+        function aplicarFiltro(tipo) {
+            const checkboxes = document.querySelectorAll(`#options-${tipo} input[type="checkbox"]:checked`);
+            filtrosActivos[tipo] = Array.from(checkboxes).map(cb => cb.value);
+            
+            const texto = filtrosActivos[tipo].length === 0 || filtrosActivos[tipo].length === valoresFiltros[tipo].length
+                ? 'Todos'
+                : `${filtrosActivos[tipo].length} seleccionados`;
+            
+            document.getElementById(`${tipo}-text`).textContent = texto;
+            document.getElementById(`filter-${tipo}`).classList.remove('show');
+            
+            cargarDatos();
+        }
+
+        function limpiarFiltro(tipo) {
+            filtrosActivos[tipo] = [];
+            const checkboxes = document.querySelectorAll(`#options-${tipo} input[type="checkbox"]`);
+            checkboxes.forEach(cb => cb.checked = false);
+            document.getElementById(`${tipo}-text`).textContent = 'Todos';
+            document.getElementById(`filter-${tipo}`).classList.remove('show');
+            
+            cargarDatos();
+        }
+
+        function construirURLConFiltros() {
+            let url = `../obtener-tabla-dinamica-flexible/?group_by=ctanombre,vinnombre,mcndetalle`;
+            
+            if (filtrosActivos.cuenta.length > 0 && filtrosActivos.cuenta.length < valoresFiltros.cuenta.length) {
+                url += `&mcncuenta=${filtrosActivos.cuenta.join(',')}`;
+            }
+            if (filtrosActivos.zona.length > 0 && filtrosActivos.zona.length < valoresFiltros.zona.length) {
+                url += `&mcnzona=${filtrosActivos.zona.join(',')}`;
+            }
+            if (filtrosActivos.destino.length > 0 && filtrosActivos.destino.length < valoresFiltros.destino.length) {
+                url += `&mcndestino=${filtrosActivos.destino.join(',')}`;
+            }
+            if (filtrosActivos.costo.length > 0 && filtrosActivos.costo.length < valoresFiltros.costo.length) {
+                url += `&mcnccosto=${filtrosActivos.costo.join(',')}`;
+            }
+            
+            return url;
+        }
+
+        function cargarDatos() {
+            const url = construirURLConFiltros();
+            
+            document.getElementById('loading').style.display = 'block';
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                        return;
+                    }
+                    
+                    datosGlobales = data.data;
+                    procesarYMostrarDatos(data.data);
+                    calcularEstadisticas(data.data);
+                })
+                .catch(error => {
+                    document.getElementById('loading').style.display = 'none';
+                    console.error('Error:', error);
+                    alert('Error al cargar los datos: ' + error.message);
+                });
+        }
+
+        function procesarYMostrarDatos(datos) {
+            const jerarquia = {};
+            
+            datos.forEach(row => {
+                const cuenta = row.ctanombre || 'SIN CUENTA';
+                const vinculo = row.vinnombre || 'SIN VINCULO';
+                const detalle = row.mcndetalle || 'SIN DETALLE';
+                
+                if (!jerarquia[cuenta]) {
+                    jerarquia[cuenta] = {
+                        totales: inicializarTotales(),
+                        vinculos: {}
+                    };
+                }
+                
+                if (!jerarquia[cuenta].vinculos[vinculo]) {
+                    jerarquia[cuenta].vinculos[vinculo] = {
+                        totales: inicializarTotales(),
+                        detalles: {}
+                    };
+                }
+                
+                if (!jerarquia[cuenta].vinculos[vinculo].detalles[detalle]) {
+                    jerarquia[cuenta].vinculos[vinculo].detalles[detalle] = inicializarTotales();
+                }
+                
+                MESES.forEach(mes => {
+                    const valor = row[mes] || 0;
+                    jerarquia[cuenta].totales[mes] += valor;
+                    jerarquia[cuenta].vinculos[vinculo].totales[mes] += valor;
+                    jerarquia[cuenta].vinculos[vinculo].detalles[detalle][mes] += valor;
+                    
+                    jerarquia[cuenta].totales.total += valor;
+                    jerarquia[cuenta].vinculos[vinculo].totales.total += valor;
+                    jerarquia[cuenta].vinculos[vinculo].detalles[detalle].total += valor;
+                });
+            });
+            
+            renderizarTabla(jerarquia);
+        }
+
+        function inicializarTotales() {
+            const totales = { total: 0 };
+            MESES.forEach(mes => totales[mes] = 0);
+            return totales;
+        }
+
+        function renderizarTabla(jerarquia) {
+            const tbody = document.getElementById('tablaBody');
+            tbody.innerHTML = '';
+            
+            const totalesGenerales = inicializarTotales();
+            let cuentaIndex = 0;
+            
+            Object.keys(jerarquia).sort().forEach(cuenta => {
+                cuentaIndex++;
+                const cuentaData = jerarquia[cuenta];
+                const cuentaId = `cuenta-${cuentaIndex}`;
+                
+                MESES.forEach(mes => {
+                    totalesGenerales[mes] += cuentaData.totales[mes];
+                });
+                totalesGenerales.total += cuentaData.totales.total;
+                
+                const trCuenta = document.createElement('tr');
+                trCuenta.className = 'row-cuenta';
+                trCuenta.innerHTML = `
+                    <td class="label-cell">
+                        <span class="toggle-btn" onclick="toggleNivel('${cuentaId}')">−</span>
+                        ${cuenta}
+                    </td>
+                    ${generarCeldasNumericas(cuentaData.totales)}
+                `;
+                tbody.appendChild(trCuenta);
+                
+                let vinculoIndex = 0;
+                Object.keys(cuentaData.vinculos).sort().forEach(vinculo => {
+                    vinculoIndex++;
+                    const vinculoData = cuentaData.vinculos[vinculo];
+                    const vinculoId = `${cuentaId}-vinculo-${vinculoIndex}`;
+                    
+                    const trVinculo = document.createElement('tr');
+                    trVinculo.className = `row-vinculo nivel-${cuentaId}`;
+                    trVinculo.innerHTML = `
+                        <td class="label-cell">
+                            <span class="toggle-btn" onclick="toggleNivel('${vinculoId}')">−</span>
+                            ${vinculo}
+                        </td>
+                        ${generarCeldasNumericas(vinculoData.totales)}
+                    `;
+                    tbody.appendChild(trVinculo);
+                    
+                    Object.keys(vinculoData.detalles).sort().forEach(detalle => {
+                        const detalleData = vinculoData.detalles[detalle];
+                        
+                        const trDetalle = document.createElement('tr');
+                        trDetalle.className = `row-detalle nivel-${vinculoId}`;
+                        trDetalle.innerHTML = `
+                            <td class="label-cell">${detalle}</td>
+                            ${generarCeldasNumericas(detalleData)}
+                        `;
+                        tbody.appendChild(trDetalle);
+                    });
+                });
+            });
+            
+            const trTotal = document.createElement('tr');
+            trTotal.className = 'row-total-general';
+            trTotal.innerHTML = `
+                <td class="label-cell">Total general</td>
+                ${generarCeldasNumericas(totalesGenerales)}
+            `;
+            tbody.appendChild(trTotal);
+        }
+
+        function generarCeldasNumericas(totales) {
+            let html = '';
+            MESES.forEach(mes => {
+                const valor = totales[mes];
+                const clase = valor > 0 ? 'positive' : valor < 0 ? 'negative' : '';
+                html += `<td class="number-cell ${clase}">${formatearNumero(valor)}</td>`;
+            });
+            const total = totales.total;
+            const claseTotal = total > 0 ? 'positive' : total < 0 ? 'negative' : '';
+            html += `<td class="number-cell total-column ${claseTotal}">${formatearNumero(total)}</td>`;
+            return html;
+        }
+
+        function toggleNivel(nivelId) {
+            const elementos = document.querySelectorAll(`.nivel-${nivelId}`);
+            const btn = event.target;
+            
+            elementos.forEach(el => {
+                if (el.classList.contains('hidden')) {
+                    el.classList.remove('hidden');
+                    btn.textContent = '−';
+                } else {
+                    el.classList.add('hidden');
+                    btn.textContent = '+';
+                }
+            });
+        }
+
+        function expandirTodo() {
+            document.querySelectorAll('[class*="nivel-"]').forEach(el => {
+                el.classList.remove('hidden');
+            });
+            document.querySelectorAll('.toggle-btn').forEach(btn => {
+                btn.textContent = '−';
+            });
+        }
+
+        function colapsarTodo() {
+            document.querySelectorAll('[class*="nivel-"]').forEach(el => {
+                el.classList.add('hidden');
+            });
+            document.querySelectorAll('.toggle-btn').forEach(btn => {
+                btn.textContent = '+';
+            });
+        }
+
+        function calcularEstadisticas(datos) {
+            const cuentasUnicas = new Set(datos.map(d => d.ctanombre)).size;
+            const totalAnual = datos.reduce((sum, row) => sum + (row.total || 0), 0);
+            const promedioMensual = totalAnual / 12;
+
+            document.getElementById('totalCuentas').textContent = cuentasUnicas;
+            document.getElementById('totalAnual').textContent = '$' + formatearNumero(totalAnual);
+            document.getElementById('promedioMensual').textContent = '$' + formatearNumero(promedioMensual);
+        }
+
+        function exportarExcel() {
+            if (datosGlobales.length === 0) {
+                alert('Primero debe cargar los datos');
+                return;
+            }
+
+            const rows = [];
+            const tabla = document.getElementById('tablaDinamica');
+            
+            const headers = [];
+            tabla.querySelectorAll('thead th').forEach(th => {
+                headers.push(th.textContent);
+            });
+            rows.push(headers);
+            
+            tabla.querySelectorAll('tbody tr:not(.hidden)').forEach(tr => {
+                const row = [];
+                tr.querySelectorAll('td').forEach(td => {
+                    let text = td.textContent.trim();
+                    text = text.replace(/[−+]/, '').trim();
+                    row.push(text);
+                });
+                rows.push(row);
+            });
+            
+            const csv = rows.map(row => row.join(';')).join('\n');
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `tabla_dinamica_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        }
+
+        // Cerrar filtros al hacer click fuera
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.filter-dropdown')) {
+                document.querySelectorAll('.filter-panel').forEach(panel => {
+                    panel.classList.remove('show');
+                });
+            }
+        });
+
+        // Inicializar
+        window.addEventListener('load', function() {
+            cargarValoresFiltros().then(() => {
+                cargarDatos();
+            });
+        });
+    </script>
+</body>
+</html>

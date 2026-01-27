@@ -6,7 +6,7 @@ from pyexpat.errors import messages
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 import pandas as pd
-from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoBolsaConsumibles, PresupuestoBolsaConsumiblesAux, PresupuestoAuxilioTBCKIT, PresupuestoAuxilioTCBKITAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado, PresupuestoServiciosTecnicos, PresupuestoServiciosTecnicosAux, PresupuestoServiciosTecnicosAprobado, PresupuestoLogistica, PresupuestoLogisticaAux, PresupuestoLogisticaAprobado, PresupuestoGestionRiesgos, PresupuestoGestionRiesgosAux, PresupuestoGestionRiesgosAprobado, PresupuestoGH, PresupuestoGHAux, PresupuestoGHAprobado, PresupuestoAlmacenTulua, PresupuestoAlmacenTuluaAux, PresupuestoAlmacenTuluaAprobado, PresupuestoAlmacenBuga, PresupuestoAlmacenBugaAux, PresupuestoAlmacenBugaAprobado, PresupuestoAlmacenCartago, PresupuestoAlmacenCartagoAux, PresupuestoAlmacenCartagoAprobado, PresupuestoAlmacenCali, PresupuestoAlmacenCaliAux, PresupuestoAlmacenCaliAprobado, PresupuestoComunicaciones, PresupuestoComunicacionesAux, PresupuestoComunicacionesAprobado, PresupuestoComercialCostos, PresupuestoComercialCostosAux, PresupuestoComercialCostosAprobado, PresupuestoContabilidad, PresupuestoContabilidadAux, PresupuestoContabilidadAprobado, PresupuestoGerencia, PresupuestoGerenciaAux, PresupuestoGerenciaAprobado, Cuenta5, Cuenta5Base, PresupuestoCentroSegLineaCostos, PresupuestoCentroSegLineaVentas
+from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoBolsaConsumibles, PresupuestoBolsaConsumiblesAux, PresupuestoAuxilioTBCKIT, PresupuestoAuxilioTCBKITAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado, PresupuestoServiciosTecnicos, PresupuestoServiciosTecnicosAux, PresupuestoServiciosTecnicosAprobado, PresupuestoLogistica, PresupuestoLogisticaAux, PresupuestoLogisticaAprobado, PresupuestoGestionRiesgos, PresupuestoGestionRiesgosAux, PresupuestoGestionRiesgosAprobado, PresupuestoGH, PresupuestoGHAux, PresupuestoGHAprobado, PresupuestoAlmacenTulua, PresupuestoAlmacenTuluaAux, PresupuestoAlmacenTuluaAprobado, PresupuestoAlmacenBuga, PresupuestoAlmacenBugaAux, PresupuestoAlmacenBugaAprobado, PresupuestoAlmacenCartago, PresupuestoAlmacenCartagoAux, PresupuestoAlmacenCartagoAprobado, PresupuestoAlmacenCali, PresupuestoAlmacenCaliAux, PresupuestoAlmacenCaliAprobado, PresupuestoComunicaciones, PresupuestoComunicacionesAux, PresupuestoComunicacionesAprobado, PresupuestoComercialCostos, PresupuestoComercialCostosAux, PresupuestoComercialCostosAprobado, PresupuestoContabilidad, PresupuestoContabilidadAux, PresupuestoContabilidadAprobado, PresupuestoGerencia, PresupuestoGerenciaAux, PresupuestoGerenciaAprobado, Cuenta5, Cuenta5Base, PresupuestoCentroSegLineaCostos, PresupuestoCentroSegLineaVentas, ConsolidadoTotalBase
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.db.models.functions import Concat
 from django.db.models import Sum, Max, Q
@@ -17,6 +17,9 @@ from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.db import models
 from django.core.paginator import Paginator
+import calendar
+from django.db.models.functions import ExtractMonth, ExtractYear
+from django.views.decorators.http import require_http_methods
 
 def exportar_excel_nomina(request):
     # Obtener datos de cada tabla
@@ -10742,6 +10745,15 @@ def cuenta5(request):
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     return render(request, "presupuesto_consolidado/cuenta5.html")
 
+def excel_serial_to_date(serial):
+    if serial is None:
+        return None
+    try:
+        base_date = datetime.datetime(1899, 12, 30)
+        return (base_date + datetime.timedelta(days=int(serial))).date().isoformat()
+    except Exception:
+        return None
+
 @csrf_exempt
 def obtener_cuenta5_base(request):
     try:
@@ -10759,6 +10771,10 @@ def obtener_cuenta5_base(request):
 
         data = list(page.object_list.values())
 
+        # 🔹 Convertir fecha Excel a fecha normal
+        for row in data:
+            row['mcnfecha'] = excel_serial_to_date(row.get('mcnfecha'))
+        print(data)
         return JsonResponse({
             'draw': draw,
             'recordsTotal': total,
@@ -10769,6 +10785,7 @@ def obtener_cuenta5_base(request):
     except Exception as e:
         print(f"❌ Error en obtener_cuenta5_base: {e}")
         return JsonResponse({'error': str(e)}, status=500) 
+    
 def cargar_cuenta5_base(request):
     # limpio tabla cuenta 5 antes de recalcular
     Cuenta5Base.objects.all().delete()
@@ -10868,4 +10885,1182 @@ def borrar_cuenta5_base(request):
         Cuenta5Base.objects.all().delete()
         return JsonResponse({"status": "ok", "message": "Datos de cuenta 5 eliminados"})
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+@login_required
+def consolidado_tulua(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuesto_consolidado/consolidado_tulua.html")
+
+@login_required
+def consolidado_buga(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuesto_consolidado/consolidado_buga.html")
+
+@login_required
+def consolidado_cartago(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuesto_consolidado/consolidado_cartago.html")
+
+@login_required
+def consolidado_cali(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuesto_consolidado/consolidado_cali.html")
+
+@login_required
+def consolidado_total_base(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuesto_consolidado/consolidado_total_base.html")
+
+# retornar cuentas contables
+def obtener_consolidado_tulua(request):
+    try:
+        params = request.POST or request.GET
+        draw = int(params.get('draw') or 1)
+
+        queryset = Cuenta5Base.objects.filter(
+            zonnombre__icontains='TULUA'
+        ).values(
+            'zonnombre',
+            'mcncuenta',
+            'mcnccosto',
+            'mcnfecha',
+            'mcnvaldebi',
+            'mcnvalcred'
+        )
+
+        consolidado = defaultdict(lambda: {
+            'total_debito': 0,
+            'total_credito': 0
+        })
+        # 🔹 1. Convertir fecha y consolidar
+        for row in queryset:
+            fecha = excel_serial_to_date(row['mcnfecha'])
+            if not fecha:
+                continue
+            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            
+            MESES_ES = {
+                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+            }
+
+            mes = MESES_ES[fecha.month]
+            cuenta = row['mcncuenta'] or 'SIN CUENTA'
+            costo = row['mcnccosto'] or 'SIN COSTO'
+            zona = row['zonnombre'] or 'SIN ZONA'
+            key = (mes, cuenta, costo, zona)
+            consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
+            consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
+
+        # 🔹 2. Obtener nombres de cuentas
+        cuentas_qs = Cuenta5Base.objects.values(
+            'mcncuenta',
+            'ctanombre'
+        ).distinct()
+        cuentas_dict = {
+            c['mcncuenta']: c['ctanombre']
+            for c in cuentas_qs
+        }
+
+        # 🔹 3. Pivotar: agrupar por cuenta-costo y crear columnas por mes
+        pivot_data = defaultdict(lambda: {
+            'mcncuenta': '',
+            'mcnccosto': '',
+            'ctanombre': ''
+        })
+        
+        meses_unicos = set()
+        
+        for (mes, cuenta, costo, zona) in consolidado.keys():
+            key = (cuenta, costo)
+            meses_unicos.add(mes)
+            
+            total_debito = consolidado[(mes, cuenta, costo, zona)]['total_debito']
+            total_credito = consolidado[(mes, cuenta, costo, zona)]['total_credito']
+            saldo = total_debito - total_credito
+            
+            pivot_data[key]['mcncuenta'] = cuenta
+            pivot_data[key]['mcnccosto'] = costo
+            pivot_data[key]['ctanombre'] = cuentas_dict.get(cuenta, 'SIN NOMBRE')
+            pivot_data[key]['zonnombre'] = zona
+            pivot_data[key][mes] = round(saldo)
+
+        # 🔹 4. Convertir a lista ordenada
+        data = []
+        for key in sorted(pivot_data.keys()):
+            row = pivot_data[key]
+            # Asegurar que todos los meses existan en cada fila (con 0 si no hay datos)
+            for mes in meses_unicos:
+                if mes not in row:
+                    row[mes] = 0
+            data.append(row)
+        return JsonResponse({
+            'data': data
+        })
+        
+
+    except Exception as e:
+        print(f"❌ Error en obtener_consolidado_tulua: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+def obtener_consolidado_buga(request):
+    try:
+        params = request.POST or request.GET
+        draw = int(params.get('draw') or 1)
+
+        queryset = Cuenta5Base.objects.filter(
+            zonnombre__icontains='BUGA'
+        ).values(
+            'zonnombre',
+            'mcncuenta',
+            'mcnccosto',
+            'mcnfecha',
+            'mcnvaldebi',
+            'mcnvalcred'
+        )
+
+        consolidado = defaultdict(lambda: {
+            'total_debito': 0,
+            'total_credito': 0
+        })
+        # 🔹 1. Convertir fecha y consolidar
+        for row in queryset:
+            fecha = excel_serial_to_date(row['mcnfecha'])
+            if not fecha:
+                continue
+            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            
+            MESES_ES = {
+                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+            }
+
+            mes = MESES_ES[fecha.month]
+            cuenta = row['mcncuenta'] or 'SIN CUENTA'
+            costo = row['mcnccosto'] or 'SIN COSTO'
+            zona = row['zonnombre'] or 'SIN ZONA'
+            key = (mes, cuenta, costo, zona)
+            consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
+            consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
+
+        # 🔹 2. Obtener nombres de cuentas
+        cuentas_qs = Cuenta5Base.objects.values(
+            'mcncuenta',
+            'ctanombre'
+        ).distinct()
+        cuentas_dict = {
+            c['mcncuenta']: c['ctanombre']
+            for c in cuentas_qs
+        }
+
+        # 🔹 3. Pivotar: agrupar por cuenta-costo y crear columnas por mes
+        pivot_data = defaultdict(lambda: {
+            'mcncuenta': '',
+            'mcnccosto': '',
+            'ctanombre': ''
+        })
+        
+        meses_unicos = set()
+        
+        for (mes, cuenta, costo, zona) in consolidado.keys():
+            key = (cuenta, costo)
+            meses_unicos.add(mes)
+            
+            total_debito = consolidado[(mes, cuenta, costo, zona)]['total_debito']
+            total_credito = consolidado[(mes, cuenta, costo, zona)]['total_credito']
+            saldo = total_debito - total_credito
+            
+            pivot_data[key]['mcncuenta'] = cuenta
+            pivot_data[key]['mcnccosto'] = costo
+            pivot_data[key]['ctanombre'] = cuentas_dict.get(cuenta, 'SIN NOMBRE')
+            pivot_data[key]['zonnombre'] = zona
+            pivot_data[key][mes] = round(saldo)
+
+        # 🔹 4. Convertir a lista ordenada
+        data = []
+        for key in sorted(pivot_data.keys()):
+            row = pivot_data[key]
+            # Asegurar que todos los meses existan en cada fila (con 0 si no hay datos)
+            for mes in meses_unicos:
+                if mes not in row:
+                    row[mes] = 0
+            data.append(row)
+        return JsonResponse({
+            'data': data
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en obtener_consolidado_buga: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+def obtener_consolidado_cartago(request):
+    try:
+        params = request.POST or request.GET
+        draw = int(params.get('draw') or 1)
+
+        queryset = Cuenta5Base.objects.filter(
+            zonnombre__icontains='CARTAGO'
+        ).values(
+            'zonnombre',
+            'mcncuenta',
+            'mcnccosto',
+            'mcnfecha',
+            'mcnvaldebi',
+            'mcnvalcred'
+        )
+
+        consolidado = defaultdict(lambda: {
+            'total_debito': 0,
+            'total_credito': 0
+        })
+        # 🔹 1. Convertir fecha y consolidar
+        for row in queryset:
+            fecha = excel_serial_to_date(row['mcnfecha'])
+            if not fecha:
+                continue
+            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            
+            MESES_ES = {
+                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+            }
+
+            mes = MESES_ES[fecha.month]
+            cuenta = row['mcncuenta'] or 'SIN CUENTA'
+            costo = row['mcnccosto'] or 'SIN COSTO'
+            zona = row['zonnombre'] or 'SIN ZONA'
+            key = (mes, cuenta, costo, zona)
+            consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
+            consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
+
+        # 🔹 2. Obtener nombres de cuentas
+        cuentas_qs = Cuenta5Base.objects.values(
+            'mcncuenta',
+            'ctanombre'
+        ).distinct()
+        cuentas_dict = {
+            c['mcncuenta']: c['ctanombre']
+            for c in cuentas_qs
+        }
+
+        # 🔹 3. Pivotar: agrupar por cuenta-costo y crear columnas por mes
+        pivot_data = defaultdict(lambda: {
+            'mcncuenta': '',
+            'mcnccosto': '',
+            'ctanombre': ''
+        })
+        
+        meses_unicos = set()
+        
+        for (mes, cuenta, costo, zona) in consolidado.keys():
+            key = (cuenta, costo)
+            meses_unicos.add(mes)
+            
+            total_debito = consolidado[(mes, cuenta, costo, zona)]['total_debito']
+            total_credito = consolidado[(mes, cuenta, costo, zona)]['total_credito']
+            saldo = total_debito - total_credito
+            
+            pivot_data[key]['mcncuenta'] = cuenta
+            pivot_data[key]['mcnccosto'] = costo
+            pivot_data[key]['ctanombre'] = cuentas_dict.get(cuenta, 'SIN NOMBRE')
+            pivot_data[key]['zonnombre'] = zona
+            pivot_data[key][mes] = round(saldo)
+
+        # 🔹 4. Convertir a lista ordenada
+        data = []
+        for key in sorted(pivot_data.keys()):
+            row = pivot_data[key]
+            # Asegurar que todos los meses existan en cada fila (con 0 si no hay datos)
+            for mes in meses_unicos:
+                if mes not in row:
+                    row[mes] = 0
+            data.append(row)
+        return JsonResponse({
+            'data': data
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en obtener_consolidado_cartago: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+def obtener_consolidado_cali(request):
+    try:
+        params = request.POST or request.GET
+        draw = int(params.get('draw') or 1)
+
+        queryset = Cuenta5Base.objects.filter(
+            zonnombre__icontains='CALI'
+        ).values(
+            'zonnombre',
+            'mcncuenta',
+            'mcnccosto',
+            'mcnfecha',
+            'mcnvaldebi',
+            'mcnvalcred'
+        )
+
+        consolidado = defaultdict(lambda: {
+            'total_debito': 0,
+            'total_credito': 0
+        })
+        # 🔹 1. Convertir fecha y consolidar
+        for row in queryset:
+            fecha = excel_serial_to_date(row['mcnfecha'])
+            if not fecha:
+                continue
+            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            
+            MESES_ES = {
+                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+            }
+
+            mes = MESES_ES[fecha.month]
+            cuenta = row['mcncuenta'] or 'SIN CUENTA'
+            costo = row['mcnccosto'] or 'SIN COSTO'
+            zona = row['zonnombre'] or 'SIN ZONA'
+            key = (mes, cuenta, costo, zona)
+            consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
+            consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
+
+        # 🔹 2. Obtener nombres de cuentas
+        cuentas_qs = Cuenta5Base.objects.values(
+            'mcncuenta',
+            'ctanombre'
+        ).distinct()
+        cuentas_dict = {
+            c['mcncuenta']: c['ctanombre']
+            for c in cuentas_qs
+        }
+
+        # 🔹 3. Pivotar: agrupar por cuenta-costo y crear columnas por mes
+        pivot_data = defaultdict(lambda: {
+            'mcncuenta': '',
+            'mcnccosto': '',
+            'ctanombre': ''
+        })
+        
+        meses_unicos = set()
+        
+        for (mes, cuenta, costo, zona) in consolidado.keys():
+            key = (cuenta, costo)
+            meses_unicos.add(mes)
+            
+            total_debito = consolidado[(mes, cuenta, costo, zona)]['total_debito']
+            total_credito = consolidado[(mes, cuenta, costo, zona)]['total_credito']
+            saldo = total_debito - total_credito
+            
+            pivot_data[key]['mcncuenta'] = cuenta
+            pivot_data[key]['mcnccosto'] = costo
+            pivot_data[key]['ctanombre'] = cuentas_dict.get(cuenta, 'SIN NOMBRE')
+            pivot_data[key]['zonnombre'] = zona
+            pivot_data[key][mes] = round(saldo)
+
+        # 🔹 4. Convertir a lista ordenada
+        data = []
+        for key in sorted(pivot_data.keys()):
+            row = pivot_data[key]
+            # Asegurar que todos los meses existan en cada fila (con 0 si no hay datos)
+            for mes in meses_unicos:
+                if mes not in row:
+                    row[mes] = 0
+            data.append(row)
+        return JsonResponse({
+            'data': data
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en obtener_consolidado_cali: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+# def obtener_consolidado_total_base(request):
+#     try:
+#         params = request.POST or request.GET
+#         draw = int(params.get('draw') or 1)
+
+#         queryset = Cuenta5Base.objects.values(
+#             'mcncuenta',
+#             'mcnccosto',
+#             'mcnfecha',
+#             'mcnvaldebi',
+#             'mcnvalcred'
+#         )
+
+#         consolidado = defaultdict(lambda: {
+#             'total_debito': 0,
+#             'total_credito': 0
+#         })
+        
+#         # 🔹 1. Convertir fecha y consolidar
+#         for row in queryset:
+#             fecha = excel_serial_to_date(row['mcnfecha'])
+#             if not fecha:
+#                 continue
+#             fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            
+#             MESES_ES = {
+#                 1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+#                 5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+#                 9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+#             }
+
+#             mes = MESES_ES[fecha.month]
+#             cuenta = row['mcncuenta'] or 'SIN CUENTA'
+#             costo = row['mcnccosto'] or 'SIN COSTO'
+#             # 🔹 Agrupar cuentas que comienzan con '541001'
+#             if cuenta.startswith('541001'):
+#                 cuenta = '541001'
+            
+#             # 🔹 Agrupar cuentas específicas 'Tasas Bomberil-otras'
+#             tasasBomberil_otras = ['54100207', '54100208', '54100209', '54100210']
+#             # agrupar cuentas de la 541009 y 541033 Adecuación e Instalaciones-Reparac locat
+#             adecuacion_instalaciones = ['541009', '541033', '54103301', '54103302']
+#             # agrupar cuentas 541015 - 541016 Utiles - Papelería- Fotocopias
+#             papelaria_fotocopias = ['541015', '541016']
+#             # agrupar cuentas 511015 - 511016 Papelería y Utiles de Oficina
+#             papeleria_utiles_oficina = ['511015', '511016']
+#             if cuenta in tasasBomberil_otras:
+#                 cuenta = '54100207_54100210'
+#             if cuenta in adecuacion_instalaciones:
+#                 cuenta = '541009_541033'
+#             if cuenta in papelaria_fotocopias:
+#                 cuenta = '541015_541016'
+#             if cuenta in papeleria_utiles_oficina:
+#                 cuenta = '511015_511016'
+#             # agrupar cuentas 541003 Arrendamientos
+#             if cuenta.startswith('541003'):
+#                 cuenta = '541003'
+            
+#             # agrupar cuentas 541005 Seguros
+#             if cuenta.startswith('541005'):
+#                 cuenta = '541005'
+                
+#             # agrupar cuentas 541006 Mantenimiento y Reparaciónes
+#             if cuenta.startswith('541006'):
+#                 cuenta = '541006'
+            
+#             # agrupar cuentas 541024 Gastos Legales
+#             if cuenta.startswith('541024'):
+#                 cuenta = '541024'
+            
+#             # agrupar cuentas 541027 Gastos de Viaje
+#             if cuenta.startswith('541027'):
+#                 cuenta = '541027'
+            
+#             # agrupar cuentas 5415 Depreciación
+#             if cuenta.startswith('5415'):
+#                 cuenta = '5415'
+                
+#             # agrupar cuentas 5405 Gastos de Personal
+#             if costo == '020201':
+#                 cuenta = '5405'
+            
+#             key = (mes, cuenta, costo)
+#             consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
+#             consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
+
+#         # 🔹 2. Obtener nombres de cuentas
+#         cuentas_qs = Cuenta5Base.objects.values(
+#             'mcncuenta',
+#             'ctanombre'
+#         ).distinct()
+#         cuentas_dict = {
+#             c['mcncuenta']: c['ctanombre']
+#             for c in cuentas_qs
+#         }
+
+#         # 🔹 3. Pivotar: agrupar por cuenta-costo y crear columnas por mes
+#         pivot_data = defaultdict(lambda: {
+#             'mcncuenta': '',
+#             'mcnccosto': '',
+#             'ctanombre': ''
+#         })
+        
+#         meses_unicos = set()
+        
+#         for (mes, cuenta, costo) in consolidado.keys():
+#             key = (cuenta, costo)
+#             meses_unicos.add(mes)
+            
+#             total_debito = consolidado[(mes, cuenta, costo)]['total_debito']
+#             total_credito = consolidado[(mes, cuenta, costo)]['total_credito']
+#             saldo = total_debito - total_credito
+            
+#             pivot_data[key]['mcncuenta'] = cuenta
+#             pivot_data[key]['mcnccosto'] = costo
+#             # 🔹 Asignar nombre especial para cuentas '541001'
+#             if cuenta == '541001':
+#                 pivot_data[key]['ctanombre'] = 'Honorarios'
+#             elif cuenta == '54100207_54100210':
+#                 pivot_data[key]['ctanombre'] = 'Tasas Bomberil-otras'
+#             elif cuenta == '541003':
+#                 pivot_data[key]['ctanombre'] = 'Arrendamientos'
+#             elif cuenta == '541005':
+#                 pivot_data[key]['ctanombre'] = 'Seguros'
+#             elif cuenta == '541006':
+#                 pivot_data[key]['ctanombre'] = 'Mantenimiento y Reparaciónes'
+#             elif cuenta == '541009_541033':
+#                 pivot_data[key]['ctanombre'] = 'Adecuación e Instalaciones-Reparac locat'
+#             elif cuenta == '541015_541016':
+#                 pivot_data[key]['ctanombre'] = 'Utiles - Papelería- Fotocopias'
+#             elif cuenta == '541024':
+#                 pivot_data[key]['ctanombre'] = 'Gastos Legales'
+#             elif cuenta == '541027':
+#                 pivot_data[key]['ctanombre'] = 'Gastos de Viaje'
+#             elif cuenta == '5415':
+#                 pivot_data[key]['ctanombre'] = 'Depreciación'
+#             elif cuenta == '511015_511016':
+#                 pivot_data[key]['ctanombre'] = 'Papelería y Utiles de Oficina'
+#             elif cuenta == '5405':
+#                 pivot_data[key]['ctanombre'] = 'Gastos de Personal'
+#             else:
+#                 pivot_data[key]['ctanombre'] = cuentas_dict.get(cuenta, 'SIN NOMBRE')
+            
+#             pivot_data[key][mes] = round(saldo)
+
+#         # 🔹 4. Convertir a lista ordenada
+#         data = []
+#         for key in sorted(pivot_data.keys()):
+#             row = pivot_data[key]
+#             total_anual = 0
+#             # Asegurar que todos los meses existan en cada fila (con 0 si no hay datos)
+#             for mes in meses_unicos:
+#                 if mes not in row:
+#                     row[mes] = 0
+#                 else:
+#                     total_anual += row[mes]
+#             row['total_anual'] = total_anual
+#             data.append(row)
+#         return JsonResponse({
+#             'data': data
+#         })
+#     except Exception as e:
+#         print(f"❌ Error en obtener_consolidado_total: {e}")
+#         return JsonResponse({'error': str(e)}, status=500)
+
+@require_http_methods(["POST"])
+def guardar_fila_consolidado(request):
+    """
+    Guarda o actualiza una fila del consolidado.
+    Recibe datos pivotados (meses en horizontal) y los guarda como registros individuales por mes.
+    """
+    try:
+        data = json.loads(request.body)
+        nueva_data = data.get('nueva_data')
+        old_data = data.get('old_data')
+        
+        if not nueva_data:
+            return JsonResponse({
+                'success': False,
+                'error': 'No se recibieron datos'
+            }, status=400)
+        
+        # Validaciones
+        if not nueva_data.get('mcncuenta') or not nueva_data.get('mcnccosto'):
+            return JsonResponse({
+                'success': False,
+                'error': 'Cuenta y Centro de Costo son obligatorios'
+            }, status=400)
+        
+        # tomar año de la cuenta 5 
+        queryset = Cuenta5Base.objects.values(
+                'mcncuenta',
+                'mcnccosto',
+                'mcnfecha',
+            )
+        year = 0
+        for row in queryset:
+            fecha = excel_serial_to_date(row['mcnfecha'])
+            if not fecha:
+                continue
+            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            year = fecha.year
+        # Mapeo de meses
+        meses_mapping = {
+            'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
+            'mayo': 5, 'junio': 6, 'julio': 7, 'agosto': 8,
+            'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
+        }
+        
+        with transaction.atomic():
+            # Si hay datos antiguos, eliminar los registros correspondientes
+            if old_data and old_data.get('mcncuenta') and old_data.get('mcnccosto'):
+                ConsolidadoTotalBase.objects.filter(
+                    mcncuenta=old_data['mcncuenta'],
+                    mcnccosto=old_data['mcnccosto'],
+                    mcnfecha__year=year
+                ).delete()
+            
+            # Crear nuevos registros para cada mes
+            registros_nuevos = []
+            total_anual = nueva_data.get('total', 0)
+            
+            for mes_nombre, mes_num in meses_mapping.items():
+                valor_mes = nueva_data.get(mes_nombre, 0)
+                
+                # Solo crear registro si hay valor o si es una fila nueva
+                if valor_mes != 0 or not old_data:
+                    fecha = datetime.date(year, mes_num, 1)
+                    
+                    registros_nuevos.append(
+                        ConsolidadoTotalBase(
+                            mcncuenta=nueva_data['mcncuenta'],
+                            mcnccosto=nueva_data['mcnccosto'],
+                            ctanombre=nueva_data.get('ctanombre', ''),
+                            mcnfecha=fecha,
+                            valor = valor_mes,
+                            total_anual=total_anual
+                        )
+                    )
+            
+            # Guardar todos los registros
+            if registros_nuevos:
+                ConsolidadoTotalBase.objects.bulk_create(registros_nuevos)
+            
+            return JsonResponse({
+                'success': True,
+                'mensaje': f'✅ Fila guardada correctamente. {len(registros_nuevos)} registros creados.',
+                'registros_creados': len(registros_nuevos)
+            })
+            
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Error al procesar datos JSON'
+        }, status=400)
+    except Exception as e:
+        print(f"❌ Error en guardar_fila_consolidado: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@require_http_methods(["POST"])
+def eliminar_fila_consolidado(request):
+    """
+    Elimina todos los registros asociados a una cuenta y centro de costo
+    """
+    try:
+        data = json.loads(request.body)
+        mcncuenta = data.get('mcncuenta')
+        
+        if not mcncuenta:
+            return JsonResponse({
+                'success': False,
+                'error': 'Cuenta es obligatoria'
+            }, status=400)
+        
+        year = datetime.datetime.now().year
+        
+        with transaction.atomic():
+            # Eliminar todos los registros de esa cuenta/costo
+            registros_eliminados = ConsolidadoTotalBase.objects.filter(
+                mcncuenta=mcncuenta,
+                mcnfecha__year=year
+            ).delete()
+            
+            num_eliminados = registros_eliminados[0] if registros_eliminados else 0
+            
+            return JsonResponse({
+                'success': True,
+                'mensaje': f'✅ Fila eliminada correctamente. {num_eliminados} registros eliminados.',
+                'registros_eliminados': num_eliminados
+            })
+            
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Error al procesar datos JSON'
+        }, status=400)
+    except Exception as e:
+        print(f"❌ Error en eliminar_fila_consolidado: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+def calcular_consolidado():
+    """
+    Realiza todos los cálculos de consolidación y retorna los resultados
+    sin guardar en base de datos
+    """
+    try:
+        queryset = Cuenta5Base.objects.values(
+            'mcncuenta',
+            'mcnccosto',
+            'mcnfecha',
+            'mcnvaldebi',
+            'mcnvalcred'
+        )
+
+        consolidado = defaultdict(lambda: {
+            'total_debito': 0,
+            'total_credito': 0
+        })
+        
+        MESES_ES = {
+            1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+            5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+            9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+        }
+        year = 0
+        
+        # 1. Convertir fecha y consolidar
+        for row in queryset:
+            fecha = excel_serial_to_date(row['mcnfecha'])
+            if not fecha:
+                continue
+            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+
+            mes = MESES_ES[fecha.month]
+            year = fecha.year
+            cuenta = row['mcncuenta'] or 'SIN CUENTA'
+            costo = row['mcnccosto'] or 'SIN COSTO'
+            
+            # Aplicar agrupaciones de cuentas
+            if cuenta.startswith('541001'):
+                cuenta = '541001'
+            
+            tasasBomberil_otras = ['54100207', '54100208', '54100209', '54100210']
+            adecuacion_instalaciones = ['541009', '541033', '54103301', '54103302']
+            papelaria_fotocopias = ['541015', '541016']
+            papeleria_utiles_oficina = ['511015', '511016']
+            gastos_fondos_sociales = ['51109501', '51109502']
+            
+            if cuenta in tasasBomberil_otras:
+                cuenta = '54100207_54100210'
+            if cuenta in adecuacion_instalaciones:
+                cuenta = '541009_541033'
+            if cuenta in papelaria_fotocopias:
+                cuenta = '541015_541016'
+            if cuenta in papeleria_utiles_oficina:
+                cuenta = '511015_511016'
+            if cuenta in gastos_fondos_sociales:
+                cuenta = '51109501_51109502'
+                
+            if cuenta.startswith('541003'):
+                cuenta = '541003'
+            if cuenta.startswith('541005'):
+                cuenta = '541005'
+            if cuenta.startswith('541006'):
+                cuenta = '541006'
+            if cuenta.startswith('541024'):
+                cuenta = '541024'
+            if cuenta.startswith('541027'):
+                cuenta = '541027'
+            if cuenta.startswith('5415'):
+                cuenta = '5415'
+            if costo == '020201':
+                cuenta = '5405'
+            
+            # gastos de administración
+            if costo == '0101':
+                cuenta = '5105'
+            
+            key = (mes, cuenta, costo)
+            consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
+            consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
+        
+        # 2. Eliminar registros con cuentas que inicien con 5405 después de la agrupación
+        costos_a_eliminar = ['020302', '020402', '020301']
+        cuentas_a_eliminar = ['51109501']
+        keys_to_remove = [
+            key for key in consolidado.keys()
+            if (key[1].startswith('5405') and key[1]!='5405') or (key[2] in costos_a_eliminar) or (key[1] in cuentas_a_eliminar)
+        ]
+        for key in keys_to_remove:
+            del consolidado[key]
+        
+        # 3. Obtener nombres de cuentas
+        cuentas_qs = Cuenta5Base.objects.values(
+            'mcncuenta',
+            'ctanombre'
+        ).distinct()
+        cuentas_dict = {
+            c['mcncuenta']: c['ctanombre']
+            for c in cuentas_qs
+        }
+
+        # 4. Preparar datos para retornar
+        registros_por_cuenta_costo = defaultdict(lambda: {
+            'mcncuenta': '',
+            'mcnccosto': '',
+            'ctanombre': '',
+            'meses': {}
+        })
+        
+        for (mes, cuenta, costo) in consolidado.keys():
+            key = (cuenta, costo)
+            
+            total_debito = consolidado[(mes, cuenta, costo)]['total_debito']
+            total_credito = consolidado[(mes, cuenta, costo)]['total_credito']
+            saldo = total_debito - total_credito
+            
+            registros_por_cuenta_costo[key]['mcncuenta'] = cuenta
+            registros_por_cuenta_costo[key]['mcnccosto'] = costo
+            
+            # Asignar nombre especial para cuentas agrupadas
+            nombres_especiales = {
+                '541001': 'Honorarios',
+                '54100207_54100210': 'Tasas Bomberil-otras',
+                '541003': 'Arrendamientos',
+                '541005': 'Seguros',
+                '541006': 'Mantenimiento y Reparaciónes',
+                '541009_541033': 'Adecuación e Instalaciones-Reparac locat',
+                '541015_541016': 'Utiles - Papelería- Fotocopias',
+                '541024': 'Gastos Legales',
+                '541027': 'Gastos de Viaje',
+                '5415': 'Depreciación',
+                '511015_511016': 'Papelería y Utiles de Oficina',
+                '5405': 'Gastos de Personal',
+                '5105': 'Gastos de Personal',
+                '51109501_51109502': 'Gastos de Fondos Sociales'
+            }
+            
+            registros_por_cuenta_costo[key]['ctanombre'] = nombres_especiales.get(
+                cuenta, 
+                cuentas_dict.get(cuenta, 'SIN NOMBRE')
+            )
+            
+            registros_por_cuenta_costo[key]['meses'][mes] = round(saldo)
+        
+        return {
+            'success': True,
+            'data': registros_por_cuenta_costo
+        }
+        
+    except Exception as e:
+        print(f"❌ Error en calcular_consolidado: {e}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+def obtener_consolidado_total_base(request):
+    """
+    Vista que retorna datos pivoteados con meses en horizontal
+    Llama a la función de cálculo en lugar de consultar la base de datos
+    """
+    # Obtener datos calculados
+    resultado_calculo = calcular_consolidado()
+    
+    if not resultado_calculo['success']:
+        return JsonResponse({
+            'error': resultado_calculo.get('error', 'Error al calcular consolidado')
+        }, status=500)
+    
+    registros_por_cuenta_costo = resultado_calculo['data']
+    
+    # Estructurar datos para pivot
+    pivot_data = defaultdict(lambda: {
+        'mcncuenta': '',
+        'ctanombre': '',
+        'enero': 0,
+        'febrero': 0,
+        'marzo': 0,
+        'abril': 0,
+        'mayo': 0,
+        'junio': 0,
+        'julio': 0,
+        'agosto': 0,
+        'septiembre': 0,
+        'octubre': 0,
+        'noviembre': 0,
+        'diciembre': 0,
+        'total': 0
+    })
+    
+    # Mapeo de nombres de mes a nombres en minúscula
+    meses_map = {
+        'Enero': 'enero',
+        'Febrero': 'febrero',
+        'Marzo': 'marzo',
+        'Abril': 'abril',
+        'Mayo': 'mayo',
+        'Junio': 'junio',
+        'Julio': 'julio',
+        'Agosto': 'agosto',
+        'Septiembre': 'septiembre',
+        'Octubre': 'octubre',
+        'Noviembre': 'noviembre',
+        'Diciembre': 'diciembre'
+    }
+    
+    # Llenar el pivot
+    for key, row in registros_por_cuenta_costo.items():
+        pivot_key = f"{row['mcncuenta']}_{row['mcnccosto']}"
+        
+        pivot_data[pivot_key]['mcncuenta'] = row['mcncuenta']
+        pivot_data[pivot_key]['mcnccosto'] = row['mcnccosto']
+        pivot_data[pivot_key]['ctanombre'] = row['ctanombre']
+        
+        # Recorrer los meses del registro
+        for mes, valor in row['meses'].items():
+            mes_nombre = meses_map.get(mes)
+            if mes_nombre:
+                pivot_data[pivot_key][mes_nombre] = valor
+                pivot_data[pivot_key]['total'] += valor
+    
+    # Convertir a lista para JSON
+    result = list(pivot_data.values())
+    
+    orden_personalizado = [
+        '1',
+        '2',
+        '41750201',	        # Descuentos otorgados x pto pago 
+        '613522',	        # COSTO DE VENTAS 
+        '4240900101',	        # Descuentos x Pto Pago Proveed 
+        '4240909502',	        # Bonificación de Proveedores 
+        '5405',                     # 1º - Gastos de Personal
+        '541001',                   # 2º - Honorarios
+        '54100201',                 # Impto. Industria y Comercio
+        '54100202',	                # Impto Predial
+        '54100204',	                # Impuesto a las ventas (I.VA)
+        '54100205',	                # Impuesto al consumo
+        '54100206',	                # Avisos y Tableros
+        '54100207_54100210',        # Tasas Bomberil-otras
+        '541003',               # 3º - Arrendamientos
+        '541005',               # 4º - Seguros
+        '541006',               # 5º - Mantenimiento y Reparaciónes
+        '541009_541033',        # 6º - Adecuación e Instalaciones-Reparac locat
+        '541010',	            # Aseo y elementos
+        '541011',	            # Casino y Restaurante
+        '54101201',	            # Acueducto y Alcantarillado
+        '54101202',	            # Energía Eléctrica
+        '54101203',	            # Teléfono
+        '54101204',	            # Servicio de Gas
+        '541013',	            # Correo Portes y Cables
+        '541014',	            # Transporte, Fletes y Acarreos
+        '541015_541016',        # 8º - Utiles - Papelería- Fotocopias
+        '541018',	            # Publicidad y Propaganda
+        '541023',	            # Gastos Reuniones  y Conferencias
+        '541024',               # 10º - Gastos Legales
+        '541027',               # 11º - Gastos de Viaje
+        '541029',	            # Vigilancia privada
+        '541032',	            # Libros, Suscripciones y Revistas
+        '541035',	            # Procesamiento Electrónico 
+        '54109501',	            # Cargue y Descargue
+        '54109502',	            # Combustible y Lubricantes
+        '54109503',	            # Envases y Empaques
+        '54109504',	            # Taxis y Buses
+        '54109505',	            # Estampillas
+        '54109506',	            # Parqueaderos
+        '54109507',	            # Obsequios
+        '54109508',	            # Atenciones Sociales
+        '54109509',	            # Inventarios Dados de Baja 
+        '54109510',	            # Ajustes Múltiplos de 1000
+        '5415',                 # 12º - Depreciación
+        '542005',	            # Amortización de intangibles
+        '54100203',	            # impuesto derechos ins
+        '54100211',             # pro-deporte
+        # gastos de administración
+        '5105',	        # Gastos de Personal
+        '511001',	    # Honorarios
+        '511002',	    # Impuestos
+        '511003',	    # Arrendamientos
+        '511005',	    # Seguros
+        '511006',	    # Mantenimiento y Reparaciones
+        '511009',	    # Reparaciones Locativas
+        '511010',	    # Aseo y elementos
+        '511011',	    # Casino y Restaurante
+        '511012',	    # Servicios Públicos
+        '511013',	    # Correo
+        '511015_511016',	    # Papelería y Utiles de Oficina
+        '511018',	    # Publicidad y Propaganda
+        '511019',	    # Contribuciones y afiliaciones
+        '511020',	    # Gastos de Asamblea
+        '511021',	    # Gastos Directivos
+        '511022',	    # Gastos de Comités
+        '511023',	    # Reuniones y Conferencias
+        '511024',	    # Gastos Legales
+        '511026',	    # Gastos de Representación
+        '511027',	    # Gastos de Viajes
+        '511031',	    # Cuotas de Sostenimiento
+        '511033',	    # Adecuación e Instalación
+        '511035',	    # Procesamiento Electrónico 
+        '51109502',	    # Gastos de Fondos Sociales
+        '511512',	    # Deterioro de Inventario
+        '511534',	    # Deterioro de Cartera
+        '51109501_51109502', #   Gastos de Fondos Sociales
+    ]
+    
+    # Función de ordenamiento personalizada
+    def orden_cuenta(item):
+        cuenta = item['mcncuenta'] or ''
+        
+        try:
+            indice = orden_personalizado.index(cuenta)
+            return indice
+        except ValueError:
+            return len(orden_personalizado)
+    
+    # Aplicar ordenamiento
+    result.sort(key=orden_cuenta)
+    
+    return JsonResponse({
+        'data': result,
+        'recordsTotal': len(result),
+        'recordsFiltered': len(result)
+    })
+
+def obtener_tabla_dinamica_flexible(request):
+    """
+    Versión flexible que permite especificar los campos de agrupación
+    vía parámetros GET
+    
+    Parámetros:
+    - group_by: campos separados por coma (ej: "ctanombre,vinnombre,mcndetalle")
+    - order_by: campo para ordenar (opcional)
+    - filtros: mcncuenta, mcnzona, mcndestino, mcncosto (valores separados por coma)
+    """
+    try:
+        # Obtener parámetros de agrupación
+        group_by_param = request.GET.get('group_by', 'ctanombre,vinnombre,mcndetalle')
+        campos_agrupacion = [campo.strip() for campo in group_by_param.split(',')]
+        
+        # Validar campos
+        campos_validos = ['ctanombre', 'vinnombre', 'mcndetalle']
+        campos_agrupacion = [c for c in campos_agrupacion if c in campos_validos]
+        
+        if not campos_agrupacion:
+            return JsonResponse({
+                'error': 'No se especificaron campos válidos para agrupar'
+            }, status=400)
+        
+        # Campos base que siempre necesitamos
+        campos_select = list(set(campos_agrupacion + [
+            'mcnfecha', 'mcnvaldebi', 'mcnvalcred',
+            'mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto'
+        ]))
+        
+        # Obtener datos
+        queryset = Cuenta5Base.objects.values(*campos_select)
+        
+        # Aplicar filtros si existen
+        filtro_cuenta = request.GET.get('mcncuenta', '')
+        filtro_zona = request.GET.get('mcnzona', '')
+        filtro_destino = request.GET.get('mcndestino', '')
+        filtro_costo = request.GET.get('mcnccosto', '')
+        
+        if filtro_cuenta:
+            cuentas = [c.strip() for c in filtro_cuenta.split(',')]
+            queryset = queryset.filter(mcncuenta__in=cuentas)
+        
+        if filtro_zona:
+            zonas = [z.strip() for z in filtro_zona.split(',')]
+            queryset = queryset.filter(mcnzona__in=zonas)
+        
+        if filtro_destino:
+            destinos = [d.strip() for d in filtro_destino.split(',')]
+            queryset = queryset.filter(mcndestino__in=destinos)
+        
+        if filtro_costo:
+            costos = [c.strip() for c in filtro_costo.split(',')]
+            queryset = queryset.filter(mcncosto__in=costos)
+            
+        # Estructura para consolidar
+        tabla_dinamica = defaultdict(lambda: {
+            **{campo: '' for campo in campos_agrupacion},
+            'enero': 0, 'febrero': 0, 'marzo': 0, 'abril': 0,
+            'mayo': 0, 'junio': 0, 'julio': 0, 'agosto': 0,
+            'septiembre': 0, 'octubre': 0, 'noviembre': 0, 'diciembre': 0,
+            'total': 0
+        })
+        
+        MESES_ES = {
+            1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril',
+            5: 'mayo', 6: 'junio', 7: 'julio', 8: 'agosto',
+            9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre'
+        }
+        
+        # Procesar registros
+        for row in queryset:
+            # Convertir fecha
+            fecha = excel_serial_to_date(row['mcnfecha'])
+            if not fecha:
+                continue
+            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            mes = MESES_ES[fecha.month]
+            
+            # Crear clave de agrupación
+            key_values = []
+            for campo in campos_agrupacion:
+                valor = row.get(campo) or f'SIN_{campo.upper()}'
+                key_values.append(valor)
+            key = tuple(key_values)
+            
+            # Calcular saldo
+            saldo = (row['mcnvaldebi'] or 0) - (row['mcnvalcred'] or 0)
+            
+            # Actualizar valores
+            for i, campo in enumerate(campos_agrupacion):
+                tabla_dinamica[key][campo] = key_values[i]
+            
+            tabla_dinamica[key][mes] += saldo
+            tabla_dinamica[key]['total'] += saldo
+        
+        # Redondear valores
+        for key in tabla_dinamica:
+            for mes in MESES_ES.values():
+                tabla_dinamica[key][mes] = round(tabla_dinamica[key][mes])
+            tabla_dinamica[key]['total'] = round(tabla_dinamica[key]['total'])
+        
+        # Convertir a lista y ordenar
+        result = list(tabla_dinamica.values())
+        result.sort(key=lambda x: tuple(x[campo] for campo in campos_agrupacion))
+        
+        return JsonResponse({
+            'data': result,
+            'recordsTotal': len(result),
+            'recordsFiltered': len(result),
+            'grouped_by': campos_agrupacion
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en obtener_tabla_dinamica_flexible: {e}")
+        return JsonResponse({
+            'error': str(e)
+        }, status=500)
+
+def obtener_valores_filtros(request):
+    """
+    Endpoint para obtener los valores únicos de cada campo de filtro
+    """
+    try:
+        campo = request.GET.get('campo', '')
+        
+        campos_validos = ['mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto']
+        
+        if campo not in campos_validos:
+            return JsonResponse({'error': 'Campo no válido'}, status=400)
+        
+        # Obtener valores únicos
+        valores = Cuenta5Base.objects.values_list(campo, flat=True).distinct().order_by(campo)
+        valores = [v for v in valores if v]  # Eliminar valores nulos
+        
+        return JsonResponse({
+            'valores': list(valores)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en obtener_valores_filtros: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+def tabla_dinamica_view(request):
+    return render(request, 'presupuesto_consolidado/tabla_dinamica.html')
 

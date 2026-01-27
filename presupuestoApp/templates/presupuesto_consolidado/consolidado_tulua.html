@@ -1,0 +1,96 @@
+{% extends 'presupuesto_consolidado/base_dashboard.html' %}
+{% load static %}
+
+{% block css%}
+<!-- CSS de FixedHeader -->
+<meta name="csrf-token" content="{{ csrf_token }}">
+{% comment %} <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css"> {% endcomment %}
+
+<link rel="stylesheet" href="{% static 'css/consolidado_sedes.css' %}">
+{% endblock %}
+{% block content %}
+<section class="cuenta5-container">
+    <div class="btn-group_bd">
+        <!-- Grupo: Guardar / Subir presupuesto -->
+        <div class="btn-section1">
+            {% comment %} <button id="guardarTempBtn">💾 Guardar cambios</button> {% endcomment %}
+        </div>
+    </div>
+
+    <div id="tableContainer" style="overflow-x:auto; max-width:100%;">
+        <table id="table" class="display cell-border">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="checkAllIPC" title="Seleccionar todo"></th>
+                    <th>CUENTA</th>
+                    <th>CENTRO DE COSTO</th>
+                    <th>ZONA</th>
+                    <th>NOMBRE CUENTA</th>
+                    <th>ENERO</th>
+                    <th>FEBRERO</th>
+                    <th>MARZO</th>
+                    <th>ABRIL</th>
+                    <th>MAYO</th>
+                    <th>JUNIO</th>
+                    <th>JULIO</th>
+                    <th>AGOSTO</th>
+                    <th>SEPTIEMBRE</th>
+                    <th>OCTUBRE</th>
+                    <th>NOVIEMBRE</th>
+                    <th>DICIEMBRE</th>
+                </tr>
+            </thead>
+        </table>
+        
+    </div>
+    <!-- Contenedor de toasts -->
+    <div class="toast-container" id="toastContainer"></div>
+</section>
+    
+    <!-- Modal Confirmación Eliminar -->
+    <div id="modalEliminar" class="modal" style="display:none;" aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-header">⚠️ Confirmar eliminación</div>
+            <p>¿Estás seguro de eliminar esta fila?</p>
+            <div class="modal-footer">
+            <button type="button" class="btn-cancel" data-modal="modalEliminar">Cancelar</button>
+            <button type="button" class="btn-confirm" id="confirmEliminar">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmación Eliminar cuenta -->
+    <div id="modalEliminarCuenta" class="modal" style="display:none;" aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-header">⚠️ Confirmar eliminación Cuenta</div>
+            <p>¿Estás seguro de eliminar todos los datos de la tabla?</p>
+            <div class="modal-footer">
+            <button type="button" class="btn-cancel" data-modal="modalEliminarCuenta">Cancelar</button>
+            <button type="button" class="btn-confirm" id="confirmEliminarCuenta">Eliminar</button>
+            </div>
+        </div>
+    </div>
+    
+    {% block js%}
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/2.3.5/js/dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/columncontrol/1.1.1/js/dataTables.columnControl.min.js"></script>
+    <script src="https://cdn.datatables.net/columncontrol/1.1.1/js/columnControl.dataTables.js"></script>
+    <!-- JS de FixedHeader -->
+    {% comment %} <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script> {% endcomment %}
+    <!-- DataTables Buttons JS -->
+    {% comment %} <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script> {% endcomment %}
+    {% comment %} <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script> {% endcomment %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <script>
+        const url_obtener_consolidado_tulua = "{% url 'obtener_consolidado_tulua' %}";
+    </script>
+    <script src="{% static 'js/consolidado_tulua.js' %}"></script>
+   
+    {% endblock %}
+
+{% endblock %}

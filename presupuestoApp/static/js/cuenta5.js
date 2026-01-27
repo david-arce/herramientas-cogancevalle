@@ -80,6 +80,7 @@ $(document).ready(function() {
         language: {
             url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
         },
+        
         createdRow: function(row, data, dataIndex) {
             // marcar todas menos Acciones como editables
             $('td', row).each(function(index) {

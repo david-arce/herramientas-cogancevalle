@@ -8,7 +8,12 @@
   
   <!-- Google Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-  
+  <link rel="stylesheet" href="https://cdn.datatables.net/2.3.6/css/dataTables.dataTables.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/columncontrol/1.1.1/css/columnControl.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/4.0.5/css/fixedHeader.dataTables.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <!-- DataTables Buttons CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
   <link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
   {% block css%}{% endblock %}
 </head>
@@ -17,13 +22,16 @@
     <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
       <div class="logo" tabindex="0">PRESUPUESTO</div>
       <nav class="sidebar-nav" role="navigation" aria-label="Menú principal">
-        <a href="{% url 'dashboardPresupuesto'%}" class="active" tabindex="0"><span class="material-icons" aria-hidden="true">note_alt</span><span class="text">Presupuestos</span></a>
+        <a href="{% url 'dashboardPresupuesto'%}" class="{% if request.resolver_match.url_name == 'dashboardPresupuesto' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">note_alt</span><span class="text">Presupuestos</span></a>
         {% comment %} botón para exportar a excel {% endcomment %}
         <a href="{% url 'exportar_excel_presupuestos' %}" tabindex="0" ><span class="material-icons" aria-hidden="true">file_download</span><span class="text">Exportar a Excel Presupuestos Aprobados</span></a>
         <a href="{% url 'exportar_nomina_vertical' %}" tabindex="0" ><span class="material-icons" aria-hidden="true">file_download</span><span class="text">Exportar a Excel Presupuesto Nomina</span></a>
-        <a href="{% url 'cuenta5' %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Cuenta 5</span></a>
-        {% comment %} <a href="#" tabindex="0"><span class="material-icons" aria-hidden="true">search</span><span class="text">Buscar</span></a>
-        <a href="#" tabindex="0"><span class="material-icons" aria-hidden="true">settings</span><span class="text">Configuración</span></a> {% endcomment %}
+        <a href="{% url 'cuenta5' %}" class="{% if request.resolver_match.url_name == 'cuenta5' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Cuenta 5</span></a>
+        <a href="{% url 'consolidado_tulua' %}" class="{% if request.resolver_match.url_name == 'consolidado_tulua' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado tulua</span></a>
+        <a href="{% url 'consolidado_buga' %}" class="{% if request.resolver_match.url_name == 'consolidado_buga' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado buga</span></a>
+        <a href="{% url 'consolidado_cartago' %}" class="{% if request.resolver_match.url_name == 'consolidado_cartago' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado cartago</span></a>
+        <a href="{% url 'consolidado_cali' %}" class="{% if request.resolver_match.url_name == 'consolidado_cali' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado cali</span></a>
+        <a href="{% url 'consolidado_total_base' %}" class="{% if request.resolver_match.url_name == 'consolidado_total_base' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado total base</span></a>
       </nav>
       <button aria-label="Colapsar barra lateral" class="sidebar-toggle desktop" id="sidebarToggle">
         <span class="material-icons" aria-hidden="true">chevron_left</span>
@@ -38,7 +46,7 @@
           <span class="material-icons search-icon" aria-hidden="true">search</span>
         </div> {% endcomment %}
         <div class="user-profile" tabindex="0" aria-label="Perfil de usuario">
-          <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/a5df9cd9-ddcf-4863-9290-dff3ca408c6b.png" alt="Avatar del usuario" />
+          <span class="material-icons" aria-hidden="true">account_circle</span>
           <span class="user-name">Nicolas</span>
         </div>
       </header>
@@ -53,78 +61,74 @@
     style="display:none; position: fixed; top:16px; left:16px; z-index:1100; background:#3f51b5; color:#fff; border:none; width:44px; height:44px; border-radius:50%; box-shadow:0 8px 20px rgba(63,81,181,0.4);">
     <span class="material-icons" aria-hidden="true">menu</span>
   </button>
-  
-<script>
-    
-    document.addEventListener('DOMContentLoaded', function () {
-      const sidebar = document.getElementById('sidebar');
-      const sidebarToggle = document.getElementById('sidebarToggle');
-      const sidebarToggleMobile = document.getElementById('sidebarToggleMobile');
-      const mqMobile = window.matchMedia("(max-width: 639px)");
 
-      // ===== Toggle desktop =====
-      sidebarToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('collapsed');
-        document.querySelector('.app-container').classList.toggle('collapsed'); 
-        const icon = sidebarToggle.querySelector('.material-icons');
-        icon.textContent = sidebar.classList.contains('collapsed') ? 'chevron_right' : 'chevron_left';
-    
-      });
+  <script src="https://cdn.datatables.net/2.3.6/js/dataTables.js"></script>
+  <script src="https://cdn.datatables.net/fixedheader/4.0.5/js/dataTables.fixedHeader.js"></script>
+  <script src="https://cdn.datatables.net/fixedheader/4.0.5/js/fixedHeader.dataTables.js"></script>
+  <script src="https://cdn.datatables.net/columncontrol/1.1.1/js/dataTables.columnControl.min.js"></script>
+  <script src="https://cdn.datatables.net/columncontrol/1.1.1/js/columnControl.dataTables.js"></script>
+  <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebarToggleMobile = document.getElementById('sidebarToggleMobile');
+        const mqMobile = window.matchMedia("(max-width: 639px)");
 
-      // ===== Toggle mobile =====
-      function toggleMobileSidebar() {
-        sidebar.classList.toggle('visible');
-        sidebarToggleMobile.style.display = sidebar.classList.contains('visible') ? 'none' : 'block';
-      }
-      sidebarToggleMobile.addEventListener('click', toggleMobileSidebar);
+        // ===== Toggle desktop =====
+        sidebarToggle.addEventListener('click', () => {
+          sidebar.classList.toggle('collapsed');
+          document.querySelector('.app-container').classList.toggle('collapsed'); 
+          const icon = sidebarToggle.querySelector('.material-icons');
+          icon.textContent = sidebar.classList.contains('collapsed') ? 'chevron_right' : 'chevron_left';
+      
+        });
 
-      // ===== Responsive handler =====
-      function handleResponsive() {
-        if (mqMobile.matches) {
-          sidebar.classList.remove('collapsed');
-          sidebar.style.width = '240px';
-          sidebarToggleMobile.style.display = 'block';
-          sidebarToggle.style.display = 'none';
-        } else {
-          sidebar.classList.remove('visible');
-          sidebarToggleMobile.style.display = 'none';
-          sidebarToggle.style.display = 'flex';
-          sidebar.style.width = sidebar.classList.contains('collapsed') ? '64px' : '280px';
+        // ===== Toggle mobile =====
+        function toggleMobileSidebar() {
+          sidebar.classList.toggle('visible');
+          sidebarToggleMobile.style.display = sidebar.classList.contains('visible') ? 'none' : 'block';
         }
-      }
-      window.addEventListener('resize', handleResponsive);
-      handleResponsive();
+        sidebarToggleMobile.addEventListener('click', toggleMobileSidebar);
 
-      // ===== Keyboard accessibility =====
-      const navLinks = document.querySelectorAll('nav.sidebar-nav a');
-      navLinks.forEach(link => {
-        link.addEventListener('keydown', e => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            link.click();
+        // ===== Responsive handler =====
+        function handleResponsive() {
+          if (mqMobile.matches) {
+            sidebar.classList.remove('collapsed');
+            sidebar.style.width = '240px';
+            sidebarToggleMobile.style.display = 'block';
+            sidebarToggle.style.display = 'none';
+          } else {
+            sidebar.classList.remove('visible');
+            sidebarToggleMobile.style.display = 'none';
+            sidebarToggle.style.display = 'flex';
+            sidebar.style.width = sidebar.classList.contains('collapsed') ? '64px' : '280px';
           }
-        });
-      });
+        }
+        window.addEventListener('resize', handleResponsive);
+        handleResponsive();
 
-      // ===== Focus main al navegar =====
-      const mainContent = document.getElementById('main');
-      navLinks.forEach(link => {
-        link.addEventListener('click', () => {
-          setTimeout(() => mainContent.focus(), 100);
+        // ===== Keyboard accessibility =====
+        const navLinks = document.querySelectorAll('nav.sidebar-nav a');
+        navLinks.forEach(link => {
+          link.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              link.click();
+            }
+          });
         });
-      });
 
-      // ===== Search debounce =====
-      const searchInput = document.getElementById('searchInput');
-      let searchTimeout;
-      searchInput.addEventListener('input', () => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-          console.log('Buscar:', searchInput.value);
-        }, 300);
+        // ===== Focus main al navegar =====
+        const mainContent = document.getElementById('main');
+        navLinks.forEach(link => {
+          link.addEventListener('click', () => {
+            setTimeout(() => mainContent.focus(), 100);
+          });
+        });
+
+        
       });
-    });
-</script>
+  </script>
 
 </body>
 </html>

@@ -1,0 +1,131 @@
+table thead th {
+    background-color: #4f6ed3;
+    color: #fff;
+    font-size: 0.8rem;
+    padding: 4px 8px;
+}
+
+#table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+#table th,
+#table td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 4px 8px;
+    font-size: 0.9rem;
+}
+
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+}
+
+.toast {
+    background: #333;
+    color: white;
+    padding: 15px 20px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.3s ease;
+    min-width: 300px;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.toast-success {
+    background: #28a745;
+}
+
+.toast-error {
+    background: #dc3545;
+}
+
+.toast-info {
+    background: #17a2b8;
+}
+
+/* estilos para cuenta que empiecen en 54 */
+.cuenta-54 {
+    background-color: #bde2fd !important; /* Azul claro */
+}
+
+.cuenta-54:hover {
+    background-color: #bbdefb !important; /* Más oscuro al hover */
+}
+
+.cuenta-54.editing {
+    background-color: #fffce1 !important; /* Amarillo en edición */
+    border-left: 4px solid #2196F3 !important; /* Borde azul distintivo */
+}
+
+/* Bordes para formar un cuadrado alrededor del grupo de cuentas 54 */
+.cuenta-54-first td{
+    border-top: 2px solid #000000 !important;
+}
+
+.cuenta-54-last td{
+    border-bottom: 2px solid #000000 !important;
+}
+
+.cuenta-54 td:first-child{
+    border-left: 2px solid #000000 !important;
+}
+
+.cuenta-54 td:last-child {
+    border-right: 2px solid #000000 !important;
+}
+
+/* estilos para cuenta que empiecen en 51 */
+.cuenta-51 {
+    background-color: #d4ffa3 !important; /* Verde claro */
+}
+.cuenta-51:hover {
+    background-color: #dcedc8 !important; /* Más oscuro al hover */
+}
+.cuenta-51.editing {
+    background-color: #fff9c4 !important; /* Amarillo en edición */
+    border-left: 4px solid #4CAF50 !important; /* Borde verde distintivo */
+}
+
+/* Bordes para formar un cuadrado alrededor del grupo de cuentas 51 */
+.cuenta-51-first td{
+    border-top: 2px solid #000000 !important;
+}
+.cuenta-51-last td{
+    border-bottom: 2px solid #000000 !important;
+}
+.cuenta-51 td:first-child{
+    border-left: 2px solid #000000 !important;
+}
+.cuenta-51 td:last-child {
+    border-right: 2px solid #000000 !important;
+}
+
+/* estilos para fila total de cuentas que empiecen en 54 */
+.total-row-54 {
+    background-color: #f0f0f0;
+    font-weight: bold;
+    border-top: 2px solid #333;
+    border-bottom: 2px solid #333;
+}
+.total-row-51 {
+    background-color: #f3e5f5;
+    font-weight: bold;
+    border-top: 2px solid #7b1fa2;
+}
+.total-row-ventas-netas {
+    background-color: #ffe0b2;
+    font-weight: bold;
+    border-top: 2px solid #fb8c00;
+}
