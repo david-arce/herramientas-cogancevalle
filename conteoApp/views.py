@@ -26,7 +26,7 @@ def asignar_tareas(request):
         fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
     # fecha_asignar =  '20260110'
     
-    if request.user.username != "DBENITEZ" and request.user.username != "CHINCAPI" and request.user.username != "FDUQUE" and request.user.username != "LAMAYA" and request.user.username != "AGRAJALE"  and request.user.username != "admin":
+    if request.user.username != "DBENITEZ" and request.user.username != "CHINCAPI" and request.user.username != "PROJAS" and request.user.username != "LAMAYA" and request.user.username != "AGRAJALE"  and request.user.username != "admin":
         raise PermissionDenied("No tienes permiso para acceder a esta vista.")
     
     tareas = None  # Inicializamos la variable de las tareas
