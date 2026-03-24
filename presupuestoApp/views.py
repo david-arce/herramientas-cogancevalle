@@ -11920,60 +11920,43 @@ def obtener_consolidado_total_base(request):
 
 def obtener_tabla_dinamica_flexible(request):
     """
-    Versión flexible que permite especificar los campos de agrupación
-    vía parámetros GET
-    
-    Parámetros:
-    - group_by: campos separados por coma (ej: "ctanombre,vinnombre,mcndetalle")
-    - order_by: campo para ordenar (opcional)
-    - filtros: mcncuenta, mcnzona, mcndestino, mcncosto (valores separados por coma)
+    ▼ Ahora también filtra por ctanombre si se envía en los parámetros GET.
     """
     try:
-        # Obtener parámetros de agrupación
         group_by_param = request.GET.get('group_by', 'ctanombre,vinnombre,mcndetalle')
         campos_agrupacion = [campo.strip() for campo in group_by_param.split(',')]
-        
-        # Validar campos
-        campos_validos = ['ctanombre', 'vinnombre', 'mcndetalle']
+ 
+        campos_validos = ['ctanombre', 'vinnombre', 'mcndetalle', 'mcncuenta']
         campos_agrupacion = [c for c in campos_agrupacion if c in campos_validos]
-        
+ 
         if not campos_agrupacion:
-            return JsonResponse({
-                'error': 'No se especificaron campos válidos para agrupar'
-            }, status=400)
-        
-        # Campos base que siempre necesitamos
+            return JsonResponse({'error': 'No se especificaron campos válidos para agrupar'}, status=400)
+ 
         campos_select = list(set(campos_agrupacion + [
             'mcnfecha', 'mcnvaldebi', 'mcnvalcred',
             'mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto'
         ]))
-        
-        # Obtener datos
+ 
         queryset = Cuenta5Base.objects.values(*campos_select)
-        
-        # Aplicar filtros si existen
-        filtro_cuenta = request.GET.get('mcncuenta', '')
-        filtro_zona = request.GET.get('mcnzona', '')
-        filtro_destino = request.GET.get('mcndestino', '')
-        filtro_costo = request.GET.get('mcnccosto', '')
-        
+ 
+        filtro_cuenta    = request.GET.get('mcncuenta',  '')
+        filtro_zona      = request.GET.get('mcnzona',    '')
+        filtro_destino   = request.GET.get('mcndestino', '')
+        filtro_costo     = request.GET.get('mcnccosto',  '')
+        filtro_ctanombre = request.GET.get('ctanombre',  '')   # ▼ nuevo
+ 
         if filtro_cuenta:
-            cuentas = [c.strip() for c in filtro_cuenta.split(',')]
-            queryset = queryset.filter(mcncuenta__in=cuentas)
-        
+            queryset = queryset.filter(mcncuenta__in=[c.strip() for c in filtro_cuenta.split(',')])
         if filtro_zona:
-            zonas = [z.strip() for z in filtro_zona.split(',')]
-            queryset = queryset.filter(mcnzona__in=zonas)
-        
+            queryset = queryset.filter(mcnzona__in=[z.strip() for z in filtro_zona.split(',')])
         if filtro_destino:
-            destinos = [d.strip() for d in filtro_destino.split(',')]
-            queryset = queryset.filter(mcndestino__in=destinos)
-        
+            queryset = queryset.filter(mcndestino__in=[d.strip() for d in filtro_destino.split(',')])
         if filtro_costo:
-            costos = [c.strip() for c in filtro_costo.split(',')]
-            queryset = queryset.filter(mcncosto__in=costos)
-            
-        # Estructura para consolidar
+            queryset = queryset.filter(mcnccosto__in=[c.strip() for c in filtro_costo.split(',')])
+        # ▼ Filtrar por ctanombre si viene en el request
+        if filtro_ctanombre:
+            queryset = queryset.filter(ctanombre__in=[c.strip() for c in filtro_ctanombre.split(',')])
+ 
         tabla_dinamica = defaultdict(lambda: {
             **{campo: '' for campo in campos_agrupacion},
             'enero': 0, 'febrero': 0, 'marzo': 0, 'abril': 0,
@@ -11981,86 +11964,341 @@ def obtener_tabla_dinamica_flexible(request):
             'septiembre': 0, 'octubre': 0, 'noviembre': 0, 'diciembre': 0,
             'total': 0
         })
-        
+ 
         MESES_ES = {
             1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril',
             5: 'mayo', 6: 'junio', 7: 'julio', 8: 'agosto',
             9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre'
         }
-        
-        # Procesar registros
+ 
         for row in queryset:
-            # Convertir fecha
             fecha = excel_serial_to_date(row['mcnfecha'])
             if not fecha:
                 continue
             fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
             mes = MESES_ES[fecha.month]
-            
-            # Crear clave de agrupación
+ 
             key_values = []
             for campo in campos_agrupacion:
                 valor = row.get(campo) or f'SIN_{campo.upper()}'
                 key_values.append(valor)
             key = tuple(key_values)
-            
-            # Calcular saldo
+ 
             saldo = (row['mcnvaldebi'] or 0) - (row['mcnvalcred'] or 0)
-            
-            # Actualizar valores
+ 
             for i, campo in enumerate(campos_agrupacion):
                 tabla_dinamica[key][campo] = key_values[i]
-            
+ 
             tabla_dinamica[key][mes] += saldo
             tabla_dinamica[key]['total'] += saldo
-        
-        # Redondear valores
+ 
         for key in tabla_dinamica:
             for mes in MESES_ES.values():
                 tabla_dinamica[key][mes] = round(tabla_dinamica[key][mes])
             tabla_dinamica[key]['total'] = round(tabla_dinamica[key]['total'])
-        
-        # Convertir a lista y ordenar
+ 
         result = list(tabla_dinamica.values())
         result.sort(key=lambda x: tuple(x[campo] for campo in campos_agrupacion))
-        
+ 
         return JsonResponse({
             'data': result,
             'recordsTotal': len(result),
             'recordsFiltered': len(result),
             'grouped_by': campos_agrupacion
         })
-        
+ 
     except Exception as e:
         print(f"❌ Error en obtener_tabla_dinamica_flexible: {e}")
-        return JsonResponse({
-            'error': str(e)
-        }, status=500)
+        return JsonResponse({'error': str(e)}, status=500)
 
 def obtener_valores_filtros(request):
     """
-    Endpoint para obtener los valores únicos de cada campo de filtro
+    Retorna valores únicos disponibles para cada campo de filtro,
+    teniendo en cuenta los filtros activos en los demás campos (filtrado en cascada).
+    Ahora soporta también el campo ctanombre.
     """
     try:
         campo = request.GET.get('campo', '')
-        
-        campos_validos = ['mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto']
-        
+        # ▼ ctanombre agregado a campos válidos
+        campos_validos = ['mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto', 'ctanombre']
+ 
         if campo not in campos_validos:
             return JsonResponse({'error': 'Campo no válido'}, status=400)
-        
-        # Obtener valores únicos
-        valores = Cuenta5Base.objects.values_list(campo, flat=True).distinct().order_by(campo)
-        valores = [v for v in valores if v]  # Eliminar valores nulos
-        
-        return JsonResponse({
-            'valores': list(valores)
-        })
-        
+ 
+        queryset = Cuenta5Base.objects.all()
+ 
+        # Aplicar los filtros de los OTROS campos (no del campo que se consulta)
+        filtro_cuenta   = request.GET.get('mcncuenta',  '')
+        filtro_zona     = request.GET.get('mcnzona',    '')
+        filtro_destino  = request.GET.get('mcndestino', '')
+        filtro_costo    = request.GET.get('mcnccosto',  '')
+        filtro_ctanombre = request.GET.get('ctanombre', '')   # ▼ nuevo
+ 
+        if filtro_cuenta and campo != 'mcncuenta':
+            queryset = queryset.filter(mcncuenta__in=[c.strip() for c in filtro_cuenta.split(',')])
+        if filtro_zona and campo != 'mcnzona':
+            queryset = queryset.filter(mcnzona__in=[z.strip() for z in filtro_zona.split(',')])
+        if filtro_destino and campo != 'mcndestino':
+            queryset = queryset.filter(mcndestino__in=[d.strip() for d in filtro_destino.split(',')])
+        if filtro_costo and campo != 'mcnccosto':
+            queryset = queryset.filter(mcnccosto__in=[c.strip() for c in filtro_costo.split(',')])
+        # ▼ Aplicar filtro ctanombre en cascada (solo si no es el campo que se consulta)
+        if filtro_ctanombre and campo != 'ctanombre':
+            queryset = queryset.filter(ctanombre__in=[c.strip() for c in filtro_ctanombre.split(',')])
+ 
+        valores = (
+            queryset
+            .values_list(campo, flat=True)
+            .distinct()
+            .order_by(campo)
+        )
+        valores = [v for v in valores if v]
+ 
+        return JsonResponse({'valores': list(valores)})
+ 
     except Exception as e:
         print(f"❌ Error en obtener_valores_filtros: {e}")
         return JsonResponse({'error': str(e)}, status=500)
-
+ 
 def tabla_dinamica_view(request):
     return render(request, 'presupuesto_consolidado/tabla_dinamica.html')
 
+@require_http_methods(["GET"])
+def obtener_registros_detalle(request):
+    try:
+        ctanombre  = request.GET.get('ctanombre', '')
+        vinnombre  = request.GET.get('vinnombre', '')
+        mcndetalle = request.GET.get('mcndetalle', '')
+
+        if not ctanombre or not vinnombre or not mcndetalle:
+            return JsonResponse({'error': 'Faltan parámetros obligatorios'}, status=400)
+
+        queryset = Cuenta5Base.objects.filter(
+            ctanombre=ctanombre,
+            vinnombre=vinnombre,
+            mcndetalle=mcndetalle,
+        )
+
+        # ✅ Soportar múltiples valores separados por coma
+        for campo, param in [
+            ('mcncuenta',  'mcncuenta'),
+            ('mcnzona',    'mcnzona'),
+            ('mcndestino', 'mcndestino'),
+            ('mcnccosto',  'mcnccosto'),
+        ]:
+            valor = request.GET.get(param, '')
+            if valor:
+                valores = [v.strip() for v in valor.split(',')]
+                queryset = queryset.filter(**{f'{campo}__in': valores})
+
+        registros = []
+        for obj in queryset:
+            registros.append({
+                'id':         obj.pk,
+                'mcnfecha':   obj.mcnfecha,
+                'mcndetalle': obj.mcndetalle,
+                'mcnvaldebi': float(obj.mcnvaldebi or 0),
+                'mcnvalcred': float(obj.mcnvalcred or 0),
+                'mcncuenta':  obj.mcncuenta,
+                'mcnzona':    obj.mcnzona,
+                'mcndestino': obj.mcndestino,
+                'mcnccosto':  obj.mcnccosto,
+                'ctanombre':  obj.ctanombre,
+                'vinnombre':  obj.vinnombre,
+            })
+
+        return JsonResponse({'registros': registros, 'total': len(registros)})
+
+    except Exception as e:
+        print(f"❌ Error en obtener_registros_detalle: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["PUT", "PATCH"])
+def editar_registro(request, registro_id):
+    """
+    Edita un registro individual de Cuenta5Base.
+    Body JSON con los campos a actualizar.
+    """
+    try:
+        obj = Cuenta5Base.objects.get(pk=registro_id)
+    except Cuenta5Base.DoesNotExist:
+        return JsonResponse({'error': 'Registro no encontrado'}, status=404)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    # Campos editables
+    campos_editables = [
+        'mcnfecha', 'mcndetalle', 'mcnvaldebi', 'mcnvalcred',
+        'mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto',
+        'ctanombre', 'vinnombre',
+    ]
+
+    for campo in campos_editables:
+        if campo in body:
+            setattr(obj, campo, body[campo])
+
+    obj.save()
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Registro {registro_id} actualizado correctamente',
+        'id': obj.pk,
+    })
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def eliminar_registro(request, registro_id):
+    """
+    Elimina un registro individual de Cuenta5Base.
+    """
+    try:
+        obj = Cuenta5Base.objects.get(pk=registro_id)
+    except Cuenta5Base.DoesNotExist:
+        return JsonResponse({'error': 'Registro no encontrado'}, status=404)
+
+    obj.delete()
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Registro {registro_id} eliminado correctamente',
+    })
+
+@require_http_methods(["GET"])
+def obtener_registros_nivel(request):
+    try:
+        nivel     = request.GET.get('nivel', '')
+        ctanombre = request.GET.get('ctanombre', '')
+
+        if not nivel or not ctanombre:
+            return JsonResponse({'error': 'Faltan parámetros obligatorios'}, status=400)
+
+        queryset = Cuenta5Base.objects.filter(ctanombre=ctanombre)
+
+        if nivel == 'vinculo':
+            vinnombre = request.GET.get('vinnombre', '')
+            if not vinnombre:
+                return JsonResponse({'error': 'Falta vinnombre'}, status=400)
+            queryset = queryset.filter(vinnombre=vinnombre)
+
+        # ✅ Soportar múltiples valores separados por coma
+        for campo, param in [
+            ('mcncuenta',  'mcncuenta'),
+            ('mcnzona',    'mcnzona'),
+            ('mcndestino', 'mcndestino'),
+            ('mcnccosto',  'mcnccosto'),
+        ]:
+            valor = request.GET.get(param, '')
+            if valor:
+                valores = [v.strip() for v in valor.split(',')]
+                queryset = queryset.filter(**{f'{campo}__in': valores})
+
+        registros = []
+        for obj in queryset:
+            registros.append({
+                'id':         obj.pk,
+                'mcnfecha':   obj.mcnfecha,
+                'mcndetalle': obj.mcndetalle,
+                'mcnvaldebi': float(obj.mcnvaldebi or 0),
+                'mcnvalcred': float(obj.mcnvalcred or 0),
+                'mcncuenta':  obj.mcncuenta,
+                'mcnzona':    obj.mcnzona,
+                'mcndestino': obj.mcndestino,
+                'mcnccosto':  obj.mcnccosto,
+                'ctanombre':  obj.ctanombre,
+                'vinnombre':  obj.vinnombre,
+            })
+
+        return JsonResponse({'registros': registros, 'total': len(registros)})
+
+    except Exception as e:
+        print(f"❌ Error en obtener_registros_nivel: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["PUT", "PATCH"])
+def renombrar_nivel(request):
+    """
+    Renombra en masa ctanombre o vinnombre en todos los registros que coincidan.
+    Body JSON:
+    - nivel: 'cuenta' o 'vinculo'
+    - ctanombre_actual: valor actual
+    - vinnombre_actual: valor actual (solo si nivel='vinculo')
+    - ctanombre_nuevo: nuevo valor (solo si nivel='cuenta')
+    - vinnombre_nuevo: nuevo valor (solo si nivel='vinculo')
+    """
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    nivel          = body.get('nivel', '')
+    ctanombre_actual = body.get('ctanombre_actual', '')
+
+    if not nivel or not ctanombre_actual:
+        return JsonResponse({'error': 'Faltan parámetros'}, status=400)
+
+    try:
+        if nivel == 'cuenta':
+            nuevo = body.get('ctanombre_nuevo', '').strip()
+            if not nuevo:
+                return JsonResponse({'error': 'Falta ctanombre_nuevo'}, status=400)
+            count = Cuenta5Base.objects.filter(ctanombre=ctanombre_actual).update(ctanombre=nuevo)
+            return JsonResponse({'success': True, 'actualizados': count, 'nuevo': nuevo})
+
+        elif nivel == 'vinculo':
+            vinnombre_actual = body.get('vinnombre_actual', '')
+            nuevo = body.get('vinnombre_nuevo', '').strip()
+            if not vinnombre_actual or not nuevo:
+                return JsonResponse({'error': 'Faltan vinnombre_actual o vinnombre_nuevo'}, status=400)
+            count = Cuenta5Base.objects.filter(
+                ctanombre=ctanombre_actual,
+                vinnombre=vinnombre_actual
+            ).update(vinnombre=nuevo)
+            return JsonResponse({'success': True, 'actualizados': count, 'nuevo': nuevo})
+
+        else:
+            return JsonResponse({'error': 'Nivel inválido'}, status=400)
+
+    except Exception as e:
+        print(f"❌ Error en renombrar_nivel: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+    
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def eliminar_nivel(request):
+    """
+    Elimina en masa todos los registros de un nivel jerárquico.
+    Parámetros GET:
+    - nivel: 'cuenta' o 'vinculo'
+    - ctanombre: requerido siempre
+    - vinnombre: requerido si nivel='vinculo'
+    """
+    try:
+        nivel     = request.GET.get('nivel', '')
+        ctanombre = request.GET.get('ctanombre', '')
+
+        if not nivel or not ctanombre:
+            return JsonResponse({'error': 'Faltan parámetros'}, status=400)
+
+        queryset = Cuenta5Base.objects.filter(ctanombre=ctanombre)
+
+        if nivel == 'vinculo':
+            vinnombre = request.GET.get('vinnombre', '')
+            if not vinnombre:
+                return JsonResponse({'error': 'Falta vinnombre'}, status=400)
+            queryset = queryset.filter(vinnombre=vinnombre)
+        elif nivel != 'cuenta':
+            return JsonResponse({'error': 'Nivel inválido'}, status=400)
+
+        count, _ = queryset.delete()
+        return JsonResponse({'success': True, 'eliminados': count})
+
+    except Exception as e:
+        print(f"❌ Error en eliminar_nivel: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+    
+    

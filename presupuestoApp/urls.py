@@ -463,6 +463,13 @@ urlpatterns = [
     path('obtener-valores-filtros/', views.obtener_valores_filtros, name='obtener_valores_filtros'),
     path('obtener-tabla-dinamica-flexible/', views.obtener_tabla_dinamica_flexible, name='obtener_tabla_dinamica_flexible'),
     path('tabla-dinamica/', views.tabla_dinamica_view, name='tabla_dinamica'),
+    path('obtener-registros-detalle/', views.obtener_registros_detalle,  name='obtener_registros_detalle'),
+    path('editar-registro/<int:registro_id>/', views.editar_registro, name='editar_registro'),
+    path('eliminar-registro/<int:registro_id>/', views.eliminar_registro, name='eliminar_registro'),
+    
+    path('obtener-registros-nivel/',  views.obtener_registros_nivel,  name='obtener_registros_nivel'),
+    path('renombrar-nivel/',          views.renombrar_nivel,           name='renombrar_nivel'),
+    path('eliminar-nivel/', views.eliminar_nivel, name='eliminar_nivel'),
     #------------------PRESUPUESTO CONSOLIDADO---------------------------
     path('<str:area>/', views.presupuesto_consolidado, name='presupuesto_consolidado'),
     path('<str:area>/obtener-presupuesto-consolidado/', views.obtener_presupuesto_consolidado, name='obtener_presupuesto_consolidado'),
