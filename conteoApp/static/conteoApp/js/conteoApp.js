@@ -330,7 +330,14 @@ document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll(".verificado-check").forEach(function (checkbox) {
         checkbox.addEventListener("change", function () {
             const tareaId = this.dataset.id;
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
+
+            // ✅ Leer el token desde el input del formulario o desde la cookie
+            const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+            if (!csrfInput) {
+                console.error("No se encontró el token CSRF");
+                return;
+            }
+            const csrfToken = csrfInput.value;
 
             fetch(toggleVerificadoURL, {
                 method: "POST",
@@ -407,13 +414,24 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 
-// Seleccionar/Deseleccionar todos - Primera lista (Asignar tareas)
-document.getElementById('selectAll').addEventListener('change', function() {
-    const checkboxes = document.querySelectorAll('#checkboxList .user-checkbox');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = this.checked;
+// ✅ Seleccionar/Deseleccionar todos - Primera lista (Asignar tareas)
+const selectAll = document.getElementById('selectAll');
+if (selectAll) {
+    selectAll.addEventListener('change', function() {
+        document.querySelectorAll('#checkboxList .user-checkbox').forEach(cb => {
+            cb.checked = this.checked;
+        });
     });
-});
+
+    document.querySelectorAll('#checkboxList .user-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const allChecked = Array.from(
+                document.querySelectorAll('#checkboxList .user-checkbox')
+            ).every(cb => cb.checked);
+            selectAll.checked = allChecked;
+        });
+    });
+}
 
 // Actualizar el estado del checkbox "Seleccionar todos" si se deselecciona alguno manualmente
 document.querySelectorAll('#checkboxList .user-checkbox').forEach(checkbox => {
@@ -424,13 +442,24 @@ document.querySelectorAll('#checkboxList .user-checkbox').forEach(checkbox => {
     });
 });
 
-// Seleccionar/Deseleccionar todos - Segunda lista (Historial)
-document.getElementById('selectAllHomework').addEventListener('change', function() {
-    const checkboxes = document.querySelectorAll('#checkboxList_homework .user-checkbox-homework');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = this.checked;
+// ✅ Seleccionar/Deseleccionar todos - Segunda lista (Historial)
+const selectAllHomework = document.getElementById('selectAllHomework');
+if (selectAllHomework) {
+    selectAllHomework.addEventListener('change', function() {
+        document.querySelectorAll('#checkboxList_homework .user-checkbox-homework').forEach(cb => {
+            cb.checked = this.checked;
+        });
     });
-});
+
+    document.querySelectorAll('#checkboxList_homework .user-checkbox-homework').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const allChecked = Array.from(
+                document.querySelectorAll('#checkboxList_homework .user-checkbox-homework')
+            ).every(cb => cb.checked);
+            selectAllHomework.checked = allChecked;
+        });
+    });
+}
 
 // Actualizar el estado del checkbox "Seleccionar todos" en historial
 document.querySelectorAll('#checkboxList_homework .user-checkbox-homework').forEach(checkbox => {
