@@ -1,87 +1,1100 @@
 {% extends 'presupuesto_consolidado/base_dashboard.html' %}
 {% load static %}
 
-{% block css%}
-<!-- CSS de FixedHeader -->
+{% block css %}
 <meta name="csrf-token" content="{{ csrf_token }}">
-<link rel="stylesheet" href="{% static 'css/consolidado_sedes.css' %}">
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   VARIABLES — mismas que tabla_dinamica_con_filtros
+══════════════════════════════════════════════════════════════════ */
+:root {
+    --c-bg:         #f8f9fb;
+    --c-surface:    #ffffff;
+    --c-border:     #e5e7eb;
+    --c-border-md:  #d1d5db;
+    --c-text:       #111827;
+    --c-muted:      #6b7280;
+    --c-hint:       #9ca3af;
+
+    --c-indigo:     #4f46e5;
+    --c-indigo-lt:  #e0e7ff;
+    --c-indigo-dk:  #4338ca;
+
+    --c-green:      #15803d;
+    --c-green-lt:   #dcfce7;
+    --c-red:        #dc2626;
+    --c-red-lt:     #fee2e2;
+    --c-amber:      #d97706;
+    --c-amber-lt:   #fef3c7;
+
+    /* filas totales */
+    --row-54-bg:     #eff6ff;
+    --row-54-border: #93c5fd;
+    --row-54-text:   #1e40af;
+    --row-51-bg:     #f0fdf4;
+    --row-51-border: #86efac;
+    --row-51-text:   #14532d;
+    --row-vn-bg:     #faf5ff;
+    --row-vn-border: #c4b5fd;
+    --row-vn-text:   #5b21b6;
+
+    /* cuentas individuales */
+    --cuenta-54-bg:  #dbeafe;   /* azul claro */
+    --cuenta-51-bg:  #dcfce7;   /* verde claro */
+
+    /* grid */
+    --grid-line:     #d1d5db;
+
+    --radius:    8px;
+    --radius-lg: 12px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    background: var(--c-bg);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: var(--c-text);
+    font-size: .9rem;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CONTENEDOR — mismo padding que .container de la dinámica
+══════════════════════════════════════════════════════════════════ */
+.consolidado-wrap {
+    padding: 16px 18px;
+    max-width: 100%;
+}
+
+/* ══ CABECERA ══════════════════════════════════════════════════ */
+.consolidado-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+/* Mismo estilo que .header h1 en la dinámica */
+.consolidado-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--c-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.consolidado-title span { color: var(--c-indigo); }
+
+/* ══ BARRA DE CONTROLES — mismos .btn de la dinámica ══════════ */
+.controls-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: none; border-radius: var(--radius);
+    padding: 8px 16px; font-size: .85rem; font-weight: 600;
+    cursor: pointer; transition: background .15s, transform .1s;
+    white-space: nowrap;
+}
+.btn:active { transform: scale(.97); }
+
+.btn-primary { background: var(--c-indigo); color: #fff; }
+.btn-primary:hover { background: var(--c-indigo-dk); }
+
+.btn-outline {
+    background: #fff; color: var(--c-muted);
+    border: 1px solid var(--c-border-md);
+}
+.btn-outline:hover { background: #f3f4f6; }
+
+.btn-export { background: #0f766e; color: #fff; }
+.btn-export:hover { background: #115e59; }
+
+/* Búsqueda — mismo .search-box */
+.search-box {
+    display: flex; align-items: center; gap: 6px;
+    background: #fff; border: 1px solid var(--c-border-md);
+    border-radius: var(--radius); padding: 6px 12px;
+}
+.search-box input {
+    border: none; outline: none;
+    font-size: .85rem; color: var(--c-text);
+    width: 200px; background: transparent;
+}
+.search-box svg { color: var(--c-hint); flex-shrink: 0; }
+
+/* ══ STATS — mismas .stat-pill de la dinámica ════════════════ */
+.stats-bar {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+.stat-pill {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: 999px;
+    padding: 5px 14px;
+    font-size: .78rem; font-weight: 600;
+    color: var(--c-muted);
+    display: flex; align-items: center; gap: 6px;
+}
+.stat-pill .stat-val { color: var(--c-text); font-weight: 700; }
+.stat-pill.stat-indigo { border-color: var(--c-indigo-lt); color: var(--c-indigo); }
+.stat-pill.stat-indigo .stat-val { color: var(--c-indigo); }
+
+/* ══ TABLA — mismo .table-container / .pivot-table ══════════ */
+.table-wrap {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    position: relative;
+}
+.table-scroll { overflow-x: auto; }
+.table-scroll::-webkit-scrollbar { height: 6px; }
+.table-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+.table-scroll::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius: 3px; }
+
+table.consolidado {
+    width: auto;
+    min-width: 100%;
+    border-collapse: collapse;
+    font-size: .75rem;
+    table-layout: auto;
+}
+
+/* Cabecera */
+table.consolidado thead th {
+    background: #f3f4f6;
+    color: var(--c-muted);
+    font-size: .68rem;      /* reducido */
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    padding: 6px 8px;
+    border-bottom: 2px solid var(--c-border-md);
+    border-right: 1px solid var(--grid-line);
+    white-space: nowrap;
+    position: sticky; top: 0; z-index: 2;
+    user-select: none;
+}
+table.consolidado thead th:last-child { border-right: none; }
+
+table.consolidado thead th.sortable { cursor: pointer; }
+table.consolidado thead th.sortable:hover { background: #e5e7eb; }
+table.consolidado thead th .sort-icon { font-size: .6rem; color: var(--c-hint); margin-left: 3px; }
+table.consolidado thead th.sorted-asc  .sort-icon::after { content: ' ▲'; color: var(--c-indigo); }
+table.consolidado thead th.sorted-desc .sort-icon::after { content: ' ▼'; color: var(--c-indigo); }
+
+/* Celdas — con bordes horizontales y verticales */
+table.consolidado tbody td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--grid-line);
+    border-right:  1px solid var(--grid-line);
+    vertical-align: middle;
+    color: var(--c-text);
+    font-size: .75rem;
+    white-space: nowrap;
+}
+table.consolidado tbody td:last-child { border-right: none; }
+table.consolidado tbody tr:last-child td { border-bottom: none; }
+table.consolidado tbody tr:hover td { background: rgba(0,0,0,.025); }
+
+/* Alineación */
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.ctr { text-align: center; }
+
+/* Colores de valor */
+.pos { color: var(--c-green); font-weight: 600; }
+.neg { color: var(--c-red);   font-weight: 600; }
+
+/* Columna total — igual que .total-column */
+.col-total {
+    background: #f8faff !important;
+    font-weight: 700;
+    border-left: 2px solid var(--c-indigo-lt);
+}
+
+/* ══ FILAS ESPECIALES ══════════════════════════════════════════ */
+tr.total-row-54 td {
+    background: var(--row-54-bg);
+    color: var(--row-54-text);
+    font-weight: 700;
+    font-size: .73rem;
+    border-top: 2px solid var(--row-54-border);
+    border-bottom: 2px solid var(--row-54-border);
+    border-right: 1px solid var(--row-54-border);
+}
+tr.total-row-51 td {
+    background: var(--row-51-bg);
+    color: var(--row-51-text);
+    font-weight: 700;
+    font-size: .73rem;
+    border-top: 2px solid var(--row-51-border);
+    border-bottom: 2px solid var(--row-51-border);
+    border-right: 1px solid var(--row-51-border);
+}
+tr.total-row-ventas-netas td {
+    background: var(--row-vn-bg);
+    color: var(--row-vn-text);
+    font-weight: 700;
+    font-size: .73rem;
+    border-top: 2px solid var(--row-vn-border);
+    border-bottom: 2px solid var(--row-vn-border);
+    border-right: 1px solid var(--row-vn-border);
+}
+
+/* Cuentas individuales 54 → azul claro, 51 → verde claro */
+tr.cuenta-54 td { background: var(--cuenta-54-bg); }
+tr.cuenta-51 td { background: var(--cuenta-51-bg); }
+
+tr.cuenta-54:hover td { background: #bfdbfe; }
+tr.cuenta-51:hover td { background: #bbf7d0; }
+
+tr.cuenta-54-first td { border-top: 1px solid var(--row-54-border); }
+tr.cuenta-54-last  td { border-bottom: 1px solid var(--row-54-border); }
+tr.cuenta-51-first td { border-top: 1px solid var(--row-51-border); }
+tr.cuenta-51-last  td { border-bottom: 1px solid var(--row-51-border); }
+
+/* ══ EDICIÓN INLINE — mismo estilo .editing de la dinámica ═══ */
+tr.editing td { background: #fffbeb !important; }
+
+.edit-input {
+    width: 100%;
+    border: 1px solid var(--c-indigo);
+    border-radius: 7px;
+    padding: 6px 8px;
+    font-size: .82rem;
+    color: var(--c-text);
+    outline: none;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+    transition: box-shadow .2s;
+}
+.edit-input:focus { box-shadow: 0 0 0 4px rgba(99,102,241,.25); }
+.edit-input.numeric { text-align: right; }
+
+/* ══ BOTONES DE ACCIÓN EN FILA — mismos de la dinámica ═══════ */
+.action-cell {
+    white-space: nowrap;
+    display: flex; align-items: center; gap: 4px;
+    justify-content: center;
+}
+
+/* Estilo unificado con btn-nivel-* de la dinámica */
+.btn-row {
+    background: none;
+    border-radius: 5px; cursor: pointer;
+    padding: 3px 8px; font-size: .78rem; font-weight: 600;
+    transition: opacity .15s, background .15s, transform .1s;
+    line-height: 1.5;
+}
+.btn-row:hover { transform: scale(1.05); }
+
+.btn-row-edit {
+    border: 1px solid var(--c-indigo-lt);
+    color: var(--c-indigo);
+}
+.btn-row-edit:hover { background: var(--c-indigo-lt); }
+
+.btn-row-save {
+    border: 1px solid #bbf7d0;
+    color: var(--c-green);
+}
+.btn-row-save:hover { background: var(--c-green-lt); }
+
+.btn-row-cancel {
+    border: 1px solid var(--c-border-md);
+    color: var(--c-muted);
+}
+.btn-row-cancel:hover { background: #f3f4f6; }
+
+.btn-row-delete {
+    border: 1px solid #fecaca;
+    color: var(--c-red);
+}
+.btn-row-delete:hover { background: var(--c-red-lt); }
+
+/* Checkbox */
+input[type="checkbox"] { accent-color: var(--c-indigo); cursor: pointer; width: 15px; height: 15px; }
+
+/* ══ OCULTO POR BÚSQUEDA ══════════════════════════════════════ */
+tr.hidden-search { display: none; }
+
+/* ══ FILA VACÍA ══════════════════════════════════════════════ */
+tr.empty-row td {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--c-hint);
+}
+
+/* ══ LOADING — mismo .loading de la dinámica ════════════════ */
+.loading-overlay {
+    display: none;
+    position: absolute; inset: 0;
+    background: rgba(255,255,255,.75);
+    z-index: 10;
+    align-items: center; justify-content: center;
+    flex-direction: column; gap: 12px;
+    border-radius: var(--radius-lg);
+}
+.loading-overlay.active { display: flex; }
+
+/* Mismo .spinner de la dinámica */
+.spinner {
+    width: 38px; height: 38px;
+    border: 3px solid var(--c-border);
+    border-top-color: var(--c-indigo);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ══ TOAST — idéntico al #toast de la dinámica ══════════════ */
+#toastContainer {
+    position: fixed; bottom: 28px; right: 28px;
+    display: flex; flex-direction: column; gap: 8px; z-index: 9000;
+}
+.toast {
+    background: #1e293b; color: #fff;
+    padding: 13px 20px; border-radius: var(--radius);
+    font-size: .88rem; font-weight: 500;
+    box-shadow: 0 8px 24px rgba(0,0,0,.3);
+    transform: translateX(120%);
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+    max-width: 340px;
+}
+.toast.show { transform: none; }
+.toast.toast-success { border-left: 4px solid #22c55e; }
+.toast.toast-error   { border-left: 4px solid #ef4444; }
+.toast.toast-info    { border-left: 4px solid #38bdf8; }
+
+/* ══ MODAL — idéntico al .modal-overlay de la dinámica ═════ */
+.modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.55);
+    z-index: 5000; justify-content: center; align-items: center;
+    backdrop-filter: blur(3px);
+}
+.modal-overlay.active { display: flex; }
+
+.modal-box {
+    background: #fff;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    width: min(92vw, 420px);
+    animation: modalIn .2s ease;
+}
+@keyframes modalIn {
+    from { opacity: 0; transform: translateY(-18px) scale(.97); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* Mismo .modal-header / .modal-body / .modal-footer de la dinámica */
+.modal-head {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--c-border);
+    font-size: 1.05rem; font-weight: 700; color: var(--c-text);
+    display: flex; align-items: center; justify-content: space-between;
+}
+.modal-close {
+    background: none; border: none; cursor: pointer;
+    font-size: 1.3rem; color: var(--c-muted); padding: 4px 8px;
+    border-radius: 6px; transition: background .15s; line-height: 1;
+}
+.modal-close:hover { background: #f3f4f6; color: var(--c-text); }
+
+.modal-body {
+    padding: 20px 24px;
+    font-size: .9rem; color: #374151; line-height: 1.6;
+}
+
+.modal-foot {
+    padding: 16px 24px;
+    border-top: 1px solid var(--c-border);
+    display: flex; gap: 10px; justify-content: flex-end;
+}
+
+/* Mismo .btn-save / .btn-cancel / .btn-danger */
+.btn-save {
+    background: var(--c-indigo); color: #fff; border: none;
+    border-radius: var(--radius); padding: 9px 22px;
+    font-size: .9rem; font-weight: 600; cursor: pointer;
+    transition: background .15s;
+}
+.btn-save:hover { background: var(--c-indigo-dk); }
+
+.btn-cancel {
+    background: #f3f4f6; color: #374151;
+    border: 1px solid var(--c-border-md);
+    border-radius: var(--radius); padding: 9px 22px;
+    font-size: .9rem; font-weight: 600; cursor: pointer;
+    transition: background .15s;
+}
+.btn-cancel:hover { background: #e5e7eb; }
+
+.btn-danger {
+    background: var(--c-red); color: #fff; border: none;
+    border-radius: var(--radius); padding: 9px 22px;
+    font-size: .9rem; font-weight: 600; cursor: pointer;
+    transition: background .15s;
+}
+.btn-danger:hover { background: #b91c1c; }
+
+/* ══ TFOOT ══════════════════════════════════════════════════════ */
+tfoot td {
+    background: #f1f5f9;
+    font-weight: 700;
+    font-size: .72rem;
+    border-top: 2px solid var(--c-border-md);
+    border-right: 1px solid var(--grid-line);
+    padding: 6px 8px;
+    color: var(--c-text);
+}
+tfoot td:last-child { border-right: none; }
+tfoot .col-total { background: #e8eeff !important; }
+
+/* ══ FLASH NUEVA FILA ══════════════════════════════════════════ */
+@keyframes newRowFade {
+    from { background: var(--c-indigo-lt); }
+    to   { background: transparent; }
+}
+tr.row-new-flash td { animation: newRowFade 1.2s ease forwards; }
+</style>
 {% endblock %}
+
 {% block content %}
-<section class="cuenta5-container">
-    <div class="btn-section1">
-        <button id="agregarFilaBtn">➕ Agregar Fila</button>
-    </div>
-    <div id="tableContainer" style="overflow-x:auto; max-width:100%;">
-        <table id="table" class="display cell-border">
-            <thead>
-                <tr>
-                    <th><input type="checkbox" id="checkAllIPC" title="Seleccionar todo"></th>
-                    <th>CUENTAS</th>
-                    <th>CONCEPTO</th>
-                    <th>ENERO</th>
-                    <th>FEBRERO</th>
-                    <th>MARZO</th>
-                    <th>ABRIL</th>
-                    <th>MAYO</th>
-                    <th>JUNIO</th>
-                    <th>JULIO</th>
-                    <th>AGOSTO</th>
-                    <th>SEPTIEMBRE</th>
-                    <th>OCTUBRE</th>
-                    <th>NOVIEMBRE</th>
-                    <th>DICIEMBRE</th>
-                    <th>TOTAL</th>
-                </tr>
-            </thead>
-        </table>
-        
-    </div>
-    <!-- Contenedor de toasts -->
-    <div class="toast-container" id="toastContainer"></div>
-</section>
-    
-    <!-- Modal Confirmación Eliminar -->
-    <div id="modalEliminar" class="modal" style="display:none;" aria-hidden="true">
-        <div class="modal-content">
-            <div class="modal-header">⚠️ Confirmar eliminación</div>
-            <p>¿Estás seguro de eliminar esta fila?</p>
-            <div class="modal-footer">
-            <button type="button" class="btn-cancel" data-modal="modalEliminar">Cancelar</button>
-            <button type="button" class="btn-confirm" id="confirmEliminar">Eliminar</button>
+<div class="consolidado-wrap">
+
+    <!-- CABECERA — mismo .header de la dinámica -->
+    <div class="consolidado-header">
+        <div class="consolidado-title">
+            📊 Consolidado <span>Total Base</span>
+        </div>
+        <div class="controls-bar">
+            <div class="search-box">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input type="text" id="globalSearch" placeholder="Buscar cuenta o concepto...">
             </div>
+            <button class="btn btn-primary" id="agregarFilaBtn">➕ Agregar fila</button>
+            <button class="btn btn-outline"  id="recargarBtn">🔄 Recargar</button>
+            <button class="btn btn-export"   id="exportarBtn">📥 Exportar CSV</button>
         </div>
     </div>
 
-    <!-- Modal Confirmación Eliminar cuenta -->
-    <div id="modalEliminarCuenta" class="modal" style="display:none;" aria-hidden="true">
-        <div class="modal-content">
-            <div class="modal-header">⚠️ Confirmar eliminación Cuenta</div>
-            <p>¿Estás seguro de eliminar todos los datos de la tabla?</p>
-            <div class="modal-footer">
-            <button type="button" class="btn-cancel" data-modal="modalEliminarCuenta">Cancelar</button>
-            <button type="button" class="btn-confirm" id="confirmEliminarCuenta">Eliminar</button>
-            </div>
+    <!-- STATS — mismo .stats de la dinámica -->
+    <div class="stats-bar" id="statsBar">
+        <div class="stat-pill">
+            Filas cargadas: <span class="stat-val" id="statFilas">—</span>
+        </div>
+        <div class="stat-pill stat-indigo">
+            Total anual: <span class="stat-val" id="statTotal">—</span>
         </div>
     </div>
-    
-    {% block js%}
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
-    <!-- DataTables JS -->
-    
-    <!-- DataTables Buttons JS -->
-    {% comment %} <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script> {% endcomment %}
-    {% comment %} <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script> {% endcomment %}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-    <script>
-        const url_obtener_consolidado_total_base = "{% url 'obtener_consolidado_total_base' %}";
-        const url_guardar_fila_consolidado = "{% url 'guardar_fila_consolidado' %}";
-        const url_eliminar_fila_consolidado = "{% url 'eliminar_fila_consolidado' %}";
-    </script>
-    <script src="{% static 'js/consolidado_total_base.js' %}"></script>
-   
-    {% endblock %}
+    <!-- TABLA — mismo .table-container de la dinámica -->
+    <div class="table-wrap">
+        <div class="loading-overlay active" id="loadingOverlay">
+            <div class="spinner"></div>
+            <span style="font-size:.85rem;color:var(--c-muted);">Cargando datos...</span>
+        </div>
 
+        <div class="table-scroll">
+            <table class="consolidado" id="consolidadoTable">
+                <thead>
+                    <tr>
+                        <th class="ctr" style="width:90px;">Acciones</th>
+                        <th class="sortable" data-col="mcncuenta">
+                            Cuentas <span class="sort-icon"></span>
+                        </th>
+                        <th class="sortable" data-col="ctanombre">
+                            Concepto <span class="sort-icon"></span>
+                        </th>
+                        <th class="num sortable" data-col="enero">Enero <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="febrero">Febrero <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="marzo">Marzo <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="abril">Abril <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="mayo">Mayo <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="junio">Junio <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="julio">Julio <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="agosto">Agosto <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="septiembre">Septiembre <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="octubre">Octubre <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="noviembre">Noviembre <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="diciembre">Diciembre <span class="sort-icon"></span></th>
+                        <th class="num col-total">Total</th>
+                    </tr>
+                </thead>
+                <tbody id="consolidadoBody">
+                    <tr class="empty-row"><td colspan="16">⏳ Cargando datos...</td></tr>
+                </tbody>
+                <tfoot id="consolidadoFoot">
+                    <tr>
+                        <td colspan="3">Total general</td>
+                        <td class="num" id="ft-enero">—</td>
+                        <td class="num" id="ft-febrero">—</td>
+                        <td class="num" id="ft-marzo">—</td>
+                        <td class="num" id="ft-abril">—</td>
+                        <td class="num" id="ft-mayo">—</td>
+                        <td class="num" id="ft-junio">—</td>
+                        <td class="num" id="ft-julio">—</td>
+                        <td class="num" id="ft-agosto">—</td>
+                        <td class="num" id="ft-septiembre">—</td>
+                        <td class="num" id="ft-octubre">—</td>
+                        <td class="num" id="ft-noviembre">—</td>
+                        <td class="num" id="ft-diciembre">—</td>
+                        <td class="num col-total" id="ft-total">—</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Toast container -->
+<div id="toastContainer"></div>
+
+<!-- Modal confirmar eliminar — mismo .modal de la dinámica -->
+<div id="modalEliminar" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-head">
+            🗑️ Confirmar eliminación
+            <button class="modal-close" onclick="cerrarModal('modalEliminar')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div style="text-align:center;padding:8px 0 16px;">
+                <div style="font-size:2.8rem;margin-bottom:10px;">⚠️</div>
+                <p style="color:#374151;line-height:1.6;">¿Estás seguro de eliminar esta fila?</p>
+                <p><strong id="modalEliminarInfo" style="color:var(--c-red);font-size:.85rem;display:block;margin-top:8px;"></strong></p>
+                <p style="margin-top:8px;font-size:.82rem;color:var(--c-muted);">Esta acción no se puede deshacer.</p>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" id="modalEliminarCancelar">Cancelar</button>
+            <button class="btn-danger" id="modalEliminarConfirmar">🗑️ Eliminar</button>
+        </div>
+    </div>
+</div>
+
+{% block js %}
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   URLS
+══════════════════════════════════════════════════════════════════ */
+const URL_OBTENER  = "{% url 'obtener_consolidado_total_base' %}";
+const URL_GUARDAR  = "{% url 'guardar_fila_consolidado' %}";
+const URL_ELIMINAR = "{% url 'eliminar_fila_consolidado' %}";
+const CSRF_TOKEN   = document.querySelector('[name=csrf-token]').content;
+
+/* ══════════════════════════════════════════════════════════════════
+   CONSTANTES
+══════════════════════════════════════════════════════════════════ */
+const MESES = ['enero','febrero','marzo','abril','mayo','junio',
+               'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+const FMT = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+function fmt(n) {
+    if (n === 0 || n === null || n === undefined) return '-';
+    return FMT.format(n);
+}
+function parseFmt(str) {
+    return parseFloat(String(str).replace(/\./g,'').replace(',','.')) || 0;
+}
+function getCsrf() { return CSRF_TOKEN; }
+
+/* ══════════════════════════════════════════════════════════════════
+   ESTADO GLOBAL
+══════════════════════════════════════════════════════════════════ */
+let datosOriginales = [];
+let filaEnEdicion   = null;
+let filaAEliminar   = null;
+let sortCol         = null;
+let sortDir         = 'asc';
+
+/* ══════════════════════════════════════════════════════════════════
+   TOAST — mismo mostrarToast de la dinámica
+══════════════════════════════════════════════════════════════════ */
+function showToast(msg, tipo = 'info') {
+    const div = document.createElement('div');
+    div.className = `toast toast-${tipo}`;
+    div.textContent = msg;
+    document.getElementById('toastContainer').appendChild(div);
+    requestAnimationFrame(() => requestAnimationFrame(() => div.classList.add('show')));
+    setTimeout(() => {
+        div.classList.remove('show');
+        setTimeout(() => div.remove(), 350);
+    }, 4000);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   MODAL — mismas funciones de la dinámica
+══════════════════════════════════════════════════════════════════ */
+function abrirModal(id)  { document.getElementById(id).classList.add('active'); }
+function cerrarModal(id) { document.getElementById(id).classList.remove('active'); }
+
+document.getElementById('modalEliminarCancelar').addEventListener('click', () => cerrarModal('modalEliminar'));
+document.getElementById('modalEliminar').addEventListener('click', e => {
+    if (e.target === document.getElementById('modalEliminar')) cerrarModal('modalEliminar');
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   CÁLCULOS DE NEGOCIO
+══════════════════════════════════════════════════════════════════ */
+function calcularTotalesPorPrefijo(data, prefijo) {
+    const t = { total: 0 };
+    MESES.forEach(m => t[m] = 0);
+    data.forEach(row => {
+        if (row.mcncuenta && String(row.mcncuenta).startsWith(prefijo)) {
+            MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
+            t.total += parseFloat(row.total) || 0;
+        }
+    });
+    return t;
+}
+
+function calcularTotalesPorLista(data, lista) {
+    const t = { total: 0 };
+    MESES.forEach(m => t[m] = 0);
+    data.forEach(row => {
+        if (row.mcncuenta) {
+            const c = String(row.mcncuenta);
+            if (lista.some(cod => c.startsWith(cod))) {
+                MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
+                t.total += parseFloat(row.total) || 0;
+            }
+        }
+    });
+    return t;
+}
+
+function construirFilas(data) {
+    const totales54 = calcularTotalesPorPrefijo(data, '54');
+    const totales51 = calcularTotalesPorPrefijo(data, '51');
+    const totalesVN = calcularTotalesPorLista(data, ['1','2','41750201']);
+
+    const resultado = [];
+    let pos54 = -1, pos51 = -1, posVN = -1;
+
+    data.forEach((row, i) => {
+        const c = String(row.mcncuenta || '');
+        if (pos54 < 0 && c.startsWith('54')) pos54 = i;
+        if (pos51 < 0 && c.startsWith('51')) pos51 = i;
+        if (posVN < 0 && c.startsWith('1'))  posVN = i;
+    });
+
+    data.forEach((row, i) => {
+        if (i === posVN) resultado.push({ ...totalesVN, mcncuenta: '', ctanombre: 'VENTAS NETAS',               isTotalRow: true, tipoTotal: 'VentasNetas' });
+        if (i === pos54) resultado.push({ ...totales54, mcncuenta: '54', ctanombre: 'GASTOS DE VENTAS',         isTotalRow: true, tipoTotal: '54' });
+        if (i === pos51) resultado.push({ ...totales51, mcncuenta: '51', ctanombre: 'GASTOS DE ADMINISTRACIÓN', isTotalRow: true, tipoTotal: '51' });
+        resultado.push(row);
+    });
+
+    return resultado;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   RENDERIZADO
+══════════════════════════════════════════════════════════════════ */
+function renderTabla(data) {
+    const tbody = document.getElementById('consolidadoBody');
+    tbody.innerHTML = '';
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="16">Sin datos disponibles.</td></tr>`;
+        actualizarFooter([]); actualizarStats([]);
+        return;
+    }
+
+    const filas = construirFilas(data);
+    let filas54 = [], filas51 = [];
+
+    filas.forEach(fila => {
+        const tr = document.createElement('tr');
+        tr.dataset.fila = JSON.stringify(fila);
+
+        if (fila.isTotalRow) {
+            if      (fila.tipoTotal === '54')          tr.className = 'total-row-54';
+            else if (fila.tipoTotal === '51')          tr.className = 'total-row-51';
+            else                                        tr.className = 'total-row-ventas-netas';
+        } else {
+            const c = String(fila.mcncuenta || '');
+            if      (c.startsWith('54')) { tr.className = 'cuenta-54'; filas54.push(tr); }
+            else if (c.startsWith('51')) { tr.className = 'cuenta-51'; filas51.push(tr); }
+        }
+
+        // Celda acciones
+        const tdAcc = document.createElement('td');
+        tdAcc.className = 'ctr';
+        if (fila.isTotalRow) {
+            tdAcc.innerHTML = `<span style="color:var(--c-hint);">—</span>`;
+        } else {
+            const div = document.createElement('div');
+            div.className = 'action-cell';
+            div.innerHTML = `
+                <input type="checkbox" class="row-check">
+                <button class="btn-row btn-row-edit"   title="Editar">✏️</button>
+                <button class="btn-row btn-row-delete" title="Eliminar">🗑️</button>`;
+            div.querySelector('.btn-row-edit').addEventListener('click',   () => iniciarEdicion(tr, fila));
+            div.querySelector('.btn-row-delete').addEventListener('click', () => iniciarEliminar(tr, fila));
+            tdAcc.appendChild(div);
+        }
+        tr.appendChild(tdAcc);
+
+        // Celdas de datos
+        [{ key:'mcncuenta' }, { key:'ctanombre' },
+         ...MESES.map(m => ({ key:m, num:true })),
+         { key:'total', num:true, cls:'col-total' }
+        ].forEach(({ key, num, cls }) => {
+            const td = document.createElement('td');
+            if (num) {
+                td.className = 'num' + (cls ? ' ' + cls : '');
+                const v = parseFloat(fila[key]) || 0;
+                td.textContent = fmt(v);
+                if (!fila.isTotalRow && v !== 0) td.classList.add(v > 0 ? 'pos' : 'neg');
+            } else {
+                td.textContent = fila[key] || '';
+            }
+            tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+    });
+
+    if (filas54.length) { filas54[0].classList.add('cuenta-54-first'); filas54[filas54.length-1].classList.add('cuenta-54-last'); }
+    if (filas51.length) { filas51[0].classList.add('cuenta-51-first'); filas51[filas51.length-1].classList.add('cuenta-51-last'); }
+
+    actualizarFooter(data);
+    actualizarStats(data);
+    aplicarBusqueda();
+}
+
+function actualizarFooter(data) {
+    const t = { total: 0 };
+    MESES.forEach(m => t[m] = 0);
+    data.forEach(row => {
+        MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
+        t.total += parseFloat(row.total) || 0;
+    });
+    MESES.forEach(m => {
+        const el = document.getElementById(`ft-${m}`);
+        if (el) el.textContent = fmt(t[m]);
+    });
+    const ftTot = document.getElementById('ft-total');
+    if (ftTot) ftTot.textContent = fmt(t.total);
+}
+
+function actualizarStats(data) {
+    document.getElementById('statFilas').textContent = data.length;
+    const total = data.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
+    document.getElementById('statTotal').textContent = '$' + FMT.format(total);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CARGA DE DATOS
+══════════════════════════════════════════════════════════════════ */
+async function cargarDatos() {
+    document.getElementById('loadingOverlay').classList.add('active');
+    document.getElementById('consolidadoBody').innerHTML =
+        `<tr class="empty-row"><td colspan="16">⏳ Cargando...</td></tr>`;
+    try {
+        const resp = await fetch(URL_OBTENER);
+        const json = await resp.json();
+        if (json.error) { showToast('Error: ' + json.error, 'error'); return; }
+        datosOriginales = json.data || [];
+        renderTabla(datosOriginales);
+    } catch(e) {
+        showToast('Error al cargar datos: ' + e.message, 'error');
+        document.getElementById('consolidadoBody').innerHTML =
+            `<tr class="empty-row"><td colspan="16">❌ Error al cargar datos.</td></tr>`;
+    } finally {
+        document.getElementById('loadingOverlay').classList.remove('active');
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   BÚSQUEDA GLOBAL
+══════════════════════════════════════════════════════════════════ */
+function aplicarBusqueda() {
+    const q = document.getElementById('globalSearch').value.toLowerCase().trim();
+    document.querySelectorAll('#consolidadoBody tr').forEach(tr => {
+        if (tr.classList.contains('empty-row')) return;
+        if (!q) { tr.classList.remove('hidden-search'); return; }
+        const texto = Array.from(tr.querySelectorAll('td')).slice(1, 3)
+            .map(td => td.textContent.toLowerCase()).join(' ');
+        tr.classList.toggle('hidden-search', !texto.includes(q));
+    });
+}
+document.getElementById('globalSearch').addEventListener('input', aplicarBusqueda);
+
+/* ══════════════════════════════════════════════════════════════════
+   ORDENAMIENTO
+══════════════════════════════════════════════════════════════════ */
+document.querySelectorAll('thead th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+        const col = th.dataset.col;
+        sortDir = (sortCol === col && sortDir === 'asc') ? 'desc' : 'asc';
+        sortCol = col;
+        document.querySelectorAll('thead th').forEach(t => t.classList.remove('sorted-asc','sorted-desc'));
+        th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+
+        const sorted = [...datosOriginales].sort((a, b) => {
+            const av = MESES.includes(col) || col === 'total'
+                ? (parseFloat(a[col]) || 0) : String(a[col] || '').toLowerCase();
+            const bv = MESES.includes(col) || col === 'total'
+                ? (parseFloat(b[col]) || 0) : String(b[col] || '').toLowerCase();
+            if (av < bv) return sortDir === 'asc' ? -1 : 1;
+            if (av > bv) return sortDir === 'asc' ?  1 : -1;
+            return 0;
+        });
+        renderTabla(sorted);
+    });
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   EDICIÓN INLINE
+══════════════════════════════════════════════════════════════════ */
+function iniciarEdicion(tr, fila) {
+    if (filaEnEdicion && filaEnEdicion.tr !== tr) cancelarEdicion(false);
+    filaEnEdicion = { tr, oldData: { ...fila } };
+    tr.classList.add('editing');
+
+    const accDiv = tr.querySelector('.action-cell');
+    accDiv.innerHTML = `
+        <button class="btn-row btn-row-save"   id="btnSave"   title="Guardar">💾 Guardar</button>
+        <button class="btn-row btn-row-cancel" id="btnCancel" title="Cancelar">✕</button>`;
+    accDiv.querySelector('#btnSave').addEventListener('click',   () => guardarEdicion());
+    accDiv.querySelector('#btnCancel').addEventListener('click', () => cancelarEdicion(true));
+
+    const celdas = Array.from(tr.querySelectorAll('td'));
+    celdas[1].innerHTML = `<input class="edit-input" type="text" value="${escHtml(fila.mcncuenta || '')}">`;
+    celdas[2].innerHTML = `<input class="edit-input" type="text" value="${escHtml(fila.ctanombre || '')}" style="min-width:160px;">`;
+    MESES.forEach((mes, i) => {
+        const v = parseFloat(fila[mes]) || 0;
+        celdas[3+i].innerHTML = `<input class="edit-input numeric" type="number" step="1" value="${v === 0 ? '' : v}" placeholder="0">`;
+    });
+    celdas[15].classList.add('col-total');
+    actualizarTotalEnEdicion(tr);
+
+    tr.querySelectorAll('.numeric').forEach(inp =>
+        inp.addEventListener('input', () => actualizarTotalEnEdicion(tr))
+    );
+    (fila.isNew ? celdas[1].querySelector('input') : celdas[3].querySelector('input'))?.focus();
+}
+
+function actualizarTotalEnEdicion(tr) {
+    let total = 0;
+    tr.querySelectorAll('.numeric').forEach(inp => total += parseFloat(inp.value) || 0);
+    Array.from(tr.querySelectorAll('td'))[15].textContent = fmt(total);
+}
+
+function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function cancelarEdicion(eliminarSiNueva) {
+    if (!filaEnEdicion) return;
+    const { tr, oldData } = filaEnEdicion;
+    if (eliminarSiNueva && oldData.isNew) { tr.remove(); filaEnEdicion = null; return; }
+    redibujarFila(tr, oldData);
+    filaEnEdicion = null;
+}
+
+function redibujarFila(tr, fila) {
+    tr.classList.remove('editing');
+    const celdas = Array.from(tr.querySelectorAll('td'));
+
+    const accDiv = tr.querySelector('.action-cell');
+    if (accDiv && !fila.isTotalRow) {
+        accDiv.innerHTML = `
+            <input type="checkbox" class="row-check">
+            <button class="btn-row btn-row-edit"   title="Editar">✏️</button>
+            <button class="btn-row btn-row-delete" title="Eliminar">🗑️</button>`;
+        accDiv.querySelector('.btn-row-edit').addEventListener('click',   () => iniciarEdicion(tr, fila));
+        accDiv.querySelector('.btn-row-delete').addEventListener('click', () => iniciarEliminar(tr, fila));
+    }
+
+    celdas[1].textContent = fila.mcncuenta || '';
+    celdas[2].textContent = fila.ctanombre || '';
+    MESES.forEach((m, i) => {
+        const v = parseFloat(fila[m]) || 0;
+        celdas[3+i].textContent = fmt(v);
+        celdas[3+i].className = 'num' + (v > 0 ? ' pos' : v < 0 ? ' neg' : '');
+    });
+    const tot = parseFloat(fila.total) || 0;
+    celdas[15].textContent = fmt(tot);
+    celdas[15].className = 'num col-total' + (tot > 0 ? ' pos' : tot < 0 ? ' neg' : '');
+    tr.dataset.fila = JSON.stringify(fila);
+}
+
+async function guardarEdicion() {
+    if (!filaEnEdicion) return;
+    const { tr, oldData } = filaEnEdicion;
+    const celdas = Array.from(tr.querySelectorAll('td'));
+
+    const nuevaData = {
+        mcncuenta: celdas[1].querySelector('input')?.value?.trim() || oldData.mcncuenta || '',
+        ctanombre: celdas[2].querySelector('input')?.value?.trim() || oldData.ctanombre || '',
+    };
+    MESES.forEach((m, i) => { nuevaData[m] = parseFloat(celdas[3+i].querySelector('input')?.value) || 0; });
+    nuevaData.total = MESES.reduce((s, m) => s + nuevaData[m], 0);
+
+    if (!nuevaData.mcncuenta) { showToast('❌ La cuenta es obligatoria', 'error'); return; }
+
+    const btnSave = tr.querySelector('#btnSave');
+    if (btnSave) { btnSave.disabled = true; btnSave.textContent = '⏳'; }
+
+    try {
+        const resp = await fetch(URL_GUARDAR, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+            body: JSON.stringify({ nueva_data: nuevaData, old_data: oldData }),
+        });
+        const json = await resp.json();
+        if (!resp.ok || !json.success) {
+            showToast('Error al guardar: ' + (json.error || resp.statusText), 'error');
+            if (btnSave) { btnSave.disabled = false; btnSave.textContent = '💾 Guardar'; }
+            return;
+        }
+
+        if (oldData.isNew) {
+            datosOriginales.unshift(nuevaData);
+        } else {
+            const idx = datosOriginales.findIndex(r =>
+                r.mcncuenta === oldData.mcncuenta && r.ctanombre === oldData.ctanombre);
+            if (idx >= 0) datosOriginales[idx] = nuevaData;
+        }
+
+        filaEnEdicion = null;
+        redibujarFila(tr, nuevaData);
+        tr.classList.add('row-new-flash');
+        setTimeout(() => tr.classList.remove('row-new-flash'), 1300);
+        actualizarFooter(datosOriginales);
+        actualizarStats(datosOriginales);
+        showToast('✅ Guardado correctamente', 'success');
+    } catch(e) {
+        showToast('Error de red: ' + e.message, 'error');
+        if (btnSave) { btnSave.disabled = false; btnSave.textContent = '💾 Guardar'; }
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ELIMINAR
+══════════════════════════════════════════════════════════════════ */
+function iniciarEliminar(tr, fila) {
+    filaAEliminar = { tr, fila };
+    document.getElementById('modalEliminarInfo').textContent =
+        `Cuenta: ${fila.mcncuenta} — ${fila.ctanombre}`;
+    abrirModal('modalEliminar');
+}
+
+document.getElementById('modalEliminarConfirmar').addEventListener('click', async () => {
+    if (!filaAEliminar) return;
+    const { tr, fila } = filaAEliminar;
+    try {
+        const resp = await fetch(URL_ELIMINAR, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+            body: JSON.stringify({ mcncuenta: fila.mcncuenta }),
+        });
+        const json = await resp.json();
+        if (!resp.ok || !json.success) {
+            showToast('Error al eliminar: ' + (json.error || resp.statusText), 'error');
+            return;
+        }
+        const idx = datosOriginales.findIndex(r => r.mcncuenta === fila.mcncuenta);
+        if (idx >= 0) datosOriginales.splice(idx, 1);
+        tr.remove();
+        actualizarFooter(datosOriginales);
+        actualizarStats(datosOriginales);
+        showToast('🗑️ Fila eliminada', 'success');
+    } catch(e) {
+        showToast('Error de red: ' + e.message, 'error');
+    } finally {
+        filaAEliminar = null;
+        cerrarModal('modalEliminar');
+    }
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   AGREGAR FILA
+══════════════════════════════════════════════════════════════════ */
+document.getElementById('agregarFilaBtn').addEventListener('click', () => {
+    if (filaEnEdicion) cancelarEdicion(true);
+
+    const fila = {
+        mcncuenta: '', ctanombre: '', isNew: true,
+        total: 0, ...Object.fromEntries(MESES.map(m => [m, 0]))
+    };
+
+    const tbody = document.getElementById('consolidadoBody');
+    const emptyRow = tbody.querySelector('.empty-row');
+    if (emptyRow) emptyRow.remove();
+
+    const tr = document.createElement('tr');
+    tr.className = 'row-new-flash';
+
+    const tdAcc = document.createElement('td');
+    tdAcc.className = 'ctr';
+    const div = document.createElement('div');
+    div.className = 'action-cell';
+    div.innerHTML = `
+        <input type="checkbox" class="row-check">
+        <button class="btn-row btn-row-edit"   title="Editar">✏️</button>
+        <button class="btn-row btn-row-delete" title="Eliminar">🗑️</button>`;
+    tdAcc.appendChild(div);
+    tr.appendChild(tdAcc);
+
+    ['mcncuenta','ctanombre',...MESES,'total'].forEach(key => {
+        const td = document.createElement('td');
+        td.className = ['mcncuenta','ctanombre'].includes(key) ? '' : 'num' + (key === 'total' ? ' col-total' : '');
+        td.textContent = '-';
+        tr.appendChild(td);
+    });
+
+    tbody.prepend(tr);
+    tbody.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    div.querySelector('.btn-row-edit').addEventListener('click',   () => iniciarEdicion(tr, fila));
+    div.querySelector('.btn-row-delete').addEventListener('click', () => { tr.remove(); filaEnEdicion = null; });
+
+    iniciarEdicion(tr, fila);
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   RECARGAR / EXPORTAR
+══════════════════════════════════════════════════════════════════ */
+document.getElementById('recargarBtn').addEventListener('click', () => {
+    if (filaEnEdicion) cancelarEdicion(true);
+    cargarDatos();
+});
+
+document.getElementById('exportarBtn').addEventListener('click', () => {
+    if (!datosOriginales.length) { showToast('Sin datos para exportar', 'error'); return; }
+    const headers = ['Cuenta','Concepto',...MESES.map(m => m.charAt(0).toUpperCase()+m.slice(1)),'Total'];
+    const rows    = construirFilas(datosOriginales).map(r =>
+        [r.mcncuenta, r.ctanombre, ...MESES.map(m => r[m] || 0), r.total || 0]
+    );
+    const csv  = [headers, ...rows].map(r => r.join(';')).join('\n');
+    const blob = new Blob(['\ufeff'+csv], { type: 'text/csv;charset=utf-8;' });
+    const a    = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `consolidado_${new Date().toISOString().split('T')[0]}.csv`; a.click();
+    showToast('📥 CSV exportado', 'success');
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════════════ */
+cargarDatos();
+</script>
+{% endblock %}
 {% endblock %}

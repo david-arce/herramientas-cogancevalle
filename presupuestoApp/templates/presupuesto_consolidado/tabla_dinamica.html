@@ -81,12 +81,7 @@
         }
         .registro-item:hover { background: #f0f4ff; border-color: #a5b4fc; }
 
-        /* Fila superior e inferior del card */
-        .reg-row {
-            display: grid;
-            gap: 8px 10px;
-            align-items: start;
-        }
+        .reg-row { display: grid; gap: 8px 10px; align-items: start; }
         .reg-row-top    { grid-template-columns: 1fr 1fr 1fr auto; }
         .reg-row-bottom { grid-template-columns: 1fr 1fr 1fr; }
 
@@ -110,7 +105,6 @@
         .btn-delete:hover { opacity:.8; transform:scale(1.04); }
         .btn-view:hover   { opacity:.8; transform:scale(1.04); }
 
-        /* Botón ver registros en fila detalle */
         .row-detalle .action-cell { width: 48px; text-align: center; }
         .btn-row-view {
             background: none; border: 1px solid #c7d2fe;
@@ -123,17 +117,129 @@
         .edit-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         .form-group { display: flex; flex-direction: column; gap: 5px; }
         .form-group label { font-size: .8rem; font-weight: 600; color: #374151; }
-        .form-group input {
+        .form-group input, .form-group select {
             border: 1px solid #d1d5db; border-radius: 7px;
             padding: 8px 10px; font-size: .9rem; color: #111;
             transition: border-color .2s, box-shadow .2s;
-            outline: none;
+            outline: none; background: #fff;
         }
-        .form-group input:focus {
+        .form-group input:focus, .form-group select:focus {
             border-color: #6366f1;
             box-shadow: 0 0 0 3px rgba(99,102,241,.15);
         }
         .form-group.full { grid-column: 1 / -1; }
+
+        /* ── ▼ NUEVO: Barra de filtros en modal registros ────────────────────── */
+        .reg-filtros {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+        }
+        .reg-filtros-title {
+            font-size: .72rem; font-weight: 700; color: #6b7280;
+            text-transform: uppercase; letter-spacing: .06em;
+            margin-bottom: 10px;
+        }
+        .reg-filtros-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr auto;
+            gap: 8px;
+            align-items: end;
+        }
+        @media (max-width: 600px) {
+            .reg-filtros-grid { grid-template-columns: 1fr 1fr; }
+        }
+        .reg-filtro-group { display: flex; flex-direction: column; gap: 4px; }
+        .reg-filtro-group label {
+            font-size: .7rem; font-weight: 600; color: #9ca3af;
+            text-transform: uppercase; letter-spacing: .04em;
+        }
+        .reg-filtro-group input[type="date"],
+        .reg-filtro-group select {
+            border: 1px solid #d1d5db; border-radius: 7px;
+            padding: 7px 9px; font-size: .82rem; color: #111;
+            background: #fff; outline: none;
+            transition: border-color .2s, box-shadow .2s;
+            width: 100%; box-sizing: border-box;
+        }
+        .reg-filtro-group input[type="date"]:focus,
+        .reg-filtro-group select:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+        }
+        .reg-filtros-actions { display: flex; gap: 6px; padding-bottom: 1px; }
+        .btn-filtrar {
+            background: #4f46e5; color: #fff; border: none;
+            border-radius: 7px; padding: 7px 14px;
+            font-size: .82rem; font-weight: 600; cursor: pointer;
+            transition: background .15s; white-space: nowrap;
+        }
+        .btn-filtrar:hover { background: #4338ca; }
+        .btn-limpiar-filtros {
+            background: #f3f4f6; color: #374151; border: 1px solid #d1d5db;
+            border-radius: 7px; padding: 7px 12px;
+            font-size: .82rem; font-weight: 600; cursor: pointer;
+            transition: background .15s; white-space: nowrap;
+        }
+        .btn-limpiar-filtros:hover { background: #e5e7eb; }
+        .reg-filtros-badge {
+            display: inline-block; background: #e0e7ff; color: #4f46e5;
+            font-size: .68rem; font-weight: 700; padding: 1px 7px;
+            border-radius: 10px; margin-left: 6px; vertical-align: middle;
+        }
+        /* ── Multi-select dropdowns del modal de registros ───────────────────────── */
+        .rm-dropdown { position: relative; }
+        .rm-btn {
+            width: 100%; display: flex; justify-content: space-between; align-items: center;
+            border: 1px solid #d1d5db; border-radius: 7px;
+            padding: 7px 9px; font-size: .82rem; color: #111;
+            background: #fff; cursor: pointer; gap: 6px;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .rm-btn:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.15); outline: none; }
+        .rm-arrow { font-size: .65rem; color: #9ca3af; flex-shrink: 0; }
+        .rm-panel {
+            display: none; position: absolute; top: calc(100% + 4px); left: 0;
+            min-width: 200px; width: max-content; max-width: 280px;
+            background: #fff; border: 1px solid #d1d5db; border-radius: 9px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 1200;
+            flex-direction: column;
+        }
+        .rm-panel.open { display: flex; }
+        .rm-search { padding: 8px 10px 4px; }
+        .rm-search input {
+            width: 100%; border: 1px solid #e5e7eb; border-radius: 6px;
+            padding: 5px 8px; font-size: .8rem; outline: none; box-sizing: border-box;
+        }
+        .rm-search input:focus { border-color: #6366f1; }
+        .rm-options { max-height: 180px; overflow-y: auto; padding: 4px 0; }
+        .rm-option {
+            display: flex; align-items: center; gap: 8px;
+            padding: 5px 12px; font-size: .82rem; color: #111;
+            cursor: pointer; transition: background .1s;
+        }
+        .rm-option:hover { background: #f0f4ff; }
+        .rm-option input[type="checkbox"] { accent-color: #6366f1; cursor: pointer; }
+        .rm-actions {
+            display: flex; gap: 6px; padding: 6px 10px;
+            border-top: 1px solid #f3f4f6;
+        }
+        .rm-actions button {
+            flex: 1; background: #f3f4f6; border: 1px solid #e5e7eb;
+            border-radius: 5px; padding: 3px 0; font-size: .75rem;
+            font-weight: 600; cursor: pointer; color: #374151;
+            transition: background .15s;
+        }
+        .rm-actions button:hover { background: #e0e7ff; border-color: #a5b4fc; color: #4f46e5; }
+        .rm-selected-badge {
+            background: #e0e7ff; color: #4f46e5;
+            font-size: .7rem; font-weight: 700;
+            padding: 1px 6px; border-radius: 10px;
+            white-space: nowrap;
+        }
+        /* ── ▲ FIN filtros ───────────────────────────────────────────────────── */
 
         /* ── Save / Cancel / Danger buttons ─────────────────────────────────── */
         .btn-save {
@@ -450,13 +556,84 @@
 
     <!-- ══════════════════════════════════════════════════════════════════════
          MODAL: Lista de registros del detalle
+         ▼ MODIFICADO: se agrega barra de filtros (fecha, zona, ccosto)
     ══════════════════════════════════════════════════════════════════════ -->
     <div id="modalRegistros" class="modal-overlay" onclick="cerrarModalSiOverlay(event,'modalRegistros')">
-        <div class="modal">
+        <div class="modal" style="width:min(96vw,780px);">
             <div class="modal-header">
                 <h2 id="modalRegistrosTitulo">📋 Registros del detalle</h2>
                 <button class="modal-close" onclick="cerrarModal('modalRegistros')">✕</button>
             </div>
+
+            <!-- ▼ NUEVA: barra de filtros dentro del modal -->
+            <div style="padding: 14px 24px 0; border-bottom: 1px solid #f3f4f6;">
+                <div class="reg-filtros">
+                    <div class="reg-filtros-title">
+                        🔎 Filtrar registros
+                        <span id="regFiltrosBadge" class="reg-filtros-badge" style="display:none;">0 activos</span>
+                    </div>
+                    <div class="reg-filtros-grid">
+                        <!-- Fecha -->
+                        <div class="reg-filtro-group">
+                            <label>Fecha del Registro</label>
+                            <div class="rm-dropdown" id="rmd-fecha">
+                                <button class="rm-btn" onclick="_rmToggle('fecha')">
+                                    <span id="rmd-fecha-text">Todas</span><span class="rm-arrow">▼</span>
+                                </button>
+                                <div class="rm-panel" id="rm-panel-fecha">
+                                    <div class="rm-search"><input type="text" placeholder="Buscar..." id="rm-search-fecha" oninput="_rmFiltrarOpciones('fecha')"></div>
+                                    <div class="rm-options" id="rm-opts-fecha"></div>
+                                    <div class="rm-actions">
+                                        <button onclick="_rmSelTodos('fecha',true)">Todo</button>
+                                        <button onclick="_rmSelTodos('fecha',false)">Ninguno</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Zona -->
+                        <div class="reg-filtro-group">
+                            <label>Zona</label>
+                            <div class="rm-dropdown" id="rmd-zona">
+                                <button class="rm-btn" onclick="_rmToggle('zona')">
+                                    <span id="rmd-zona-text">Todas</span><span class="rm-arrow">▼</span>
+                                </button>
+                                <div class="rm-panel" id="rm-panel-zona">
+                                    <div class="rm-search"><input type="text" placeholder="Buscar..." id="rm-search-zona" oninput="_rmFiltrarOpciones('zona')"></div>
+                                    <div class="rm-options" id="rm-opts-zona"></div>
+                                    <div class="rm-actions">
+                                        <button onclick="_rmSelTodos('zona',true)">Todo</button>
+                                        <button onclick="_rmSelTodos('zona',false)">Ninguno</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Centro de costo -->
+                        <div class="reg-filtro-group">
+                            <label>Centro de costo</label>
+                            <div class="rm-dropdown" id="rmd-ccosto">
+                                <button class="rm-btn" onclick="_rmToggle('ccosto')">
+                                    <span id="rmd-ccosto-text">Todos</span><span class="rm-arrow">▼</span>
+                                </button>
+                                <div class="rm-panel" id="rm-panel-ccosto">
+                                    <div class="rm-search"><input type="text" placeholder="Buscar..." id="rm-search-ccosto" oninput="_rmFiltrarOpciones('ccosto')"></div>
+                                    <div class="rm-options" id="rm-opts-ccosto"></div>
+                                    <div class="rm-actions">
+                                        <button onclick="_rmSelTodos('ccosto',true)">Todo</button>
+                                        <button onclick="_rmSelTodos('ccosto',false)">Ninguno</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Botones -->
+                        <div class="reg-filtros-actions">
+                            <button class="btn-filtrar" onclick="aplicarFiltrosRegistros()">Filtrar</button>
+                            <button class="btn-limpiar-filtros" onclick="limpiarFiltrosRegistros()">✕</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- ▲ FIN barra de filtros -->
+
             <div class="modal-body" id="modalRegistrosBody">
                 <div class="modal-loading"><div class="mini-spinner"></div><span>Cargando registros...</span></div>
             </div>
@@ -468,6 +645,7 @@
 
     <!-- ══════════════════════════════════════════════════════════════════════
          MODAL: Editar registro
+         ▼ MODIFICADO: zona y ccosto ahora son editables
     ══════════════════════════════════════════════════════════════════════ -->
     <div id="modalEditar" class="modal-overlay" onclick="cerrarModalSiOverlay(event,'modalEditar')">
         <div class="modal">
@@ -477,11 +655,18 @@
             </div>
             <div class="modal-body">
                 <div class="edit-form" id="editForm">
+                    <!-- Fila 1: Fecha serial (solo lectura) + Fecha legible (informativa) -->
                     <div class="form-group">
                         <label>Fecha (serial Excel)</label>
                         <input type="text" id="edit-mcnfecha" disabled
                             style="background:#f3f4f6;color:#9ca3af;cursor:not-allowed;">
                     </div>
+                    <div class="form-group">
+                        <label>Fecha legible</label>
+                        <input type="text" id="edit-mcnfecha-legible" disabled
+                            style="background:#f3f4f6;color:#374151;cursor:not-allowed;font-weight:600;">
+                    </div>
+                    <!-- Fila 2: Cuenta (solo lectura) + Zona ▼ ahora editable -->
                     <div class="form-group">
                         <label>Cuenta</label>
                         <input type="text" id="edit-mcncuenta" disabled
@@ -489,17 +674,22 @@
                     </div>
                     <div class="form-group">
                         <label>Zona</label>
-                        <input type="text" id="edit-mcnzona">
+                        <!-- ▼ quitado disabled, ahora es editable -->
+                        <input type="text" id="edit-mcnzona"
+                            placeholder="Ingresa zona...">
                     </div>
+                    <!-- Fila 3: Destino + Centro de Costo ▼ ahora editable -->
                     <div class="form-group">
                         <label>Destino</label>
                         <input type="text" id="edit-mcndestino">
                     </div>
                     <div class="form-group">
                         <label>Centro de Costo</label>
-                        <input type="text" id="edit-mcnccosto" disabled
-                            style="background:#f3f4f6;color:#9ca3af;cursor:not-allowed;">
+                        <!-- ▼ quitado disabled, ahora es editable -->
+                        <input type="text" id="edit-mcnccosto"
+                            placeholder="Ingresa centro de costo...">
                     </div>
+                    <!-- Fila 4: Débito + Crédito -->
                     <div class="form-group">
                         <label>Valor Débito</label>
                         <input type="text" id="edit-mcnvaldebi"
@@ -512,10 +702,12 @@
                             onfocus="quitarFormato(this)"
                             onblur="aplicarFormato(this)">
                     </div>
+                    <!-- Fila 5: Detalle (ancho completo) -->
                     <div class="form-group full">
                         <label>Detalle</label>
                         <input type="text" id="edit-mcndetalle">
                     </div>
+                    <!-- Fila 6: ctanombre + vinnombre -->
                     <div class="form-group full">
                         <label>Nombre Cuenta (ctanombre)</label>
                         <input type="text" id="edit-ctanombre">
@@ -624,7 +816,6 @@
                 <button class="modal-close" onclick="cerrarModal('modalDistribucion')">✕</button>
             </div>
             <div class="modal-body" style="position:relative;" id="modalDistribucionBody">
-                <!-- se rellena dinámicamente -->
             </div>
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="cerrarModal('modalDistribucion')">Cancelar</button>
@@ -644,10 +835,13 @@
         let filtrosActivos = { cuenta: [], zona: [], destino: [], costo: [], ctanombre: [] };
         let valoresFiltros = { cuenta: [], zona: [], destino: [], costo: [], ctanombre: [] };
 
-        // Estado de edición / eliminación
         let registroEnEdicion = null;
         let registroAEliminar = null;
         let contextoPaginacion = {};
+
+        // ▼ NUEVO: cache de registros cargados y registros filtrados en el modal
+        let _registrosCargados = [];      // todos los registros del servidor
+        let _registrosFiltrados = [];     // registros tras aplicar filtros locales
 
         const MESES = ['enero','febrero','marzo','abril','mayo','junio',
                        'julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -683,6 +877,185 @@
         }
 
         /* ══════════════════════════════════════════════════════════════════════
+           CONVERSIÓN SERIAL EXCEL → FECHA LEGIBLE
+        ══════════════════════════════════════════════════════════════════════ */
+        function excelSerialAFecha(serial) {
+            if (!serial && serial !== 0) return '-';
+            const n = parseInt(serial, 10);
+            if (isNaN(n) || n < 1) return serial;
+            const fecha = new Date(Date.UTC(1899, 11, 30) + n * 86400000);
+            return fecha.toLocaleDateString('es-CO', {
+                day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC'
+            });
+        }
+
+        /** Convierte serial Excel a objeto Date UTC */
+        function excelSerialADateObj(serial) {
+            if (!serial && serial !== 0) return null;
+            const n = parseInt(serial, 10);
+            if (isNaN(n) || n < 1) return null;
+            return new Date(Date.UTC(1899, 11, 30) + n * 86400000);
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           ▼ NUEVO: FILTROS DENTRO DEL MODAL DE REGISTROS
+        ══════════════════════════════════════════════════════════════════════ */
+        /* ══ Multi-select dropdowns del modal de registros ════════════════════════ */
+        const _rmState = { fecha: new Set(), zona: new Set(), ccosto: new Set() };
+
+        function _rmToggle(tipo) {
+            ['fecha','zona','ccosto'].forEach(t => {
+                if (t !== tipo) document.getElementById(`rm-panel-${t}`).classList.remove('open');
+            });
+            document.getElementById(`rm-panel-${tipo}`).classList.toggle('open');
+        }
+
+        function _rmFiltrarOpciones(tipo) {
+            const q = document.getElementById(`rm-search-${tipo}`).value.toLowerCase();
+            document.querySelectorAll(`#rm-opts-${tipo} .rm-option`).forEach(op => {
+                op.style.display = op.dataset.val.toLowerCase().includes(q) ? '' : 'none';
+            });
+        }
+
+        function _rmSelTodos(tipo, checked) {
+            document.querySelectorAll(`#rm-opts-${tipo} .rm-option`).forEach(op => {
+                if (op.style.display !== 'none') {
+                    op.querySelector('input').checked = checked;
+                    checked
+                        ? _rmState[tipo].add(op.dataset.val)
+                        : _rmState[tipo].delete(op.dataset.val);
+                }
+            });
+            _rmActualizarBoton(tipo);
+        }
+
+        function _rmOnCheck(tipo, val, checked) {
+            checked ? _rmState[tipo].add(val) : _rmState[tipo].delete(val);
+            _rmActualizarBoton(tipo);
+            _contarFiltrosActivos();
+        }
+
+        function _rmActualizarBoton(tipo) {
+            const total = document.querySelectorAll(`#rm-opts-${tipo} .rm-option`).length;
+            const sel   = _rmState[tipo].size;
+            const span  = document.getElementById(`rmd-${tipo}-text`);
+            if (sel === 0 || sel === total) {
+                span.innerHTML = tipo === 'ccosto' ? 'Todos' : 'Todas';
+            } else {
+                span.innerHTML = `<span class="rm-selected-badge">${sel}</span> seleccionados`;
+            }
+            _contarFiltrosActivos();
+        }
+
+        function _poblarSelectsFiltros(registros) {
+            const zonas  = [...new Set(registros.map(r => r.mcnzona  ).filter(Boolean))].sort();
+            const costos = [...new Set(registros.map(r => r.mcnccosto).filter(Boolean))].sort();
+            _rmPoblar('zona',   zonas);
+            _rmPoblar('ccosto', costos);
+        }
+
+        function _poblarSelectFecha(registros) {
+            const fechas = [...new Set(
+                registros.map(r => r.mcnfecha).filter(f => f !== null && f !== undefined)
+            )].sort((a, b) => a - b);
+            _rmPoblar('fecha', fechas.map(f => ({ val: String(f), label: excelSerialAFecha(f) })));
+        }
+
+        function _rmPoblar(tipo, valores) {
+            const container = document.getElementById(`rm-opts-${tipo}`);
+            const selActual = new Set(_rmState[tipo]);
+            _rmState[tipo].clear();
+            container.innerHTML = '';
+
+            const items = valores.map(v =>
+                typeof v === 'object' ? v : { val: String(v), label: String(v) }
+            );
+
+            items.forEach(({ val, label }) => {
+                const checked = selActual.has(val);
+                if (checked) _rmState[tipo].add(val);
+
+                const div = document.createElement('div');
+                div.className = 'rm-option';
+                div.dataset.val = val;
+                div.innerHTML = `<input type="checkbox" ${checked ? 'checked' : ''}
+                    onchange="_rmOnCheck('${tipo}','${val.replace(/'/g,"\\'")}',this.checked)">
+                    <span>${label}</span>`;
+                container.appendChild(div);
+            });
+
+            _rmActualizarBoton(tipo);
+        }
+
+        function _contarFiltrosActivos() {
+            let activos = 0;
+            ['fecha','zona','ccosto'].forEach(tipo => {
+                const total = document.querySelectorAll(`#rm-opts-${tipo} .rm-option`).length;
+                if (_rmState[tipo].size > 0 && _rmState[tipo].size < total) activos++;
+            });
+            const badge = document.getElementById('regFiltrosBadge');
+            if (activos > 0) {
+                badge.textContent = `${activos} activo${activos > 1 ? 's' : ''}`;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function aplicarFiltrosRegistros() {
+            const fechasSel  = _rmState.fecha;
+            const zonasSel   = _rmState.zona;
+            const ccostosSel = _rmState.ccosto;
+
+            const totalFechas  = document.querySelectorAll('#rm-opts-fecha  .rm-option').length;
+            const totalZonas   = document.querySelectorAll('#rm-opts-zona   .rm-option').length;
+            const totalCcostos = document.querySelectorAll('#rm-opts-ccosto .rm-option').length;
+
+            _registrosFiltrados = _registrosCargados.filter(r => {
+                if (fechasSel.size > 0  && fechasSel.size < totalFechas  && !fechasSel.has(String(r.mcnfecha)))  return false;
+                if (zonasSel.size > 0   && zonasSel.size < totalZonas    && !zonasSel.has(r.mcnzona   || ''))    return false;
+                if (ccostosSel.size > 0 && ccostosSel.size < totalCcostos && !ccostosSel.has(r.mcnccosto || '')) return false;
+                return true;
+            });
+
+            _contarFiltrosActivos();
+            _cerrarTodosRmPanels();
+            _renderizarRegistros(_registrosFiltrados, 1);
+        }
+
+        function limpiarFiltrosRegistros() {
+            ['fecha','zona','ccosto'].forEach(tipo => {
+                _rmState[tipo].clear();
+                document.querySelectorAll(`#rm-opts-${tipo} .rm-option input`).forEach(cb => cb.checked = false);
+                _rmActualizarBoton(tipo);
+            });
+            ['fecha','zona','ccosto'].forEach(t => document.getElementById(`rm-search-${t}`).value = '');
+            _registrosFiltrados = [..._registrosCargados];
+            _contarFiltrosActivos();
+            _renderizarRegistros(_registrosFiltrados, 1);
+        }
+
+        function _limpiarFiltrosLocalesSinRender() {
+            ['fecha','zona','ccosto'].forEach(tipo => {
+                _rmState[tipo].clear();
+                document.getElementById(`rm-opts-${tipo}`).innerHTML = '';
+                _rmActualizarBoton(tipo);
+            });
+            document.getElementById('regFiltrosBadge').style.display = 'none';
+        }
+
+        function _cerrarTodosRmPanels() {
+            ['fecha','zona','ccosto'].forEach(t => document.getElementById(`rm-panel-${t}`).classList.remove('open'));
+        }
+
+        /* Cerrar panels al click fuera */
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.rm-dropdown')) _cerrarTodosRmPanels();
+            if (!e.target.closest('.filter-dropdown'))
+                document.querySelectorAll('.filter-panel').forEach(p => p.classList.remove('show'));
+        });
+
+        /* ══════════════════════════════════════════════════════════════════════
            CARGAR REGISTROS DE UN DETALLE
         ══════════════════════════════════════════════════════════════════════ */
         const REG_POR_PAGINA = 15;
@@ -693,6 +1066,8 @@
                 `📋 Registros — ${mcndetalle}`;
             document.getElementById('modalRegistrosBody').innerHTML =
                 `<div class="modal-loading"><div class="mini-spinner"></div><span>Cargando...</span></div>`;
+            // Limpiar filtros locales al abrir el modal
+            _limpiarFiltrosLocalesSinRender();
             abrirModal('modalRegistros');
             await _cargarPaginaRegistros(1);
         }
@@ -707,7 +1082,6 @@
             contextoPaginacion.pagina = pagina;
 
             const params = new URLSearchParams({ ctanombre, vinnombre, mcndetalle });
-
             if (filtrosActivos.cuenta.length)   params.set('mcncuenta',  filtrosActivos.cuenta.join(','));
             if (filtrosActivos.zona.length)     params.set('mcnzona',    filtrosActivos.zona.join(','));
             if (filtrosActivos.destino.length)  params.set('mcndestino', filtrosActivos.destino.join(','));
@@ -717,7 +1091,14 @@
                 const resp = await fetch(`../obtener-registros-detalle/?${params}`);
                 const data = await resp.json();
                 if (data.error) { mostrarToast('Error: ' + data.error, 'error'); return; }
-                _renderizarRegistros(data.registros, pagina);
+
+                // ▼ Guardar en cache y poblar selects de filtros locales
+                _registrosCargados   = data.registros;
+                _registrosFiltrados  = [..._registrosCargados];
+                _poblarSelectsFiltros(_registrosCargados);
+                _poblarSelectFecha(_registrosCargados);
+
+                _renderizarRegistros(_registrosFiltrados, pagina);
             } catch(e) {
                 mostrarToast('Error al cargar registros', 'error');
             }
@@ -732,10 +1113,13 @@
 
             let html = `<p style="font-size:.82rem;color:#6b7280;margin-bottom:10px;">
                             ${total} registro${total!==1?'s':''} encontrado${total!==1?'s':''}
+                            ${total < _registrosCargados.length
+                                ? `<span style="color:#4f46e5;font-weight:600;"> (${_registrosCargados.length} total, filtrado)</span>`
+                                : ''}
                         </p>`;
 
             if (total === 0) {
-                html += `<p style="text-align:center;color:#9ca3af;padding:24px;">Sin registros para este detalle.</p>`;
+                html += `<p style="text-align:center;color:#9ca3af;padding:24px;">Sin registros para los filtros aplicados.</p>`;
             } else {
                 html += `<div class="registros-list">`;
                 slice.forEach(reg => {
@@ -744,7 +1128,6 @@
                     const fechaFmt = excelSerialAFecha(reg.mcnfecha);
                     html += `
                     <div class="registro-item" id="reg-item-${reg.id}">
-                        <!-- Fila 1: fecha, débito/crédito, saldo + acciones -->
                         <div class="reg-row reg-row-top">
                             <div class="reg-field">
                                 <span class="reg-label">Fecha</span>
@@ -769,7 +1152,6 @@
                                 <button class="btn-delete" onclick="abrirEliminar(${reg.id},'${(reg.mcndetalle||'').replace(/'/g,"\\'")}')">🗑️ Eliminar</button>
                             </div>
                         </div>
-                        <!-- Fila 2: zona, centro de costo, destino -->
                         <div class="reg-row reg-row-bottom">
                             <div class="reg-field">
                                 <span class="reg-label">Zona</span>
@@ -791,11 +1173,11 @@
                 if (totalPags > 1) {
                     html += `<div class="reg-pagination">
                         <span>Página ${pagina} de ${totalPags}</span>`;
-                    if (pagina > 1) html += `<button onclick="_cargarPaginaRegistros(${pagina-1})">◀ Ant.</button>`;
+                    if (pagina > 1) html += `<button onclick="_irPaginaFiltrada(${pagina-1})">◀ Ant.</button>`;
                     for (let p = Math.max(1,pagina-2); p <= Math.min(totalPags,pagina+2); p++) {
-                        html += `<button class="${p===pagina?'active':''}" onclick="_cargarPaginaRegistros(${p})">${p}</button>`;
+                        html += `<button class="${p===pagina?'active':''}" onclick="_irPaginaFiltrada(${p})">${p}</button>`;
                     }
-                    if (pagina < totalPags) html += `<button onclick="_cargarPaginaRegistros(${pagina+1})">Sig. ▶</button>`;
+                    if (pagina < totalPags) html += `<button onclick="_irPaginaFiltrada(${pagina+1})">Sig. ▶</button>`;
                     html += `</div>`;
                 }
             }
@@ -803,18 +1185,10 @@
             document.getElementById('modalRegistrosBody').innerHTML = html;
         }
 
-        /* ══════════════════════════════════════════════════════════════════════
-           CONVERSIÓN SERIAL EXCEL → FECHA LEGIBLE
-        ══════════════════════════════════════════════════════════════════════ */
-        function excelSerialAFecha(serial) {
-            if (!serial && serial !== 0) return '-';
-            const n = parseInt(serial, 10);
-            if (isNaN(n) || n < 1) return serial; // ya es texto o valor inválido
-            // Epoch Excel: 1 ene 1900 = serial 1 (con bug bisiesto 1900)
-            const fecha = new Date(Date.UTC(1899, 11, 30) + n * 86400000);
-            return fecha.toLocaleDateString('es-CO', {
-                day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC'
-            });
+        /** Paginación sobre el conjunto filtrado actual */
+        function _irPaginaFiltrada(pagina) {
+            contextoPaginacion.pagina = pagina;
+            _renderizarRegistros(_registrosFiltrados, pagina);
         }
 
         /* ══════════════════════════════════════════════════════════════════════
@@ -844,17 +1218,20 @@
 
         /* ══════════════════════════════════════════════════════════════════════
            EDITAR REGISTRO
+           ▼ MODIFICADO: ahora se muestran zona, ccosto editables + fecha legible
         ══════════════════════════════════════════════════════════════════════ */
         function abrirEditar(reg) {
             registroEnEdicion = reg;
-            document.getElementById('edit-mcnfecha').value   = reg.mcnfecha   ?? '';
-            document.getElementById('edit-mcncuenta').value  = reg.mcncuenta  ?? '';
-            document.getElementById('edit-mcnzona').value    = reg.mcnzona    ?? '';
-            document.getElementById('edit-mcndestino').value = reg.mcndestino ?? '';
-            document.getElementById('edit-mcnccosto').value  = reg.mcnccosto  ?? '';
-            document.getElementById('edit-mcndetalle').value = reg.mcndetalle ?? '';
-            document.getElementById('edit-ctanombre').value  = reg.ctanombre  ?? '';
-            document.getElementById('edit-vinnombre').value  = reg.vinnombre  ?? '';
+            document.getElementById('edit-mcnfecha').value          = reg.mcnfecha   ?? '';
+            // ▼ Mostrar fecha legible en campo de solo lectura
+            document.getElementById('edit-mcnfecha-legible').value  = excelSerialAFecha(reg.mcnfecha);
+            document.getElementById('edit-mcncuenta').value         = reg.mcncuenta  ?? '';
+            document.getElementById('edit-mcnzona').value           = reg.mcnzona    ?? '';   // ▼ editable
+            document.getElementById('edit-mcndestino').value        = reg.mcndestino ?? '';
+            document.getElementById('edit-mcnccosto').value         = reg.mcnccosto  ?? '';   // ▼ editable
+            document.getElementById('edit-mcndetalle').value        = reg.mcndetalle ?? '';
+            document.getElementById('edit-ctanombre').value         = reg.ctanombre  ?? '';
+            document.getElementById('edit-vinnombre').value         = reg.vinnombre  ?? '';
 
             const debi = document.getElementById('edit-mcnvaldebi');
             const cred = document.getElementById('edit-mcnvalcred');
@@ -872,9 +1249,9 @@
             const payload = {
                 mcnfecha:   document.getElementById('edit-mcnfecha').value,
                 mcncuenta:  document.getElementById('edit-mcncuenta').value,
-                mcnzona:    document.getElementById('edit-mcnzona').value,
+                mcnzona:    document.getElementById('edit-mcnzona').value,           // ▼ incluido
                 mcndestino: document.getElementById('edit-mcndestino').value,
-                mcnccosto:  document.getElementById('edit-mcnccosto').value,
+                mcnccosto:  document.getElementById('edit-mcnccosto').value,         // ▼ incluido
                 mcnvaldebi: parseFloat(document.getElementById('edit-mcnvaldebi').dataset.rawValue) || 0,
                 mcnvalcred: parseFloat(document.getElementById('edit-mcnvalcred').dataset.rawValue) || 0,
                 mcndetalle: document.getElementById('edit-mcndetalle').value,
@@ -949,6 +1326,7 @@
             document.getElementById('modalRegistrosTitulo').textContent = titulo;
             document.getElementById('modalRegistrosBody').innerHTML =
                 `<div class="modal-loading"><div class="mini-spinner"></div><span>Cargando...</span></div>`;
+            _limpiarFiltrosLocalesSinRender();
             abrirModal('modalRegistros');
 
             await _cargarPaginaRegistrosNivel(1);
@@ -970,7 +1348,14 @@
                 const resp = await fetch(`../obtener-registros-nivel/?${params}`);
                 const data = await resp.json();
                 if (data.error) { mostrarToast('Error: ' + data.error, 'error'); return; }
-                _renderizarRegistros(data.registros, pagina);
+
+                // ▼ Guardar en cache y poblar selects
+                _registrosCargados  = data.registros;
+                _registrosFiltrados = [..._registrosCargados];
+                _poblarSelectsFiltros(_registrosCargados);
+                _poblarSelectFecha(_registrosCargados);
+
+                _renderizarRegistros(_registrosFiltrados, pagina);
             } catch(e) {
                 mostrarToast('Error al cargar registros', 'error');
             }
@@ -1086,7 +1471,7 @@
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           FILTROS DINÁMICOS EN CASCADA
+           FILTROS DINÁMICOS EN CASCADA (tabla principal)
         ══════════════════════════════════════════════════════════════════════ */
         function _paramsFiltrosActivos(excluir = null) {
             const p = new URLSearchParams();
@@ -1099,7 +1484,6 @@
         }
 
         async function _actualizarOpcionesFiltro(tipo) {
-            // ctanombre se gestiona del lado cliente a partir de datosGlobales
             if (tipo === 'ctanombre') {
                 _actualizarOpcionesFiltroCtanombre();
                 return;
@@ -1127,7 +1511,6 @@
 
         async function _actualizarOpcionesFiltroCtanombre() {
             const seleccionadosAntes = new Set(filtrosActivos.ctanombre);
-            // Reutiliza el mismo endpoint que los demás filtros
             const params = _paramsFiltrosActivos('ctanombre');
             params.set('campo', 'ctanombre');
             try {
@@ -1267,12 +1650,10 @@
                 const cuenta  = row.ctanombre  || 'SIN CUENTA';
                 const vinculo = row.vinnombre  || 'SIN VINCULO';
                 const detalle = row.mcndetalle || 'SIN DETALLE';
-
                 const mcncuenta = row.mcncuenta || '';
 
                 if (!jerarquia[cuenta])
                     jerarquia[cuenta] = { totales: inicializarTotales(), vinculos: {}, mcncuenta };
-                // Acumular todos los mcncuenta distintos de la cuenta
                 if (mcncuenta && !jerarquia[cuenta].mcncuentas)
                     jerarquia[cuenta].mcncuentas = new Set();
                 if (mcncuenta) jerarquia[cuenta].mcncuentas.add(mcncuenta);
@@ -1284,7 +1665,7 @@
                 if (!jerarquia[cuenta].vinculos[vinculo].detalles[detalle])
                     jerarquia[cuenta].vinculos[vinculo].detalles[detalle] = {
                         ...inicializarTotales(),
-                        mcncuenta   // guardar mcncuenta en el detalle
+                        mcncuenta
                     };
 
                 MESES.forEach(mes => {
@@ -1323,7 +1704,6 @@
 
                 const ctaEsc = cuenta.replace(/'/g, "\\'");
 
-                /* ── Fila CUENTA ── */
                 const mcncuentaCuenta = cuentaData.mcncuentas
                     ? [...cuentaData.mcncuentas].sort().join(', ')
                     : '';
@@ -1353,7 +1733,6 @@
                     const vinculoId = `${cuentaId}-vinculo-${vinculoIndex}`;
                     const vinEsc = vinculo.replace(/'/g, "\\'");
 
-                    /* ── Fila VÍNCULO ── */
                     const mcncuentaVinculo = vinculoData.mcncuentas
                         ? [...vinculoData.mcncuentas].sort().join(', ')
                         : '';
@@ -1376,12 +1755,9 @@
                         </td>`;
                     tbody.appendChild(trVinculo);
 
-                    /* ── Filas DETALLE ── */
                     Object.keys(vinculoData.detalles).sort().forEach(detalle => {
                         const detalleData = vinculoData.detalles[detalle];
                         const detEsc      = detalle.replace(/'/g, "\\'");
-
-                        // mcncuenta ya está guardado en detalleData
                         const mcncuenta = detalleData.mcncuenta || '';
 
                         const trDetalle = document.createElement('tr');
@@ -1399,7 +1775,6 @@
                 });
             });
 
-            /* ── Fila TOTAL GENERAL ── */
             const trTotal = document.createElement('tr');
             trTotal.className = 'row-total-general';
             trTotal.innerHTML = `
@@ -1411,7 +1786,6 @@
         }
 
         function generarCeldasNumericas(totales, nivelInfo) {
-            // nivelInfo = { nivel, cuenta, vinculo, detalle }  — opcional, habilita edición
             let html = '';
             MESES.forEach((mes, idx) => {
                 const v = totales[mes];
@@ -1482,17 +1856,16 @@
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           REFERENCIA GLOBAL A LA JERARQUÍA (para redistribución)
+           REFERENCIA GLOBAL A LA JERARQUÍA
         ══════════════════════════════════════════════════════════════════════ */
-        let jerarquiaGlobal = {};   // se asigna en procesarYMostrarDatos
+        let jerarquiaGlobal = {};
 
         /* ══════════════════════════════════════════════════════════════════════
            EDICIÓN INLINE — DOBLE CLIC EN CELDA DE MES
         ══════════════════════════════════════════════════════════════════════ */
-        let _celdaActiva = null;   // td que está siendo editado
+        let _celdaActiva = null;
 
         function iniciarEdicionCelda(td) {
-            // Si ya hay otra celda activa, cancelar
             if (_celdaActiva && _celdaActiva !== td) cancelarEdicionCelda();
 
             const valorActual = parseFloat(td.dataset.valor) || 0;
@@ -1502,7 +1875,6 @@
             const input = document.createElement('input');
             input.type  = 'text';
             input.className = 'cell-input';
-            // Mostrar número sin formato para editar
             input.value = valorActual === 0 ? '' : String(valorActual);
             td.textContent = '';
             td.appendChild(input);
@@ -1514,7 +1886,6 @@
                 if (e.key === 'Escape') { e.preventDefault(); cancelarEdicionCelda(); }
             });
             input.addEventListener('blur', () => {
-                // pequeño delay para que Enter/Escape se ejecuten primero
                 setTimeout(() => { if (_celdaActiva === td) cancelarEdicionCelda(); }, 120);
             });
         }
@@ -1541,7 +1912,6 @@
 
             if (nuevoVal === valAnterior) { cancelarEdicionCelda(); return; }
 
-            // Calcular la distribución proporcional y mostrar modal de confirmación
             const distribucion = calcularDistribucion(nivelInfo, mes, nuevoVal);
             if (!distribucion) { cancelarEdicionCelda(); return; }
 
@@ -1552,19 +1922,14 @@
         /* ══════════════════════════════════════════════════════════════════════
            CÁLCULO DE DISTRIBUCIÓN PROPORCIONAL
         ══════════════════════════════════════════════════════════════════════ */
-        /**
-         * Devuelve array de { cuenta, vinculo, detalle, valorAnterior, proporcion, valorNuevo }
-         * con la distribución del nuevo valor entre los detalles hijos del nivel editado.
-         */
         function calcularDistribucion(nivelInfo, mes, nuevoTotal) {
             const { nivel, cuenta, vinculo, detalle } = nivelInfo;
             const cuentaData = jerarquiaGlobal[cuenta];
             if (!cuentaData) return null;
 
-            let detallesList = [];   // [{ cuenta, vinculo, detalle, valorAnterior }]
+            let detallesList = [];
 
             if (nivel === 'cuenta') {
-                // Todos los detalles de todos los vínculos de esta cuenta
                 Object.keys(cuentaData.vinculos).forEach(vin => {
                     Object.keys(cuentaData.vinculos[vin].detalles).forEach(det => {
                         detallesList.push({
@@ -1583,7 +1948,6 @@
                     });
                 });
             } else {
-                // nivel === 'detalle': solo este detalle
                 detallesList.push({ cuenta, vinculo, detalle, valorAnterior: cuentaData.vinculos[vinculo]?.detalles[detalle]?.[mes] || 0 });
             }
 
@@ -1592,7 +1956,6 @@
             return detallesList.map(d => {
                 let proporcion, valorNuevo;
                 if (totalAnterior === 0) {
-                    // Distribución igualitaria si no hay valores previos
                     proporcion = detallesList.length > 0 ? 1 / detallesList.length : 0;
                     valorNuevo = Math.round(nuevoTotal * proporcion);
                 } else {
@@ -1606,7 +1969,7 @@
         /* ══════════════════════════════════════════════════════════════════════
            MODAL DE DISTRIBUCIÓN
         ══════════════════════════════════════════════════════════════════════ */
-        let _distribucionPendiente = null;   // { nivelInfo, mes, nuevoTotal, items }
+        let _distribucionPendiente = null;
 
         function mostrarModalDistribucion(nivelInfo, mes, valAnterior, nuevoTotal, items) {
             _distribucionPendiente = { nivelInfo, mes, nuevoTotal, items };
@@ -1646,9 +2009,7 @@
             <table class="dist-table">
                 <thead>
                     <tr>
-                        <th>Cuenta</th>
-                        <th>Vínculo</th>
-                        <th>Detalle</th>
+                        <th>Cuenta</th><th>Vínculo</th><th>Detalle</th>
                         <th class="num">Valor anterior</th>
                         <th class="num">Proporción</th>
                         <th class="num">Valor nuevo</th>
@@ -1658,9 +2019,7 @@
 
             items.forEach(it => {
                 body += `<tr>
-                    <td>${it.cuenta}</td>
-                    <td>${it.vinculo}</td>
-                    <td>${it.detalle}</td>
+                    <td>${it.cuenta}</td><td>${it.vinculo}</td><td>${it.detalle}</td>
                     <td class="num col-ant">${fmt(it.valorAnterior)}</td>
                     <td class="num col-prop">${(it.proporcion * 100).toFixed(1)}%</td>
                     <td class="num col-nuevo">${fmt(it.valorNuevo)}</td>
@@ -1684,7 +2043,6 @@
             if (!_distribucionPendiente) return;
             const { nivelInfo, mes, nuevoTotal, items } = _distribucionPendiente;
 
-            // Mostrar overlay de guardando
             const body = document.getElementById('modalDistribucionBody');
             body.insertAdjacentHTML('beforeend',
                 `<div class="saving-overlay" id="savingOverlay">
@@ -1693,7 +2051,6 @@
             document.querySelector('#modalDistribucion .btn-save').disabled = true;
 
             let errores = 0;
-            // Guardar cada detalle en la BD
             for (const item of items) {
                 try {
                     const ok = await _actualizarMesEnBD(item.cuenta, item.vinculo, item.detalle, mes, item.valorNuevo, item.valorAnterior);
@@ -1709,30 +2066,20 @@
                 mostrarToast('✅ Redistribución aplicada correctamente');
             }
 
-            // Actualizar jerarquíaGlobal en memoria
             _aplicarDistribucionEnJerarquia(items, mes);
-
             cerrarModal('modalDistribucion');
             document.querySelector('#modalDistribucion .btn-save').disabled = false;
             _distribucionPendiente = null;
-
-            // Re-renderizar la tabla con los nuevos valores
             renderizarTabla(jerarquiaGlobal);
             calcularEstadisticas(datosGlobales);
         }
 
-        /**
-         * Actualiza los registros de la BD para un detalle específico en un mes,
-         * distribuyendo el nuevo valor proporcionalmente entre débito y crédito.
-         */
         async function _actualizarMesEnBD(cuenta, vinculo, detalle, mes, valorNuevo, valorAnterior) {
-            // Obtener los registros individuales de este detalle en este mes
             const params = new URLSearchParams({ ctanombre: cuenta, vinnombre: vinculo, mcndetalle: detalle });
             const resp = await fetch(`../obtener-registros-detalle/?${params}`);
             const data = await resp.json();
             if (data.error || !data.registros) return false;
 
-            // Filtrar solo los del mes correspondiente
             const MESES_NUM = { enero:1, febrero:2, marzo:3, abril:4, mayo:5, junio:6,
                                 julio:7, agosto:8, septiembre:9, octubre:10, noviembre:11, diciembre:12 };
             const numMes = MESES_NUM[mes];
@@ -1745,19 +2092,16 @@
                 return f.getUTCMonth() + 1 === numMes;
             });
 
-            if (registrosMes.length === 0) return true; // nada que actualizar
+            if (registrosMes.length === 0) return true;
 
-            // Calcular saldo total de esos registros
             const saldoTotal = registrosMes.reduce((s, r) => s + (r.mcnvaldebi||0) - (r.mcnvalcred||0), 0);
-
-            // Distribuir valorNuevo proporcionalmente entre registros del mes
             let acumulado = 0;
+
             for (let i = 0; i < registrosMes.length; i++) {
                 const reg = registrosMes[i];
                 const saldoReg = (reg.mcnvaldebi||0) - (reg.mcnvalcred||0);
                 let nuevoSaldo;
                 if (i === registrosMes.length - 1) {
-                    // Último registro absorbe el residuo de redondeo
                     nuevoSaldo = valorNuevo - acumulado;
                 } else {
                     const prop = saldoTotal !== 0 ? saldoReg / saldoTotal : 1 / registrosMes.length;
@@ -1765,20 +2109,14 @@
                     acumulado += nuevoSaldo;
                 }
 
-                // Preservar la estructura débito/crédito:
-                // si el registro original tiene solo débito → nuevo saldo va a débito
-                // si tiene solo crédito → nuevo saldo va negado al crédito
                 let nuevoDebi = reg.mcnvaldebi || 0;
                 let nuevoCred = reg.mcnvalcred || 0;
 
                 if (reg.mcnvalcred === 0 || reg.mcnvalcred === null) {
-                    nuevoDebi = nuevoSaldo;
-                    nuevoCred = 0;
+                    nuevoDebi = nuevoSaldo; nuevoCred = 0;
                 } else if (reg.mcnvaldebi === 0 || reg.mcnvaldebi === null) {
-                    nuevoDebi = 0;
-                    nuevoCred = -nuevoSaldo;
+                    nuevoDebi = 0; nuevoCred = -nuevoSaldo;
                 } else {
-                    // Ajustar proporcionalmente débito y crédito
                     const ratioDebi = reg.mcnvaldebi / (reg.mcnvaldebi + reg.mcnvalcred);
                     nuevoDebi = Math.round(nuevoSaldo > 0 ? nuevoSaldo / (1 - ratioDebi) * ratioDebi : 0);
                     nuevoCred = nuevoDebi - nuevoSaldo;
@@ -1794,7 +2132,6 @@
             return true;
         }
 
-        /** Aplica los nuevos valores en jerarquiaGlobal sin recargar del servidor */
         function _aplicarDistribucionEnJerarquia(items, mes) {
             items.forEach(({ cuenta, vinculo, detalle, valorNuevo, valorAnterior }) => {
                 const diff = valorNuevo - valorAnterior;
@@ -1805,15 +2142,12 @@
                 const dd = vd.detalles[detalle];
                 if (!dd) return;
 
-                // Actualizar detalle
                 dd[mes] = valorNuevo;
                 dd.total = dd.total + diff;
 
-                // Recalcular totales de vínculo
                 vd.totales[mes] = Object.values(vd.detalles).reduce((s, d) => s + (d[mes]||0), 0);
                 vd.totales.total = MESES.reduce((s, m) => s + (vd.totales[m]||0), 0);
 
-                // Recalcular totales de cuenta
                 cd.totales[mes] = Object.values(cd.vinculos).reduce((s, v) => s + (v.totales[mes]||0), 0);
                 cd.totales.total = MESES.reduce((s, m) => s + (cd.totales[m]||0), 0);
             });
@@ -1827,7 +2161,7 @@
 
         /* Init */
         window.addEventListener('load', () => {
-            cargarValoresFiltros();   // solo prepara los filtros, no carga la tabla
+            cargarValoresFiltros();
         });
     </script>
 </body>
