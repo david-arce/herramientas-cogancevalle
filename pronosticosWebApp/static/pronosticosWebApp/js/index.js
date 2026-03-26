@@ -3,11 +3,6 @@ let dataTableIsInitialized = false;
 let selectedRowData = null;
 let productosData = null; // Variable global para almacenar los datos
 
-// updateData();
-window.addEventListener('load', async () => {
-    uploadData();
-});
-
 const handleRowClick = (data) => {
     // const filteredData = data.slice(1);  // Eliminar el primer elemento (indice de la tabla)
     selectedRowData = data;
@@ -107,20 +102,34 @@ document.getElementById('export-visible').addEventListener('click', function () 
 });
 
 async function uploadData() {
-    productosData = null; // Limpiar los datos almacenados
-    if (!productosData) {
-        const loader = document.querySelector('.spinner-border');
-        try {
-            loader.style.display = 'block';
-            const response = await fetch('/lista/');
-            productosData = await response.json();
-        } catch (error) {
-            console.error('Error al obtener los datos:', error);
-        } finally {
-            loader.style.display = 'none';
-        }
+    const params = new URLSearchParams();
+
+    getSelectedValues('select-options-items', 'select-all-items')
+        .forEach(v => params.append('item', v));
+    getSelectedValues('select-options-proveedores', 'select-all-proveedores')
+        .forEach(v => params.append('proveedor', v));
+    getSelectedValues('select-options-productos', 'select-all-productos')
+        .forEach(v => params.append('producto', v));
+    getSelectedValues('select-options-sedes', 'select-all-sedes')
+        .forEach(v => params.append('sede', v));
+
+    if (!params.toString()) {
+        alert('Selecciona al menos un filtro antes de buscar.');
+        return null;
     }
-};
+
+    const loader = document.querySelector('.spinner-border');
+    try {
+        loader.style.display = 'block';
+        const response = await fetch(`/lista/?${params.toString()}`);
+        return await response.json();
+    } catch (error) {
+        console.error('Error al obtener los datos:', error);
+        return null;
+    } finally {
+        loader.style.display = 'none';
+    }
+}
 
 // Helper function to get CSRF token from cookies
 function getCookie(name) {
@@ -277,33 +286,10 @@ const initChart = async () => {
 };
 
 document.getElementById('search').addEventListener('click', async () => {
-    
-    const selectedItems = getSelectedValues('select-options-items', 'select-all-items');
-    const selectedProveedores = getSelectedValues('select-options-proveedores', 'select-all-proveedores');
-    const selectedProductos = getSelectedValues('select-options-productos', 'select-all-productos');
-    const selectedSedes = getSelectedValues('select-options-sedes', 'select-all-sedes');
-    
-    function filter(data, items, proveedores, productos, sedes) {
-        // Convertir arrays de selección a números (para el filtro de Items)
-        // items = items.map(Number);
-
-        // Filtrar los productos que coincidan con todos los criterios seleccionados
-        return data.productos.filter(producto => {
-            // Verificar que el producto cumpla con todos los criterios seleccionados
-            const matchItems = items.length === 0 || items.includes(producto.item);
-            const matchProveedores = proveedores.length === 0 || proveedores.includes(producto.proveedor);
-            const matchProductos = productos.length === 0 || productos.includes(producto.producto);
-            const matchSedes = sedes.length === 0 || sedes.includes(producto.sede);
-
-            return matchItems && matchProveedores && matchProductos && matchSedes;
-        });
+    const datos = await uploadData();
+    if (datos) {
+        await initDataTable(datos);
     }
-    const dataFilter = filter(productosData, selectedItems, selectedProveedores, selectedProductos, selectedSedes);
-    //convertir a json y asignar
-    const datos = { "productos": dataFilter };
-    console.log("Filtros aplicados:", datos);
-
-    await initDataTable(datos);
 });
 
 document.addEventListener('DOMContentLoaded', () => {

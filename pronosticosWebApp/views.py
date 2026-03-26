@@ -55,146 +55,31 @@ def send_data(request):
     else:
         return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
+@login_required
 def demanda(request):
-    df_pronosticos = pd.DataFrame(list(PronosticoFinal.objects.all().values()))
-    # Convertir el DataFrame a JSON
-    df_pronosticos_json = df_pronosticos.to_dict(orient='records')
-    data = {
-        "productos": df_pronosticos_json,
-    }
-    return JsonResponse(data, safe=False)
+    qs = PronosticoFinal.objects.all()
 
-# @csrf_exempt
-# @login_required
-# def get_chart(request):
-#     inicio = time.time()
-#     df_demanda = pd.DataFrame(list(Demanda.objects.all().values()))
-#     df_pronostico_p3 = pd.DataFrame(list(PronosticoMoviln3.objects.all().values()))
-#     df_pronostico_p4 = pd.DataFrame(list(PronosticoMoviln4.objects.all().values()))
-#     df_pronostico_p5 = pd.DataFrame(list(PronosticoMoviln5.objects.all().values()))
-#     df_pronostico_ses = pd.DataFrame(list(PronosticoSes.objects.all().values()))
-#     df_pronostico_sed = pd.DataFrame(list(PronosticoSed.objects.all().values()))
-#     fin = time.time()
-#     print(f"Tiempo de carga de datos: {fin - inicio} segundos")
-#     df_demanda = df_demanda.drop(columns=['id'])
-#     df_pronostico_p3 = df_pronostico_p3.drop(columns=['id'])
-#     df_pronostico_p4 = df_pronostico_p4.drop(columns=['id'])
-#     df_pronostico_p5 = df_pronostico_p5.drop(columns=['id'])
-#     df_pronostico_ses = df_pronostico_ses.drop(columns=['id'])
-#     df_pronostico_sed = df_pronostico_sed.drop(columns=['id'])
-#     """
-#     Construye el diccionario de ECharts usando los datos que
-#     vive en la sesión del usuario.
-#     """
-#     # --- 1. Recuperar parámetros de la sesión -------------------------------
-#     sku       = request.session.get('sku')
-#     sku_nom   = request.session.get('sku_nom')
-#     bod       = request.session.get('bod')
-#     sede      = request.session.get('sede')
-#     marca_nom = request.session.get('marca_nom')
+    # Leer filtros desde query params
+    items      = request.GET.getlist('item')       # ?item=X&item=Y
+    proveedores = request.GET.getlist('proveedor')
+    productos  = request.GET.getlist('producto')
+    sedes      = request.GET.getlist('sede')
     
-#     if not all([sku, sku_nom, bod]):
-#         return JsonResponse({"status": "error",
-#                              "message": "Selecciona una fila antes de generar la gráfica"}, status=400)
-    
-#     # --- 2. Filtrar los datos de la demanda -------------------------------
-#     list_df_demanda = df_demanda[
-#             (df_demanda['sku'] == sku) & 
-#             (df_demanda['sku_nom'] == sku_nom) & 
-#             (df_demanda['bod'] == bod)
-#     ].sort_values(by=['yyyy','mm'])
-#     list_demanda = list_df_demanda['total'].tolist()  # Obtener la lista de demanda
-    
-#     # Obtener los promedios móviles y pronósticos
-#     def obtener_lista(df, columna, sku, sku_nom, bod):
-#         return df[
-#             (df['sku'] == sku) &
-#             (df['sku_nom'] == sku_nom) &
-#             (df['bod'] == bod)
-#         ][columna].tolist()
-        
-#     list_promedio_movil_3 = obtener_lista(df_pronostico_p3, 'promedio_movil', sku, sku_nom, bod)
-#     list_promedio_movil_4 = obtener_lista(df_pronostico_p4, 'promedio_movil', sku, sku_nom, bod)
-#     list_promedio_movil_5 = obtener_lista(df_pronostico_p5, 'promedio_movil', sku, sku_nom, bod)
-#     list_ses = obtener_lista(df_pronostico_ses, 'pronostico_ses', sku, sku_nom, bod)
-#     list_sed = obtener_lista(df_pronostico_sed, 'pronostico_sed', sku, sku_nom, bod)
+    if items:
+        qs = qs.filter(item__in=items)
+    if proveedores:
+        qs = qs.filter(proveedor__in=proveedores)
+    if productos:
+        qs = qs.filter(producto__in=productos)
+    if sedes:
+        qs = qs.filter(sede__in=sedes)
 
-#     # convertir los valores a enteros
-#     list_promedio_movil_3 = [int(x) for x in list_promedio_movil_3]
-#     list_promedio_movil_4 = [int(x) for x in list_promedio_movil_4]
-#     list_promedio_movil_5 = [int(x) for x in list_promedio_movil_5]
-#     list_ses = [int(x) for x in list_ses]
-#     list_sed = [int(x) for x in list_sed]
-#     # if selected_index is None:
-#     #     return JsonResponse({"status": "error", "message": "Por favor selecciona una fila de la tabla para generar la gráfica"}, status=400)
-    
-#     # obtener los datos de la demanda-------------------------------
-#     # Filtrar el primer grupo completo (mes 1 a 12)
-#     primer_grupo = df_demanda[
-#         (df_demanda['sku'] == df_demanda.iloc[0]['sku']) &
-#         (df_demanda['sku_nom'] == df_demanda.iloc[0]['sku_nom']) &
-#         (df_demanda['bod'] == df_demanda.iloc[0]['bod'])
-#     ].sort_values(by=['yyyy','mm'])
-#     list_meses = primer_grupo['mm'].tolist()
-#     # obtener los meses por nombre
-#     meses = [
-#         'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-#         'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-#     ]
-#     # Reemplazar los números de mes por sus nombres de la list_meses
-#     list_meses = [meses[mes - 1] for mes in list_meses]
-#     list_meses.append('Pronóstico')  # Agregar 'Pronóstico' al final de la lista
-    
-#     xAxis = list_meses  # Asignar los meses a xAxis
-#     chart = {
-#         "title": {"text": "Pronósticos", 
-#                   "subtext": "Pronóstico del producto: {} \nde la sede: {}, del proveedor: {}".format(sku_nom, sede, marca_nom)},
-#         "tooltip": {"trigger": "axis"},
-#         "legend": {
-#             "data": ["Demanda", "Promedio móvil n=3","Promedio móvil n=4","Promedio móvil n=5", "Suavización simple", "Suaización doble"]
-#         },
-#         "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": True},
-#         "toolbox": {"feature": {"saveAsImage": {}}},
-#         "xAxis": {
-#             "type": "category",
-#             "boundaryGap": False,
-#             "data": xAxis,
-#         },
-#         "yAxis": {"type": "value"},
-#         "series": [
-#             {
-#                 "name": "Demanda",
-#                 "type": "line",
-#                 "data": list_demanda,
-#             },
-#             {
-#                 "name": "Promedio móvil n=3",
-#                 "type": "line",
-#                 "data": list_promedio_movil_3,
-#             },
-#             {
-#                 "name": "Promedio móvil n=4",
-#                 "type": "line",
-#                 "data": list_promedio_movil_4,
-#             },
-#             {
-#                 "name": "Promedio móvil n=5",
-#                 "type": "line",
-#                 "data": list_promedio_movil_5,
-#             },
-#             {
-#                 "name": "Suavización simple",
-#                 "type": "line",
-#                 "data": list_ses,
-#             },
-#             {
-#                 "name": "Suaización doble",
-#                 "type": "line",
-#                 "data": list_sed,
-#             },
-#         ],
-#     }
-#     return JsonResponse(chart)
+    data = list(qs.values(
+        'id', 'bodega', 'item', 'codigo', 'producto', 'unimed',
+        'lotepro', 'proveedor', 'sede', 'cantidad',
+        'stock', 'cantidadx3', 'precio', 'fecha'
+    ))
+    return JsonResponse({"productos": data})
 
 @csrf_exempt
 @login_required
