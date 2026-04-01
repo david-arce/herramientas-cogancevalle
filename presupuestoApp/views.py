@@ -11608,6 +11608,15 @@ def calcular_consolidado():
             'mcnvalcred'
         )
 
+        # ── NUEVO: queryset de ConsolidadoTotalBase ──────────────────
+        queryset_consolidado = ConsolidadoTotalBase.objects.values(
+            'mcncuenta',
+            'mcnccosto',
+            'mcnfecha',
+            'valor',
+        )
+        # ─────────────────────────────────────────────────────────────
+        
         consolidado = defaultdict(lambda: {
             'total_debito': 0,
             'total_credito': 0
@@ -11676,6 +11685,63 @@ def calcular_consolidado():
             consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
             consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
         
+        # ── NUEVO: Consolidar ConsolidadoTotalBase ───────────────────
+        for row in queryset_consolidado:
+            fecha = row['mcnfecha']
+            if not fecha:
+                continue
+            # mcnfecha ya es DateField, no necesita conversión
+            if isinstance(fecha, str):
+                fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+
+            mes = MESES_ES[fecha.month]
+            year = fecha.year
+            cuenta = row['mcncuenta'] or 'SIN CUENTA'
+            costo = row['mcnccosto'] or 'SIN COSTO'
+
+            # Aplicar las mismas agrupaciones de cuentas
+            if cuenta.startswith('541001'):
+                cuenta = '541001'
+            
+            tasasBomberil_otras = ['54100207', '54100208', '54100209', '54100210']
+            adecuacion_instalaciones = ['541009', '541033', '54103301', '54103302']
+            papelaria_fotocopias = ['541015', '541016']
+            papeleria_utiles_oficina = ['511015', '511016']
+            gastos_fondos_sociales = ['51109501', '51109502']
+            
+            if cuenta in tasasBomberil_otras:
+                cuenta = '54100207_54100210'
+            if cuenta in adecuacion_instalaciones:
+                cuenta = '541009_541033'
+            if cuenta in papelaria_fotocopias:
+                cuenta = '541015_541016'
+            if cuenta in papeleria_utiles_oficina:
+                cuenta = '511015_511016'
+            if cuenta in gastos_fondos_sociales:
+                cuenta = '51109501_51109502'
+                
+            if cuenta.startswith('541003'):
+                cuenta = '541003'
+            if cuenta.startswith('541005'):
+                cuenta = '541005'
+            if cuenta.startswith('541006'):
+                cuenta = '541006'
+            if cuenta.startswith('541024'):
+                cuenta = '541024'
+            if cuenta.startswith('541027'):
+                cuenta = '541027'
+            if cuenta.startswith('5415'):
+                cuenta = '5415'
+            if costo == '020201':
+                cuenta = '5405'
+            if costo == '0101':
+                cuenta = '5105'
+
+            key = (mes, cuenta, costo)
+            # valor ya es el saldo calculado, va directo a total_debito
+            consolidado[key]['total_debito'] += row['valor'] or 0
+        # ─────────────────────────────────────────────────────────────
+        
         # 2. Eliminar registros con cuentas que inicien con 5405 después de la agrupación
         costos_a_eliminar = ['020302', '020402', '020301']
         cuentas_a_eliminar = ['51109501']
@@ -11695,6 +11761,15 @@ def calcular_consolidado():
             c['mcncuenta']: c['ctanombre']
             for c in cuentas_qs
         }
+        # ── NUEVO: Complementar con nombres de ConsolidadoTotalBase ─────
+        cuentas_consolidado_qs = ConsolidadoTotalBase.objects.values(
+            'mcncuenta',
+            'ctanombre'
+        ).distinct()
+        for c in cuentas_consolidado_qs:
+            if c['mcncuenta'] and c['mcncuenta'] not in cuentas_dict:
+                cuentas_dict[c['mcncuenta']] = c['ctanombre']
+        # ────────────────────────────────────────────────────────────────
 
         # 4. Preparar datos para retornar
         registros_por_cuenta_costo = defaultdict(lambda: {
