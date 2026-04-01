@@ -54,9 +54,11 @@ class Producto(models.Model):
     costo_ult = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
     costo_pro = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
     costo_vta = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    tpper = models.IntegerField(null=True, blank=True)
 
     class Meta:
         db_table = "productos_venta"
+        managed = False  # This model is managed by the database, not Django migrations
 
     def __str__(self):
         return f"Producto {self.numero} - {self.sku_nom}"

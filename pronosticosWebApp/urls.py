@@ -9,5 +9,6 @@ urlpatterns = [
     path('send_data/', views.send_data, name='send_data'),
     path('login/', auth_views.LoginView.as_view(), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('export-elanco/', views.export_elanco, name='export_elanco'), # Exportar a excel Elanco
     # path('save_data/', views.guardar_productos, name='save_data'), # Guardar productos
 ]

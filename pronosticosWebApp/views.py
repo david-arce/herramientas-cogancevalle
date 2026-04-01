@@ -1,3 +1,6 @@
+from datetime import datetime, timedelta
+import hashlib
+from io import BytesIO
 import logging
 import time
 from django.shortcuts import render, HttpResponse
@@ -80,6 +83,83 @@ def demanda(request):
         'stock', 'cantidadx3', 'precio', 'fecha'
     ))
     return JsonResponse({"productos": data})
+
+def short_hash(valor: str, length: int = 6) -> str:
+    return hashlib.md5(valor.encode()).hexdigest()[:length]
+
+# exportar a excel elanco
+@login_required
+def export_elanco(request):
+    hoy = datetime.now().date()
+    primer_dia_mes_actual = hoy.replace(day=1)
+    ultimo_dia_mes_anterior = primer_dia_mes_actual - timedelta(days=1)
+    primer_dia_mes_anterior = ultimo_dia_mes_anterior.replace(day=1)
+
+    fecha_inicio = primer_dia_mes_anterior.strftime("%Y%m%d")
+    fecha_fin = ultimo_dia_mes_anterior.strftime("%Y%m%d")
+
+    productos = Producto.objects.filter(
+        fecha__range=(fecha_inicio, fecha_fin),
+        marca__in=["0004"],
+    )
+    salida = []
+    for p in productos:
+        ven_cob_val = short_hash(p.ven_cob)
+        ven_nom_val = "vendedor_" + ven_cob_val
+
+        if p.tpper == 1:
+            ccnit_val = short_hash(p.ccnit)
+            ccnit_nom_val = "cliente_" + ccnit_val
+        else:
+            ccnit_val = p.ccnit
+            ccnit_nom_val = p.cliente_nom
+
+        dopr_ven = "venta" if p.tipo in ["A4", "B2", "C3", "T1"] else "devolución"
+
+        fecha_formateada = p.fecha
+        if isinstance(p.fecha, str) and len(p.fecha) == 8:
+            fecha_formateada = f"{p.fecha[6:]}/{p.fecha[4:6]}/{p.fecha[:4]}"
+
+        venta_formateada = f"{abs(p.venta):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+        salida.append({
+            "Distributor SAP Code": "50045719",
+            "Distributor Name": "COOP GANA DEL CTRO Y NTE VALLE",
+            "Customer CNPJ or CPF": ccnit_val,
+            "Company Name or Customer Name": ccnit_nom_val,
+            "Customer State": "Colombia",
+            "Customer City": "Colombia",
+            "Date of Invoice": fecha_formateada,
+            "Invoice Number": p.numero,
+            "Distributor Product Code": p.sku,
+            "Distributor Product Name": p.sku_nom,
+            "Product Sold Quantity": abs(p.cantidad),
+            "Value": venta_formateada,
+            "Sales Operations Classification": dopr_ven,
+            "CFOP Number": p.zona,
+            "Zone Code Sales": ven_cob_val,
+            "Sales Zone Distribtuor": ven_nom_val,
+            "State or Producer Registration Number": "",
+            "Customer Grouping": "Natural" if p.tpper == 1 else "Juridica",
+            "Customer ZIP Code": p.ciudad,
+            "Customer Address": "" if p.tpper == 1 else p.direccion,
+            "Customer Phone": "" if p.tpper == 1 else p.telef,
+            "Customer Email": "",
+            "BU divisions": "",
+            "Shop Type that made the purchase": "",
+        })
+
+    buffer = BytesIO()
+    pd.DataFrame(salida).to_excel(buffer, index=False)
+    buffer.seek(0)
+
+    nombre_archivo = f"elanco_{fecha_inicio}_{fecha_fin}.xlsx"
+    response = HttpResponse(
+        buffer.read(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{nombre_archivo}"'
+    return response
 
 @csrf_exempt
 @login_required

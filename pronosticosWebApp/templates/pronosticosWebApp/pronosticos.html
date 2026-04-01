@@ -35,10 +35,16 @@
   </button>
 </div>
 
-<div class="d-grid gap-2 d-md-flex justify-content-md-center">
-  <button id="export-visible" class="btn btn-success btn-md mx-5" type="button">
+<div style="display: flex; justify-content: center; align-items: center; gap: 20px; flex-wrap: wrap;">
+  <button id="export-visible" class="btn btn-success btn-md" type="button"
+    style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.95rem; border-radius: 6px; min-width: 200px; justify-content: center;">
     <i class="bi bi-file-earmark-spreadsheet"></i> Exportar a excel
   </button>
+  <a href="{% url 'export_elanco' %}"
+    class="btn btn-success btn-md"
+    style="display: inline-flex; align-items: center; gap: 8px; min-width: 200px; justify-content: center;">
+    <i class="bi bi-file-earmark-spreadsheet"></i> Exportar a excel Elanco
+  </a>
 </div>
 
 <div class="clean-filters">
@@ -107,6 +113,7 @@
     Buscar <i class="bi bi-search"></i>
   </button>
 </div>
+
 
 <div class="container-xxl">
   <div class="row">

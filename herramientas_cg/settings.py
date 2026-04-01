@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure-)6)&ci1^y^-tkw5y&c^e6(z%#1+c+t-yph_3*nu0j570ie8279
 DEBUG = True
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'herramientas-cogancevalle.up.railway.app']
-CRFS_TRUSTED_ORIGINS = ['herramientas-cogancevalle.up.railway.app']
+CSRF_TRUSTED_ORIGINS = ['https://herramientas-cogancevalle.up.railway.app']
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') # Para que Django detecte que la conexión es segura en producción
 
 # Application definition
@@ -79,7 +79,12 @@ TEMPLATES = [
 WSGI_APPLICATION = 'herramientas_cg.wsgi.application'
 
 DATABASES = {
-    'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL'),
+        conn_max_age=600,
+        conn_health_checks=True, # Para mantener las conexiones vivas y evitar timeouts en producción
+        ssl_require=True, # Requiere SSL para conexiones a la base de datos en producción
+    )
 }
 
 # Password validation
@@ -105,11 +110,8 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
 LANGUAGE_CODE = 'es'
-
-TIME_ZONE = 'UTC'
-
+TIME_ZONE = 'America/Bogota'
 USE_I18N = True
-
 USE_TZ = True
 
 
@@ -141,6 +143,13 @@ LOGIN_REDIRECT_URL = 'dashboard'
 LOGIN_URL = 'login'
 LOGOUT_URL = 'logout'
 LOGOUT_REDIRECT_URL = 'login'
+SECURE_SSL_REDIRECT = True  # Redirige todas las solicitudes HTTP a HTTPS en producción
+SESSION_COOKIE_SECURE = True  # Asegura que la cookie de sesión solo se envíe a través de HTTPS en producción
+CSRF_COOKIE_SECURE = True  # Asegura que la cookie CSRF solo se envíe a través de HTTPS en producción
+
+# Sesiones en caché (filesystem) — sin Redis, sin query extra por request
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+SESSION_COOKIE_AGE = 28800  # 8 horas
 
 # Opcional: Expirar la sesión cuando el navegador se cierra
 # SESSION_EXPIRE_AT_BROWSER_CLOSE = True
