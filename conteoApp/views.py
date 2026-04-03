@@ -14,18 +14,37 @@ from django.db.models import Sum
 from django.template.loader import render_to_string
 
 logger = logging.getLogger(__name__)
+
+def get_fecha_asignar(bodega=None):
+    """
+    Busca la fecha de venta más reciente disponible en la BD,
+    anterior a hoy, para la bodega indicada (opcional).
+    """
+    hoy = datetime.date.today()
+    
+    qs = Venta.objects.filter(
+        fecha__lt=hoy.strftime("%Y%m%d")  # Fechas anteriores a hoy
+    )
+    
+    if bodega:
+        qs = qs.filter(bod=bodega)
+    
+    ultima_venta = qs.order_by('-fecha').values_list('fecha', flat=True).first()
+    
+    if ultima_venta:
+        return ultima_venta  # Ya viene en formato YYYYMMDD desde la BD
+    
+    # Fallback: si no hay nada en BD, usar lógica anterior
+    hoy_dt = datetime.datetime.now()
+    if hoy_dt.weekday() == 0:
+        return (hoy_dt - datetime.timedelta(days=2)).strftime("%Y%m%d")
+    return (hoy_dt - datetime.timedelta(days=1)).strftime("%Y%m%d")
+
 @login_required
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
 def asignar_tareas(request):
-    # Obtener la fecha actual
-    hoy = datetime.datetime.now()
-    # Verificar si es lunes (0 = Lunes, 6 = Domingo))
-    if hoy.weekday() == 0:
-        fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
-    else:
-        fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-    # fecha_asignar =  '20260321'
-    
+    fecha_asignar = get_fecha_asignar()
+    print(f"Fecha de asignación determinada: {fecha_asignar}")
     if request.user.username != "DBENITEZ" and request.user.username != "CHINCAPI" and request.user.username != "PROJAS" and request.user.username != "LAMAYA" and request.user.username != "AGRAJALE"  and request.user.username != "admin":
         raise PermissionDenied("No tienes permiso para acceder a esta vista.")
     
@@ -377,14 +396,7 @@ def asignar_tareas(request):
 @login_required
 @permission_required('conteoApp.view_tarea', raise_exception=True)
 def lista_tareas(request):
-    # Obtener la fecha actual
-    hoy = datetime.datetime.now()
-    # Verificar si es lunes (0 = Lunes, 6 = Domingo))
-    if hoy.weekday() == 0:
-        fecha_asignar = (hoy - datetime.timedelta(days=2)).strftime("%Y%m%d")  # Restar 2 días si es lunes
-    else:
-        fecha_asignar = (hoy - datetime.timedelta(days=1)).strftime("%Y%m%d")  # Restar 1 día normalmente
-    # fecha_asignar =   '20260321'
+    fecha_asignar = get_fecha_asignar()
     fecha_especifica = datetime.date.today() 
     try:
         ciudad = request.user.usercity.ciudad

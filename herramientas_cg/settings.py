@@ -29,9 +29,13 @@ SECRET_KEY = 'django-insecure-)6)&ci1^y^-tkw5y&c^e6(z%#1+c+t-yph_3*nu0j570ie8279
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+# Detectar si estamos en producción
+
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'herramientas-cogancevalle.up.railway.app']
 CSRF_TRUSTED_ORIGINS = ['https://herramientas-cogancevalle.up.railway.app']
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') # Para que Django detecte que la conexión es segura en producción
+# IN_PRODUCTION = os.getenv('RAILWAY_ENVIRONMENT') is not None  # Railway setea esta variable automáticamente
+# if IN_PRODUCTION:
+#     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') # Para que Django detecte que la conexión es segura en producción
 
 # Application definition
 INSTALLED_APPS = [
@@ -143,9 +147,10 @@ LOGIN_REDIRECT_URL = 'dashboard'
 LOGIN_URL = 'login'
 LOGOUT_URL = 'logout'
 LOGOUT_REDIRECT_URL = 'login'
-SECURE_SSL_REDIRECT = True  # Redirige todas las solicitudes HTTP a HTTPS en producción
-SESSION_COOKIE_SECURE = True  # Asegura que la cookie de sesión solo se envíe a través de HTTPS en producción
-CSRF_COOKIE_SECURE = True  # Asegura que la cookie CSRF solo se envíe a través de HTTPS en producción
+
+# SECURE_SSL_REDIRECT = IN_PRODUCTION  # Redirige todas las solicitudes HTTP a HTTPS en producción
+# SESSION_COOKIE_SECURE = IN_PRODUCTION  # Asegura que la cookie de sesión solo se envíe a través de HTTPS en producción
+# CSRF_COOKIE_SECURE = IN_PRODUCTION  # Asegura que la cookie CSRF solo se envíe a través de HTTPS en producción
 
 # Sesiones en caché (filesystem) — sin Redis, sin query extra por request
 SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
