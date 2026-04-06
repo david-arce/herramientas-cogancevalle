@@ -152,8 +152,16 @@ def export_elanco(request):
     buffer = BytesIO()
     pd.DataFrame(salida).to_excel(buffer, index=False)
     buffer.seek(0)
+    
+    MESES_ES = {
+    1: "enero", 2: "febrero", 3: "marzo", 4: "abril",
+    5: "mayo", 6: "junio", 7: "julio", 8: "agosto",
+    9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre"
+    }
 
-    nombre_archivo = f"elanco_{fecha_inicio}_{fecha_fin}.xlsx"
+    # fecha_inicio varía dinámicamente
+    fecha = datetime.strptime(fecha_inicio, "%Y%m%d")
+    nombre_archivo = f"elanco_{MESES_ES[fecha.month]}_{fecha.year}.xlsx"
     response = HttpResponse(
         buffer.read(),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
