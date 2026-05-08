@@ -756,18 +756,52 @@ tr.total-row-pct td {
 /* Fila Margen Bruto */
 tr.total-row-margen td {
     background: #eff6ff;
-    color: #1e40af;
+    color: #ccd5f4;
     font-weight: 700;
-    border-top: 2px solid #93c5fd;
+    border-top: 2px solid #c4defc;
     border-bottom: 2px solid #93c5fd;
 }
 
 /* Fila % Margen Bruto */
 tr.total-row-pct-margen td {
     background: #eef2ff;
-    color: #3730a3;
+    color: #a6a0ff;
     font-weight: 600;
     border-top: 1px dashed #a5b4fc;
     border-bottom: 1px dashed #a5b4fc;
     font-style: italic;
+}
+/* Margen de Contribución */
+tr.total-row-margen-ctb td {
+    background: #e9fff4;   /* verde esmeralda suave */
+    color: #065f46;
+    font-weight: 700;
+    border-top: 2px solid #c8fae9;
+    border-bottom: 2px solid #10b981;
+}
+
+/* % Margen de Contribución */
+tr.total-row-pct-margen-ctb td {
+    background: #ecfdf5;
+    color: #065f46;
+    font-style: italic;
+    font-weight: 600;
+    border-bottom: 2px solid #10b981;
+}
+/* Utilidad Operacional */
+tr.total-row-utilidad-op td {
+    background: #dbeafe;        /* azul suave */
+    color: #1e3a8a;
+    font-weight: 700;
+    border-top: 2px solid #3b82f6;
+    border-bottom: 2px solid #3b82f6;
+}
+
+/* % Utilidad Operacional */
+tr.total-row-pct-utilidad-op td {
+    background: #eff6ff;
+    color: #1e3a8a;
+    font-style: italic;
+    font-weight: 600;
+    border-bottom: 2px solid #3b82f6;
 }

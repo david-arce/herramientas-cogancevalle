@@ -11969,9 +11969,14 @@ def obtener_consolidado_total_base(request):
         '511033',	    # Adecuación e Instalación
         '511035',	    # Procesamiento Electrónico 
         '51109502',	    # Gastos de Fondos Sociales
+        '51109501_51109502', #   Gastos de Fondos Sociales
         '511512',	    # Deterioro de Inventario
         '511534',	    # Deterioro de Cartera
-        '51109501_51109502', #   Gastos de Fondos Sociales
+        '521005',	    #Gastos Bancarios
+        '521015',	    #Gastos Contribución 4 x1000 
+        '521020',	    #Comisiones 
+        '615035',	    #Intereses 
+
     ]
     
     # Función de ordenamiento personalizada
