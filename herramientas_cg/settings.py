@@ -87,7 +87,7 @@ DATABASES = {
         default=os.getenv('DATABASE_URL'),
         conn_max_age=600,
         conn_health_checks=True, # Para mantener las conexiones vivas y evitar timeouts en producción
-        ssl_require=True, # Requiere SSL para conexiones a la base de datos en producción
+        # ssl_require=True, # Requiere SSL para conexiones a la base de datos en producción
     )
 }
 

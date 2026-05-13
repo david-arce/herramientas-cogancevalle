@@ -44,6 +44,7 @@ def get_fecha_asignar(bodega=None):
 # @permission_required('conteoApp.view_tarea', raise_exception=True)
 def asignar_tareas(request):
     fecha_asignar = get_fecha_asignar()
+    
     print(f"Fecha de asignación determinada: {fecha_asignar}")
     if request.user.username != "DBENITEZ" and request.user.username != "CHINCAPI" and request.user.username != "PROJAS" and request.user.username != "LAMAYA" and request.user.username != "AGRAJALE"  and request.user.username != "admin":
         raise PermissionDenied("No tienes permiso para acceder a esta vista.")
@@ -75,21 +76,38 @@ def asignar_tareas(request):
             elif ciudad == 'Cali':
                 bodega = '0401'
             
+            # ── NUEVO: para Buga el supervisor puede pasar dos fechas ──────────
+            if ciudad == 'Buga':
+                # getlist recoge todos los inputs con name="fechas_venta"
+                fechas_raw = request.POST.getlist('fechas_venta')
+                fechas_asignar = [f.strip().replace('-', '') for f in fechas_raw if f.strip()]
+                if not fechas_asignar:
+                    fechas_asignar = [fecha_asignar]  # fallback
+            else:
+                fechas_asignar = [fecha_asignar]
+            print(f"Fechas para asignar: {fechas_asignar}")
+            # ───────────────────────────────────────────────────────────────────
+            
             # Filtrar productos disponibles con un valor numérico en 'mcnproduct' y 'mcnbodega' = 101
             productos = (Venta.objects.filter(
                 sku__regex=r'^\d+$', 
                 bod = bodega, 
-                fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
+                fecha__in=fechas_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
             print(len(productos))
 
             sku_list = [producto.sku for producto in productos]
             bod_list = [producto.bod for producto in productos]
-            productos_disponibles = []
-            productos_disponibles = Inventario.objects.filter(
-                sku__in=sku_list,
-                bod__in=bod_list,
-                inv_saldo__gt=0
-            ).order_by('marca_nom') # Ordenar por nombre de laboratorio
+            # productos_disponibles = []
+            # Saldo más reciente: si el SKU aparece en ambas fechas,
+            # quedamos con el registro de Inventario (no se duplica porque
+            # Inventario es un snapshot actual, no por fecha).
+            productos_disponibles = list(
+                Inventario.objects.filter(
+                    sku__in=sku_list,
+                    bod__in=bod_list,
+                    inv_saldo__gt=0
+                ).order_by('marca_nom')
+            ) # Ordenar por nombre de laboratorio
             
             # Procesar la cantidad de productos disponibles o asignar tarea según sea necesario
             print(f"Cantidad de productos disponibles: {len(productos_disponibles)}")
@@ -382,6 +400,9 @@ def asignar_tareas(request):
         inv_saldo__gt=0
     ).order_by('marca_nom')
     total_tareas_hoy = len(total_tareas_hoy)
+    # formatear la fecha para mostrar en la vista
+    fecha_asignar_formateada = datetime.datetime.strptime(fecha_asignar, "%Y%m%d").strftime("%Y-%m-%d")
+    
     return render(request, 'conteoApp/asignar_tareas.html', {
         # 'form': form,
         'tareas': tareas,
@@ -391,6 +412,8 @@ def asignar_tareas(request):
         'total_tareas_hoy': total_tareas_hoy,
         'usuarios': usuarios,
         'mostrar_exportar_todo': mostrar_exportar_todo,
+        'ciudad': ciudad,
+        'fecha_asignar': fecha_asignar_formateada,
     })
 
 @login_required
