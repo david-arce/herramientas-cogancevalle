@@ -10774,7 +10774,7 @@ def obtener_cuenta5_base(request):
         # 🔹 Convertir fecha Excel a fecha normal
         for row in data:
             row['mcnfecha'] = excel_serial_to_date(row.get('mcnfecha'))
-        print(data)
+        
         return JsonResponse({
             'draw': draw,
             'recordsTotal': total,
@@ -11780,14 +11780,14 @@ def calcular_consolidado():
         })
         
         for (mes, cuenta, costo) in consolidado.keys():
-            key = (cuenta, costo)
+            key = cuenta
             
             total_debito = consolidado[(mes, cuenta, costo)]['total_debito']
             total_credito = consolidado[(mes, cuenta, costo)]['total_credito']
             saldo = total_debito - total_credito
             
             registros_por_cuenta_costo[key]['mcncuenta'] = cuenta
-            registros_por_cuenta_costo[key]['mcnccosto'] = costo
+            # registros_por_cuenta_costo[key]['mcnccosto'] = costo
             
             # Asignar nombre especial para cuentas agrupadas
             nombres_especiales = {
@@ -11812,7 +11812,9 @@ def calcular_consolidado():
                 cuentas_dict.get(cuenta, 'SIN NOMBRE')
             )
             
-            registros_por_cuenta_costo[key]['meses'][mes] = round(saldo)
+            # Acumular en lugar de sobreescribir
+            mes_actual = registros_por_cuenta_costo[key]['meses'].get(mes, 0)
+            registros_por_cuenta_costo[key]['meses'][mes] = round(mes_actual + saldo)
         
         return {
             'success': True,
@@ -12381,4 +12383,144 @@ def eliminar_nivel(request):
         print(f"❌ Error en eliminar_nivel: {e}")
         return JsonResponse({'error': str(e)}, status=500)
     
-    
+# ─────────────────────────────────────────────────────────────
+# GET /presupuesto/consolidado-base/carga/
+# Renderiza el template de carga
+# ─────────────────────────────────────────────────────────────
+def vista_carga_consolidado_base(request):
+    return render(request, 'presupuesto_consolidado/carga_consolidado_base.html')
+ 
+ 
+# ─────────────────────────────────────────────────────────────
+# POST /presupuesto/cargar_consolidado_total_base/
+# Recibe lista de registros y hace upsert (insert or update)
+# ─────────────────────────────────────────────────────────────
+@require_POST
+def cargar_consolidado_total_base(request):
+    try:
+        body = json.loads(request.body)
+        registros = body.get('registros', [])
+ 
+        if not registros:
+            return JsonResponse({'success': False, 'error': 'Sin registros'}, status=400)
+ 
+        insertados = 0
+        actualizados = 0
+ 
+        for r in registros:
+            # Normalizar fecha
+            fecha_raw = r.get('mcnfecha')
+            if not fecha_raw:
+                continue
+            try:
+                fecha = datetime.datetime.strptime(str(fecha_raw).strip(), '%Y-%m-%d').date()
+            except ValueError:
+                continue
+ 
+            mcncuenta   = str(r.get('mcncuenta',  '') or '').strip()
+            mcnccosto   = str(r.get('mcnccosto',   '0') or '0').strip()
+            ctanombre   = str(r.get('ctanombre',   '') or '').strip()
+            valor       = _to_bigint(r.get('valor'))
+            total_anual = _to_bigint(r.get('total_anual'))
+ 
+            if not mcncuenta:
+                continue
+ 
+            # Upsert: clave única = (mcncuenta, mcnccosto, mcnfecha)
+            obj, created = ConsolidadoTotalBase.objects.update_or_create(
+                mcncuenta=mcncuenta,
+                mcnccosto=mcnccosto,
+                mcnfecha=fecha,
+                defaults={
+                    'ctanombre':   ctanombre,
+                    'valor':       valor,
+                    'total_anual': total_anual,
+                }
+            )
+            if created:
+                insertados += 1
+            else:
+                actualizados += 1
+ 
+        return JsonResponse({
+            'success':     True,
+            'insertados':  insertados,
+            'actualizados': actualizados,
+        })
+ 
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'JSON inválido'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+ 
+ 
+# ─────────────────────────────────────────────────────────────
+# GET /presupuesto/obtener_consolidado_total_base_raw/
+# Devuelve todos los registros en bruto para el historial
+# ─────────────────────────────────────────────────────────────
+@require_GET
+def obtener_consolidado_total_base_raw(request):
+    try:
+        qs = ConsolidadoTotalBase.objects.all().order_by('mcncuenta', 'mcnfecha').values(
+            'id', 'mcncuenta', 'mcnccosto', 'ctanombre', 'mcnfecha', 'valor', 'total_anual'
+        )
+        data = []
+        for row in qs:
+            data.append({
+                'id':          row['id'],
+                'mcncuenta':   row['mcncuenta']  or '',
+                'mcnccosto':   row['mcnccosto']  or '',
+                'ctanombre':   row['ctanombre']  or '',
+                'mcnfecha':    str(row['mcnfecha']) if row['mcnfecha'] else '',
+                'valor':       row['valor'],
+                'total_anual': row['total_anual'],
+            })
+        return JsonResponse({'success': True, 'data': data})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+ 
+ 
+# ─────────────────────────────────────────────────────────────
+# POST /presupuesto/borrar_consolidado_total_base/
+# Borra todos los registros de la tabla
+# ─────────────────────────────────────────────────────────────
+@require_POST
+def borrar_consolidado_total_base(request):
+    try:
+        eliminados, _ = ConsolidadoTotalBase.objects.all().delete()
+        return JsonResponse({'success': True, 'eliminados': eliminados})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+ 
+ 
+# ─────────────────────────────────────────────────────────────
+# POST /presupuesto/eliminar_fila_consolidado_total_base/
+# Borra un registro por id
+# ─────────────────────────────────────────────────────────────
+@require_POST
+def eliminar_fila_consolidado_total_base(request):
+    try:
+        body = json.loads(request.body)
+        pk   = body.get('id')
+        if not pk:
+            return JsonResponse({'success': False, 'error': 'id requerido'}, status=400)
+        eliminados, _ = ConsolidadoTotalBase.objects.filter(pk=pk).delete()
+        if not eliminados:
+            return JsonResponse({'success': False, 'error': 'Registro no encontrado'}, status=404)
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+ 
+ 
+# ─────────────────────────────────────────────────────────────
+# Utilidad interna
+# ─────────────────────────────────────────────────────────────
+def _to_bigint(value):
+    """Convierte un valor a entero, devuelve None si no es posible."""
+    if value is None or value == '':
+        return None
+    try:
+        return int(float(str(value).replace('.', '').replace(',', '.')))
+    except (ValueError, TypeError):
+        return None
+ 

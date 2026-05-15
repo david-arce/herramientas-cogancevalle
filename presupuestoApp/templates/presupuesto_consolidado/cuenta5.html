@@ -1,139 +1,144 @@
 {% extends 'presupuesto_consolidado/base_dashboard.html' %}
 {% load static %}
 
-{% block css%}
-<!-- CSS de FixedHeader -->
+{% block css %}
 <meta name="csrf-token" content="{{ csrf_token }}">
-
 <link rel="stylesheet" href="{% static 'css/cuenta5.css' %}">
 {% endblock %}
+
 {% block content %}
-<section class="cuenta5-container">
-    <div class="btn-group_bd">
-        <!-- Grupo: Guardar / Subir presupuesto -->
-        <div class="btn-section1">
-            {% comment %} <button id="guardarTempBtn">💾 Guardar cambios</button> {% endcomment %}
-        </div>
-        
-        <!-- Grupo: Otras acciones -->
-        <div class="btn-section4">
-            <button onclick="document.getElementById('manualModal').style.display='block'">📘 Ver Manual de Cuentas</button>
-            <!-- 🔹 Nuevo botón -->
-            <button id="exportarPlantillaBtn" title="Descargar plantilla Excel vacía">📄 Exportar plantilla Excel</button>
-            <!-- NUEVO: Cargar archivo Excel -->
-            <input type="file" id="inputExcel" accept=".xlsx, .xls" style="display: none;">
-            <button id="btnCargarExcel" title="Subir archivo Excel">⬆️ Cargar Excel <span class="spinner" style="display:none; margin-left:8px;"></span></button>
-            <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
-            Borrar Cuenta 5 Base
-            </button>
-        </div>
-    </div>
+<section class="c5-wrap">
 
-    <div id="tableContainer" style="overflow-x:auto; max-width:100%;">
-        <table id="tempTable" class="display">
-            <thead>
-                <tr>
-                    <th><input type="checkbox" id="checkAllIPC" title="Seleccionar todo"></th>
-                    <th>Acciones</th>
-                    <th>MCNCUENTA</th>
-                    <th>MCNFECHA</th>
-                    <th>MCNTIPODOC</th>
-                    <th>MCNNUMEDOC</th>
-                    <th>MCNVINCULA</th>
-                    <th>VINNOMBRE</th>
-                    <th>MCNSUCVIN</th>
-                    <th>SALDOANT</th>
-                    <th>MCNVALDEBI</th>
-                    <th>MCNVALCRED</th>
-                    <th>SALDONEW</th>
-                    <th>MCNSUCURS</th>
-                    <th>MCNCCOSTO</th>
-                    <th>MCNDESTINO</th>
-                    <th>MCNDETALLE</th>
-                    <th>MCNZONA</th>
-                    <th>CCONOMBRE</th>
-                    <th>DNONOMBRE</th>
-                    <th>ZONNOMBRE</th>
-                    <th>MCNEMPRESA</th>
-                    <th>MCNCLASE</th>
-                    <th>MCNVINKEY</th>
-                    <th>TPREG</th>
-                    <th>CTANOMBRE</th>
-                    <th>DOCDETALLE</th>
-                    <th>INFDETALLE</th>
-                </tr>
-            </thead>
-        </table>
-        <!-- 🔹 Barra de agarre para redimensionar -->
-        <div id="resizeHandle" style="
-            height:10px;
-            background:#ccc;
-            cursor: ns-resize;
-            text-align:center;
-            color:#555;
-            user-select:none;
-        ">⬍</div>
-       
+  <!-- ── Barra de acciones ── -->
+  <div class="c5-toolbar">
+    <div class="c5-toolbar-left">
+      <div class="c5-search-box">
+        <i class="c5-icon">&#128269;</i>
+        <input type="text" id="searchInput" placeholder="Buscar…" autocomplete="off">
+      </div>
     </div>
-    <!-- Contenedor de toasts -->
-    <div class="toast-container" id="toastContainer"></div>
+    <div class="c5-toolbar-right">
+      <button class="c5-btn" onclick="document.getElementById('manualModal').style.display='flex'">
+        &#128216; Manual de Cuentas
+      </button>
+      <button class="c5-btn" id="exportarPlantillaBtn">
+        &#128196; Exportar plantilla
+      </button>
+      <button class="c5-btn" id="btnCargarExcel">
+        &#11014;&#65039; Cargar Excel
+        <span class="c5-spinner" id="spinnerCargar" style="display:none"></span>
+      </button>
+      <input type="file" id="inputExcel" accept=".xlsx,.xls" style="display:none">
+      <button class="c5-btn c5-btn-danger" id="btnBorrar">
+        &#128465; Borrar Cuenta 5 Base
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Tabla ── -->
+  <div class="c5-table-wrap" id="tableWrap">
+    <table class="c5-table" id="c5Table">
+      <thead>
+        <tr>
+          <th class="c5-col-check"><input type="checkbox" id="checkAll" title="Seleccionar todo"></th>
+          <th class="c5-col-actions">Acciones</th>
+          <th data-col="mcncuenta">MCNCUENTA</th>
+          <th data-col="mcnfecha">MCNFECHA</th>
+          <th data-col="mcntipodoc">MCNTIPODOC</th>
+          <th data-col="mcnnumedoc">MCNNUMEDOC</th>
+          <th data-col="mcnvincula">MCNVINCULA</th>
+          <th data-col="vinnombre">VINNOMBRE</th>
+          <th data-col="mcnsucvin">MCNSUCVIN</th>
+          <th data-col="saldoant">SALDOANT</th>
+          <th data-col="mcnvaldebi">MCNVALDEBI</th>
+          <th data-col="mcnvalcred">MCNVALCRED</th>
+          <th data-col="saldonew">SALDONEW</th>
+          <th data-col="mcnsucurs">MCNSUCURS</th>
+          <th data-col="mcnccosto">MCNCCOSTO</th>
+          <th data-col="mcndestino">MCNDESTINO</th>
+          <th data-col="mcndetalle">MCNDETALLE</th>
+          <th data-col="mcnzona">MCNZONA</th>
+          <th data-col="cconombre">CCONOMBRE</th>
+          <th data-col="dnonombre">DNONOMBRE</th>
+          <th data-col="zonnombre">ZONNOMBRE</th>
+          <th data-col="mcnempresa">MCNEMPRESA</th>
+          <th data-col="mcnclase">MCNCLASE</th>
+          <th data-col="mcnvinkey">MCNVINKEY</th>
+          <th data-col="tpreg">TPREG</th>
+          <th data-col="ctanombre">CTANOMBRE</th>
+          <th data-col="docdetalle">DOCDETALLE</th>
+          <th data-col="infdetalle">INFDETALLE</th>
+        </tr>
+      </thead>
+      <tbody id="c5Tbody">
+        <tr class="c5-loading-row">
+          <td colspan="28">Cargando datos…</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Pie: paginación + info ── -->
+  <div class="c5-footer">
+    <div class="c5-info" id="c5Info"></div>
+    <div class="c5-pagination" id="c5Pagination"></div>
+    <div class="c5-perpage">
+      <label>Filas:
+        <select id="perPageSelect">
+          <option value="25">25</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+          <option value="200">200</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div class="c5-toasts" id="toastContainer"></div>
 </section>
-    <!-- Modal -->
-    <div id="manualModal" style="display:none; position:fixed; top:0; left:0; 
-        width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999;">
-        <div style="background:#fff; width:80%; height:80%; margin:50px auto; padding:10px; position:relative;">
-            <span style="position:absolute; top:10px; right:15px; cursor:pointer; font-size:20px;" 
-                onclick="document.getElementById('manualModal').style.display='none'">❌</span>
-            
-            <iframe src="/static/manuales/PUC.pdf" width="100%" height="100%"></iframe>
-        </div>
-    </div>
-    <!-- Modal Confirmación Eliminar -->
-    <div id="modalEliminar" class="modal" style="display:none;" aria-hidden="true">
-        <div class="modal-content">
-            <div class="modal-header">⚠️ Confirmar eliminación</div>
-            <p>¿Estás seguro de eliminar esta fila?</p>
-            <div class="modal-footer">
-            <button type="button" class="btn-cancel" data-modal="modalEliminar">Cancelar</button>
-            <button type="button" class="btn-confirm" id="confirmEliminar">Eliminar</button>
-            </div>
-        </div>
-    </div>
 
-    <!-- Modal Confirmación Eliminar cuenta -->
-    <div id="modalEliminarCuenta" class="modal" style="display:none;" aria-hidden="true">
-        <div class="modal-content">
-            <div class="modal-header">⚠️ Confirmar eliminación Cuenta</div>
-            <p>¿Estás seguro de eliminar todos los datos de la tabla?</p>
-            <div class="modal-footer">
-            <button type="button" class="btn-cancel" data-modal="modalEliminarCuenta">Cancelar</button>
-            <button type="button" class="btn-confirm" id="confirmEliminarCuenta">Eliminar</button>
-            </div>
-        </div>
-    </div>
-    
-    {% block js%}
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.datatables.net/2.3.5/js/dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/columncontrol/1.1.1/js/dataTables.columnControl.min.js"></script>
-    <script src="https://cdn.datatables.net/columncontrol/1.1.1/js/columnControl.dataTables.js"></script>
-    <!-- DataTables JS -->
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <!-- JS de FixedHeader -->
-    <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
-    <!-- DataTables Buttons JS -->
-    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- ── Modal Manual ── -->
+<div id="manualModal" class="c5-modal-overlay" style="display:none">
+  <div class="c5-modal-box c5-modal-large">
+    <button class="c5-modal-close" onclick="document.getElementById('manualModal').style.display='none'">&#10005;</button>
+    <iframe src="/static/manuales/PUC.pdf" width="100%" height="100%"></iframe>
+  </div>
+</div>
 
-    <script>
-        const url_obtener_cuenta5_base = "{% url 'obtener_cuenta5_base' %}";
-        const url_seleccionCuentasContables = "{% url 'seleccionCuentasContables' %}";
-        const url_borrar_cuenta5_base = "{% url 'borrar_cuenta5_base' %}";
-    </script>
-    <script src="{% static 'js/cuenta5.js' %}"></script>
-    {% endblock %}
+<!-- ── Modal Eliminar fila ── -->
+<div id="modalEliminar" class="c5-modal-overlay" style="display:none">
+  <div class="c5-modal-box">
+    <div class="c5-modal-header">&#9888;&#65039; Confirmar eliminación</div>
+    <p class="c5-modal-body">¿Estás seguro de eliminar esta fila?</p>
+    <div class="c5-modal-footer">
+      <button class="c5-btn" id="cancelEliminar">Cancelar</button>
+      <button class="c5-btn c5-btn-danger" id="confirmEliminar">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Borrar cuenta ── -->
+<div id="modalEliminarCuenta" class="c5-modal-overlay" style="display:none">
+  <div class="c5-modal-box">
+    <div class="c5-modal-header">&#9888;&#65039; Confirmar eliminación Cuenta</div>
+    <p class="c5-modal-body">¿Estás seguro de eliminar todos los datos de la tabla?</p>
+    <div class="c5-modal-footer">
+      <button class="c5-btn" id="cancelEliminarCuenta">Cancelar</button>
+      <button class="c5-btn c5-btn-danger" id="confirmEliminarCuenta">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+{% block js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+  const url_obtener_cuenta5_base    = "{% url 'obtener_cuenta5_base' %}";
+  const url_seleccionCuentasContables = "{% url 'seleccionCuentasContables' %}";
+  const url_borrar_cuenta5_base     = "{% url 'borrar_cuenta5_base' %}";
+</script>
+<script src="{% static 'js/cuenta5.js' %}"></script>
+{% endblock %}
 
 {% endblock %}
