@@ -470,6 +470,36 @@ urlpatterns = [
     path('obtener-registros-nivel/',  views.obtener_registros_nivel,  name='obtener_registros_nivel'),
     path('renombrar-nivel/',          views.renombrar_nivel,           name='renombrar_nivel'),
     path('eliminar-nivel/', views.eliminar_nivel, name='eliminar_nivel'),
+    
+    # ── Página de carga ──────────────────────────────────────
+    path(
+        'consolidado-base/carga/',
+        views.vista_carga_consolidado_base,   # view del template
+        name='vista_carga_consolidado_base',
+    ),
+ 
+    # ── API endpoints ────────────────────────────────────────
+    path(
+        'cargar_consolidado_total_base/',
+        views.cargar_consolidado_total_base,
+        name='cargar_consolidado_total_base',
+    ),
+    path(
+        'obtener_consolidado_total_base_raw/',
+        views.obtener_consolidado_total_base_raw,
+        name='obtener_consolidado_total_base_raw',
+    ),
+    path(
+        'borrar_consolidado_total_base/',
+        views.borrar_consolidado_total_base,
+        name='borrar_consolidado_total_base',
+    ),
+    path(
+        'eliminar_fila_consolidado_total_base/',
+        views.eliminar_fila_consolidado_total_base,
+        name='eliminar_fila_consolidado_total_base',
+    ),
+    
     #------------------PRESUPUESTO CONSOLIDADO---------------------------
     path('<str:area>/', views.presupuesto_consolidado, name='presupuesto_consolidado'),
     path('<str:area>/obtener-presupuesto-consolidado/', views.obtener_presupuesto_consolidado, name='obtener_presupuesto_consolidado'),
