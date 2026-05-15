@@ -22,7 +22,7 @@
                     {% endfor %}
                 </div>
 
-            {% if ciudad == 'Buga' %}
+            {% if ciudad == 'Bugaa' %}
             <div id="fechas-container" style="margin-top: 10px;">
             <div class="fecha-item" style="margin-bottom: 8px;">
                 <label style="font-weight: bold;">Fecha de venta 1:</label>
@@ -86,7 +86,7 @@
 </div>
 
 <div>
-    <p>Total productos disponibles: {{ total_tareas_hoy }} ----- Fecha: {{fecha_asignar}}</p>
+    <p>Total productos disponibles: {{ total_tareas_hoy }} ----- Fecha de la venta cargada: {{fecha_asignar}}</p>
     <h3>Usuarios con productos asignados para hoy</h3>
     <ul>
         {% for usuario in usuarios_con_tareas %}
@@ -196,7 +196,7 @@
     const toggleVerificadoURL = "{% url 'toggle_verificado' %}";
 </script>
 <script src="{% static 'conteoApp/js/conteoApp.js' %}"></script>
-{% if ciudad == 'Buga' %}
+{% if ciudad == 'Bugaa' %}
 <script>
     const contenedor = document.getElementById('fechas-container');
     

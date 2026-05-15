@@ -5,7 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import PermissionDenied
 from .models import UserCity, Venta, Tarea, Inv06, User, Inventario
 from django.contrib import messages
-from django.db.models import Count
+from django.db.models import Count, Max
 import pandas as pd
 from django.http import HttpResponse, HttpResponseForbidden
 import logging
@@ -97,7 +97,11 @@ def asignar_tareas(request):
 
             sku_list = [producto.sku for producto in productos]
             bod_list = [producto.bod for producto in productos]
-            # productos_disponibles = []
+            fecha_corte_reciente = (
+                Inventario.objects
+                .filter(sku__in=sku_list, bod__in=bod_list)
+                .aggregate(Max('fecha_corte'))['fecha_corte__max']
+            )
             # Saldo más reciente: si el SKU aparece en ambas fechas,
             # quedamos con el registro de Inventario (no se duplica porque
             # Inventario es un snapshot actual, no por fecha).
@@ -105,7 +109,8 @@ def asignar_tareas(request):
                 Inventario.objects.filter(
                     sku__in=sku_list,
                     bod__in=bod_list,
-                    inv_saldo__gt=0
+                    inv_saldo__gt=0,
+                    fecha_corte=fecha_corte_reciente
                 ).order_by('marca_nom')
             ) # Ordenar por nombre de laboratorio
             
@@ -394,10 +399,16 @@ def asignar_tareas(request):
     
     sku_list = [producto.sku for producto in productos]
     bod_list = [producto.bod for producto in productos]
+    fecha_corte_reciente = (
+        Inventario.objects
+        .filter(sku__in=sku_list, bod__in=bod_list)
+        .aggregate(Max('fecha_corte'))['fecha_corte__max']
+    )
     total_tareas_hoy = Inventario.objects.filter(
         sku__in=sku_list,
         bod__in=bod_list,
-        inv_saldo__gt=0
+        inv_saldo__gt=0,
+        fecha_corte=fecha_corte_reciente
     ).order_by('marca_nom')
     total_tareas_hoy = len(total_tareas_hoy)
     # formatear la fecha para mostrar en la vista

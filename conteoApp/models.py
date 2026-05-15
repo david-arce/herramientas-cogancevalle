@@ -94,6 +94,7 @@ class Inventario(models.Model):
     lpt = models.CharField(max_length=8)  
     bod = models.CharField(max_length=10)
     bod_nom = models.CharField(max_length=100)
+    fecha_corte = models.DateTimeField(null=True, blank=True)
     inv_saldo = models.IntegerField(null=True, blank=True)
     inv_trsto = models.IntegerField(null=True, blank=True)
     vlr_unit = models.DecimalField(max_digits=20, decimal_places=2)
@@ -101,6 +102,7 @@ class Inventario(models.Model):
 
     class Meta:
         db_table = "inventario"
+        managed = False # desactiva las migraciones
 
     def __str__(self):
         return f"{self.sku} - {self.sku_nom}"
