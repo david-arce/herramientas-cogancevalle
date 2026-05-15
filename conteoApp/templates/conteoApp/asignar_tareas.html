@@ -22,7 +22,7 @@
                     {% endfor %}
                 </div>
 
-            {% if ciudad == 'Bugaa' %}
+            
             <div id="fechas-container" style="margin-top: 10px;">
             <div class="fecha-item" style="margin-bottom: 8px;">
                 <label style="font-weight: bold;">Fecha de venta 1:</label>
@@ -31,9 +31,9 @@
             </div>
             <button type="button" id="agregar-fecha" class="button-generic" style="margin-top: 5px;">+ Agregar fecha</button>
             <button type="button" id="quitar-fecha" class="button-generic" style="margin-top: 5px;">− Quitar fecha</button>
-            {% endif %}
+            
         </br>
-            <button type="submit" name="assign_task" id="assignButton" class="button-generic">Asignar Tareas</button>
+            <button type="submit" name="assign_task" id="assignButton" class="button-asignar">Asignar Tareas</button>
             <button type="button" name="delete_task" id="openConfirmModal" class="button-delete">Eliminar productos asignados</button>
         </div>
     </form>
@@ -86,7 +86,7 @@
 </div>
 
 <div>
-    <p>Total productos disponibles: {{ total_tareas_hoy }} ----- Fecha de la venta cargada: {{fecha_asignar}}</p>
+    <p>Total productos disponibles: {{ total_tareas_hoy }} ----- Fecha de la venta cargada por defecto: {{fecha_asignar}}</p>
     <h3>Usuarios con productos asignados para hoy</h3>
     <ul>
         {% for usuario in usuarios_con_tareas %}
@@ -196,7 +196,7 @@
     const toggleVerificadoURL = "{% url 'toggle_verificado' %}";
 </script>
 <script src="{% static 'conteoApp/js/conteoApp.js' %}"></script>
-{% if ciudad == 'Bugaa' %}
+
 <script>
     const contenedor = document.getElementById('fechas-container');
     
@@ -224,5 +224,5 @@
         }
     });
 </script>
-{% endif %}
+
 {% endblock %}

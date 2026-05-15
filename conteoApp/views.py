@@ -77,14 +77,13 @@ def asignar_tareas(request):
                 bodega = '0401'
             
             # ── NUEVO: para Buga el supervisor puede pasar dos fechas ──────────
-            if ciudad == 'Buga':
-                # getlist recoge todos los inputs con name="fechas_venta"
-                fechas_raw = request.POST.getlist('fechas_venta')
-                fechas_asignar = [f.strip().replace('-', '') for f in fechas_raw if f.strip()]
-                if not fechas_asignar:
-                    fechas_asignar = [fecha_asignar]  # fallback
-            else:
-                fechas_asignar = [fecha_asignar]
+            
+            # getlist recoge todos los inputs con name="fechas_venta"
+            fechas_raw = request.POST.getlist('fechas_venta')
+            fechas_asignar = [f.strip().replace('-', '') for f in fechas_raw if f.strip()]
+            if not fechas_asignar:
+                fechas_asignar = [fecha_asignar]  # fallback
+        
             print(f"Fechas para asignar: {fechas_asignar}")
             # ───────────────────────────────────────────────────────────────────
             
@@ -423,7 +422,6 @@ def asignar_tareas(request):
         'total_tareas_hoy': total_tareas_hoy,
         'usuarios': usuarios,
         'mostrar_exportar_todo': mostrar_exportar_todo,
-        'ciudad': ciudad,
         'fecha_asignar': fecha_asignar_formateada,
     })
 

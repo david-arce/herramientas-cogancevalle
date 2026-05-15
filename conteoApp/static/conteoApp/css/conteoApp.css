@@ -105,6 +105,9 @@
     .container form .button-generic {
         width: 100%;
     }
+    .container form .button-asignar {
+        width: 100%;
+    }
 }
 
 /* Estilo del modal */
@@ -204,6 +207,23 @@
     background-color: #464646;
 }
 .button-generic:active{
+    position: relative;
+    top: 1px;
+}
+
+.button-asignar{
+    background-color: #004cffbe;
+    color: white;
+    border: none;
+    padding: 5px 5px;
+    border-radius: 15px;
+    cursor: pointer;
+    margin: 5px 5px;
+}
+.button-asignar:hover {
+    background-color: #002072;
+}
+.button-asignar:active{
     position: relative;
     top: 1px;
 }
