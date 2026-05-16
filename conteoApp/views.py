@@ -428,14 +428,12 @@ def asignar_tareas(request):
 @login_required
 @permission_required('conteoApp.view_tarea', raise_exception=True)
 def lista_tareas(request):
-    fecha_asignar = get_fecha_asignar()
-    fecha_especifica = datetime.date.today() 
     try:
         ciudad = request.user.usercity.ciudad
     except Exception:
         ciudad = None
+
     bodega = ''
-           
     if ciudad == 'Tulua':
         bodega = '0101'
     elif ciudad == 'Buga':
@@ -444,49 +442,48 @@ def lista_tareas(request):
         bodega = '0301'
     elif ciudad == 'Cali':
         bodega = '0401'
-    # 🔹 Evitar consultas si no hay bodega asignada
+
+    fecha_especifica = datetime.date.today()
+
+    # Evitar consultas si no hay bodega asignada
     tareas = (
         Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica, activo=True)
         .order_by('producto__marca_nom')
     ) if bodega else []
+
     if request.method == 'POST':
-        if 'update_tarea' in request.POST: 
+        if 'update_tarea' in request.POST:
             try:
                 with transaction.atomic():
                     tarea_ids = set()
                     tareas_a_actualizar = []
                     inv06_data = {}
 
-                    # Obtener todas las tareas de la BD en una sola consulta
-                    # tareas_dict = Tarea.objects.in_bulk([tarea.id for tarea in tareas])
                     tareas_dict = {t.id: t for t in tareas}
-                    
-                    # 🔹 Validar que haya tareas cargadas
+
                     if not tareas_dict:
                         logger.warning("No hay tareas disponibles para actualizar.")
                         return JsonResponse({'status': 'error', 'msg': 'Sin tareas disponibles.'})
-                    # Actualizar los valores de conteo y observación
+
                     for key, value in request.POST.items():
                         try:
-                            if key.startswith('conteo_'):  # Identificar los campos de conteo
-                                tarea_id = int(key.split('_')[1]) # Obtener el ID de la tarea a partir del nombre del campo (tarea_1, tarea_2, etc.)
+                            if key.startswith('conteo_'):
+                                tarea_id = int(key.split('_')[1])
                                 if tarea_id in tareas_dict:
                                     tarea = tareas_dict[tarea_id]
-                                    # Solo actualizar si el valor no está vacío y es un número entero válido
                                     if value.strip().isdigit():
                                         tarea.conteo = int(value)
                                         tarea_ids.add(tarea_id)
                                     else:
-                                        # No asignar nada (omite el cambio)
                                         continue
-                            
+
                             elif key.startswith('observacion_'):
                                 tarea_id = int(key.split('_')[1])
                                 if tarea_id in tareas_dict:
                                     tarea = tareas_dict[tarea_id]
                                     tarea.observacion = value.strip()
                                     tarea_ids.add(tarea_id)
-                            
+
                             elif key.startswith('consolidado_'):
                                 tarea_id = int(key.split('_')[1])
                                 if tarea_id in tareas_dict:
@@ -496,86 +493,103 @@ def lista_tareas(request):
                         except Exception as e:
                             logger.error(f"Error procesando campo {key}: {e}")
                             continue
+
                     if not tarea_ids:
                         return JsonResponse({'status': 'error', 'msg': 'No se encontraron tareas para actualizar.'})
-                    
-                    # 🔹 Consultar inventario relacionado
+
                     try:
-                        productos_ids = {tareas_dict[tid].producto.id for tid in tarea_ids if tareas_dict[tid].producto}
+                        # 1. Obtener la fecha de corte más reciente para los SKUs/bodegas relevantes
+                        skus = [tareas_dict[tid].producto.sku for tid in tarea_ids]
+                        bods = [tareas_dict[tid].producto.bod for tid in tarea_ids]
+
+                        fecha_corte_reciente = (
+                            Inventario.objects
+                            .filter(sku__in=skus, bod__in=bods)
+                            .aggregate(Max('fecha_corte'))['fecha_corte__max']
+                        )
+                        # 2. Consultar inventario solo en esa fecha de corte
                         inv_records = Inventario.objects.filter(
-                            sku__in=[tareas_dict[tid].producto.sku for tid in tarea_ids],
-                            bod__in=[tareas_dict[tid].producto.bod for tid in tarea_ids],
-                            lpt__in=[tareas_dict[tid].producto.lpt for tid in tarea_ids]
+                            sku__in=skus,
+                            bod__in=bods,
+                            fecha_corte=fecha_corte_reciente
                         ).values('sku', 'bod', 'lpt', 'inv_saldo', 'vlr_unit')
-                        
-                        # Convertir resultados en un diccionario para acceso rápido
+
                         for record in inv_records:
                             key = (record['sku'], record['bod'], record['lpt'])
-                            inv06_data[key] = {'inv_saldo': record['inv_saldo'], 'vlr_unit': record['vlr_unit']}
+                            inv06_data[key] = {
+                                'inv_saldo': record['inv_saldo'],
+                                'vlr_unit': record['vlr_unit']
+                            }
                     except Exception as e:
                         logger.error(f"Error consultando inventario: {e}")
                         inv06_data = {}
-                        
-                    # Procesar las tareas para consolidar valores y aplicar cálculos
+
                     for tarea_id in tarea_ids:
                         tarea = tareas_dict[tarea_id]
                         producto = tarea.producto
-
                         key = (producto.sku, producto.bod, producto.lpt)
                         saldo = inv06_data.get(key, {}).get('inv_saldo', 0) or 0
                         vrunit = inv06_data.get(key, {}).get('vlr_unit', 0) or 0
                         conteo = tarea.conteo or 0
-                        
+
                         try:
-                            # Si no tiene inventario asignado, asignarlo ahora
-                            if tarea.inventario is None:  # ← AÑADIR ESTE BLOQUE
+                            if tarea.inventario is None:
                                 tarea.inventario = saldo
                             tarea.diferencia = conteo - saldo
                             tarea.consolidado = round(vrunit * tarea.diferencia, 2)
                             tareas_a_actualizar.append(tarea)
                         except Exception as e:
                             logger.error(f"Error calculando diferencia/consolidado para tarea ID {tarea_id}: {e}")
-                        
-                    # Guardar todos los cambios en una sola operación
+
                     if tareas_a_actualizar:
                         Tarea.objects.bulk_update(
                             tareas_a_actualizar, ['conteo', 'observacion', 'diferencia', 'consolidado', 'inventario']
                         )
+
+                # ── Bloque de desactivación de tareas completadas ──────────────
                 try:
-                #-------------------------------------------------------------------------------
-                    productos_filtrados = list(Venta.objects.filter(
-                        sku__regex=r'^\d+$', 
-                        bod = bodega, 
-                        fecha=fecha_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
-                    sku_list = [producto.sku for producto in productos_filtrados]
-                    bod_list = [producto.bod for producto in productos_filtrados]
+                    # SKUs asignados al usuario hoy, directo desde Tarea
+                    skus_asignados = list(
+                        Tarea.objects
+                        .filter(usuario=request.user, fecha_asignacion=datetime.date.today())
+                        .values_list('producto__sku', flat=True)
+                        .distinct()
+                    )
+                    bod_list = [bodega]
+
+                    # Fecha de corte más reciente (igual que en asignar_tareas)
+                    fecha_corte_reciente = (
+                        Inventario.objects
+                        .filter(sku__in=skus_asignados, bod__in=bod_list)
+                        .aggregate(Max('fecha_corte'))['fecha_corte__max']
+                    )
+
+                    # Saldo real del inventario en esa fecha de corte
                     productos_disponibles = Inventario.objects.filter(
-                        sku__in=sku_list,
-                        bod__in=bod_list
+                        sku__in=skus_asignados,
+                        bod__in=bod_list,
+                        fecha_corte=fecha_corte_reciente
                     ).values('sku', 'marca_nom', 'sku_nom').annotate(total_saldo=Sum('inv_saldo'))
-                    
-                    # obtener el total del conteo de la tarea agrupando por marnombre, pronombre y mcnproduct 
-                    conteo = (
+
+                    # Conteo total del usuario hoy agrupado por SKU
+                    conteo_qs = (
                         Tarea.objects
                         .filter(usuario=request.user, fecha_asignacion=datetime.date.today())
                         .values('producto__sku', 'producto__marca_nom', 'producto__sku_nom')
                         .annotate(total_conteo=Sum('conteo'))
                     )
-                    # Convertir los querysets a listas de diccionarios
-                    productos_list = list(productos_disponibles)
-                    conteo_list = list(conteo)
-                    # print(productos_list)
-                    # Crear diccionarios indexados por la clave compuesta
+
                     productos_dict = {
                         (p['sku'], p['marca_nom'], p['sku_nom']): p['total_saldo']
-                        for p in productos_list
+                        for p in productos_disponibles
                     }
                     conteo_dict = {
                         (c['producto__sku'], c['producto__marca_nom'], c['producto__sku_nom']): c['total_conteo']
-                        for c in conteo_list
+                        for c in conteo_qs
                     }
+
                     for key, total_saldo in productos_dict.items():
-                        total_conteo = conteo_dict.get(key, 0)  # Si no existe, se considera 0
+                        total_conteo = conteo_dict.get(key, 0)
                         if total_saldo == total_conteo:
                             Tarea.objects.filter(
                                 producto__sku=key[0],
@@ -584,14 +598,20 @@ def lista_tareas(request):
                                 fecha_asignacion=datetime.date.today(),
                                 usuario=request.user
                             ).update(activo=False)
+
                 except Exception as e:
                     logger.error(f"Error al desactivar tareas con conteo igual a inventario: {e}")
-                #----------------------------------------------------------------------------
-                tareas = Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica, activo=True).exclude(diferencia=0).order_by('producto__marca_nom')
-                
+                # ──────────────────────────────────────────────────────────────
+
+                tareas = (
+                    Tarea.objects
+                    .filter(usuario=request.user, fecha_asignacion=fecha_especifica, activo=True)
+                    .exclude(diferencia=0)
+                    .order_by('producto__marca_nom')
+                )
+
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                     try:
-                        # renderizamos sólo las filas
                         html = render_to_string(
                             'conteoApp/_tareas_rows.html',
                             {'tareas': tareas},
@@ -601,10 +621,11 @@ def lista_tareas(request):
                     except Exception as e:
                         logger.error(f"Error al renderizar HTML: {e}")
                         return JsonResponse({'status': 'error', 'msg': 'Error al renderizar tareas.'})
+
             except Exception as e:
                 logger.error(f"Error al actualizar tareas: {e}")
                 return JsonResponse({'status': 'error', 'msg': 'Error al actualizar tareas.'})
-        
+
     return render(request, 'conteoApp/tareas_contador.html', {'tareas': tareas})
 
 from django.http import JsonResponse
