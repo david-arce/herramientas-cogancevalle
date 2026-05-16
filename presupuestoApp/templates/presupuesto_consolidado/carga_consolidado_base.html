@@ -3,7 +3,346 @@
 
 {% block css %}
 <meta name="csrf-token" content="{{ csrf_token }}">
-<link rel="stylesheet" href="{% static 'css/carga_consolidado_base.css' %}">
+<style>
+/* ── Reset local ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ── Variables ── */
+:root {
+  --bg:       #f8f9fb;
+  --surface:  #ffffff;
+  --border:   #e2e5ea;
+  --border2:  #c8cdd6;
+  --text:     #1a1d23;
+  --muted:    #6b7280;
+  --accent:   #2563eb;
+  --accent-h: #1d4ed8;
+  --danger:   #dc2626;
+  --success:  #16a34a;
+  --warn:     #d97706;
+  --radius:   8px;
+  --shadow:   0 1px 4px rgba(0,0,0,.08);
+}
+
+/* ── Layout ── */
+.ctb-wrap {
+  padding: 20px 24px 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color: var(--text);
+}
+
+/* ── Cabecera ── */
+.ctb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.ctb-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ctb-subtitle {
+  font-size: .8rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.ctb-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Botones ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  border-radius: var(--radius);
+  border: 1px solid var(--border2);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .13s, border-color .13s;
+}
+.btn:hover { background: #f1f3f6; border-color: #aab0bb; }
+.btn-primary  { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover  { background: var(--accent-h); border-color: var(--accent-h); }
+.btn-danger   { background: var(--danger); color: #fff; border-color: var(--danger); }
+.btn-danger:hover   { background: #b91c1c; border-color: #b91c1c; }
+.btn-success  { background: var(--success); color: #fff; border-color: var(--success); }
+.btn-success:hover  { background: #15803d; border-color: #15803d; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── Tabs ── */
+.ctb-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 20px;
+}
+.ctb-tab {
+  padding: 8px 18px;
+  font-size: 13px;
+  font-family: inherit;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  color: var(--muted);
+  border-radius: 6px 6px 0 0;
+  transition: color .15s, border-color .15s;
+}
+.ctb-tab:hover { color: var(--text); background: #f4f5f7; }
+.ctb-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+/* ── Panel ── */
+.ctb-panel { display: none; }
+.ctb-panel.active { display: block; }
+
+/* ── Card ── */
+.ctb-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.ctb-card-title {
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 12px;
+}
+
+/* ── Paste area ── */
+.paste-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+.paste-hint code {
+  background: #f0f2f5;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 11.5px;
+  color: #374151;
+}
+#pasteArea {
+  width: 100%;
+  min-height: 180px;
+  font-family: "Consolas", "Fira Mono", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 12px;
+  border: 1.5px solid var(--border2);
+  border-radius: var(--radius);
+  resize: vertical;
+  background: #fafbfc;
+  color: var(--text);
+  transition: border-color .15s;
+}
+#pasteArea:focus { outline: none; border-color: var(--accent); }
+
+/* ── Preview table ── */
+.preview-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-top: 12px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.preview-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.preview-table thead th {
+  position: sticky;
+  top: 0;
+  background: #f1f3f6;
+  border-bottom: 2px solid var(--border2);
+  padding: 7px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.preview-table tbody tr { border-bottom: 1px solid #f0f1f3; }
+.preview-table tbody tr:hover { background: #f8f9fb; }
+.preview-table tbody td {
+  padding: 6px 12px;
+  white-space: nowrap;
+  color: var(--text);
+}
+.preview-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.preview-table tbody td.err-cell { background: #fee2e2; color: var(--danger); }
+.preview-table tbody td.ok-cell  { background: #dcfce7; color: var(--success); }
+
+/* ── Preview status ── */
+.preview-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge-ok      { background: #dcfce7; color: #15803d; }
+.badge-err     { background: #fee2e2; color: #b91c1c; }
+.badge-warn    { background: #fef3c7; color: #b45309; }
+.badge-info    { background: #dbeafe; color: #1d4ed8; }
+
+/* ── Columnas referencia ── */
+.col-ref {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.col-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: #f0f2f5;
+  font-size: 11.5px;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.col-pill .req { color: var(--danger); font-weight: 700; }
+.col-pill .opt { color: var(--muted); }
+
+/* ── Excel zone ── */
+.drop-zone {
+  border: 2px dashed var(--border2);
+  border-radius: var(--radius);
+  padding: 36px 24px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--accent);
+  background: #eff6ff;
+  color: var(--accent);
+}
+.drop-zone input { display: none; }
+.drop-zone-icon { font-size: 2rem; margin-bottom: 8px; }
+
+/* ── Historial ── */
+.hist-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.hist-table th {
+  background: #f1f3f6;
+  border-bottom: 2px solid var(--border2);
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.hist-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f1f3;
+  color: var(--text);
+}
+.hist-table tr:hover td { background: #f8f9fb; }
+
+/* ── Toasts ── */
+#toastCtb {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 9999;
+}
+.ctb-toast {
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: #fff;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity .3s, transform .3s;
+  box-shadow: 0 4px 14px rgba(0,0,0,.18);
+  max-width: 320px;
+}
+.ctb-toast.show { opacity: 1; transform: translateY(0); }
+.ctb-toast-success { background: var(--success); }
+.ctb-toast-error   { background: var(--danger); }
+.ctb-toast-warn    { background: var(--warn); }
+.ctb-toast-info    { background: var(--accent); }
+
+/* ── Spinner inline ── */
+.spin {
+  display: inline-block;
+  width: 13px; height: 13px;
+  border: 2px solid rgba(255,255,255,.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Progress bar ── */
+.progress-wrap {
+  margin-top: 12px;
+  display: none;
+}
+.progress-wrap.active { display: block; }
+.progress-bar-bg {
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  width: 0%;
+  transition: width .3s;
+}
+.progress-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* ── Scrollbar ── */
+.preview-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
+.preview-wrap::-webkit-scrollbar-track { background: #f0f1f3; }
+.preview-wrap::-webkit-scrollbar-thumb { background: #c1c5ce; border-radius: 3px; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -35,34 +374,62 @@
   <div class="ctb-panel active" id="tab-paste">
 
     <div class="ctb-card">
-      <div class="ctb-card-title">Columnas esperadas</div>
-      <div class="col-ref">
-        <div class="col-pill"><span class="req">*</span> mcncuenta</div>
-        <div class="col-pill"><span class="opt">opt</span> mcnccosto</div>
-        <div class="col-pill"><span class="req">*</span> ctanombre</div>
-        <div class="col-pill"><span class="req">*</span> mcnfecha <small>(YYYY-MM-DD)</small></div>
-        <div class="col-pill"><span class="req">*</span> valor</div>
-        <div class="col-pill"><span class="opt">opt</span> total_anual</div>
+      <div class="ctb-card-title">Formatos aceptados</div>
+
+      <!-- Formato A -->
+      <div style="margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px;">
+          📅 Formato A — Columna de fecha vertical (un registro por fila)
+        </div>
+        <div class="col-ref">
+          <div class="col-pill"><span class="req">*</span> mcncuenta</div>
+          <div class="col-pill"><span class="opt">opt</span> mcnccosto</div>
+          <div class="col-pill"><span class="req">*</span> ctanombre</div>
+          <div class="col-pill"><span class="req">*</span> mcnfecha <small>(YYYY-MM-DD)</small></div>
+          <div class="col-pill"><span class="req">*</span> valor</div>
+          <div class="col-pill"><span class="opt">opt</span> total_anual</div>
+        </div>
       </div>
-      <p class="paste-hint" style="margin-top:10px;">
-        Pega datos copiados desde Excel u otra hoja. La primera fila debe ser el encabezado con los nombres de columna exactos.
-        Separadores aceptados: <code>Tab</code> (Excel), <code>;</code> o <code>,</code>.<br>
-        También puedes pegar una sola cuenta por columna — el sistema detecta el separador automáticamente.
+
+      <!-- Formato B -->
+      <div>
+        <div style="font-size:12px;font-weight:600;color:#7c3aed;margin-bottom:6px;">
+          📊 Formato B — Meses horizontales (una fila por cuenta)
+        </div>
+        <div class="col-ref">
+          <div class="col-pill" style="border-color:#c4b5fd;"><span class="req">*</span> cuenta</div>
+          <div class="col-pill" style="border-color:#c4b5fd;"><span class="opt">opt</span> centro de costo</div>
+          <div class="col-pill" style="border-color:#c4b5fd;"><span class="req">*</span> nombre cuenta</div>
+          <div class="col-pill" style="border-color:#c4b5fd;">enero … diciembre</div>
+          <div class="col-pill" style="border-color:#c4b5fd;"><span class="opt">opt</span> total</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
+          <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;">
+            Año para Formato B:
+            <input type="number" id="inputAnioHorizontal" value="2025" min="2000" max="2099"
+              style="width:80px;padding:4px 8px;border:1px solid var(--border2);border-radius:5px;font-size:13px;">
+          </label>
+          <span style="font-size:11px;color:var(--muted);">Cada mes se guarda como YYYY-MM-01</span>
+        </div>
+      </div>
+
+      <p class="paste-hint" style="margin-top:12px;">
+        El sistema detecta el formato automáticamente según los encabezados. Separadores aceptados: <code>Tab</code> (Excel), <code>;</code> o <code>,</code>.
       </p>
     </div>
 
     <div class="ctb-card">
       <div class="ctb-card-title">Área de pegado</div>
-      <textarea id="pasteArea" placeholder="Pega aquí los datos copiados desde Excel…&#10;&#10;mcncuenta&#9;mcnccosto&#9;ctanombre&#9;mcnfecha&#9;valor&#9;total_anual&#10;1&#9;0&#9;Ventas a credito&#9;2025-01-01&#9;3041204838&#9;43302942701"></textarea>
-      
-      <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center;">
+      <textarea id="pasteArea" placeholder="Pega aquí los datos desde Excel en cualquiera de los dos formatos…"></textarea>
+
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center;">
         <button class="btn btn-primary" id="btnParsear">🔍 Previsualizar</button>
         <button class="btn" id="btnLimpiarPaste">✕ Limpiar</button>
-        <span style="font-size:12px; color:var(--muted);" id="parseInfo"></span>
+        <span style="font-size:12px;color:var(--muted);" id="parseInfo"></span>
       </div>
 
       <!-- Preview -->
-      <div id="previewSection" style="display:none; margin-top:16px;">
+      <div id="previewSection" style="display:none;margin-top:16px;">
         <div class="preview-status" id="previewStatus"></div>
         <div class="preview-wrap" id="previewWrap">
           <table class="preview-table" id="previewTable">
@@ -70,20 +437,15 @@
             <tbody id="previewBody"></tbody>
           </table>
         </div>
-
         <div class="progress-wrap" id="progressWrap">
           <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
           <div class="progress-label" id="progressLabel">Preparando...</div>
         </div>
-
-        <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; align-items:center;">
+        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center;">
           <button class="btn btn-success" id="btnCargarPaste" disabled>
             ✅ Cargar a base de datos <span id="pasteCount"></span>
           </button>
-          <button class="btn btn-danger" id="btnCargarReemplazar" disabled style="display:none;">
-            🔄 Reemplazar existentes
-          </button>
-          <span style="font-size:12px; color:var(--muted);">Los registros duplicados (misma cuenta + fecha) se actualizarán.</span>
+          <span style="font-size:12px;color:var(--muted);">Los registros duplicados (misma cuenta + fecha) se actualizarán.</span>
         </div>
       </div>
     </div>
@@ -95,16 +457,24 @@
   <div class="ctb-panel" id="tab-excel">
     <div class="ctb-card">
       <div class="ctb-card-title">Importar desde archivo Excel</div>
+      <!-- Año para formato horizontal en Excel -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+        <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;">
+          Año para meses horizontales:
+          <input type="number" id="inputAnioHorizontalExcel" value="2025" min="2000" max="2099"
+            style="width:80px;padding:4px 8px;border:1px solid var(--border2);border-radius:5px;font-size:13px;">
+        </label>
+        <span style="font-size:11px;color:var(--muted);">Se usa si el Excel tiene columnas enero…diciembre</span>
+      </div>
       <div class="drop-zone" id="dropZone">
         <input type="file" id="inputExcelCtb" accept=".xlsx,.xls">
         <div class="drop-zone-icon">📂</div>
         <div>Arrastra un archivo <strong>.xlsx</strong> aquí o haz clic para seleccionarlo</div>
-        <div style="font-size:12px; margin-top:6px;">La primera hoja debe tener los encabezados de columna en la fila 1</div>
+        <div style="font-size:12px;margin-top:6px;">Acepta Formato A (fecha vertical) y Formato B (meses horizontales)</div>
       </div>
-      <div id="excelFileName" style="margin-top:10px; font-size:13px; color:var(--muted);"></div>
+      <div id="excelFileName" style="margin-top:10px;font-size:13px;color:var(--muted);"></div>
     </div>
 
-    <!-- Preview Excel (mismo componente que paste) -->
     <div class="ctb-card" id="excelPreviewCard" style="display:none;">
       <div class="ctb-card-title">Vista previa</div>
       <div class="preview-status" id="excelPreviewStatus"></div>
@@ -118,7 +488,7 @@
         <div class="progress-bar-bg"><div class="progress-bar-fill" id="excelProgressFill"></div></div>
         <div class="progress-label" id="excelProgressLabel">Preparando...</div>
       </div>
-      <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
         <button class="btn btn-success" id="btnCargarExcel" disabled>
           ✅ Cargar a base de datos <span id="excelCount"></span>
         </button>
@@ -132,23 +502,19 @@
   <div class="ctb-panel" id="tab-historial">
     <div class="ctb-card">
       <div class="ctb-card-title">Datos en base de datos</div>
-      <div style="display:flex; gap:8px; margin-bottom:12px; align-items:center; flex-wrap:wrap;">
+      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
         <input type="text" id="histSearch" placeholder="Filtrar por cuenta o nombre..."
-          style="padding:6px 10px; border:1px solid var(--border2); border-radius:6px; font-size:13px; width:240px;">
+          style="padding:6px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px;width:240px;">
         <button class="btn" id="btnRefreshHist">🔄 Actualizar</button>
-        <span style="font-size:12px; color:var(--muted);" id="histCount"></span>
+        <span style="font-size:12px;color:var(--muted);" id="histCount"></span>
       </div>
       <div class="preview-wrap" style="max-height:500px;">
         <table class="hist-table" id="histTable">
           <thead>
             <tr>
-              <th>Cuenta</th>
-              <th>Ccosto</th>
-              <th>Nombre</th>
-              <th>Fecha</th>
-              <th class="num">Valor</th>
-              <th class="num">Total Anual</th>
-              <th>Acción</th>
+              <th>Cuenta</th><th>Ccosto</th><th>Nombre</th>
+              <th>Fecha</th><th class="num">Valor</th>
+              <th class="num">Total Anual</th><th>Acción</th>
             </tr>
           </thead>
           <tbody id="histBody">
@@ -165,11 +531,11 @@
 <div id="toastCtb"></div>
 
 <!-- Modal Borrar Todo -->
-<div id="modalBorrar" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9000; align-items:center; justify-content:center;">
-  <div style="background:#fff; border-radius:10px; padding:28px; width:380px; max-width:92vw; box-shadow:0 8px 32px rgba(0,0,0,.22);">
-    <div style="font-size:15px; font-weight:600; margin-bottom:10px;">⚠️ Confirmar borrado</div>
-    <p style="font-size:13px; color:var(--muted); margin:0 0 18px;">¿Estás seguro de eliminar <strong>todos</strong> los registros de Consolidado Total Base? Esta acción no se puede deshacer.</p>
-    <div style="display:flex; gap:8px; justify-content:flex-end;">
+<div id="modalBorrar" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:10px;padding:28px;width:380px;max-width:92vw;box-shadow:0 8px 32px rgba(0,0,0,.22);">
+    <div style="font-size:15px;font-weight:600;margin-bottom:10px;">⚠️ Confirmar borrado</div>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 18px;">¿Estás seguro de eliminar <strong>todos</strong> los registros? Esta acción no se puede deshacer.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
       <button class="btn" id="cancelBorrar">Cancelar</button>
       <button class="btn btn-danger" id="confirmBorrar">🗑️ Borrar todo</button>
     </div>
@@ -182,19 +548,39 @@
 "use strict";
 
 /* ── URLs ── */
-const URL_CARGAR_CTB  = "{% url 'cargar_consolidado_total_base' %}";
-const URL_OBTENER_CTB = "{% url 'obtener_consolidado_total_base_raw' %}";
-const URL_BORRAR_CTB  = "{% url 'borrar_consolidado_total_base' %}";
+const URL_CARGAR_CTB        = "{% url 'cargar_consolidado_total_base' %}";
+const URL_OBTENER_CTB       = "{% url 'obtener_consolidado_total_base_raw' %}";
+const URL_BORRAR_CTB        = "{% url 'borrar_consolidado_total_base' %}";
 const URL_ELIMINAR_FILA_CTB = "{% url 'eliminar_fila_consolidado_total_base' %}";
 const CSRF = document.querySelector('[name=csrf-token]').content;
 
 /* ── Columnas ── */
-const COLS_REQUIRED = ['mcncuenta', 'ctanombre', 'mcnfecha', 'valor'];
-const COLS_ALL      = ['mcncuenta', 'mcnccosto', 'ctanombre', 'mcnfecha', 'valor', 'total_anual'];
-const COLS_NUM      = ['valor', 'total_anual'];
+const COLS_ALL = ['mcncuenta','mcnccosto','ctanombre','mcnfecha','valor','total_anual'];
+const COLS_NUM = ['valor','total_anual'];
+
+// Meses en español → número de mes
+const MESES_MAP = {
+  'enero':1,'febrero':2,'marzo':3,'abril':4,'mayo':5,'junio':6,
+  'julio':7,'agosto':8,'septiembre':9,'octubre':10,'noviembre':11,'diciembre':12
+};
+const MESES_LISTA = Object.keys(MESES_MAP);
+
+// Alias de columnas del Formato B → nombres internos
+const ALIAS_MAP = {
+  'cuenta':           'mcncuenta',
+  'mcncuenta':        'mcncuenta',
+  'centro_de_costo':  'mcnccosto',
+  'centrodecosto':    'mcnccosto',
+  'mcnccosto':        'mcnccosto',
+  'nombre_cuenta':    'ctanombre',
+  'nombrecuenta':     'ctanombre',
+  'ctanombre':        'ctanombre',
+  'concepto':         'ctanombre',
+  'nombre':           'ctanombre',
+};
 
 /* ── Estado ── */
-let parsedRows   = [];   // filas del paste
+let parsedRows   = [];
 let parsedErrors = [];
 let excelRows    = [];
 let histData     = [];
@@ -229,96 +615,196 @@ document.querySelectorAll('.ctb-tab').forEach(tab => {
 });
 
 /* ════════════════════════════════════════════════
-   PARSEO DE TEXTO (copiar/pegar)
+   UTILIDADES
 ════════════════════════════════════════════════ */
 function detectarSeparador(texto) {
   const primera = texto.split('\n')[0];
-  const tabs  = (primera.match(/\t/g) || []).length;
-  const pvcomas = (primera.match(/;/g) || []).length;
-  const comas = (primera.match(/,/g) || []).length;
+  const tabs   = (primera.match(/\t/g)  || []).length;
+  const pvcomas= (primera.match(/;/g)   || []).length;
+  const comas  = (primera.match(/,/g)   || []).length;
   if (tabs >= pvcomas && tabs >= comas) return '\t';
   if (pvcomas >= comas) return ';';
   return ',';
 }
 
-function parsearTexto(texto) {
-  texto = texto.trim();
-  if (!texto) return { rows: [], errors: [], headers: [] };
+function normHeader(h) {
+  return h.trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // quitar tildes
+    .replace(/\s+/g, '_');
+}
 
-  const sep     = detectarSeparador(texto);
-  const lineas  = texto.split('\n').map(l => l.replace(/\r/g, ''));
-  const headers = lineas[0].split(sep).map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+function cleanNum(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const s = String(v).trim().replace(/\./g,'').replace(',','.');
+  const n = parseInt(s, 10);
+  return isNaN(n) ? null : n;
+}
 
-  // Validar que tenga columnas mínimas
-  const faltantes = COLS_REQUIRED.filter(c => !headers.includes(c));
+function padFecha(anio, mes) {
+  return `${anio}-${String(mes).padStart(2,'0')}-01`;
+}
+
+/* ════════════════════════════════════════════════
+   DETECCIÓN DE FORMATO
+  Devuelve 'vertical' | 'horizontal'
+════════════════════════════════════════════════ */
+function detectarFormato(headers) {
+  const mesesPresentes = headers.filter(h => MESES_MAP[h] !== undefined);
+  return mesesPresentes.length >= 6 ? 'horizontal' : 'vertical';
+}
+
+/* ════════════════════════════════════════════════
+   PARSEO FORMATO A — vertical (mcnfecha, valor)
+════════════════════════════════════════════════ */
+function parsearVertical(headers, lineas, sep) {
+  const REQUIRED = ['mcncuenta','ctanombre','mcnfecha','valor'];
+  const faltantes = REQUIRED.filter(c => !headers.includes(c));
   if (faltantes.length) {
-    return { rows: [], errors: [`Faltan columnas obligatorias: ${faltantes.join(', ')}`], headers };
+    return { rows:[], errors:[`Faltan columnas: ${faltantes.join(', ')}`] };
   }
 
-  const rows   = [];
-  const errors = [];
-
-  for (let i = 1; i < lineas.length; i++) {
+  const rows=[], errors=[];
+  for (let i=1; i<lineas.length; i++) {
     if (!lineas[i].trim()) continue;
     const vals = lineas[i].split(sep);
     const obj  = {};
-    headers.forEach((h, idx) => { obj[h] = (vals[idx] || '').trim(); });
+    headers.forEach((h,idx) => { obj[h] = (vals[idx]||'').trim(); });
 
-    const rowErr = validarFila(obj, i + 1);
-    if (rowErr) errors.push(rowErr);
-    else rows.push(normalizarFila(obj));
+    // validaciones
+    if (!obj.mcncuenta) { errors.push(`Fila ${i+1}: mcncuenta vacío`); continue; }
+    if (!obj.ctanombre) { errors.push(`Fila ${i+1}: ctanombre vacío`); continue; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(obj.mcnfecha)) {
+      errors.push(`Fila ${i+1}: mcnfecha inválida "${obj.mcnfecha}" (esperado YYYY-MM-DD)`); continue;
+    }
+    const valor = cleanNum(obj.valor);
+    if (valor === null && obj.valor !== '') {
+      errors.push(`Fila ${i+1}: valor no numérico "${obj.valor}"`); continue;
+    }
+
+    rows.push({
+      mcncuenta:   obj.mcncuenta,
+      mcnccosto:   obj.mcnccosto || '0',
+      ctanombre:   obj.ctanombre,
+      mcnfecha:    obj.mcnfecha,
+      valor:       valor,
+      total_anual: cleanNum(obj.total_anual),
+    });
   }
-
-  return { rows, errors, headers };
+  return { rows, errors };
 }
 
-function validarFila(obj, lineNum) {
-  for (const col of COLS_REQUIRED) {
-    if (!obj[col] && obj[col] !== 0) {
-      return `Fila ${lineNum}: falta el campo "${col}"`;
-    }
+/* ════════════════════════════════════════════════
+   PARSEO FORMATO B — meses horizontales
+   Una fila por cuenta → N filas (una por mes)
+════════════════════════════════════════════════ */
+function parsearHorizontal(headers, lineas, sep, anio) {
+  // Detectar cuáles columnas son meses
+  const mesesCols = headers
+    .map((h,i) => ({ mes: MESES_MAP[h], idx: i, nombre: h }))
+    .filter(x => x.mes !== undefined);
+
+  if (!mesesCols.length) {
+    return { rows:[], errors:['No se encontraron columnas de meses (enero…diciembre)'] };
   }
-  // Validar fecha
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(obj.mcnfecha)) {
-    return `Fila ${lineNum}: mcnfecha debe ser YYYY-MM-DD, recibido "${obj.mcnfecha}"`;
+
+  // Mapear columnas de identidad usando alias
+  function findCol(target) {
+    const idx = headers.findIndex(h => ALIAS_MAP[h] === target || h === target);
+    return idx >= 0 ? idx : -1;
   }
-  // Validar numéricos
-  for (const col of COLS_NUM) {
-    if (obj[col] !== '' && obj[col] !== undefined && isNaN(Number(String(obj[col]).replace(/\./g,'').replace(',','.')))) {
-      return `Fila ${lineNum}: "${col}" debe ser numérico, recibido "${obj[col]}"`;
-    }
+  const idxCuenta   = findCol('mcncuenta');
+  const idxCcosto   = findCol('mcnccosto');
+  const idxNombre   = findCol('ctanombre');
+  // total_anual: buscar columna "total" si existe
+  const idxTotal    = headers.findIndex(h => h === 'total' || h === 'total_anual');
+
+  if (idxCuenta < 0) return { rows:[], errors:['No se encontró columna de cuenta (cuenta / mcncuenta)'] };
+  if (idxNombre < 0) return { rows:[], errors:['No se encontró columna de nombre (nombre cuenta / ctanombre / concepto)'] };
+
+  const rows=[], errors=[];
+
+  for (let i=1; i<lineas.length; i++) {
+    if (!lineas[i].trim()) continue;
+    const vals      = lineas[i].split(sep);
+    const mcncuenta = (vals[idxCuenta] || '').trim();
+    const mcnccosto = idxCcosto >= 0 ? (vals[idxCcosto] || '0').trim() : '0';
+    const ctanombre = (vals[idxNombre] || '').trim();
+    const total_anual = idxTotal >= 0 ? cleanNum(vals[idxTotal]) : null;
+
+    if (!mcncuenta) { errors.push(`Fila ${i+1}: cuenta vacía`); continue; }
+    if (!ctanombre) { errors.push(`Fila ${i+1}: nombre de cuenta vacío`); continue; }
+
+    // Una fila de salida por cada mes que tenga valor (incluyendo 0)
+    mesesCols.forEach(({ mes, idx }) => {
+      const raw   = (vals[idx] || '').trim();
+      const valor = cleanNum(raw);
+      rows.push({
+        mcncuenta,
+        mcnccosto,
+        ctanombre,
+        mcnfecha:    padFecha(anio, mes),
+        valor:       valor !== null ? valor : 0,
+        total_anual,
+      });
+    });
   }
-  return null;
+  return { rows, errors };
 }
 
-function normalizarFila(obj) {
-  const clean = num => {
-    if (obj[num] === '' || obj[num] === undefined || obj[num] === null) return null;
-    return parseInt(String(obj[num]).replace(/\./g, '').replace(',', '.'), 10) || 0;
-  };
-  return {
-    mcncuenta:  obj.mcncuenta  || '',
-    mcnccosto:  obj.mcnccosto  || '0',
-    ctanombre:  obj.ctanombre  || '',
-    mcnfecha:   obj.mcnfecha   || '',
-    valor:      clean('valor'),
-    total_anual: clean('total_anual'),
-  };
+/* ════════════════════════════════════════════════
+   PARSEO PRINCIPAL (detecta formato)
+════════════════════════════════════════════════ */
+function parsearTexto(texto, anio) {
+  texto = texto.trim();
+  if (!texto) return { rows:[], errors:[], headers:[], formato:null };
+
+  const sep    = detectarSeparador(texto);
+  const lineas = texto.split('\n').map(l => l.replace(/\r/g,''));
+
+  // Normalizar headers: quitar tildes, minúsculas, espacios→_
+  const headersRaw = lineas[0].split(sep).map(normHeader);
+  // Aplicar alias para que "cuenta", "nombre cuenta", etc. funcionen
+  const headers = headersRaw.map(h => ALIAS_MAP[h] || h);
+
+  const formato = detectarFormato(headers);
+  let resultado;
+
+  if (formato === 'horizontal') {
+    resultado = parsearHorizontal(headers, lineas, sep, anio);
+  } else {
+    resultado = parsearVertical(headers, lineas, sep);
+  }
+
+  return { ...resultado, headers, formato };
 }
 
 /* ════════════════════════════════════════════════
    RENDERIZAR PREVIEW
 ════════════════════════════════════════════════ */
-function renderPreview(rows, errors, headEl, bodyEl, statusEl, countEl, btnCargar) {
-  // Status
+function renderPreview(rows, errors, formato, headEl, bodyEl, statusEl, countEl, btnCargar) {
   statusEl.innerHTML = '';
-  if (errors.length) {
-    errors.forEach(e => {
-      const b = document.createElement('span');
-      b.className = 'badge badge-err';
-      b.textContent = '⚠ ' + e;
-      statusEl.appendChild(b);
-    });
+
+  // Badge de formato detectado
+  if (formato) {
+    const bf = document.createElement('span');
+    bf.className = formato === 'horizontal' ? 'badge badge-warn' : 'badge badge-info';
+    bf.textContent = formato === 'horizontal'
+      ? '📊 Formato B — meses horizontales'
+      : '📅 Formato A — fecha vertical';
+    statusEl.appendChild(bf);
+  }
+
+  errors.slice(0,5).forEach(e => {
+    const b = document.createElement('span');
+    b.className = 'badge badge-err';
+    b.textContent = '⚠ ' + e;
+    statusEl.appendChild(b);
+  });
+  if (errors.length > 5) {
+    const b = document.createElement('span');
+    b.className = 'badge badge-err';
+    b.textContent = `+${errors.length-5} errores más`;
+    statusEl.appendChild(b);
   }
   if (rows.length) {
     const b = document.createElement('span');
@@ -337,10 +823,9 @@ function renderPreview(rows, errors, headEl, bodyEl, statusEl, countEl, btnCarga
     headEl.appendChild(th);
   });
 
-  // Cuerpo (máximo 200 filas en preview)
+  // Cuerpo (máx 200 filas)
   bodyEl.innerHTML = '';
-  const slice = rows.slice(0, 200);
-  slice.forEach(row => {
+  rows.slice(0, 200).forEach(row => {
     const tr = document.createElement('tr');
     COLS_ALL.forEach(col => {
       const td = document.createElement('td');
@@ -356,32 +841,35 @@ function renderPreview(rows, errors, headEl, bodyEl, statusEl, countEl, btnCarga
     const td = document.createElement('td');
     td.colSpan = COLS_ALL.length;
     td.style.cssText = 'text-align:center;color:var(--muted);padding:8px;';
-    td.textContent = `… y ${rows.length - 200} filas más (no mostradas en preview)`;
+    td.textContent = `… y ${rows.length - 200} filas más`;
     tr.appendChild(td);
     bodyEl.appendChild(tr);
   }
 
-  countEl.textContent = `(${rows.length} filas)`;
+  countEl.textContent = `(${rows.length} registros)`;
   btnCargar.disabled = errors.length > 0;
 }
 
 /* ════════════════════════════════════════════════
-   BOTÓN PARSEAR (paste)
+   BOTÓN PARSEAR
 ════════════════════════════════════════════════ */
 document.getElementById('btnParsear').addEventListener('click', () => {
   const texto = document.getElementById('pasteArea').value;
   if (!texto.trim()) { toast('Pega datos primero', 'warn'); return; }
 
-  const { rows, errors, headers } = parsearTexto(texto);
+  const anio = parseInt(document.getElementById('inputAnioHorizontal').value, 10) || 2025;
+  const { rows, errors, headers, formato } = parsearTexto(texto, anio);
   parsedRows   = rows;
   parsedErrors = errors;
 
-  document.getElementById('parseInfo').textContent =
-    headers.length ? `Columnas detectadas: ${headers.join(', ')}` : '';
+  const infoEl = document.getElementById('parseInfo');
+  infoEl.textContent = formato
+    ? `Formato detectado: ${formato === 'horizontal' ? 'B (meses horizontales)' : 'A (fecha vertical)'} · ${headers.length} columnas`
+    : '';
 
   document.getElementById('previewSection').style.display = 'block';
   renderPreview(
-    rows, errors,
+    rows, errors, formato,
     document.getElementById('previewHead'),
     document.getElementById('previewBody'),
     document.getElementById('previewStatus'),
@@ -398,7 +886,7 @@ document.getElementById('btnLimpiarPaste').addEventListener('click', () => {
 });
 
 /* ════════════════════════════════════════════════
-   CARGAR PASTE → BD
+   ENVIAR A BD (por lotes)
 ════════════════════════════════════════════════ */
 async function enviarRegistros(rows, progressFill, progressLabel, progressWrap, btnEl) {
   progressWrap.classList.add('active');
@@ -412,7 +900,7 @@ async function enviarRegistros(rows, progressFill, progressLabel, progressWrap, 
     const lote = rows.slice(i, i + BATCH);
     const pct  = Math.round(((i + lote.length) / rows.length) * 100);
     progressFill.style.width = pct + '%';
-    progressLabel.textContent = `Enviando ${i + 1}–${Math.min(i + BATCH, rows.length)} de ${rows.length}…`;
+    progressLabel.textContent = `Enviando ${i+1}–${Math.min(i+BATCH, rows.length)} de ${rows.length}…`;
 
     try {
       const resp = await fetch(URL_CARGAR_CTB, {
@@ -427,15 +915,15 @@ async function enviarRegistros(rows, progressFill, progressLabel, progressWrap, 
       toast('Error al enviar lote: ' + e.message, 'error');
       progressWrap.classList.remove('active');
       btnEl.disabled = false;
-      btnEl.textContent = '✅ Reintentar';
+      btnEl.innerHTML = '✅ Reintentar';
       return;
     }
   }
 
   progressFill.style.width = '100%';
-  progressLabel.textContent = `✓ ${insertados} registros guardados correctamente`;
+  progressLabel.textContent = `✓ ${insertados} registros guardados`;
   toast(`✅ ${insertados} registros cargados`, 'success');
-  btnEl.textContent = '✅ Cargado';
+  btnEl.innerHTML = '✅ Cargado';
   setTimeout(() => progressWrap.classList.remove('active'), 3000);
 }
 
@@ -460,52 +948,63 @@ dropZone.addEventListener('click', () => inputExcel.click());
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
 dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file) procesarExcel(file);
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) procesarExcel(e.dataTransfer.files[0]);
 });
-inputExcel.addEventListener('change', e => {
-  if (e.target.files[0]) procesarExcel(e.target.files[0]);
-});
+inputExcel.addEventListener('change', e => { if (e.target.files[0]) procesarExcel(e.target.files[0]); });
 
 function procesarExcel(file) {
   document.getElementById('excelFileName').textContent = `Archivo: ${file.name}`;
+  const anio = parseInt(document.getElementById('inputAnioHorizontalExcel').value, 10) || 2025;
   const reader = new FileReader();
   reader.onload = ev => {
     try {
-      const wb   = XLSX.read(new Uint8Array(ev.target.result), { type: 'array', cellDates: true });
+      const wb   = XLSX.read(new Uint8Array(ev.target.result), { type:'array', cellDates:true });
       const ws   = wb.Sheets[wb.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(ws, { defval: null, raw: false });
-
+      const json = XLSX.utils.sheet_to_json(ws, { defval:null, raw:false });
       if (!json.length) { toast('El archivo está vacío', 'warn'); return; }
 
-      // Normalizar cabeceras
-      const normalized = json.map(row => {
-        const n = {};
-        Object.keys(row).forEach(k => {
-          n[k.toLowerCase().trim().replace(/\s+/g,'_')] = row[k];
-        });
-        return n;
-      });
+      // Construir texto TSV simulado para reutilizar el parseo
+      const headersRaw = Object.keys(json[0]).map(normHeader);
+      const headers    = headersRaw.map(h => ALIAS_MAP[h] || h);
+      const formato    = detectarFormato(headers);
 
-      const errors = [];
-      const rows   = [];
-      normalized.forEach((obj, i) => {
-        // normalizar fecha: puede venir como Date o string
-        if (obj.mcnfecha instanceof Date) {
-          const d = obj.mcnfecha;
-          obj.mcnfecha = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        }
-        const err = validarFila(obj, i + 2);
-        if (err) errors.push(err);
-        else rows.push(normalizarFila(obj));
-      });
+      let rows=[], errors=[];
+
+      if (formato === 'horizontal') {
+        // Convertir objetos a array de lineas
+        const sep = '\t';
+        const lineas = [
+          headersRaw.join(sep),
+          ...json.map(row => Object.values(row).map(v => v ?? '').join(sep))
+        ];
+        ({ rows, errors } = parsearHorizontal(headers, lineas, sep, anio));
+      } else {
+        // Formato A: normalizar fecha Date→string
+        const normalizado = json.map(row => {
+          const n = {};
+          Object.keys(row).forEach(k => {
+            const key = ALIAS_MAP[normHeader(k)] || normHeader(k);
+            let val = row[k];
+            if (key === 'mcnfecha' && val instanceof Date) {
+              val = `${val.getFullYear()}-${String(val.getMonth()+1).padStart(2,'0')}-${String(val.getDate()).padStart(2,'0')}`;
+            }
+            n[key] = val;
+          });
+          return n;
+        });
+        const sep = '\t';
+        const lineas = [
+          headers.join(sep),
+          ...normalizado.map(row => headers.map(h => row[h] ?? '').join(sep))
+        ];
+        ({ rows, errors } = parsearVertical(headers, lineas, sep));
+      }
 
       excelRows = rows;
       document.getElementById('excelPreviewCard').style.display = 'block';
       renderPreview(
-        rows, errors,
+        rows, errors, formato,
         document.getElementById('excelPreviewHead'),
         document.getElementById('excelPreviewBody'),
         document.getElementById('excelPreviewStatus'),
@@ -531,18 +1030,28 @@ document.getElementById('btnCargarExcel').addEventListener('click', () => {
 });
 
 /* ════════════════════════════════════════════════
-   PLANTILLA EXCEL
+   PLANTILLA EXCEL — genera las dos hojas
 ════════════════════════════════════════════════ */
 document.getElementById('btnDescargarPlantilla').addEventListener('click', () => {
-  const wb  = XLSX.utils.book_new();
-  const ws  = XLSX.utils.aoa_to_sheet([
-    COLS_ALL,
-    ['1', '0', 'Ventas a credito', '2025-01-01', 3041204838, 43302942701],
-    ['2', '0', 'Ventas a contado', '2025-01-01', 1651030005, 19321352257],
+  const wb = XLSX.utils.book_new();
+
+  // Hoja Formato A
+  const wsA = XLSX.utils.aoa_to_sheet([
+    ['mcncuenta','mcnccosto','ctanombre','mcnfecha','valor','total_anual'],
+    ['1','0','Ventas a credito','2025-01-01',3041204838,43302942701],
+    ['613522','0','COSTO DE VENTAS','2025-01-01',4105841202,55034555088],
   ]);
-  XLSX.utils.book_append_sheet(wb, ws, 'Datos');
+  XLSX.utils.book_append_sheet(wb, wsA, 'FormatoA_Vertical');
+
+  // Hoja Formato B
+  const wsB = XLSX.utils.aoa_to_sheet([
+    ['cuenta','centro de costo','nombre cuenta','enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre','total'],
+    ['521005','1','Gastos Bancarios',512999,521624,531329,506422,449860,449860,449860,449860,449860,562148,580365,551735,6015923],
+  ]);
+  XLSX.utils.book_append_sheet(wb, wsB, 'FormatoB_Horizontal');
+
   XLSX.writeFile(wb, 'plantilla_consolidado_base.xlsx');
-  toast('Plantilla descargada', 'success');
+  toast('Plantilla descargada (2 hojas de ejemplo)', 'success');
 });
 
 /* ════════════════════════════════════════════════
@@ -569,14 +1078,11 @@ function renderHistorial(data) {
     body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px;">Sin datos</td></tr>`;
     return;
   }
-  const slice = data.slice(0, 500);
-  slice.forEach(row => {
+  data.slice(0, 500).forEach(row => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${row.mcncuenta || ''}</td>
-      <td>${row.mcnccosto || ''}</td>
-      <td>${row.ctanombre || ''}</td>
-      <td>${row.mcnfecha  || ''}</td>
+      <td>${row.mcncuenta||''}</td><td>${row.mcnccosto||''}</td>
+      <td>${row.ctanombre||''}</td><td>${row.mcnfecha||''}</td>
       <td class="num">${fmtN(row.valor)}</td>
       <td class="num">${fmtN(row.total_anual)}</td>
       <td style="text-align:center;">
@@ -587,7 +1093,7 @@ function renderHistorial(data) {
   });
   if (data.length > 500) {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td colspan="7" style="text-align:center;color:var(--muted);padding:8px;">… y ${data.length - 500} más</td>`;
+    tr.innerHTML = `<td colspan="7" style="text-align:center;color:var(--muted);padding:8px;">… y ${data.length-500} más</td>`;
     body.appendChild(tr);
   }
 }
@@ -596,58 +1102,44 @@ async function eliminarFila(id, tr) {
   if (!confirm('¿Eliminar este registro?')) return;
   try {
     const resp = await fetch(URL_ELIMINAR_FILA_CTB, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
-      body: JSON.stringify({ id }),
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+      body:JSON.stringify({id}),
     });
     const json = await resp.json();
     if (!resp.ok || !json.success) throw new Error(json.error);
     tr.remove();
     histData = histData.filter(r => r.id !== id);
     document.getElementById('histCount').textContent = `${histData.length} registros`;
-    toast('Registro eliminado', 'success');
-  } catch(e) {
-    toast('Error: ' + e.message, 'error');
-  }
+    toast('Registro eliminado','success');
+  } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
 document.getElementById('histSearch').addEventListener('input', e => {
   const q = e.target.value.toLowerCase();
-  const filtered = q ? histData.filter(r =>
-    (r.mcncuenta || '').toLowerCase().includes(q) ||
-    (r.ctanombre || '').toLowerCase().includes(q)
-  ) : histData;
-  renderHistorial(filtered);
+  renderHistorial(q ? histData.filter(r =>
+    (r.mcncuenta||'').toLowerCase().includes(q) || (r.ctanombre||'').toLowerCase().includes(q)
+  ) : histData);
 });
-
 document.getElementById('btnRefreshHist').addEventListener('click', cargarHistorial);
 
 /* ════════════════════════════════════════════════
    BORRAR TODO
 ════════════════════════════════════════════════ */
 const modalBorrar = document.getElementById('modalBorrar');
-document.getElementById('btnBorrarTodo').addEventListener('click', () => { modalBorrar.style.display = 'flex'; });
-document.getElementById('cancelBorrar').addEventListener('click', () => { modalBorrar.style.display = 'none'; });
+document.getElementById('btnBorrarTodo').addEventListener('click', () => { modalBorrar.style.display='flex'; });
+document.getElementById('cancelBorrar').addEventListener('click',  () => { modalBorrar.style.display='none'; });
 document.getElementById('confirmBorrar').addEventListener('click', async () => {
   modalBorrar.style.display = 'none';
   try {
-    const resp = await fetch(URL_BORRAR_CTB, {
-      method: 'POST',
-      headers: { 'X-CSRFToken': CSRF },
-    });
+    const resp = await fetch(URL_BORRAR_CTB,{method:'POST',headers:{'X-CSRFToken':CSRF}});
     const json = await resp.json();
     if (!json.success) throw new Error(json.error);
-    toast('Todos los datos eliminados', 'success');
-    histData = [];
-    renderHistorial([]);
-  } catch(e) {
-    toast('Error: ' + e.message, 'error');
-  }
+    toast('Todos los datos eliminados','success');
+    histData=[]; renderHistorial([]);
+  } catch(e) { toast('Error: '+e.message,'error'); }
 });
 
-/* ════════════════════════════════════════════════
-   BOTÓN VER HISTORIAL (shortcut)
-════════════════════════════════════════════════ */
 document.getElementById('btnVerHistorial').addEventListener('click', () => {
   document.querySelector('[data-tab="tab-historial"]').click();
 });

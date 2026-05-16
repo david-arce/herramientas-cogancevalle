@@ -214,6 +214,19 @@ function calcularTotalesPorLista(data, lista) {
     return t;
 }
 
+// gastos financieros
+function calcularGastosFinancieros(data) {
+    const cuentas = ['521005', '521015', '521020', '3', '615035'];
+    const t = calcularTotalesPorLista(data, cuentas);
+    const fila = {
+        mcncuenta: '', ctanombre: 'Gastos Financieros',
+        isTotalRow: true, tipoTotal: 'GastosFinancieros', total: 0
+    };
+    MESES.forEach(m => { fila[m] = t[m] || 0; });
+    fila.total = t.total || 0;
+    return fila;
+}
+
 // ── Utilidad Operacional ────────────────────────────────────────
 function calcularUtilidadOperacional(data) {
     const margenCtb  = calcularMargenContribucion(data);
@@ -322,6 +335,7 @@ function construirFilas(data) {
     const filaPctMargenCtb    = calcularPorcentajeMargenContribucion(data); 
     const filaUtilidadOp        = calcularUtilidadOperacional(data);         
     const filaPctUtilidadOp     = calcularPorcentajeUtilidadOperacional(data);
+    const filaGastosFinanc = calcularGastosFinancieros(data);
 
     const resultado = [];
     let pos54 = -1, pos51 = -1, posVN = -1;
@@ -355,6 +369,7 @@ function construirFilas(data) {
         if (String(row.mcncuenta || '') === '511534') {
             resultado.push(filaUtilidadOp);
             resultado.push(filaPctUtilidadOp);
+            resultado.push(filaGastosFinanc);
         }
     });
 
@@ -391,6 +406,7 @@ function renderTabla(data) {
             else if (fila.tipoTotal === 'PctMargenContribucion') tr.className = 'total-row-pct-margen-ctb';
             else if (fila.tipoTotal === 'UtilidadOperacional')   tr.className = 'total-row-utilidad-op';    
             else if (fila.tipoTotal === 'PctUtilidadOperacional') tr.className = 'total-row-pct-utilidad-op'; 
+            else if (fila.tipoTotal === 'GastosFinancieros') tr.className = 'total-row-gastos-financ';
             else                                        tr.className = 'total-row-ventas-netas';
         } else {
             const c = String(fila.mcncuenta || '');

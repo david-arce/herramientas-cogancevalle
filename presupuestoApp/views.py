@@ -19,7 +19,7 @@ from django.db import models
 from django.core.paginator import Paginator
 import calendar
 from django.db.models.functions import ExtractMonth, ExtractYear
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_GET, require_POST
 
 def exportar_excel_nomina(request):
     # Obtener datos de cada tabla
@@ -11600,13 +11600,14 @@ def calcular_consolidado():
     sin guardar en base de datos
     """
     try:
+        CUENTAS_OMITIR = ['521005', '521015', '521020', '615035', '523050', '52309502', '521040', '4240900202', 'SIN CUENTA']
         queryset = Cuenta5Base.objects.values(
             'mcncuenta',
             'mcnccosto',
             'mcnfecha',
             'mcnvaldebi',
             'mcnvalcred'
-        )
+        ).exclude(mcncuenta__in=CUENTAS_OMITIR)
 
         # ── NUEVO: queryset de ConsolidadoTotalBase ──────────────────
         queryset_consolidado = ConsolidadoTotalBase.objects.values(
@@ -11974,9 +11975,11 @@ def obtener_consolidado_total_base(request):
         '51109501_51109502', #   Gastos de Fondos Sociales
         '511512',	    # Deterioro de Inventario
         '511534',	    # Deterioro de Cartera
+        #gastos financieros
         '521005',	    #Gastos Bancarios
         '521015',	    #Gastos Contribución 4 x1000 
-        '521020',	    #Comisiones 
+        '521020',	    #Comisiones
+        '3', 
         '615035',	    #Intereses 
 
     ]
