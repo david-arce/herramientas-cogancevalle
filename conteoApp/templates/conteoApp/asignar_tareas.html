@@ -21,6 +21,7 @@
                         <label><input type="checkbox" name="usuarios" value="{{ usuario.id }}" class="user-checkbox"> {{ usuario.first_name }} {{usuario.last_name}}</label>
                     {% endfor %}
                 </div>
+            {% if ciudad == 'Buga'%}
             </br>
             </br>
             <p> Utiliza el siguiente campo de fecha para seleccionar el día de la venta a cargar, si requiere más de una fecha selecciona el botón 'Agregar fecha'. </p>
@@ -32,7 +33,7 @@
             </div>
             <button type="button" id="agregar-fecha" class="button-generic" style="margin-top: 5px;">+ Agregar fecha</button>
             <button type="button" id="quitar-fecha" class="button-generic" style="margin-top: 5px;">− Quitar fecha</button>
-            
+            {% endif %}
         </br>
             <button type="submit" name="assign_task" id="assignButton" class="button-asignar">Asignar Tareas</button>
             <button type="button" name="delete_task" id="openConfirmModal" class="button-delete">Eliminar productos asignados</button>

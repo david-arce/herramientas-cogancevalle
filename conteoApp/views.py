@@ -423,6 +423,7 @@ def asignar_tareas(request):
         'usuarios': usuarios,
         'mostrar_exportar_todo': mostrar_exportar_todo,
         'fecha_asignar': fecha_asignar_formateada,
+        'ciudad': ciudad
     })
 
 @login_required
