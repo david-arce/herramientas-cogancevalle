@@ -11979,8 +11979,43 @@ def obtener_consolidado_total_base(request):
         '521005',	    #Gastos Bancarios
         '521015',	    #Gastos Contribución 4 x1000 
         '521020',	    #Comisiones
-        '3', 
+        '3',            # Comisiones por Tarjetas de Cred 
         '615035',	    #Intereses 
+        'AT-00010',	    # Jornada de actualización en reproducción 
+        'AT-00014',	    # Curso de mayordomía 
+        'AT-00015',	    # Ecografo Bovino 
+        'AT-00016',	    # Curso de Inseminación  
+        'AT-00008',	    # Seminario ambiental 
+        'AT-00019',	    # Brucelosis-Tuberculosis 
+        'AT-00020',	    # Programa ambiental 
+        'AT-00021',	    # Chequeo reproductivo 
+        'AT-00022',	    # Curso de Bromatología 
+        'AT-00024',	    # Atencion urgencias 
+        'AT-00028',	    # Mantenimiento equipo técnico-Diplomado 
+        'AT-00029',	    # Taller en bienestar y sanidad bovina 
+        'AT-00030',	    # Seminario productividad láctea 
+        'AT-00032',	    # Servicio de imágenes con dron 
+        'AT-00004',	    # Apoyo Técnico-Virbac 
+        'AT-00007',	    # Convenio Tecnoquímicas 
+        'AT-00003',	    # Convenio Elanco 
+        'AT-00005',	    # Convenio Proalba-Santa Lucía  
+        'VT-00001',	    # Convenio Boehringer 
+        '41659505',	    # Proyecto de Aftosa 
+        '41659501',	    # Patrocinio de Eventos 
+        '422004',	    # Intereses Bancarios  
+        '422507',	    # Recuperaciones deterioro de inventario 
+        '422529',	    # Recuperaciones deterioro de cartera 
+        '4240900202',	# Arrendamientos 
+        '4240900301',	# Reintegro de Costos y Gastos 
+        '4240900401',	# Indemnización por Seguros  
+        '4240909501',	# Aprovechamientos 
+        '4240909503',	# Ajustes Multiplos de 1000 
+        '4240909901',	# Ingresos Ejercicios Anteriores 
+        '4',            # Devolución servicios  
+        '5'	            # Proyecto de Aftosa 
+        '6'	            # Asistencia Técnica Convenios 
+        '7'	            # Asistencia Técnica Propia  
+        '5230'	        # Gastos no Operacionales 
 
     ]
     
