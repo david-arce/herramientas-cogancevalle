@@ -811,3 +811,57 @@ tr.total-row-pct-utilidad-op td {
     color: var(--color-text-info);
     font-weight: 500;
 }
+
+/* ── ASISTENCIA TECNICA ─────────────────────────────────────── */
+tr.total-row-asistencia-tecnica td {
+    background-color: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 600;
+    border-top: 2px solid #3b82f6;
+    border-bottom: 2px solid #3b82f6;
+}
+
+/* ── OTROS INGRESOS ─────────────────────────────────────────── */
+tr.total-row-otros-ingresos td {
+    background-color: #f0fdf4;
+    color: #15803d;
+    font-weight: 600;
+    border-top: 3px solid #3c3c3c;
+    border-bottom: 2px solid #22c55e;
+}
+
+/* ── INGRESOS POR SERVICIOS ─────────────────────────────────── */
+tr.total-row-ingresos-servicios td {
+    background-color: #faf5ff;
+    color: #1d4ed8;
+    font-weight: 700;
+    font-size: .9rem;
+    border-top: 3px solid #3c3c3c;
+    border-bottom: 3px solid #a855f7;
+}
+/* ── GASTOS POR SERVICIOS ───────────────────────────────────── */
+tr.total-row-gastos-servicios td {
+    background-color: #fff7ed;
+    color: #c2410c;
+    font-weight: 600;
+    border-top: 3px solid #696969;
+    border-bottom: 2px solid #f97316;
+}
+
+/* ── EXCEDENTES O PERDIDA NETA ──────────────────────────────── */
+tr.total-row-excedentes td {
+    background-color: #f0fdf4;
+    color: #166534;
+    font-weight: 700;
+    font-size: .9rem;
+    border-top: 3px solid #16a34a;
+    border-bottom: 3px solid #16a34a;
+}
+
+/* ── % EXCEDENTE O PERDIDA ──────────────────────────────────── */
+tr.total-row-pct-excedentes td {
+    background-color: #f0fdf4;
+    color: #15803d;
+    font-style: italic;
+    border-bottom: 2px solid #86efac;
+}

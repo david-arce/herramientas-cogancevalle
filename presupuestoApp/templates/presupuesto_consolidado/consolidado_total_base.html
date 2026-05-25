@@ -214,6 +214,97 @@ function calcularTotalesPorLista(data, lista) {
     return t;
 }
 
+/* ── GASTOS POR SERVICIOS ──────────────────────────────────── */
+const CUENTAS_GASTOS_SERVICIOS = ['5', '6', '7', '8', '5230'];
+
+function calcularGastosPorServicios(data) {
+    const t = { total: 0 };
+    MESES.forEach(m => t[m] = 0);
+    data.forEach(row => {
+        const c = String(row.mcncuenta || '');
+        if (CUENTAS_GASTOS_SERVICIOS.includes(c)) {
+            MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
+            t.total += parseFloat(row.total) || 0;
+        }
+    });
+    return { ...t, mcncuenta: '', ctanombre: 'GASTOS POR SERVICIOS', isTotalRow: true, tipoTotal: 'GastosPorServicios' };
+}
+
+/* ── EXCEDENTES O PERDIDA NETA ─────────────────────────────── */
+// UTILIDAD OPERACIONAL - GASTOS FINANCIEROS + INGRESOS POR SERVICIOS - GASTOS POR SERVICIOS
+function calcularExcedentesPerdidaNeta(data) {
+    const utilidadOp         = calcularUtilidadOperacional(data);
+    const gastosFinanc       = calcularGastosFinancieros(data);
+    const ingresosPorServ    = calcularIngresosPorServicios(data);
+    const gastosPorServ      = calcularGastosPorServicios(data);
+
+    const fila = { mcncuenta: '', ctanombre: 'EXCEDENTES O PERDIDA NETA', isTotalRow: true, tipoTotal: 'ExcedentesPerdidaNeta', total: 0 };
+    MESES.forEach(m => {
+        fila[m] = (utilidadOp[m] || 0) - (gastosFinanc[m] || 0) + (ingresosPorServ[m] || 0) - (gastosPorServ[m] || 0);
+    });
+    fila.total = (utilidadOp.total || 0) - (gastosFinanc.total || 0) + (ingresosPorServ.total || 0) - (gastosPorServ.total || 0);
+    return fila;
+}
+
+/* ── % EXCEDENTE O PERDIDA ─────────────────────────────────── */
+function calcularPorcentajeExcedentes(data) {
+    const ventasNetas      = calcularTotalesPorLista(data, ['1', '2', '41750201']);
+    const excedentesPerdida = calcularExcedentesPerdidaNeta(data);
+
+    const fila = { mcncuenta: '', ctanombre: '% Excedente o Pérdida', isTotalRow: true, tipoTotal: 'PctExcedentes', total: 0 };
+    MESES.forEach(m => {
+        const vn = ventasNetas[m] || 0;
+        fila[m] = vn !== 0 ? (excedentesPerdida[m] / vn) * 100 : 0;
+    });
+    fila.total = ventasNetas.total !== 0 ? (excedentesPerdida.total / ventasNetas.total) * 100 : 0;
+    return fila;
+}
+
+// ── NUEVO: Asistencia Técnica (cuentas que empiezan con AT o VT) ──
+function calcularAsistenciaTecnica(data) {
+    const t = { total: 0 };
+    MESES.forEach(m => t[m] = 0);
+    data.forEach(row => {
+        const c = String(row.mcncuenta || '');
+        if (c.startsWith('AT') || c.startsWith('VT')) {
+            MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
+            t.total += parseFloat(row.total) || 0;
+        }
+    });
+    return { ...t, mcncuenta: '', ctanombre: 'ASISTENCIA TECNICA', isTotalRow: true, tipoTotal: 'AsistenciaTecnica' };
+}
+
+// ── NUEVO: Otros Ingresos ────────────────────────────────────────
+function calcularOtrosIngresos(data) {
+    const CUENTAS_OTROS_INGRESOS = [
+        '41659505','41659501','422004','422507','422529',
+        '4240900202','4240900301','4240900401',
+        '4240909501','4240909503','4240909901','4'
+    ];
+    const t = { total: 0 };
+    MESES.forEach(m => t[m] = 0);
+
+    data.forEach(row => {
+        const c = String(row.mcncuenta || '');
+        if (CUENTAS_OTROS_INGRESOS.includes(c)) {
+            MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
+            t.total += parseFloat(row.total) || 0;
+        }
+    });
+
+    return { ...t, mcncuenta: '', ctanombre: 'OTROS INGRESOS', isTotalRow: true, tipoTotal: 'OtrosIngresos' };
+}
+
+// ── NUEVO: Ingresos por Servicios = Asistencia Técnica + Otros Ingresos ──
+function calcularIngresosPorServicios(data) {
+    const at  = calcularAsistenciaTecnica(data);
+    const oi  = calcularOtrosIngresos(data);
+    const fila = { mcncuenta: '', ctanombre: 'INGRESOS POR SERVICIOS', isTotalRow: true, tipoTotal: 'IngresosPorServicios', total: 0 };
+    MESES.forEach(m => { fila[m] = (at[m] || 0) + (oi[m] || 0); });
+    fila.total = (at.total || 0) + (oi.total || 0);
+    return fila;
+}
+
 // gastos financieros
 function calcularGastosFinancieros(data) {
     const cuentas = ['521005', '521015', '521020', '3', '615035'];
@@ -336,6 +427,12 @@ function construirFilas(data) {
     const filaUtilidadOp        = calcularUtilidadOperacional(data);         
     const filaPctUtilidadOp     = calcularPorcentajeUtilidadOperacional(data);
     const filaGastosFinanc = calcularGastosFinancieros(data);
+    const filaAsistenciaTecnica   = calcularAsistenciaTecnica(data);
+    const filaOtrosIngresos       = calcularOtrosIngresos(data);
+    const filaIngresosPorServicios = calcularIngresosPorServicios(data);
+    const filaGastosPorServicios    = calcularGastosPorServicios(data);
+    const filaExcedentesPerdida     = calcularExcedentesPerdidaNeta(data);
+    const filaPctExcedentes         = calcularPorcentajeExcedentes(data);
 
     const resultado = [];
     let pos54 = -1, pos51 = -1, posVN = -1;
@@ -370,6 +467,24 @@ function construirFilas(data) {
             resultado.push(filaUtilidadOp);
             resultado.push(filaPctUtilidadOp);
             resultado.push(filaGastosFinanc);
+        }
+        // — Insertar INGRESOS POR SERVICIOS + ASISTENCIA TECNICA después de 615035
+        if (String(row.mcncuenta || '') === '615035') {
+            resultado.push(filaIngresosPorServicios);
+            resultado.push(filaAsistenciaTecnica);
+        }
+        // — Insertar OTROS INGRESOS después VT
+        if (String(row.mcncuenta || '') === 'VT-00001') {
+            resultado.push(filaOtrosIngresos);
+        }
+        // GASTOS POR SERVICIOS
+        if (String(row.mcncuenta || '') === '4') {
+            resultado.push(filaGastosPorServicios);
+        }
+        // — Insertar EXCEDENTES después de 5230
+        if (String(row.mcncuenta || '') === '5230') {
+            resultado.push(filaExcedentesPerdida);
+            resultado.push(filaPctExcedentes);
         }
     });
 
@@ -407,6 +522,12 @@ function renderTabla(data) {
             else if (fila.tipoTotal === 'UtilidadOperacional')   tr.className = 'total-row-utilidad-op';    
             else if (fila.tipoTotal === 'PctUtilidadOperacional') tr.className = 'total-row-pct-utilidad-op'; 
             else if (fila.tipoTotal === 'GastosFinancieros') tr.className = 'total-row-gastos-financ';
+            else if (fila.tipoTotal === 'AsistenciaTecnica')    tr.className = 'total-row-asistencia-tecnica';
+            else if (fila.tipoTotal === 'OtrosIngresos')        tr.className = 'total-row-otros-ingresos';
+            else if (fila.tipoTotal === 'IngresosPorServicios') tr.className = 'total-row-ingresos-servicios';
+            else if (fila.tipoTotal === 'GastosPorServicios')    tr.className = 'total-row-gastos-servicios';
+            else if (fila.tipoTotal === 'ExcedentesPerdidaNeta') tr.className = 'total-row-excedentes';
+            else if (fila.tipoTotal === 'PctExcedentes')         tr.className = 'total-row-pct-excedentes';
             else                                        tr.className = 'total-row-ventas-netas';
         } else {
             const c = String(fila.mcncuenta || '');
@@ -443,7 +564,7 @@ function renderTabla(data) {
                 const v = parseFloat(fila[key]) || 0;
 
                 // ── NUEVO: formato especial para fila de porcentaje ──
-                if (fila.tipoTotal === 'PctCostoVentas' || fila.tipoTotal === 'PctMargenBruto' || fila.tipoTotal === 'PctMargenContribucion' || fila.tipoTotal === 'PctUtilidadOperacional') {
+                if (fila.tipoTotal === 'PctCostoVentas' || fila.tipoTotal === 'PctMargenBruto' || fila.tipoTotal === 'PctMargenContribucion' || fila.tipoTotal === 'PctUtilidadOperacional' || fila.tipoTotal === 'PctExcedentes') {
                     td.textContent = v !== 0 ? v.toFixed(2) + '%' : '-';
                     td.style.fontStyle = 'italic';
                 } else {
