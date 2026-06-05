@@ -215,9 +215,8 @@ function calcularTotalesPorLista(data, lista) {
 }
 
 /* ── GASTOS POR SERVICIOS ──────────────────────────────────── */
-const CUENTAS_GASTOS_SERVICIOS = ['5', '6', '7', '8', '5230'];
-
 function calcularGastosPorServicios(data) {
+    const CUENTAS_GASTOS_SERVICIOS = ['5', '6', '7', '8', '5230'];
     const t = { total: 0 };
     MESES.forEach(m => t[m] = 0);
     data.forEach(row => {
@@ -444,49 +443,109 @@ function construirFilas(data) {
         if (posVN < 0 && c.startsWith('1'))  posVN = i;
     });
 
+    // Rastrear qué cuentas de referencia existen en data
+    const cuentasExistentes = new Set(data.map(row => String(row.mcncuenta || '')));
+
+    // Rastrear qué inserciones ya se hicieron (para el fallback al final)
+    const insertado = {
+        pct_margen:         false,
+        margenCtb:          false,
+        utilidadOp:         false,
+        ingresoServicios:   false,
+        otrosIngresos:      false,
+        gastosPorServicios: false,
+        excedentes:         false,
+    };
+
     data.forEach((row, i) => {
         if (i === posVN) resultado.push({ ...totalesVN, mcncuenta: '', ctanombre: 'VENTAS NETAS', isTotalRow: true, tipoTotal: 'VentasNetas' });
         if (i === pos54) resultado.push({ ...totales54, mcncuenta: '54', ctanombre: 'GASTOS DE VENTAS', isTotalRow: true, tipoTotal: '54' });
         if (i === pos51) resultado.push({ ...totales51, mcncuenta: '51', ctanombre: 'GASTOS DE ADMINISTRACIÓN', isTotalRow: true, tipoTotal: '51' });
-        
-        resultado.push(row);
 
-        // ──  insertar % justo después de la fila 613522 ──
-        if (String(row.mcncuenta || '') === '613522') {
+        
+        const cuenta = String(row.mcncuenta || '');
+        
+        // ── GASTOS POR SERVICIOS antes de cuenta '5' ──
+        if (cuenta === '5') {
+            resultado.push(filaGastosPorServicios);
+            insertado.gastosPorServicios = true;
+        }
+        resultado.push(row);
+        // ── insertar % justo después de la fila 613522 ──
+        if (cuenta === '613522') {
             resultado.push(filaPct);
             resultado.push(filaMargen);
             resultado.push(filaPctMargen);
+            insertado.pct_margen = true;
         }
-        // ──  insertar Margen de Contribución después de 4240909502 ──
-        if (String(row.mcncuenta || '') === '4240909502') {
+        // ── insertar Margen de Contribución después de 4240909502 ──
+        if (cuenta === '4240909502') {
             resultado.push(filaMargenCtb);
             resultado.push(filaPctMargenCtb);
+            insertado.margenCtb = true;
         }
-        // ── NUEVO: insertar Utilidad Operacional después de 511534 ──
-        if (String(row.mcncuenta || '') === '511534') {
+        // ── insertar Utilidad Operacional 
+        const cuentasUtilidadGastosFinanc = ['511534', '511512', '51109501_51109502'];
+        const cuentaExistenteUtilidadGastos = cuentasUtilidadGastosFinanc.find(c => data.some(row => row.mcncuenta === c));
+        if (cuenta === cuentaExistenteUtilidadGastos && !insertado.utilidadOp) {
             resultado.push(filaUtilidadOp);
             resultado.push(filaPctUtilidadOp);
             resultado.push(filaGastosFinanc);
+            insertado.utilidadOp = true;
         }
-        // — Insertar INGRESOS POR SERVICIOS + ASISTENCIA TECNICA después de 615035
-        if (String(row.mcncuenta || '') === '615035') {
+        // ── Insertar INGRESOS POR SERVICIOS + ASISTENCIA TECNICA después de 615035 ──
+        if (cuenta === '615035') {
             resultado.push(filaIngresosPorServicios);
             resultado.push(filaAsistenciaTecnica);
+            insertado.ingresoServicios = true;
         }
-        // — Insertar OTROS INGRESOS después VT
-        if (String(row.mcncuenta || '') === 'VT-00001') {
+        // ── Insertar OTROS INGRESOS después de VT-00001 ──
+        const cuentasOtrosIngresos = ['AT-00003',  'VT-00025', 'AT-00032', 'VT-00001'];
+        // Respetar el orden de cuentasOtrosIngresos, no el de data
+        // Primera cuenta de la lista que realmente existe en data
+        const cuentaDisparo = cuentasOtrosIngresos.find(c => data.some(row => row.mcncuenta === c));
+        // ── Dentro del forEach, después de resultado.push(row) ───────────
+        if (cuenta === cuentaDisparo && !insertado.otrosIngresos) {
             resultado.push(filaOtrosIngresos);
+            insertado.otrosIngresos = true;
         }
-        // GASTOS POR SERVICIOS
-        if (String(row.mcncuenta || '') === '4') {
-            resultado.push(filaGastosPorServicios);
-        }
-        // — Insertar EXCEDENTES después de 5230
-        if (String(row.mcncuenta || '') === '5230') {
+        // ── Insertar EXCEDENTES después de 5230 ──
+        if (cuenta === '5230') {
             resultado.push(filaExcedentesPerdida);
             resultado.push(filaPctExcedentes);
+            insertado.excedentes = true;
         }
     });
+
+    // ── Fallback: insertar al final las filas cuya cuenta de referencia no existía ──
+    if (!insertado.pct_margen && !cuentasExistentes.has('613522')) {
+        resultado.push(filaPct);
+        resultado.push(filaMargen);
+        resultado.push(filaPctMargen);
+    }
+    if (!insertado.margenCtb && !cuentasExistentes.has('4240909502')) {
+        resultado.push(filaMargenCtb);
+        resultado.push(filaPctMargenCtb);
+    }
+    if (!insertado.utilidadOp && !cuentasExistentes.has('511534')) {
+        resultado.push(filaUtilidadOp);
+        resultado.push(filaPctUtilidadOp);
+        resultado.push(filaGastosFinanc);
+    }
+    if (!insertado.ingresoServicios && !cuentasExistentes.has('615035')) {
+        resultado.push(filaIngresosPorServicios);
+        resultado.push(filaAsistenciaTecnica);
+    }
+    if (!insertado.otrosIngresos && !cuentasExistentes.has('VT-00001')) {
+        resultado.push(filaOtrosIngresos);
+    }
+    if (!insertado.gastosPorServicios && !cuentasExistentes.has('4')) {
+        resultado.push(filaGastosPorServicios);
+    }
+    if (!insertado.excedentes && !cuentasExistentes.has('5230')) {
+        resultado.push(filaExcedentesPerdida);
+        resultado.push(filaPctExcedentes);
+    }
 
     return resultado;
 }
@@ -511,7 +570,7 @@ function renderTabla(data) {
         const tr = document.createElement('tr');
         tr.dataset.fila = JSON.stringify(fila);
 
-        if (fila.isTotalRow) {
+        if (fila.isTotalRow) { // asignar clase según tipoTotal para filas de totales
             if      (fila.tipoTotal === '54')          tr.className = 'total-row-54';
             else if (fila.tipoTotal === '51')          tr.className = 'total-row-51';
             else if (fila.tipoTotal === 'PctCostoVentas') tr.className = 'total-row-pct';

@@ -126,6 +126,50 @@
   margin-bottom: 12px;
 }
 
+/* ── Selector sede/origen ── */
+.sede-origen-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  padding: 14px 16px;
+  background: #f0f4ff;
+  border: 1px solid #c7d7fb;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+}
+.sede-origen-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.sede-origen-row select {
+  padding: 6px 10px;
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
+  min-width: 140px;
+  cursor: pointer;
+}
+.sede-origen-row select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.sede-origen-note {
+  font-size: 11px;
+  color: #4b5dab;
+  align-self: flex-end;
+  padding-bottom: 2px;
+}
+
 /* ── Paste area ── */
 .paste-hint {
   font-size: 12px;
@@ -342,6 +386,12 @@
 .preview-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
 .preview-wrap::-webkit-scrollbar-track { background: #f0f1f3; }
 .preview-wrap::-webkit-scrollbar-thumb { background: #c1c5ce; border-radius: 3px; }
+
+.sede-origen-row select:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+  background: #f0f2f5;
+}
 </style>
 {% endblock %}
 
@@ -372,6 +422,39 @@
        TAB 1 — COPIAR / PEGAR
   ══════════════════════════════════════════════ -->
   <div class="ctb-panel active" id="tab-paste">
+
+    <!-- ── Sede y Origen (requeridos para el POST) ── -->
+    <div class="sede-origen-row">
+      <label>
+        Sede <span style="color:var(--danger);">*</span>
+        <select id="selectSedePaste">
+          <option value="">— Selecciona —</option>
+          <option value="tulua">Tuluá</option>
+          <option value="buga">Buga</option>
+          <option value="cartago">Cartago</option>
+          <option value="cali">Cali</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11.5px;
+                      color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+          <input type="checkbox" id="chkSinSedePaste" style="cursor:pointer;accent-color:var(--accent);">
+          Sin sede (guardar vacío)
+        </label>
+      </label>
+      <label>
+        Origen <span style="color:var(--danger);">*</span>
+        <select id="selectOrigenPaste">
+          <option value="">— Selecciona —</option>
+          <option value="ejecutado">Ejecutado</option>
+          <option value="presupuestado">Presupuestado</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11.5px;
+                      color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+          <input type="checkbox" id="chkSinOrigenPaste" style="cursor:pointer;accent-color:var(--accent);">
+          Sin origen (guardar vacío)
+        </label>
+      </label>
+      <span class="sede-origen-note">⚠ Todos los registros del lote se guardarán con esta sede y origen.</span>
+    </div>
 
     <div class="ctb-card">
       <div class="ctb-card-title">Formatos aceptados</div>
@@ -445,7 +528,7 @@
           <button class="btn btn-success" id="btnCargarPaste" disabled>
             ✅ Cargar a base de datos <span id="pasteCount"></span>
           </button>
-          <span style="font-size:12px;color:var(--muted);">Los registros duplicados (misma cuenta + fecha) se actualizarán.</span>
+          <span style="font-size:12px;color:var(--muted);">Los registros duplicados (misma cuenta + fecha + sede + origen) se actualizarán.</span>
         </div>
       </div>
     </div>
@@ -455,9 +538,42 @@
        TAB 2 — EXCEL
   ══════════════════════════════════════════════ -->
   <div class="ctb-panel" id="tab-excel">
+
+    <!-- ── Sede y Origen ── -->
+    <div class="sede-origen-row">
+      <label>
+        Sede <span style="color:var(--danger);">*</span>
+        <select id="selectSedeExcel">
+          <option value="">— Selecciona —</option>
+          <option value="tulua">Tuluá</option>
+          <option value="buga">Buga</option>
+          <option value="cartago">Cartago</option>
+          <option value="cali">Cali</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11.5px;
+                      color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+          <input type="checkbox" id="chkSinSedePaste" style="cursor:pointer;accent-color:var(--accent);">
+          Sin sede (guardar vacío)
+        </label>
+      </label>
+      <label>
+        Origen <span style="color:var(--danger);">*</span>
+        <select id="selectOrigenExcel">
+          <option value="">— Selecciona —</option>
+          <option value="ejecutado">Ejecutado</option>
+          <option value="presupuestado">Presupuestado</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11.5px;
+                      color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+          <input type="checkbox" id="chkSinOrigenPaste" style="cursor:pointer;accent-color:var(--accent);">
+          Sin origen (guardar vacío)
+        </label>
+      </label>
+      <span class="sede-origen-note">⚠ Todos los registros del archivo se guardarán con esta sede y origen.</span>
+    </div>
+
     <div class="ctb-card">
       <div class="ctb-card-title">Importar desde archivo Excel</div>
-      <!-- Año para formato horizontal en Excel -->
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
         <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;">
           Año para meses horizontales:
@@ -505,20 +621,41 @@
       <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
         <input type="text" id="histSearch" placeholder="Filtrar por cuenta o nombre..."
           style="padding:6px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px;width:240px;">
+        <!-- Filtros sede/origen en historial -->
+        <select id="histFilterSede"
+          style="padding:6px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px;">
+          <option value="">Todas las sedes</option>
+          <option value="tulua">Tuluá</option>
+          <option value="buga">Buga</option>
+          <option value="cartago">Cartago</option>
+          <option value="cali">Cali</option>
+        </select>
+        <select id="histFilterOrigen"
+          style="padding:6px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px;">
+          <option value="">Todos los orígenes</option>
+          <option value="ejecutado">Ejecutado</option>
+          <option value="presupuestado">Presupuestado</option>
+        </select>
         <button class="btn" id="btnRefreshHist">🔄 Actualizar</button>
+        <button class="btn btn-danger" id="btnEliminarSeleccionados" disabled style="display:flex;align-items:center;gap:6px;">
+          🗑️ Eliminar seleccionados <span id="selCount" style="background:rgba(255,255,255,.25);border-radius:10px;padding:1px 7px;font-size:11px;"></span>
+        </button>
         <span style="font-size:12px;color:var(--muted);" id="histCount"></span>
       </div>
       <div class="preview-wrap" style="max-height:500px;">
         <table class="hist-table" id="histTable">
           <thead>
             <tr>
-              <th>Cuenta</th><th>Ccosto</th><th>Nombre</th>
+              <th style="width:36px;text-align:center;">
+                <input type="checkbox" id="histCheckAll" title="Seleccionar todos" style="cursor:pointer;">
+              </th>
+              <th>Cuenta</th><th>Costo</th><th>Nombre</th>
               <th>Fecha</th><th class="num">Valor</th>
-              <th class="num">Total Anual</th><th>Acción</th>
+              <th class="num">Total Anual</th><th>Sede</th><th>Origen</th><th>Acción</th>
             </tr>
           </thead>
           <tbody id="histBody">
-            <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px;">Cargando...</td></tr>
+            <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -532,12 +669,37 @@
 
 <!-- Modal Borrar Todo -->
 <div id="modalBorrar" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:10px;padding:28px;width:380px;max-width:92vw;box-shadow:0 8px 32px rgba(0,0,0,.22);">
+  <div style="background:#fff;border-radius:10px;padding:28px;width:420px;max-width:92vw;box-shadow:0 8px 32px rgba(0,0,0,.22);">
     <div style="font-size:15px;font-weight:600;margin-bottom:10px;">⚠️ Confirmar borrado</div>
-    <p style="font-size:13px;color:var(--muted);margin:0 0 18px;">¿Estás seguro de eliminar <strong>todos</strong> los registros? Esta acción no se puede deshacer.</p>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 14px;">
+      Puedes borrar todos los datos o filtrar por sede y/u origen. Sin filtros se elimina <strong>todo</strong>.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">
+      <label style="font-size:12px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;gap:4px;">
+        Sede (opcional)
+        <select id="borrarFilterSede"
+          style="padding:6px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px;">
+          <option value="">Todas las sedes</option>
+          <option value="tulua">Tuluá</option>
+          <option value="buga">Buga</option>
+          <option value="cartago">Cartago</option>
+          <option value="cali">Cali</option>
+        </select>
+      </label>
+      <label style="font-size:12px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;gap:4px;">
+        Origen (opcional)
+        <select id="borrarFilterOrigen"
+          style="padding:6px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px;">
+          <option value="">Todos los orígenes</option>
+          <option value="ejecutado">Ejecutado</option>
+          <option value="presupuestado">Presupuestado</option>
+        </select>
+      </label>
+    </div>
+    <p style="font-size:12px;color:var(--danger);margin:0 0 16px;">Esta acción no se puede deshacer.</p>
     <div style="display:flex;gap:8px;justify-content:flex-end;">
       <button class="btn" id="cancelBorrar">Cancelar</button>
-      <button class="btn btn-danger" id="confirmBorrar">🗑️ Borrar todo</button>
+      <button class="btn btn-danger" id="confirmBorrar">🗑️ Borrar</button>
     </div>
   </div>
 </div>
@@ -554,18 +716,17 @@ const URL_BORRAR_CTB        = "{% url 'borrar_consolidado_total_base' %}";
 const URL_ELIMINAR_FILA_CTB = "{% url 'eliminar_fila_consolidado_total_base' %}";
 const CSRF = document.querySelector('[name=csrf-token]').content;
 
-/* ── Columnas ── */
+/* ── Columnas preview (no incluyen sede/origen: son a nivel de lote) ── */
 const COLS_ALL = ['mcncuenta','mcnccosto','ctanombre','mcnfecha','valor','total_anual'];
 const COLS_NUM = ['valor','total_anual'];
 
-// Meses en español → número de mes
+/* ── Meses en español → número de mes ── */
 const MESES_MAP = {
   'enero':1,'febrero':2,'marzo':3,'abril':4,'mayo':5,'junio':6,
   'julio':7,'agosto':8,'septiembre':9,'octubre':10,'noviembre':11,'diciembre':12
 };
-const MESES_LISTA = Object.keys(MESES_MAP);
 
-// Alias de columnas del Formato B → nombres internos
+/* ── Alias de columnas Formato B → nombres internos ── */
 const ALIAS_MAP = {
   'cuenta':           'mcncuenta',
   'mcncuenta':        'mcncuenta',
@@ -587,6 +748,45 @@ let histData     = [];
 
 const FMT = new Intl.NumberFormat('es-ES');
 function fmtN(v) { const n = parseFloat(v); return isNaN(n) ? '' : FMT.format(n); }
+
+// Función para habilitar/deshabilitar selects de sede/origen según checkboxes "Sin asignar"
+function bindCheckboxSinAsignar(chkId, selectId) {
+  const chk = document.getElementById(chkId);
+  const sel = document.getElementById(selectId);
+  if (!chk || !sel) return;   // ← guard: si no existe, no explota
+  chk.addEventListener('change', () => {
+    sel.disabled = chk.checked;
+    if (chk.checked) sel.value = '';
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  bindCheckboxSinAsignar('chkSinSedePaste',   'selectSedePaste');
+  bindCheckboxSinAsignar('chkSinOrigenPaste', 'selectOrigenPaste');
+  bindCheckboxSinAsignar('chkSinSedeExcel',   'selectSedeExcel');
+  bindCheckboxSinAsignar('chkSinOrigenExcel', 'selectOrigenExcel');
+});
+
+/* ════════════════════════════════════════════════
+   HELPERS: leer sede / origen de los selects
+════════════════════════════════════════════════ */
+function getSedeOrigen(prefix) {
+  const sede   = document.getElementById(`selectSede${prefix}`).value;
+  const origen = document.getElementById(`selectOrigen${prefix}`).value;
+  return { sede, origen };
+}
+
+function validarSedeOrigen(sede, origen, prefijo) {
+  const chkSede   = document.getElementById('chkSinSede'   + prefijo);
+  const chkOrigen = document.getElementById('chkSinOrigen' + prefijo);
+
+  const sedeOk   = sede   || chkSede?.checked;
+  const origenOk = origen || chkOrigen?.checked;
+
+  if (!sedeOk)   { toast('Selecciona una sede o marca "Sin sede"',   'warn'); return false; }
+  if (!origenOk) { toast('Selecciona un origen o marca "Sin origen"', 'warn'); return false; }
+  return true;
+}
 
 /* ════════════════════════════════════════════════
    TOAST
@@ -615,13 +815,13 @@ document.querySelectorAll('.ctb-tab').forEach(tab => {
 });
 
 /* ════════════════════════════════════════════════
-   UTILIDADES
+   UTILIDADES DE PARSEO
 ════════════════════════════════════════════════ */
 function detectarSeparador(texto) {
   const primera = texto.split('\n')[0];
-  const tabs   = (primera.match(/\t/g)  || []).length;
-  const pvcomas= (primera.match(/;/g)   || []).length;
-  const comas  = (primera.match(/,/g)   || []).length;
+  const tabs    = (primera.match(/\t/g)  || []).length;
+  const pvcomas = (primera.match(/;/g)   || []).length;
+  const comas   = (primera.match(/,/g)   || []).length;
   if (tabs >= pvcomas && tabs >= comas) return '\t';
   if (pvcomas >= comas) return ';';
   return ',';
@@ -629,7 +829,7 @@ function detectarSeparador(texto) {
 
 function normHeader(h) {
   return h.trim().toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // quitar tildes
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '_');
 }
 
@@ -644,17 +844,13 @@ function padFecha(anio, mes) {
   return `${anio}-${String(mes).padStart(2,'0')}-01`;
 }
 
-/* ════════════════════════════════════════════════
-   DETECCIÓN DE FORMATO
-  Devuelve 'vertical' | 'horizontal'
-════════════════════════════════════════════════ */
 function detectarFormato(headers) {
   const mesesPresentes = headers.filter(h => MESES_MAP[h] !== undefined);
   return mesesPresentes.length >= 6 ? 'horizontal' : 'vertical';
 }
 
 /* ════════════════════════════════════════════════
-   PARSEO FORMATO A — vertical (mcnfecha, valor)
+   PARSEO FORMATO A — vertical
 ════════════════════════════════════════════════ */
 function parsearVertical(headers, lineas, sep) {
   const REQUIRED = ['mcncuenta','ctanombre','mcnfecha','valor'];
@@ -670,7 +866,6 @@ function parsearVertical(headers, lineas, sep) {
     const obj  = {};
     headers.forEach((h,idx) => { obj[h] = (vals[idx]||'').trim(); });
 
-    // validaciones
     if (!obj.mcncuenta) { errors.push(`Fila ${i+1}: mcncuenta vacío`); continue; }
     if (!obj.ctanombre) { errors.push(`Fila ${i+1}: ctanombre vacío`); continue; }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(obj.mcnfecha)) {
@@ -695,10 +890,8 @@ function parsearVertical(headers, lineas, sep) {
 
 /* ════════════════════════════════════════════════
    PARSEO FORMATO B — meses horizontales
-   Una fila por cuenta → N filas (una por mes)
 ════════════════════════════════════════════════ */
 function parsearHorizontal(headers, lineas, sep, anio) {
-  // Detectar cuáles columnas son meses
   const mesesCols = headers
     .map((h,i) => ({ mes: MESES_MAP[h], idx: i, nombre: h }))
     .filter(x => x.mes !== undefined);
@@ -707,16 +900,14 @@ function parsearHorizontal(headers, lineas, sep, anio) {
     return { rows:[], errors:['No se encontraron columnas de meses (enero…diciembre)'] };
   }
 
-  // Mapear columnas de identidad usando alias
   function findCol(target) {
     const idx = headers.findIndex(h => ALIAS_MAP[h] === target || h === target);
     return idx >= 0 ? idx : -1;
   }
-  const idxCuenta   = findCol('mcncuenta');
-  const idxCcosto   = findCol('mcnccosto');
-  const idxNombre   = findCol('ctanombre');
-  // total_anual: buscar columna "total" si existe
-  const idxTotal    = headers.findIndex(h => h === 'total' || h === 'total_anual');
+  const idxCuenta = findCol('mcncuenta');
+  const idxCcosto = findCol('mcnccosto');
+  const idxNombre = findCol('ctanombre');
+  const idxTotal  = headers.findIndex(h => h === 'total' || h === 'total_anual');
 
   if (idxCuenta < 0) return { rows:[], errors:['No se encontró columna de cuenta (cuenta / mcncuenta)'] };
   if (idxNombre < 0) return { rows:[], errors:['No se encontró columna de nombre (nombre cuenta / ctanombre / concepto)'] };
@@ -725,16 +916,15 @@ function parsearHorizontal(headers, lineas, sep, anio) {
 
   for (let i=1; i<lineas.length; i++) {
     if (!lineas[i].trim()) continue;
-    const vals      = lineas[i].split(sep);
-    const mcncuenta = (vals[idxCuenta] || '').trim();
-    const mcnccosto = idxCcosto >= 0 ? (vals[idxCcosto] || '0').trim() : '0';
-    const ctanombre = (vals[idxNombre] || '').trim();
+    const vals        = lineas[i].split(sep);
+    const mcncuenta   = (vals[idxCuenta] || '').trim();
+    const mcnccosto   = idxCcosto >= 0 ? (vals[idxCcosto] || '0').trim() : '0';
+    const ctanombre   = (vals[idxNombre] || '').trim();
     const total_anual = idxTotal >= 0 ? cleanNum(vals[idxTotal]) : null;
 
     if (!mcncuenta) { errors.push(`Fila ${i+1}: cuenta vacía`); continue; }
     if (!ctanombre) { errors.push(`Fila ${i+1}: nombre de cuenta vacío`); continue; }
 
-    // Una fila de salida por cada mes que tenga valor (incluyendo 0)
     mesesCols.forEach(({ mes, idx }) => {
       const raw   = (vals[idx] || '').trim();
       const valor = cleanNum(raw);
@@ -752,7 +942,7 @@ function parsearHorizontal(headers, lineas, sep, anio) {
 }
 
 /* ════════════════════════════════════════════════
-   PARSEO PRINCIPAL (detecta formato)
+   PARSEO PRINCIPAL
 ════════════════════════════════════════════════ */
 function parsearTexto(texto, anio) {
   texto = texto.trim();
@@ -761,14 +951,11 @@ function parsearTexto(texto, anio) {
   const sep    = detectarSeparador(texto);
   const lineas = texto.split('\n').map(l => l.replace(/\r/g,''));
 
-  // Normalizar headers: quitar tildes, minúsculas, espacios→_
   const headersRaw = lineas[0].split(sep).map(normHeader);
-  // Aplicar alias para que "cuenta", "nombre cuenta", etc. funcionen
-  const headers = headersRaw.map(h => ALIAS_MAP[h] || h);
+  const headers    = headersRaw.map(h => ALIAS_MAP[h] || h);
+  const formato    = detectarFormato(headers);
 
-  const formato = detectarFormato(headers);
   let resultado;
-
   if (formato === 'horizontal') {
     resultado = parsearHorizontal(headers, lineas, sep, anio);
   } else {
@@ -784,7 +971,6 @@ function parsearTexto(texto, anio) {
 function renderPreview(rows, errors, formato, headEl, bodyEl, statusEl, countEl, btnCargar) {
   statusEl.innerHTML = '';
 
-  // Badge de formato detectado
   if (formato) {
     const bf = document.createElement('span');
     bf.className = formato === 'horizontal' ? 'badge badge-warn' : 'badge badge-info';
@@ -815,7 +1001,6 @@ function renderPreview(rows, errors, formato, headEl, bodyEl, statusEl, countEl,
 
   if (!rows.length) { btnCargar.disabled = true; return; }
 
-  // Cabecera
   headEl.innerHTML = '';
   COLS_ALL.forEach(col => {
     const th = document.createElement('th');
@@ -823,7 +1008,6 @@ function renderPreview(rows, errors, formato, headEl, bodyEl, statusEl, countEl,
     headEl.appendChild(th);
   });
 
-  // Cuerpo (máx 200 filas)
   bodyEl.innerHTML = '';
   rows.slice(0, 200).forEach(row => {
     const tr = document.createElement('tr');
@@ -846,7 +1030,7 @@ function renderPreview(rows, errors, formato, headEl, bodyEl, statusEl, countEl,
     bodyEl.appendChild(tr);
   }
 
-  countEl.textContent = `(${rows.length} registros)`;
+  if (countEl) countEl.textContent = `(${rows.length} registros)`;
   btnCargar.disabled = errors.length > 0;
 }
 
@@ -862,8 +1046,7 @@ document.getElementById('btnParsear').addEventListener('click', () => {
   parsedRows   = rows;
   parsedErrors = errors;
 
-  const infoEl = document.getElementById('parseInfo');
-  infoEl.textContent = formato
+  document.getElementById('parseInfo').textContent = formato
     ? `Formato detectado: ${formato === 'horizontal' ? 'B (meses horizontales)' : 'A (fecha vertical)'} · ${headers.length} columnas`
     : '';
 
@@ -886,51 +1069,82 @@ document.getElementById('btnLimpiarPaste').addEventListener('click', () => {
 });
 
 /* ════════════════════════════════════════════════
-   ENVIAR A BD (por lotes)
+   ENVIAR A BD — ahora incluye sede y origen en cada lote
 ════════════════════════════════════════════════ */
-async function enviarRegistros(rows, progressFill, progressLabel, progressWrap, btnEl) {
-  progressWrap.classList.add('active');
-  btnEl.disabled = true;
-  btnEl.innerHTML = '<span class="spin"></span> Cargando…';
+async function enviarRegistros(rows, sede, origen, progressFill, progressLabel, progressWrap, btnEl) {
+    progressWrap.classList.add('active');
+    btnEl.disabled = true;
 
-  const BATCH = 500;
-  let insertados = 0;
+    // Guardar referencia al span de conteo ANTES de tocar el botón
+    const countSpan = btnEl.querySelector('span');
 
-  for (let i = 0; i < rows.length; i += BATCH) {
-    const lote = rows.slice(i, i + BATCH);
-    const pct  = Math.round(((i + lote.length) / rows.length) * 100);
-    progressFill.style.width = pct + '%';
-    progressLabel.textContent = `Enviando ${i+1}–${Math.min(i+BATCH, rows.length)} de ${rows.length}…`;
+    // Spinner: solo cambiar el texto del nodo texto, no innerHTML
+    while (btnEl.firstChild) btnEl.removeChild(btnEl.firstChild);
+    const spinEl = document.createElement('span');
+    spinEl.className = 'spin';
+    const loadingText = document.createTextNode(' Cargando…');
+    btnEl.appendChild(spinEl);
+    btnEl.appendChild(loadingText);
 
-    try {
-      const resp = await fetch(URL_CARGAR_CTB, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
-        body: JSON.stringify({ registros: lote }),
-      });
-      const json = await resp.json();
-      if (!resp.ok || !json.success) throw new Error(json.error || resp.statusText);
-      insertados += json.insertados || 0;
-    } catch(e) {
-      toast('Error al enviar lote: ' + e.message, 'error');
-      progressWrap.classList.remove('active');
-      btnEl.disabled = false;
-      btnEl.innerHTML = '✅ Reintentar';
-      return;
+    const BATCH = 500;
+    let insertados   = 0;
+    let actualizados = 0;
+
+    for (let i = 0; i < rows.length; i += BATCH) {
+        const lote = rows.slice(i, i + BATCH);
+        const pct  = Math.round(((i + lote.length) / rows.length) * 100);
+        progressFill.style.width = pct + '%';
+        progressLabel.textContent = `Enviando ${i+1}–${Math.min(i+BATCH, rows.length)} de ${rows.length}…`;
+
+        try {
+            const resp = await fetch(URL_CARGAR_CTB, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                body: JSON.stringify({ registros: lote, sede, origen }),
+            });
+            const json = await resp.json();
+            if (!resp.ok || !json.success) throw new Error(json.error || resp.statusText);
+            insertados   += json.insertados   || 0;
+            actualizados += json.actualizados || 0;
+        } catch(e) {
+            toast('Error al enviar lote: ' + e.message, 'error');
+            progressWrap.classList.remove('active');
+            // Restaurar botón con su span intacto
+            while (btnEl.firstChild) btnEl.removeChild(btnEl.firstChild);
+            const labelText = document.createTextNode('✅ Reintentar ');
+            const newSpan   = document.createElement('span');
+            newSpan.id      = countSpan?.id || '';
+            btnEl.appendChild(labelText);
+            btnEl.appendChild(newSpan);
+            btnEl.disabled = false;
+            return;
+        }
     }
-  }
 
-  progressFill.style.width = '100%';
-  progressLabel.textContent = `✓ ${insertados} registros guardados`;
-  toast(`✅ ${insertados} registros cargados`, 'success');
-  btnEl.innerHTML = '✅ Cargado';
-  setTimeout(() => progressWrap.classList.remove('active'), 3000);
+    progressFill.style.width = '100%';
+    progressLabel.textContent = `✓ ${insertados} insertados, ${actualizados} actualizados`;
+    toast(`✅ ${insertados} insertados · ${actualizados} actualizados`, 'success');
+
+    // Restaurar botón preservando el span con su id original
+    while (btnEl.firstChild) btnEl.removeChild(btnEl.firstChild);
+    const doneText = document.createTextNode('✅ Cargado ');
+    const restoredSpan = document.createElement('span');
+    restoredSpan.id = countSpan?.id || '';
+    btnEl.appendChild(doneText);
+    btnEl.appendChild(restoredSpan);
+    btnEl.disabled = true;
+
+    setTimeout(() => progressWrap.classList.remove('active'), 3000);
 }
 
+/* ── Cargar desde Paste ── */
 document.getElementById('btnCargarPaste').addEventListener('click', () => {
   if (!parsedRows.length) return;
+  const { sede, origen } = getSedeOrigen('Paste');
+  if (!validarSedeOrigen(sede, origen, 'Paste')) return;
+
   enviarRegistros(
-    parsedRows,
+    parsedRows, sede, origen,
     document.getElementById('progressFill'),
     document.getElementById('progressLabel'),
     document.getElementById('progressWrap'),
@@ -964,7 +1178,6 @@ function procesarExcel(file) {
       const json = XLSX.utils.sheet_to_json(ws, { defval:null, raw:false });
       if (!json.length) { toast('El archivo está vacío', 'warn'); return; }
 
-      // Construir texto TSV simulado para reutilizar el parseo
       const headersRaw = Object.keys(json[0]).map(normHeader);
       const headers    = headersRaw.map(h => ALIAS_MAP[h] || h);
       const formato    = detectarFormato(headers);
@@ -972,15 +1185,13 @@ function procesarExcel(file) {
       let rows=[], errors=[];
 
       if (formato === 'horizontal') {
-        // Convertir objetos a array de lineas
-        const sep = '\t';
+        const sep    = '\t';
         const lineas = [
           headersRaw.join(sep),
           ...json.map(row => Object.values(row).map(v => v ?? '').join(sep))
         ];
         ({ rows, errors } = parsearHorizontal(headers, lineas, sep, anio));
       } else {
-        // Formato A: normalizar fecha Date→string
         const normalizado = json.map(row => {
           const n = {};
           Object.keys(row).forEach(k => {
@@ -993,7 +1204,7 @@ function procesarExcel(file) {
           });
           return n;
         });
-        const sep = '\t';
+        const sep    = '\t';
         const lineas = [
           headers.join(sep),
           ...normalizado.map(row => headers.map(h => row[h] ?? '').join(sep))
@@ -1018,10 +1229,14 @@ function procesarExcel(file) {
   reader.readAsArrayBuffer(file);
 }
 
+/* ── Cargar desde Excel ── */
 document.getElementById('btnCargarExcel').addEventListener('click', () => {
   if (!excelRows.length) return;
+  const { sede, origen } = getSedeOrigen('Excel');
+  if (!validarSedeOrigen(sede, origen, 'Excel')) return;
+
   enviarRegistros(
-    excelRows,
+    excelRows, sede, origen,
     document.getElementById('excelProgressFill'),
     document.getElementById('excelProgressLabel'),
     document.getElementById('excelProgressWrap'),
@@ -1030,12 +1245,11 @@ document.getElementById('btnCargarExcel').addEventListener('click', () => {
 });
 
 /* ════════════════════════════════════════════════
-   PLANTILLA EXCEL — genera las dos hojas
+   PLANTILLA EXCEL
 ════════════════════════════════════════════════ */
 document.getElementById('btnDescargarPlantilla').addEventListener('click', () => {
   const wb = XLSX.utils.book_new();
 
-  // Hoja Formato A
   const wsA = XLSX.utils.aoa_to_sheet([
     ['mcncuenta','mcnccosto','ctanombre','mcnfecha','valor','total_anual'],
     ['1','0','Ventas a credito','2025-01-01',3041204838,43302942701],
@@ -1043,7 +1257,6 @@ document.getElementById('btnDescargarPlantilla').addEventListener('click', () =>
   ]);
   XLSX.utils.book_append_sheet(wb, wsA, 'FormatoA_Vertical');
 
-  // Hoja Formato B
   const wsB = XLSX.utils.aoa_to_sheet([
     ['cuenta','centro de costo','nombre cuenta','enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre','total'],
     ['521005','1','Gastos Bancarios',512999,521624,531329,506422,449860,449860,449860,449860,449860,562148,580365,551735,6015923],
@@ -1057,43 +1270,72 @@ document.getElementById('btnDescargarPlantilla').addEventListener('click', () =>
 /* ════════════════════════════════════════════════
    HISTORIAL
 ════════════════════════════════════════════════ */
+function actualizarBtnEliminar() {
+    const checked = document.querySelectorAll('.hist-row-check:checked');
+    const btn = document.getElementById('btnEliminarSeleccionados');
+    const span = document.getElementById('selCount');
+    btn.disabled = checked.length === 0;
+    if (span) span.textContent = checked.length > 0 ? checked.length : '';
+}
 async function cargarHistorial() {
   const body = document.getElementById('histBody');
-  body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px;">Cargando...</td></tr>`;
+  body.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;">Cargando...</td></tr>`;
+
+  // Leer filtros del historial
+  const sede   = document.getElementById('histFilterSede').value;
+  const origen = document.getElementById('histFilterOrigen').value;
+  const params = new URLSearchParams();
+  if (sede)   params.set('sede',   sede);
+  if (origen) params.set('origen', origen);
+
   try {
-    const resp = await fetch(URL_OBTENER_CTB);
+    const resp = await fetch(`${URL_OBTENER_CTB}?${params.toString()}`);
     const json = await resp.json();
     histData   = json.data || [];
     renderHistorial(histData);
   } catch(e) {
-    body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--danger);padding:24px;">Error al cargar</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--danger);padding:24px;">Error al cargar</td></tr>`;
   }
 }
 
 function renderHistorial(data) {
   const body = document.getElementById('histBody');
   document.getElementById('histCount').textContent = `${data.length} registros`;
+  document.getElementById('histCheckAll').checked = false;
+  actualizarBtnEliminar();
   body.innerHTML = '';
+
   if (!data.length) {
-    body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px;">Sin datos</td></tr>`;
+    body.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px;">Sin datos</td></tr>`;
     return;
   }
+
   data.slice(0, 500).forEach(row => {
     const tr = document.createElement('tr');
+    tr.dataset.id = row.id;
     tr.innerHTML = `
-      <td>${row.mcncuenta||''}</td><td>${row.mcnccosto||''}</td>
-      <td>${row.ctanombre||''}</td><td>${row.mcnfecha||''}</td>
+      <td style="text-align:center;">
+        <input type="checkbox" class="hist-row-check" data-id="${row.id}" style="cursor:pointer;">
+      </td>
+      <td>${row.mcncuenta||''}</td>
+      <td>${row.mcnccosto||''}</td>
+      <td>${row.ctanombre||''}</td>
+      <td>${row.mcnfecha||''}</td>
       <td class="num">${fmtN(row.valor)}</td>
       <td class="num">${fmtN(row.total_anual)}</td>
+      <td>${row.sede||''}</td>
+      <td>${row.origen||''}</td>
       <td style="text-align:center;">
         <button class="btn btn-danger" style="padding:3px 8px;font-size:11px;" data-id="${row.id}">🗑</button>
       </td>`;
     tr.querySelector('button').addEventListener('click', () => eliminarFila(row.id, tr));
+    tr.querySelector('.hist-row-check').addEventListener('change', actualizarBtnEliminar);
     body.appendChild(tr);
   });
+
   if (data.length > 500) {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td colspan="7" style="text-align:center;color:var(--muted);padding:8px;">… y ${data.length-500} más</td>`;
+    tr.innerHTML = `<td colspan="10" style="text-align:center;color:var(--muted);padding:8px;">… y ${data.length-500} más</td>`;
     body.appendChild(tr);
   }
 }
@@ -1102,41 +1344,118 @@ async function eliminarFila(id, tr) {
   if (!confirm('¿Eliminar este registro?')) return;
   try {
     const resp = await fetch(URL_ELIMINAR_FILA_CTB, {
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-      body:JSON.stringify({id}),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({ id }),
     });
     const json = await resp.json();
     if (!resp.ok || !json.success) throw new Error(json.error);
     tr.remove();
     histData = histData.filter(r => r.id !== id);
     document.getElementById('histCount').textContent = `${histData.length} registros`;
-    toast('Registro eliminado','success');
-  } catch(e) { toast('Error: '+e.message,'error'); }
+    actualizarBtnEliminar();
+    toast('Registro eliminado', 'success');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
+
+/* Seleccionar / deseleccionar todos */
+document.getElementById('histCheckAll').addEventListener('change', e => {
+  document.querySelectorAll('.hist-row-check').forEach(cb => { cb.checked = e.target.checked; });
+  actualizarBtnEliminar();
+});
+/* Eliminar seleccionados */
+document.getElementById('btnEliminarSeleccionados').addEventListener('click', async () => {
+    const checks = [...document.querySelectorAll('.hist-row-check:checked')];
+    if (!checks.length) return;
+    if (!confirm(`¿Eliminar ${checks.length} registro(s) seleccionado(s)?`)) return;
+
+    const ids = checks.map(cb => parseInt(cb.dataset.id, 10));
+    const btn = document.getElementById('btnEliminarSeleccionados');
+    const selSpan = document.getElementById('selCount');
+
+    btn.disabled = true;
+    // Guardar texto original para restaurar después
+    const textoOriginal = '🗑️ Eliminar seleccionados';
+    btn.firstChild.textContent = textoOriginal.replace('🗑️ Eliminar seleccionados', '');
+    // Limpiar y poner spinner sin tocar el span
+    btn.childNodes[0].textContent = ' Eliminando… ';
+    if (selSpan) selSpan.textContent = '';
+
+    // Forma segura: vaciar y reconstruir sin innerHTML
+    while (btn.firstChild) btn.removeChild(btn.firstChild);
+    const spinEl = document.createElement('span');
+    spinEl.className = 'spin';
+    const textEl = document.createTextNode(' Eliminando…');
+    btn.appendChild(spinEl);
+    btn.appendChild(textEl);
+
+    let eliminados = 0;
+    for (const id of ids) {
+        try {
+            const resp = await fetch(URL_ELIMINAR_FILA_CTB, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                body: JSON.stringify({ id }),
+            });
+            const json = await resp.json();
+            if (resp.ok && json.success) {
+                document.querySelector(`tr[data-id="${id}"]`)?.remove();
+                histData = histData.filter(r => r.id !== id);
+                eliminados++;
+            }
+        } catch { /* continuar con los demás */ }
+    }
+
+    document.getElementById('histCount').textContent = `${histData.length} registros`;
+    document.getElementById('histCheckAll').checked = false;
+
+    // Restaurar botón reconstruyendo sus nodos manualmente
+    while (btn.firstChild) btn.removeChild(btn.firstChild);
+    const labelText = document.createTextNode('🗑️ Eliminar seleccionados ');
+    const newSpan = document.createElement('span');
+    newSpan.id = 'selCount';
+    newSpan.style.cssText = 'background:rgba(255,255,255,.25);border-radius:10px;padding:1px 7px;font-size:11px;';
+    btn.appendChild(labelText);
+    btn.appendChild(newSpan);
+    btn.disabled = true; // queda deshabilitado porque no hay nada seleccionado
+
+    toast(`${eliminados} registro(s) eliminado(s)`, eliminados > 0 ? 'success' : 'warn');
+});
+
+/* Filtros del historial: re-cargar al cambiar selects */
+document.getElementById('histFilterSede').addEventListener('change', cargarHistorial);
+document.getElementById('histFilterOrigen').addEventListener('change', cargarHistorial);
 
 document.getElementById('histSearch').addEventListener('input', e => {
   const q = e.target.value.toLowerCase();
   renderHistorial(q ? histData.filter(r =>
-    (r.mcncuenta||'').toLowerCase().includes(q) || (r.ctanombre||'').toLowerCase().includes(q)
+    (r.mcncuenta||'').toLowerCase().includes(q) ||
+    (r.ctanombre||'').toLowerCase().includes(q)
   ) : histData);
 });
 document.getElementById('btnRefreshHist').addEventListener('click', cargarHistorial);
 
 /* ════════════════════════════════════════════════
-   BORRAR TODO
+   BORRAR TODO (con filtros opcionales sede/origen)
 ════════════════════════════════════════════════ */
 const modalBorrar = document.getElementById('modalBorrar');
 document.getElementById('btnBorrarTodo').addEventListener('click', () => { modalBorrar.style.display='flex'; });
 document.getElementById('cancelBorrar').addEventListener('click',  () => { modalBorrar.style.display='none'; });
 document.getElementById('confirmBorrar').addEventListener('click', async () => {
   modalBorrar.style.display = 'none';
+  const sede   = document.getElementById('borrarFilterSede').value   || null;
+  const origen = document.getElementById('borrarFilterOrigen').value || null;
   try {
-    const resp = await fetch(URL_BORRAR_CTB,{method:'POST',headers:{'X-CSRFToken':CSRF}});
+    const resp = await fetch(URL_BORRAR_CTB, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body:    JSON.stringify({ sede, origen }),
+    });
     const json = await resp.json();
     if (!json.success) throw new Error(json.error);
-    toast('Todos los datos eliminados','success');
-    histData=[]; renderHistorial([]);
+    const label = [sede, origen].filter(Boolean).join(' / ') || 'todos';
+    toast(`Eliminados ${json.eliminados} registros (${label})`, 'success');
+    histData = []; renderHistorial([]);
   } catch(e) { toast('Error: '+e.message,'error'); }
 });
 

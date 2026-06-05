@@ -1,131 +1,437 @@
-table thead th {
-    background-color: #4f6ed3;
-    color: #fff;
-    font-size: 0.8rem;
-    padding: 4px 8px;
+/* ============================================================
+   consolidado_sedes.css
+   Estilos para vistas de sedes (Tuluá, etc.) — solo lectura
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+/* ── Variables ─────────────────────────────────────────────── */
+:root {
+    --bg:             #f4f5f7;
+    --surface:        #ffffff;
+    --border:         #d0d4db;
+    --border-light:   #e8eaed;
+
+    --text-primary:   #000000;
+    --text-secondary: #34363d;
+    --c-muted:        #9299a8;
+
+    --accent:         #1a56db;
+    --accent-hover:   #1648c4;
+    --accent-light:   #eef2fd;
+
+    --c-red:          #e53e3e;
+    --danger:         #e53e3e;
+    --danger-hover:   #c53030;
+    --danger-light:   #fff5f5;
+
+    --success:        #2f855a;
+    --success-light:  #f0fff4;
+
+    --warning:        #b7791f;
+    --warning-light:  #fffbeb;
+
+    --c-pos:          #276749;
+    --c-neg:          #c53030;
+    --c-hint:         #9299a8;
+
+    --shadow-sm:      0 1px 3px rgba(0,0,0,.08);
+    --shadow-md:      0 4px 16px rgba(0,0,0,.12);
+
+    --radius:         6px;
+    --radius-lg:      10px;
+
+    --font-sans:      'IBM Plex Sans', sans-serif;
+    --font-mono:      'IBM Plex Mono', monospace;
+
+    --row-odd:        #ffffff;
+    --row-even:       #f8f9fb;
+    --row-hover:      #eef2fd;
+    --header-bg:      #1a1d23;
+    --header-text:    #e8eaed;
 }
 
-#table {
-    table-layout: fixed;
-    width: 100%;
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ══════════════════════════════════════════════════════════════
+   LAYOUT PRINCIPAL
+══════════════════════════════════════════════════════════════ */
+.consolidado-wrap {
+    font-family: var(--font-sans);
+    padding: 24px;
+    background: var(--bg);
+    min-height: 100vh;
+    color: var(--text-primary);
 }
 
-#table th,
-#table td {
+/* ── Cabecera ──────────────────────────────────────────────── */
+.consolidado-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    box-shadow: var(--shadow-sm);
+}
+
+.consolidado-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.consolidado-title span { color: var(--accent); }
+
+.controls-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* ── Search box ────────────────────────────────────────────── */
+.search-box {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px 12px;
+    transition: border-color .15s, box-shadow .15s;
+}
+.search-box:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(26,86,219,.12);
+}
+.search-box input {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--text-primary);
+    width: 200px;
+}
+.search-box input::placeholder { color: var(--c-muted); }
+
+/* ── Botones ───────────────────────────────────────────────── */
+.btn {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 7px 14px;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, box-shadow .15s, transform .1s;
     white-space: nowrap;
+}
+.btn:active { transform: scale(0.97); }
+
+.btn-outline {
+    background: var(--surface);
+    color: var(--text-primary);
+    border-color: var(--border);
+}
+.btn-outline:hover { background: var(--bg); border-color: var(--accent); color: var(--accent); }
+
+.btn-export {
+    background: #065f46;
+    color: #fff;
+    border-color: #065f46;
+}
+.btn-export:hover { background: #047857; border-color: #047857; }
+
+/* ══════════════════════════════════════════════════════════════
+   STATS BAR
+══════════════════════════════════════════════════════════════ */
+.stats-bar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+.stat-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: var(--shadow-sm);
+}
+.stat-pill.stat-indigo { border-color: #c7d2fe; background: #eef2fd; }
+.stat-val { font-weight: 600; color: var(--text-primary); }
+
+/* ══════════════════════════════════════════════════════════════
+   TABLA WRAP
+══════════════════════════════════════════════════════════════ */
+.table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 4px 8px;
-    font-size: 0.9rem;
+    box-shadow: var(--shadow-sm);
+    position: relative;
 }
 
-.toast-container {
+/* ── Loading overlay ───────────────────────────────────────── */
+.loading-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,.80);
+    backdrop-filter: blur(2px);
+    z-index: 20;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+}
+.loading-overlay.active { display: flex; }
+
+.spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.table-scroll { overflow-x: auto; }
+
+/* ══════════════════════════════════════════════════════════════
+   TABLA
+══════════════════════════════════════════════════════════════ */
+table.consolidado {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-family: var(--font-sans);
+}
+
+/* ── Cabecera ──────────────────────────────────────────────── */
+table.consolidado thead tr { background: var(--header-bg); }
+table.consolidado thead th {
+    padding: 10px 13px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--header-text);
+    border-right: 1px solid rgba(255,255,255,.08);
+    white-space: nowrap;
+    user-select: none;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+table.consolidado thead th.num  { text-align: right; }
+table.consolidado thead th:last-child { border-right: none; }
+
+/* ── Sortable ──────────────────────────────────────────────── */
+table.consolidado thead th.sortable { cursor: pointer; }
+table.consolidado thead th.sortable:hover { background: #2d3240; }
+table.consolidado thead th.sorted-asc  .sort-icon::after { content: ' ▲'; font-size: 9px; }
+table.consolidado thead th.sorted-desc .sort-icon::after { content: ' ▼'; font-size: 9px; }
+
+/* ── Body filas ────────────────────────────────────────────── */
+table.consolidado tbody tr:nth-child(odd)  { background: var(--row-odd); }
+table.consolidado tbody tr:nth-child(even) { background: var(--row-even); }
+table.consolidado tbody tr:hover           { background: var(--row-hover); }
+
+table.consolidado tbody td {
+    padding: 8px 13px;
+    border-bottom: 1px solid var(--border-light);
+    border-right: 1px solid var(--border-light);
+    color: var(--text-primary);
+    white-space: nowrap;
+    vertical-align: middle;
+}
+table.consolidado tbody td:last-child { border-right: none; }
+
+/* ── Numéricas ─────────────────────────────────────────────── */
+table.consolidado td.num {
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+table.consolidado td.num.pos { color: var(--c-pos); }
+table.consolidado td.num.neg { color: var(--c-neg); }
+
+/* ── Fila vacía ────────────────────────────────────────────── */
+table.consolidado tbody tr.empty-row td {
+    text-align: center;
+    padding: 32px;
+    color: var(--c-muted);
+    font-size: 14px;
+    border-right: none;
+}
+
+/* ── Búsqueda oculta ───────────────────────────────────────── */
+tr.hidden-search { display: none; }
+
+/* ── tfoot ─────────────────────────────────────────────────── */
+table.consolidado tfoot tr { background: #b8b8b8; }
+table.consolidado tfoot td {
+    padding: 9px 13px;
+    color: #000000;
+    font-weight: 600;
+    font-size: 12px;
+    border-right: 1px solid rgba(255,255,255,.08);
+    white-space: nowrap;
+}
+table.consolidado tfoot td.num {
+    text-align: right;
+    font-family: var(--font-mono);
+}
+table.consolidado tfoot td:last-child { border-right: none; }
+
+/* ══════════════════════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════════════════════ */
+#toastContainer {
     position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 2000;
+    pointer-events: none;
 }
-
 .toast {
-    background: #333;
-    color: white;
-    padding: 15px 20px;
-    margin-bottom: 10px;
-    border-radius: 5px;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 11px 16px;
+    border-radius: var(--radius);
+    border-left: 4px solid transparent;
+    background: var(--surface);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-md);
+    max-width: 320px;
+    pointer-events: all;
     opacity: 0;
-    transform: translateX(100%);
-    transition: all 0.3s ease;
-    min-width: 300px;
+    transform: translateX(30px);
+    transition: opacity .25s, transform .25s;
+}
+.toast.show          { opacity: 1; transform: translateX(0); }
+.toast-success { border-color: var(--success); background: var(--success-light); color: var(--success); }
+.toast-error   { border-color: var(--danger);  background: var(--danger-light);  color: var(--danger); }
+.toast-warning { border-color: var(--warning); background: var(--warning-light); color: var(--warning); }
+.toast-info    { border-color: var(--accent);  background: var(--accent-light);  color: var(--accent); }
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .consolidado-wrap   { padding: 12px; }
+    .consolidado-header { flex-direction: column; align-items: flex-start; }
+    .controls-bar       { width: 100%; }
+    .search-box input   { width: 140px; }
+    #toastContainer     { bottom: 16px; right: 12px; left: 12px; }
+    .toast              { max-width: 100%; }
+}
+/* ══ FILAS ESPECIALES ══════════════════════════════════════════ */
+tr.total-row-54 td {
+    background: #ececec;
+    color: bold;
+    font-weight: 700;
+    font-size: .73rem;
+    border-top: 2px solid #000000;
+}
+tr.total-row-ventas-netas td {
+    background: #ececec;
+    color: var(--row-vn-text);
+    font-weight: 700;
+    font-size: .73rem;
+    border-bottom: 2px solid #047857;
+}
+/* Fila % Costo de Ventas */
+tr.total-row-pct td {
+    background: #f0fdf4;
+    color: #166534;
+    font-weight: 600;
+    border-top: 1px dashed #86efac;
+    border-bottom: 1px dashed #86efac;
+}
+/* Fila Margen Bruto */
+tr.total-row-margen td {
+    background: #eff6ff;
+    color: #ccd5f4;
+    font-weight: 700;
+    border-top: 2px solid #c4defc;
+    border-bottom: 2px solid #93c5fd;
 }
 
-.toast.show {
-    opacity: 1;
-    transform: translateX(0);
+/* Fila % Margen Bruto */
+tr.total-row-pct-margen td {
+    background: #eef2ff;
+    color: #a6a0ff;
+    font-weight: 600;
+    border-top: 1px dashed #a5b4fc;
+    border-bottom: 1px dashed #a5b4fc;
+    font-style: italic;
+}
+/* Margen de Contribución */
+tr.total-row-margen-ctb td {
+    background: #e9fff4;   /* verde esmeralda suave */
+    color: #065f46;
+    font-weight: 700;
+    border-top: 2px solid #c8fae9;
+    border-bottom: 2px solid #10b981;
 }
 
-.toast-success {
-    background: #28a745;
+/* % Margen de Contribución */
+tr.total-row-pct-margen-ctb td {
+    background: #ecfdf5;
+    color: #065f46;
+    font-style: italic;
+    font-weight: 600;
+    border-bottom: 2px solid #10b981;
+}
+/* Utilidad Operacional */
+tr.total-row-utilidad-op td {
+    background: #dbeafe;        
+    color: #1e3a8a;
+    font-weight: 700;
+    border-top: 2px solid #000000;
 }
 
-.toast-error {
-    background: #dc3545;
+/* % Utilidad Operacional */
+tr.total-row-pct-utilidad-op td {
+    background: #eff6ff;
+    color: #1e3a8a;
+    font-style: italic;
+    font-weight: 600;
+    border-bottom: 2px solid #000000;
+}
+/* ── EXCEDENTES O PERDIDA NETA ──────────────────────────────── */
+tr.total-row-excedentes td {
+    background-color: #f0fdf4;
+    color: #166534;
+    font-weight: 700;
 }
 
-.toast-info {
-    background: #17a2b8;
-}
-
-/* estilos para cuenta que empiecen en 54 */
-.cuenta-54 {
-    background-color: #bde2fd !important; /* Azul claro */
-}
-
-.cuenta-54:hover {
-    background-color: #bbdefb !important; /* Más oscuro al hover */
-}
-
-.cuenta-54.editing {
-    background-color: #fffce1 !important; /* Amarillo en edición */
-    border-left: 4px solid #2196F3 !important; /* Borde azul distintivo */
-}
-
-/* Bordes para formar un cuadrado alrededor del grupo de cuentas 54 */
-.cuenta-54-first td{
-    border-top: 2px solid #000000 !important;
-}
-
-.cuenta-54-last td{
-    border-bottom: 2px solid #000000 !important;
-}
-
-.cuenta-54 td:first-child{
-    border-left: 2px solid #000000 !important;
-}
-
-.cuenta-54 td:last-child {
-    border-right: 2px solid #000000 !important;
-}
-
-/* estilos para cuenta que empiecen en 51 */
-.cuenta-51 {
-    background-color: #d4ffa3 !important; /* Verde claro */
-}
-.cuenta-51:hover {
-    background-color: #dcedc8 !important; /* Más oscuro al hover */
-}
-.cuenta-51.editing {
-    background-color: #fff9c4 !important; /* Amarillo en edición */
-    border-left: 4px solid #4CAF50 !important; /* Borde verde distintivo */
-}
-
-/* Bordes para formar un cuadrado alrededor del grupo de cuentas 51 */
-.cuenta-51-first td{
-    border-top: 2px solid #000000 !important;
-}
-.cuenta-51-last td{
-    border-bottom: 2px solid #000000 !important;
-}
-.cuenta-51 td:first-child{
-    border-left: 2px solid #000000 !important;
-}
-.cuenta-51 td:last-child {
-    border-right: 2px solid #000000 !important;
-}
-
-/* estilos para fila total de cuentas que empiecen en 54 */
-.total-row-54 {
-    background-color: #f0f0f0;
-    font-weight: bold;
-    border-top: 2px solid #333;
-    border-bottom: 2px solid #333;
-}
-.total-row-51 {
-    background-color: #f3e5f5;
-    font-weight: bold;
-    border-top: 2px solid #7b1fa2;
-}
-.total-row-ventas-netas {
-    background-color: #ffe0b2;
-    font-weight: bold;
-    border-top: 2px solid #fb8c00;
+/* ── % EXCEDENTE O PERDIDA ──────────────────────────────────── */
+tr.total-row-pct-excedentes td {
+    background-color: #f0fdf4;
+    color: #15803d;
+    font-style: italic;
+    border-bottom: 2px solid #86efac;
 }

@@ -2645,7 +2645,9 @@ class ConsolidadoTotalBase(models.Model):
     mcnfecha = models.DateField(blank=True, null=True)
     valor = models.BigIntegerField(blank=True, null=True)
     total_anual = models.BigIntegerField(blank=True, null=True)
+    sede = models.CharField(blank=True, null=True)
+    origen = models.CharField(blank=True, null=True)
     
     class Meta:
         db_table = 'consolidado_total_base'
-    
+        

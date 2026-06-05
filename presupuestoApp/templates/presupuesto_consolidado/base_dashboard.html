@@ -8,12 +8,6 @@
   
   <!-- Google Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdn.datatables.net/2.3.6/css/dataTables.dataTables.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/columncontrol/1.1.1/css/columnControl.dataTables.min.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/4.0.5/css/fixedHeader.dataTables.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-  <!-- DataTables Buttons CSS -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
   <link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
   {% block css%}{% endblock %}
 </head>
@@ -32,6 +26,7 @@
         <a href="{% url 'consolidado_cartago' %}" class="{% if request.resolver_match.url_name == 'consolidado_cartago' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado cartago</span></a>
         <a href="{% url 'consolidado_cali' %}" class="{% if request.resolver_match.url_name == 'consolidado_cali' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado cali</span></a>
         <a href="{% url 'consolidado_total_base' %}" class="{% if request.resolver_match.url_name == 'consolidado_total_base' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado total base</span></a>
+        <a href="{% url 'vista_carga_consolidado_base' %}" class="{% if request.resolver_match.url_name == 'cargar_consolidado_total_base' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Carga consolidado total base</span></a>
       </nav>
       <button aria-label="Colapsar barra lateral" class="sidebar-toggle desktop" id="sidebarToggle">
         <span class="material-icons" aria-hidden="true">chevron_left</span>
@@ -62,11 +57,6 @@
     <span class="material-icons" aria-hidden="true">menu</span>
   </button>
 
-  <script src="https://cdn.datatables.net/2.3.6/js/dataTables.js"></script>
-  <script src="https://cdn.datatables.net/fixedheader/4.0.5/js/dataTables.fixedHeader.js"></script>
-  <script src="https://cdn.datatables.net/fixedheader/4.0.5/js/fixedHeader.dataTables.js"></script>
-  <script src="https://cdn.datatables.net/columncontrol/1.1.1/js/dataTables.columnControl.min.js"></script>
-  <script src="https://cdn.datatables.net/columncontrol/1.1.1/js/columnControl.dataTables.js"></script>
   <script>
       document.addEventListener('DOMContentLoaded', function () {
         const sidebar = document.getElementById('sidebar');

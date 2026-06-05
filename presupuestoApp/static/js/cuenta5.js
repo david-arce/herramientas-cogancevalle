@@ -64,23 +64,31 @@ const COLUMNS = [
   { key: "infdetalle", label: "INFDETALLE", num: false },
 ];
 
+// Columnas que tienen filtro Excel (deben coincidir con data-filter en el HTML)
+const FILTER_COLS = ["mcncuenta", "mcnfecha", "mcndestino", "mcnzona", "ctanombre"];
+
 // ─── Estado global ────────────────────────────────────────────
-let allRows     = [];   // todos los registros del servidor
-let filteredRows = [];  // resultado de búsqueda/ordenamiento
-let currentPage = 1;
-let perPage     = 50;
-let sortCol     = null;
-let sortDir     = "asc"; // "asc" | "desc"
-let searchQuery = "";
-let pendingDeleteIndex = null; // índice en filteredRows
+let allRows          = [];  // todos los registros cargados del servidor
+let filteredRows     = [];  // resultado tras búsqueda + filtros Excel
+let currentPage      = 1;
+let perPage          = 50;
+let sortCol          = null;
+let sortDir          = "asc";
+let searchQuery      = "";
+let pendingDeleteIndex = null;
 
 // ─── Arranque ─────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
   bindUI();
   loadData();
+
+  // Escuchar evento del módulo de filtros Excel (del template)
+  document.addEventListener("c5:filtros-aplicados", () => {
+    applyFilterAndRender();
+  });
 });
 
-// ─── Cargar datos (server-side completo de una vez) ───────────
+// ─── Cargar datos ─────────────────────────────────────────────
 function loadData() {
   const tbody = document.getElementById("c5Tbody");
   tbody.innerHTML = `<tr class="c5-loading-row"><td colspan="28">Cargando datos…</td></tr>`;
@@ -99,6 +107,7 @@ function loadData() {
     .then(r => r.json())
     .then(json => {
       allRows = json.data || [];
+      feedFilterValues();       // <── cargar valores únicos en los dropdowns
       applyFilterAndRender();
     })
     .catch(err => {
@@ -107,19 +116,52 @@ function loadData() {
     });
 }
 
+// ─── Alimentar valores únicos en el módulo C5Filters ──────────
+function feedFilterValues() {
+  if (!window.C5Filters) return;
+
+  FILTER_COLS.forEach(col => {
+    // Recoger todos los valores únicos no nulos de esa columna
+    const unique = [...new Set(
+      allRows
+        .map(row => row[col])
+        .filter(v => v !== null && v !== undefined)
+        .map(String)
+    )];
+    C5Filters.setValues(col, unique);
+  });
+}
+
 // ─── Filtrar + ordenar + renderizar ───────────────────────────
 function applyFilterAndRender() {
   const q = searchQuery.trim().toLowerCase();
 
-  filteredRows = q
-    ? allRows.filter(row =>
-        COLUMNS.some(col => {
-          const v = row[col.key];
-          return v !== null && v !== undefined && String(v).toLowerCase().includes(q);
-        })
-      )
-    : [...allRows];
+  // 1. Obtener filtros Excel activos
+  const excelFilters = window.C5Filters ? C5Filters.getParams() : {};
+  // excelFilters = { mcncuenta: ["510506","510507"], mcnzona: ["NORTE"], ... }
 
+  // 2. Filtrar sobre allRows
+  filteredRows = allRows.filter(row => {
+    // 2a. Búsqueda libre (searchInput)
+    if (q) {
+      const matchSearch = COLUMNS.some(col => {
+        const v = row[col.key];
+        return v !== null && v !== undefined && String(v).toLowerCase().includes(q);
+      });
+      if (!matchSearch) return false;
+    }
+
+    // 2b. Filtros Excel — cada columna activa debe coincidir
+    for (const [col, allowed] of Object.entries(excelFilters)) {
+      if (!allowed || allowed.length === 0) continue;
+      const cellVal = row[col] !== null && row[col] !== undefined ? String(row[col]) : "";
+      if (!allowed.includes(cellVal)) return false;
+    }
+
+    return true;
+  });
+
+  // 3. Ordenamiento
   if (sortCol !== null) {
     const col = COLUMNS[sortCol];
     filteredRows.sort((a, b) => {
@@ -271,7 +313,10 @@ function renderInfo() {
 function bindSortHeaders() {
   document.querySelectorAll("#c5Table thead th[data-col]").forEach((th, idx) => {
     th.classList.add("c5-sortable");
-    th.addEventListener("click", () => {
+    th.addEventListener("click", e => {
+      // Ignorar clics sobre el icono de filtro
+      if (e.target.classList.contains("c5-filter-icon")) return;
+
       if (sortCol === idx) {
         sortDir = sortDir === "asc" ? "desc" : "asc";
       } else {
@@ -290,17 +335,17 @@ function syncCheckAll() {
   const all  = document.querySelectorAll(".row-check");
   const chkd = document.querySelectorAll(".row-check:checked");
   const master = document.getElementById("checkAll");
-  if (!all.length)       { master.checked = false; master.indeterminate = false; return; }
-  if (chkd.length === 0) { master.checked = false; master.indeterminate = false; }
+  if (!all.length)              { master.checked = false; master.indeterminate = false; return; }
+  if (chkd.length === 0)        { master.checked = false; master.indeterminate = false; }
   else if (chkd.length === all.length) { master.checked = true; master.indeterminate = false; }
-  else { master.checked = false; master.indeterminate = true; }
+  else                          { master.checked = false; master.indeterminate = true; }
 }
 
 // ─── Enlazar todos los eventos de UI ─────────────────────────
 function bindUI() {
   bindSortHeaders();
 
-  // Búsqueda
+  // Búsqueda libre
   let searchTimer;
   document.getElementById("searchInput").addEventListener("input", e => {
     clearTimeout(searchTimer);
@@ -321,7 +366,7 @@ function bindUI() {
     document.querySelectorAll(".row-check").forEach(c => c.checked = e.target.checked);
   });
 
-  // Delegación para checkboxes individuales
+  // Delegación checkboxes individuales
   document.getElementById("c5Tbody").addEventListener("change", e => {
     if (e.target.classList.contains("row-check")) syncCheckAll();
   });
@@ -331,11 +376,12 @@ function bindUI() {
   document.getElementById("confirmEliminar").addEventListener("click", () => {
     if (pendingDeleteIndex !== null) {
       const row = filteredRows[pendingDeleteIndex];
-      // Quitar de allRows también
       const globalPos = allRows.indexOf(row);
       if (globalPos !== -1) allRows.splice(globalPos, 1);
       filteredRows.splice(pendingDeleteIndex, 1);
       pendingDeleteIndex = null;
+      // Regenerar valores únicos para los filtros tras eliminar fila
+      feedFilterValues();
       renderTable();
       renderPagination();
       renderInfo();
@@ -356,6 +402,8 @@ function bindUI() {
       .then(r => r.json())
       .then(() => {
         allRows = [];
+        if (window.C5Filters) C5Filters.clear();
+        feedFilterValues();
         applyFilterAndRender();
         showToast("Presupuesto eliminado correctamente", "success");
       })
@@ -370,10 +418,6 @@ function bindUI() {
     XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
     XLSX.writeFile(wb, "plantilla_base_presupuesto.xlsx");
   });
-
-  // ── Exportar datos visibles a Excel ───────────────────────
-  // (botón extra opcional — puedes agregarlo en el HTML si lo necesitas)
-  // document.getElementById("btnExportarExcel").addEventListener(...)
 
   // ── Cargar Excel ──────────────────────────────────────────
   document.getElementById("btnCargarExcel").addEventListener("click", () => {
@@ -464,7 +508,7 @@ function bindUI() {
           .then(r => r.json())
           .then(d => {
             showToast(`${d.insertados} registros cargados correctamente`, "success");
-            loadData();
+            loadData();   // recarga completa → feedFilterValues() se llama dentro
             spinner.style.display = "none"; btn.disabled = false;
             e.target.value = "";
           })
