@@ -65,7 +65,7 @@ const COLUMNS = [
 ];
 
 // Columnas que tienen filtro Excel (deben coincidir con data-filter en el HTML)
-const FILTER_COLS = ["mcncuenta", "mcnfecha", "mcndestino", "mcnzona", "ctanombre"];
+const FILTER_COLS = ["mcncuenta", "mcnfecha", "mcnccosto", "mcndestino", "mcnzona", "ctanombre"];
 
 // ─── Estado global ────────────────────────────────────────────
 let allRows          = [];  // todos los registros cargados del servidor
@@ -247,6 +247,7 @@ function renderTable() {
   tbody.innerHTML = "";
   tbody.appendChild(frag);
   syncCheckAll();
+  renderTotals();
 }
 
 // ─── Paginación ───────────────────────────────────────────────
@@ -308,7 +309,43 @@ function renderInfo() {
     ? "Sin registros"
     : `${new Intl.NumberFormat("es-ES").format(start)}–${new Intl.NumberFormat("es-ES").format(end)} de ${new Intl.NumberFormat("es-ES").format(total)} registros`;
 }
+// ─── Fila de totales ──────────────────────────────────────────
+function renderTotals() {
+  const row = document.getElementById("c5TotalRow");
+  if (!row) return;
 
+  // Columnas numéricas (índices en COLUMNS)
+  const numCols = new Set(COLUMNS.filter(c => c.num).map(c => c.key));
+
+  // Sumar sobre TODOS los filteredRows (no solo la página visible)
+  const sums = {};
+  numCols.forEach(k => { sums[k] = 0; });
+  filteredRows.forEach(r => {
+    numCols.forEach(k => {
+      const v = parseFloat(r[k]);
+      if (!isNaN(v)) sums[k] += v;
+    });
+  });
+
+  const cells = [];
+
+  // Celda checkbox (vacía)
+  cells.push(`<td></td>`);
+
+  // Celda acciones → etiqueta "TOTAL"
+  cells.push(`<td class="c5-total-label">TOTAL</td>`);
+
+  // Una celda por columna
+  COLUMNS.forEach(col => {
+    if (col.num) {
+      cells.push(`<td class="c5-num">${fmt(sums[col.key].toFixed(2))}</td>`);
+    } else {
+      cells.push(`<td></td>`);
+    }
+  });
+
+  row.innerHTML = cells.join("");
+}
 // ─── Ordenamiento por columna ─────────────────────────────────
 function bindSortHeaders() {
   document.querySelectorAll("#c5Table thead th[data-col]").forEach((th, idx) => {

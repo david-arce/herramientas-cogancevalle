@@ -217,6 +217,33 @@ th.c5-filterable:hover .c5-filter-icon {
   text-decoration: underline;
   margin-left: 4px;
 }
+/* ── Fila de totales ── */
+#c5Table tfoot tr {
+  background: #eef2ff;
+  font-weight: 700;
+  font-size: 12px;
+  color: #1e3a8a;
+  border-top: 2px solid #4f80e1;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+}
+
+#c5Table tfoot td {
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+
+#c5Table tfoot td.c5-total-label {
+  text-align: left;
+  color: #4f80e1;
+  font-size: 11px;
+  letter-spacing: .03em;
+}
+
+#c5Table tfoot td.c5-num {
+  text-align: right;
+}
 </style>
 {% endblock %}
 
@@ -283,7 +310,10 @@ th.c5-filterable:hover .c5-filter-icon {
           <th data-col="mcnvalcred">MCNVALCRED</th>
           <th data-col="saldonew">SALDONEW</th>
           <th data-col="mcnsucurs">MCNSUCURS</th>
-          <th data-col="mcnccosto">MCNCCOSTO</th>
+          <th data-col="mcnccosto" class="c5-filterable" data-filter="mcnccosto">
+            MCNCCOSTO
+            <span class="c5-filter-icon" data-filter="mcnccosto" title="Filtrar MCNCCOSTO">&#9660;</span>
+          </th>
 
           <th data-col="mcndestino" class="c5-filterable" data-filter="mcndestino">
             MCNDESTINO
@@ -314,6 +344,9 @@ th.c5-filterable:hover .c5-filter-icon {
           <th data-col="infdetalle">INFDETALLE</th>
         </tr>
       </thead>
+      <tfoot id="c5Tfoot">
+        <tr id="c5TotalRow"></tr>
+      </tfoot>
       <tbody id="c5Tbody">
         <tr class="c5-loading-row">
           <td colspan="28">Cargando datos…</td>
@@ -414,6 +447,7 @@ th.c5-filterable:hover .c5-filter-icon {
       filters: {
         mcncuenta: null,
         mcnfecha:  null,
+        mcnccosto:  null,
         mcndestino: null,
         mcnzona:   null,
         ctanombre: null,
@@ -422,6 +456,7 @@ th.c5-filterable:hover .c5-filter-icon {
       values: {
         mcncuenta: [],
         mcnfecha:  [],
+        mcnccosto:  [],
         mcndestino: [],
         mcnzona:   [],
         ctanombre: [],

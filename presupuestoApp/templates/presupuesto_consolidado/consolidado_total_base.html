@@ -55,18 +55,18 @@
                         <th class="sortable" data-col="ctanombre">
                             Concepto <span class="sort-icon"></span>
                         </th>
-                        <th class="num sortable" data-col="enero">Enero <span class="sort-icon"></span></th>
-                        <th class="num sortable" data-col="febrero">Febrero <span class="sort-icon"></span></th>
-                        <th class="num sortable" data-col="marzo">Marzo <span class="sort-icon"></span></th>
-                        <th class="num sortable" data-col="abril">Abril <span class="sort-icon"></span></th>
-                        <th class="num sortable" data-col="mayo">Mayo <span class="sort-icon"></span></th>
-                        <th class="num sortable" data-col="junio">Junio <span class="sort-icon"></span></th>
-                        <th class="num sortable" data-col="julio">Julio <span class="sort-icon"></span></th>
-                        <th class="num sortable" data-col="agosto">Agosto <span class="sort-icon"></span></th>
-                        <th class="num sortable" data-col="septiembre">Septiembre <span class="sort-icon"></span></th>
-                        <th class="num sortable" data-col="octubre">Octubre <span class="sort-icon"></span></th>
-                        <th class="num sortable" data-col="noviembre">Noviembre <span class="sort-icon"></span></th>
-                        <th class="num sortable" data-col="diciembre">Diciembre <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Enero">Enero <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Febrero">Febrero <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Marzo">Marzo <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Abril">Abril <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Mayo">Mayo <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Junio">Junio <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Julio">Julio <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Agosto">Agosto <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Septiembre">Septiembre <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Octubre">Octubre <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Noviembre">Noviembre <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Diciembre">Diciembre <span class="sort-icon"></span></th>
                         <th class="num col-total">Total</th>
                     </tr>
                 </thead>
@@ -76,18 +76,18 @@
                 <tfoot id="consolidadoFoot">
                     <tr>
                         <td colspan="3">Total general</td>
-                        <td class="num" id="ft-enero">—</td>
-                        <td class="num" id="ft-febrero">—</td>
-                        <td class="num" id="ft-marzo">—</td>
-                        <td class="num" id="ft-abril">—</td>
-                        <td class="num" id="ft-mayo">—</td>
-                        <td class="num" id="ft-junio">—</td>
-                        <td class="num" id="ft-julio">—</td>
-                        <td class="num" id="ft-agosto">—</td>
-                        <td class="num" id="ft-septiembre">—</td>
-                        <td class="num" id="ft-octubre">—</td>
-                        <td class="num" id="ft-noviembre">—</td>
-                        <td class="num" id="ft-diciembre">—</td>
+                        <td class="num" id="ft-Enero">—</td>
+                        <td class="num" id="ft-Febrero">—</td>
+                        <td class="num" id="ft-Marzo">—</td>
+                        <td class="num" id="ft-Abril">—</td>
+                        <td class="num" id="ft-Mayo">—</td>
+                        <td class="num" id="ft-Junio">—</td>
+                        <td class="num" id="ft-Julio">—</td>
+                        <td class="num" id="ft-Agosto">—</td>
+                        <td class="num" id="ft-Septiembre">—</td>
+                        <td class="num" id="ft-Octubre">—</td>
+                        <td class="num" id="ft-Noviembre">—</td>
+                        <td class="num" id="ft-Diciembre">—</td>
                         <td class="num col-total" id="ft-total">—</td>
                     </tr>
                 </tfoot>
@@ -135,8 +135,8 @@ const CSRF_TOKEN   = document.querySelector('[name=csrf-token]').content;
 /* ══════════════════════════════════════════════════════════════════
    CONSTANTES
 ══════════════════════════════════════════════════════════════════ */
-const MESES = ['enero','febrero','marzo','abril','mayo','junio',
-               'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+               'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 const FMT = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
@@ -278,7 +278,7 @@ function calcularOtrosIngresos(data) {
     const CUENTAS_OTROS_INGRESOS = [
         '41659505','41659501','422004','422507','422529',
         '4240900202','4240900301','4240900401',
-        '4240909501','4240909503','4240909901','4'
+        '4240909501','4240909503','4240909901','4','420560'
     ];
     const t = { total: 0 };
     MESES.forEach(m => t[m] = 0);
