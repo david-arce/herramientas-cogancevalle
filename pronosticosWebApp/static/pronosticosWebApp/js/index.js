@@ -37,7 +37,7 @@ document.getElementById('send-data').addEventListener('click', async () => {
         alert("Por favor selecciona una fila de la tabla para generar la gráfica");
     }
 });
-/*
+
 // Función para exportar datos visibles del DataTable
 document.getElementById('export-visible').addEventListener('click', function () {
     // Crear un nuevo libro de trabajo
@@ -100,8 +100,8 @@ document.getElementById('export-visible').addEventListener('click', function () 
     // Guardar el archivo Excel
     XLSX.writeFile(wb, nombreArchivo);
 });
-descomentar al acabar con la prueba de proveedores*/
 
+/*
 document.getElementById('export-visible').addEventListener('click', function () {
     const wb = XLSX.utils.book_new();
     const filteredData = dataTable.rows({ filter: 'applied' }).data().toArray();
@@ -924,7 +924,7 @@ document.getElementById('export-visible').addEventListener('click', function () 
 
     XLSX.writeFile(wb, nombreArchivo);
 });
-
+*/
 async function uploadData() {
     const params = new URLSearchParams();
 
