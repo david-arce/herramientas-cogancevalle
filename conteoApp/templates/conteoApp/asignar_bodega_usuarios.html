@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Asignar Bodega a Usuarios{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h3>Asignación de usuarios a Almacén / Bodega ({{ ciudad }})</h3>
+    <p>Arrastra los usuarios entre columnas para asignarlos.</p>
+
+    <form method="post" id="form-mover">
+        {% csrf_token %}
+        <input type="hidden" name="mover_usuarios" value="1">
+        <input type="hidden" name="destino" id="destino-input">
+        <input type="hidden" name="usuarios" id="usuarios-input">
+    </form>
+
+    <div class="dnd-container" style="display:flex; gap:20px;">
+        <div class="dnd-column" data-bodega="almacen" style="flex:1; border:2px dashed #aaa; min-height:300px; padding:10px;">
+            <h4>Almacén</h4>
+            <div id="lista-almacen">
+                {% for uc in usuarios_almacen %}
+                <div class="dnd-item" draggable="true" data-userid="{{ uc.user.id }}">
+                    {{ uc.user.first_name }} {{ uc.user.last_name }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="dnd-column" data-bodega="0105" style="flex:1; border:2px dashed #aaa; min-height:300px; padding:10px;">
+            <h4>Bodega 0105</h4>
+            <div id="lista-bodega">
+                {% for uc in usuarios_bodega %}
+                <div class="dnd-item" draggable="true" data-userid="{{ uc.user.id }}">
+                    {{ uc.user.first_name }} {{ uc.user.last_name }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<style>
+.dnd-item {
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 8px;
+    margin: 4px 0;
+    cursor: grab;
+}
+.dnd-item.dragging { opacity: 0.4; }
+.dnd-column.drag-over { background: #e8f4ff; }
+</style>
+
+<script>
+let draggedItem = null;
+
+document.querySelectorAll('.dnd-item').forEach(item => {
+    item.addEventListener('dragstart', () => {
+        draggedItem = item;
+        item.classList.add('dragging');
+    });
+    item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        draggedItem = null;
+    });
+});
+
+document.querySelectorAll('.dnd-column').forEach(col => {
+    col.addEventListener('dragover', e => {
+        e.preventDefault();
+        col.classList.add('drag-over');
+    });
+    col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+
+    col.addEventListener('drop', e => {
+        e.preventDefault();
+        col.classList.remove('drag-over');
+        if (!draggedItem) return;
+
+        const targetList = col.querySelector('div[id^="lista-"]');
+        targetList.appendChild(draggedItem);
+
+        const destino = col.dataset.bodega; // 'almacen' o '0105'
+        const userId = draggedItem.dataset.userid;
+
+        // Enviar al servidor el cambio
+        fetch("{% url 'asignar_bodega_usuarios' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: `mover_usuarios=1&destino=${destino}&usuarios=${userId}`
+        });
+    });
+});
+</script>
+{% endblock %}

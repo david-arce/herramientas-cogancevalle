@@ -62,136 +62,143 @@ def asignar_tareas(request):
     if request.method == 'POST':
         if 'assign_task' in request.POST:
             print(fecha_asignar)
-            selected_user_ids = request.POST.getlist('usuarios')  # Obtiene una lista de IDs de los usuarios seleccionados
-            selected_users = User.objects.filter(id__in=selected_user_ids)
+            selected_user_ids = request.POST.getlist('usuarios')
+            selected_users = User.objects.filter(id__in=selected_user_ids).select_related('usercity')
 
-            bodega = ''
-           
-            if ciudad == 'Tulua':
-                bodega = '0101'
-            elif ciudad == 'Buga':
-                bodega = '0201'
-            elif ciudad == 'Cartago':
-                bodega = '0301'
-            elif ciudad == 'Cali':
-                bodega = '0401'
-            
-            # ── NUEVO: para Buga el supervisor puede pasar dos fechas ──────────
-            
-            # getlist recoge todos los inputs con name="fechas_venta"
+            BODEGA_ALMACEN_POR_CIUDAD = {
+                'Tulua': '0101',
+                'Buga': '0201',
+                'Cartago': '0301',
+                'Cali': '0401',
+            }
+
             fechas_raw = request.POST.getlist('fechas_venta')
             fechas_asignar = [f.strip().replace('-', '') for f in fechas_raw if f.strip()]
             if not fechas_asignar:
-                fechas_asignar = [fecha_asignar]  # fallback
-        
+                fechas_asignar = [fecha_asignar]
+
             print(f"Fechas para asignar: {fechas_asignar}")
-            # ───────────────────────────────────────────────────────────────────
-            
-            # Filtrar productos disponibles con un valor numérico en 'mcnproduct' y 'mcnbodega' = 101
-            productos = (Venta.objects.filter(
-                sku__regex=r'^\d+$', 
-                bod = bodega, 
-                fecha__in=fechas_asignar).exclude(marca_nom__in = ['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
-            print(len(productos))
 
-            sku_list = [producto.sku for producto in productos]
-            bod_list = [producto.bod for producto in productos]
-            fecha_corte_reciente = (
-                Inventario.objects
-                .filter(sku__in=sku_list, bod__in=bod_list)
-                .aggregate(Max('fecha_corte'))['fecha_corte__max']
-            )
-            # Saldo más reciente: si el SKU aparece en ambas fechas,
-            # quedamos con el registro de Inventario (no se duplica porque
-            # Inventario es un snapshot actual, no por fecha).
-            productos_disponibles = list(
-                Inventario.objects.filter(
-                    sku__in=sku_list,
-                    bod__in=bod_list,
-                    inv_saldo__gt=0,
-                    fecha_corte=fecha_corte_reciente
-                ).order_by('marca_nom')
-            ) # Ordenar por nombre de laboratorio
-            
-            # Procesar la cantidad de productos disponibles o asignar tarea según sea necesario
-            print(f"Cantidad de productos disponibles: {len(productos_disponibles)}")
-            
-            if productos_disponibles:
-                # Convertir la consulta a una lista para facilitar el manejo posterior
-                productos_disponibles = list(productos_disponibles)
-            
-            if not productos_disponibles:
-                messages.error(request, "No hay productos disponibles para asignar.")
+            # Agrupar usuarios seleccionados según su bodega_asignada (almacen / 0105 / etc.)
+            grupos_usuarios = {}
+            for usuario in selected_users:
+                try:
+                    tipo_bodega_usuario = usuario.usercity.bodega_asignada
+                except UserCity.DoesNotExist:
+                    continue  # usuario sin bodega asignada, se ignora
+                grupos_usuarios.setdefault(tipo_bodega_usuario, []).append(usuario)
+
+            if not grupos_usuarios:
+                messages.error(request, "Los usuarios seleccionados no tienen bodega asignada.")
                 return redirect('asignar_tareas')
 
-            total_productos = len(productos_disponibles)
-            # Verificar que hay suficientes productos para asignar
-            if total_productos == 0 or len(selected_users) == 0:
-                messages.error(request, "No hay productos disponibles o no se seleccionaron usuarios.")
-                return redirect('asignar_tareas')
-
-            # Calcular productos por usuario
-            productos_por_usuario = total_productos // len(selected_users)
-            productos_restantes = total_productos % len(selected_users)
-            
-            # Crear tareas para cada usuario
             tareas_a_crear = []
-            producto_index = 0
-            sum_item_last = 0
+
             with transaction.atomic():
-                for usuario in selected_users:
-                    # Determinar cuántos productos asignar a este usuario
-                    cantidad_a_asignar = productos_por_usuario
-                    if productos_restantes > 0:  # Repartir los productos sobrantes
-                        cantidad_a_asignar += 1
-                        productos_restantes -= 1
-                    
-                    # bloque de codigo para verificar si el ultimo producto asignado al usuario es igual al siguiente, de ser asi, aumentar la cantidad a asignar
-                    sum_item_last += cantidad_a_asignar
-                    item_last = productos_disponibles[sum_item_last-1].sku
-                    bandera = True
-                    sum_item_next = sum_item_last
-                    while bandera:
-                        # obtener el proximo item de los productos disponibles, si no hay o se desborda, no asignar
-                        try:
-                            item_next = productos_disponibles[sum_item_next].sku
-                        except IndexError:
-                            item_next = None
-                            
-                        if item_last == item_next:
+                for tipo_bodega, usuarios_grupo in grupos_usuarios.items():
+                    if tipo_bodega == 'almacen':
+                        bodega = BODEGA_ALMACEN_POR_CIUDAD.get(ciudad, '')
+                    else:
+                        bodega = tipo_bodega  # ej. '0105'
+
+                    if not bodega:
+                        messages.error(request, f"Bodega no válida para el grupo '{tipo_bodega}'.")
+                        continue
+
+                    # Productos vendidos en esa bodega/fechas
+                    productos = (Venta.objects.filter(
+                        sku__regex=r'^\d+$',
+                        bod=bodega,
+                        fecha__in=fechas_asignar
+                    ).exclude(marca_nom__in=['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
+
+                    sku_list = [producto.sku for producto in productos]
+                    bod_list = [producto.bod for producto in productos]
+                    fecha_corte_reciente = (
+                        Inventario.objects
+                        .filter(sku__in=sku_list, bod__in=bod_list)
+                        .aggregate(Max('fecha_corte'))['fecha_corte__max']
+                    )
+
+                    productos_disponibles = list(
+                        Inventario.objects.filter(
+                            sku__in=sku_list,
+                            bod__in=bod_list,
+                            inv_saldo__gt=0,
+                            fecha_corte=fecha_corte_reciente
+                        ).order_by('marca_nom')
+                    )
+
+                    print(f"[{tipo_bodega}] Cantidad de productos disponibles: {len(productos_disponibles)}")
+
+                    if not productos_disponibles:
+                        messages.error(request, f"No hay productos disponibles para asignar en '{tipo_bodega}'.")
+                        continue
+
+                    total_productos = len(productos_disponibles)
+                    if total_productos == 0 or len(usuarios_grupo) == 0:
+                        continue
+
+                    productos_por_usuario = total_productos // len(usuarios_grupo)
+                    productos_restantes = total_productos % len(usuarios_grupo)
+
+                    producto_index = 0
+                    sum_item_last = 0
+                    for usuario in usuarios_grupo:
+                        cantidad_a_asignar = productos_por_usuario
+                        if productos_restantes > 0:
                             cantidad_a_asignar += 1
-                            sum_item_next += 1
-                        else:
-                            bandera = False
-                    # print(f"Item last: {item_last}, Item next: {item_next}")
-                    
-                    # Asignar productos a este usuario
-                    for _ in range(cantidad_a_asignar):
-                        if producto_index < total_productos:
-                            producto = productos_disponibles[producto_index]
-                            # Verificar que el producto no ha sido asignado previamente en la fecha actual
-                            if not Tarea.objects.filter(producto=producto, fecha_asignacion = datetime.date.today()).exists():
-                                tareas_a_crear.append(Tarea(
-                                    usuario=usuario,
+                            productos_restantes -= 1
+
+                        sum_item_last += cantidad_a_asignar
+                        item_last = productos_disponibles[sum_item_last - 1].sku
+                        bandera = True
+                        sum_item_next = sum_item_last
+                        while bandera:
+                            try:
+                                item_next = productos_disponibles[sum_item_next].sku
+                            except IndexError:
+                                item_next = None
+
+                            if item_last == item_next:
+                                cantidad_a_asignar += 1
+                                sum_item_next += 1
+                            else:
+                                bandera = False
+
+                        for _ in range(cantidad_a_asignar):
+                            if producto_index < total_productos:
+                                producto = productos_disponibles[producto_index]
+                                if not Tarea.objects.filter(
                                     producto=producto,
-                                    observacion='',
-                                    inventario=producto.inv_saldo
-                                ))
-                            producto_index += 1 
+                                    fecha_asignacion=datetime.date.today(),
+                                    tipo_bodega=tipo_bodega
+                                ).exists():
+                                    tareas_a_crear.append(Tarea(
+                                        usuario=usuario,
+                                        producto=producto,
+                                        observacion='',
+                                        inventario=producto.inv_saldo,
+                                        tipo_bodega=tipo_bodega
+                                    ))
+                                producto_index += 1
+
                 Tarea.objects.bulk_create(tareas_a_crear)
+
             return redirect('asignar_tareas')
-    
         if 'delete_task' in request.POST:
+            tipo_bodega = request.POST.get('tipo_bodega', 'almacen')
             usuarios_sede = User.objects.filter(usercity__ciudad=ciudad)
             fecha = datetime.date.today()
-            Tarea.objects.filter(usuario__in=usuarios_sede, fecha_asignacion=fecha).delete()
+            Tarea.objects.filter(usuario__in=usuarios_sede, fecha_asignacion=fecha, tipo_bodega = tipo_bodega).delete()
             return redirect('asignar_tareas')
         if 'filter_users' in request.POST:
             selected_user_ids = request.POST.getlist('usuarios')  # Obtiene una lista de IDs de los usuarios seleccionados
             selected_users = User.objects.filter(id__in=selected_user_ids) # Obtener los objetos Usuario a partir de los IDs
             fecha_asignacion_filter = request.POST.get('fecha_asignacion') # obtener la fecha seleccionada
-            
+            tipo_bodega_filter = request.POST.get('tipo_bodega', 'almacen')
             # Guardar los datos en la sesión
+            request.session['tipo_bodega'] = tipo_bodega_filter
             request.session['selected_user_ids'] = selected_user_ids
             request.session['fecha_asignacion'] = fecha_asignacion_filter
            
@@ -201,11 +208,11 @@ def asignar_tareas(request):
                 cant_tareas_por_usuario = []
             else:
                 # Filtrar las tareas por esos usuarios.
-                tareas = Tarea.objects.filter(usuario__in=selected_user_ids, fecha_asignacion = fecha_asignacion_filter)
+                tareas = Tarea.objects.filter(usuario__in=selected_user_ids, fecha_asignacion = fecha_asignacion_filter, tipo_bodega=tipo_bodega_filter)
                 
                 # Si quieres agrupar y contar tareas por usuario:
                 cant_tareas_por_usuario = (
-                    Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion = fecha_asignacion)
+                    Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion = fecha_asignacion, tipo_bodega=tipo_bodega_filter)
                     .values('usuario__username', 'usuario__first_name', 'usuario__last_name')
                     .annotate(total_tareas=Count('id'))
                 )
@@ -213,16 +220,19 @@ def asignar_tareas(request):
         if 'view_user_tasks' in request.POST:
             # Mostrar las tareas de un usuario específico
             usuario_id = request.POST.get('usuario_id')  # Obtener el ID del usuario
-            tareas = Tarea.objects.filter(usuario__id=usuario_id, fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad).exclude(diferencia=0)
+            tipo_bodega_filter = request.POST.get('tipo_bodega', 'almacen')
+            request.session['tipo_bodega'] = tipo_bodega_filter
+            tareas = Tarea.objects.filter(usuario__id=usuario_id, fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad, tipo_bodega=tipo_bodega_filter).exclude(diferencia=0)
             # guardar tareas en la session
             request.session['selected_user_ids'] = usuario_id
             request.session['fecha_asignacion'] = str(datetime.date.today())
             # return redirect('asignar_tareas')
         if 'view_all_user_tasks' in request.POST:
             fecha_tasks = datetime.date.today()
-            # fecha_tasks = "2025-10-21"
+            tipo_bodega_filter = request.POST.get('tipo_bodega', 'almacen')
+            request.session['tipo_bodega'] = tipo_bodega_filter
             # usuario_id = request.POST.get('usuario_id')  # Obtener el ID del usuario
-            tareas = Tarea.objects.filter(fecha_asignacion=fecha_tasks, activo=True, usuario__usercity__ciudad=ciudad).exclude(diferencia=0)
+            tareas = Tarea.objects.filter(fecha_asignacion=fecha_tasks, activo=True, usuario__usercity__ciudad=ciudad, tipo_bodega=tipo_bodega_filter).exclude(diferencia=0)
             # guardar tareas en la session
             request.session['selected_user_ids'] = list(tareas.values_list('usuario__id', flat=True).distinct())
             request.session['fecha_asignacion'] = str(fecha_tasks)
@@ -233,8 +243,9 @@ def asignar_tareas(request):
         if 'view_all_tasks' in request.POST:
             # Mostrar todas las tareas asignadas para hoy
             fecha_tasks = datetime.date.today()
-            # fecha_tasks = "2025-10-21"
-            tareas = Tarea.objects.filter(fecha_asignacion=fecha_tasks, usuario__usercity__ciudad=ciudad)
+            tipo_bodega_filter = request.POST.get('tipo_bodega', 'almacen')
+            request.session['tipo_bodega'] = tipo_bodega_filter
+            tareas = Tarea.objects.filter(fecha_asignacion=fecha_tasks, usuario__usercity__ciudad=ciudad, tipo_bodega=tipo_bodega_filter)
             # guardar un solo id de los usuarios que están en tareas obteniendo el numero, quitando el queryset
             usuario_id = list(tareas.values_list('usuario__id', flat=True).distinct())
             request.session['selected_user_ids'] = usuario_id
@@ -242,16 +253,20 @@ def asignar_tareas(request):
             # return redirect('asignar_tareas')
         
         if 'ver_no_verificados' in request.POST:
-            tareas = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad, verificado=False)
+            tipo_bodega_filter = request.POST.get('tipo_bodega', 'almacen')
+            request.session['tipo_bodega'] = tipo_bodega_filter
+            tareas = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad, verificado=False, tipo_bodega=tipo_bodega_filter)
             
         if 'export_excel' in request.POST:
             # Recuperar los datos de la sesión
             selected_user_ids = request.session.get('selected_user_ids', [])
             fecha_asignacion = request.session.get('fecha_asignacion', None)
+            tipo_bodega_filter = request.POST.get('tipo_bodega', 'almacen')
+            request.session['tipo_bodega'] = tipo_bodega_filter
             
             if selected_user_ids and fecha_asignacion:
                 selected_users = User.objects.filter(id__in=selected_user_ids)
-                tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion)
+                tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion, tipo_bodega=tipo_bodega_filter)
 
                 # Validar si hay tareas
                 if not tareas.exists():
@@ -297,9 +312,11 @@ def asignar_tareas(request):
             # Recuperar los datos de la sesión
             selected_user_ids = request.session.get('selected_user_ids', [])
             fecha_asignacion = request.session.get('fecha_asignacion', None)
+            tipo_bodega_filter = request.POST.get('tipo_bodega', 'almacen')
+            request.session['tipo_bodega'] = tipo_bodega_filter
             if selected_user_ids and fecha_asignacion:
                 selected_users = User.objects.filter(id__in=selected_user_ids)
-                tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion, activo=True).exclude(diferencia=0)
+                tareas = Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion, activo=True, tipo_bodega=tipo_bodega_filter).exclude(diferencia=0)
 
                 # Validar si hay tareas
                 if not tareas.exists():
@@ -345,6 +362,8 @@ def asignar_tareas(request):
             # Obtener todos los usuarios de la sede
             usuarios_sede = User.objects.filter(usercity__ciudad=ciudad, is_active=True).exclude(username="admin")
             selected_users = usuarios_sede
+            tipo_bodega_filter = request.POST.get('tipo_bodega', 'almacen')
+            request.session['tipo_bodega'] = tipo_bodega_filter
             
             # Obtener la fecha seleccionada
             fecha_asignacion_filter = request.POST.get('fecha_asignacion')
@@ -361,12 +380,13 @@ def asignar_tareas(request):
             # Filtrar las tareas por todos los usuarios de la sede en esa fecha
             tareas = Tarea.objects.filter(
                 usuario__in=usuarios_sede, 
-                fecha_asignacion=fecha_asignacion_filter
+                fecha_asignacion=fecha_asignacion_filter,
+                tipo_bodega=tipo_bodega_filter
             )
             
             # Si quieres agrupar y contar tareas por usuario:
             cant_tareas_por_usuario = (
-                Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion_filter)
+                Tarea.objects.filter(usuario__in=selected_users, fecha_asignacion=fecha_asignacion_filter, tipo_bodega=tipo_bodega_filter)
                 .values('usuario__username', 'usuario__first_name', 'usuario__last_name')
                 .annotate(total_tareas=Count('id'))
             )
@@ -374,23 +394,20 @@ def asignar_tareas(request):
     if 'assigned' in request.GET:
         tareas = Tarea.objects.filter(usuario__in=selected_users) if selected_users else None
         selected_users = None  # Limpiar seleccionados para evitar reasignación
-
-    usuarios_con_tareas = (Tarea.objects.filter(fecha_asignacion = datetime.date.today(), usuario__usercity__ciudad=ciudad)
+    tipo_bodega_resumen = request.GET.get('tipo_bodega', 'almacen')
+    usuarios_con_tareas = (Tarea.objects.filter(fecha_asignacion = datetime.date.today(), usuario__usercity__ciudad=ciudad, tipo_bodega=tipo_bodega_resumen)
                            .values('usuario__id', 'usuario__username', 'usuario__first_name', 'usuario__last_name')
                            .annotate(total_tareas=Count('id'))) # retornar los usuarios que tienen tareas asignadas
     
-    total_tareas_usuarios = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad).count()
+    total_tareas_usuarios = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad, tipo_bodega = tipo_bodega_resumen).count()
     
-    bodega = ''
-    if ciudad == 'Tulua':
-        bodega = '0101'
-    elif ciudad == 'Buga':
-        bodega = '0201'
-    elif ciudad == 'Cartago':
-        bodega = '0301'
-    elif ciudad == 'Cali':
-        bodega = '0401'
-
+    BODEGA_ALMACEN_POR_CIUDAD = {
+        'Tulua': '0101',
+        'Buga': '0201',
+        'Cartago': '0301',
+        'Cali': '0401',
+    }
+    bodega = BODEGA_ALMACEN_POR_CIUDAD.get(ciudad, '')
     # usuarios que se mostraran en el select de la vista
     usuarios = User.objects.exclude(username="admin").filter(usercity__ciudad=ciudad, is_active=True) # retornar todos los usuarios
     
@@ -423,7 +440,7 @@ def asignar_tareas(request):
         'usuarios': usuarios,
         'mostrar_exportar_todo': mostrar_exportar_todo,
         'fecha_asignar': fecha_asignar_formateada,
-        'ciudad': ciudad
+        'ciudad': ciudad,
     })
 
 @login_required
@@ -434,22 +451,20 @@ def lista_tareas(request):
     except Exception:
         ciudad = None
 
-    bodega = ''
-    if ciudad == 'Tulua':
-        bodega = '0101'
-    elif ciudad == 'Buga':
-        bodega = '0201'
-    elif ciudad == 'Cartago':
-        bodega = '0301'
-    elif ciudad == 'Cali':
-        bodega = '0401'
+    BODEGA_ALMACEN_POR_CIUDAD = {
+        'Tulua': '0101',
+        'Buga': '0201',
+        'Cartago': '0301',
+        'Cali': '0401',
+    }
+    bodega = BODEGA_ALMACEN_POR_CIUDAD.get(ciudad, '')  # Obtener la bodega según la ciudad, o '' si no se encuentra
 
     fecha_especifica = datetime.date.today()
 
     # Evitar consultas si no hay bodega asignada
     tareas = (
         Tarea.objects.filter(usuario=request.user, fecha_asignacion=fecha_especifica, activo=True)
-        .order_by('producto__marca_nom')
+        .order_by('tipo_bodega', 'producto__marca_nom')
     ) if bodega else []
 
     if request.method == 'POST':
@@ -556,7 +571,12 @@ def lista_tareas(request):
                         .values_list('producto__sku', flat=True)
                         .distinct()
                     )
-                    bod_list = [bodega]
+                    bod_list = list(
+                        Tarea.objects
+                        .filter(usuario=request.user, fecha_asignacion=datetime.date.today())
+                        .values_list('producto__bod', flat=True)
+                        .distinct()
+                    )
 
                     # Fecha de corte más reciente (igual que en asignar_tareas)
                     fecha_corte_reciente = (
@@ -608,7 +628,7 @@ def lista_tareas(request):
                     Tarea.objects
                     .filter(usuario=request.user, fecha_asignacion=fecha_especifica, activo=True)
                     .exclude(diferencia=0)
-                    .order_by('producto__marca_nom')
+                    .order_by('tipo_bodega', 'producto__marca_nom')
                 )
 
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -649,3 +669,43 @@ def conteo(request):
 
 def error_permiso(request, exception):
     return render(request, 'error.html', status=403)
+
+@login_required
+def asignar_bodega_usuarios(request):
+    if request.user.username not in ("DBENITEZ","CHINCAPI","PROJAS","LAMAYA","AGRAJALE","admin"):
+        raise PermissionDenied("No tienes permiso para acceder a esta vista.")
+
+    try:
+        ciudad = request.user.usercity.ciudad
+    except UserCity.DoesNotExist:
+        ciudad = "No asignada"
+
+    if request.method == 'POST':
+        if 'mover_usuarios' in request.POST:
+            destino = request.POST.get('destino')  # 'almacen' o '0105'
+            user_ids = request.POST.getlist('usuarios')
+
+            if destino not in ('almacen', '0105'):
+                messages.error(request, "Destino inválido.")
+                return redirect('asignar_bodega_usuarios')
+
+            UserCity.objects.filter(
+                user__id__in=user_ids,
+                ciudad=ciudad
+            ).update(bodega_asignada=destino)
+
+            return redirect('asignar_bodega_usuarios')
+
+    usuarios_almacen = UserCity.objects.filter(
+        ciudad=ciudad, bodega_asignada='almacen', user__is_active=True
+    ).exclude(user__username="admin").select_related('user')
+
+    usuarios_bodega = UserCity.objects.filter(
+        ciudad=ciudad, bodega_asignada='0105', user__is_active=True
+    ).exclude(user__username="admin").select_related('user')
+
+    return render(request, 'conteoApp/asignar_bodega_usuarios.html', {
+        'usuarios_almacen': usuarios_almacen,
+        'usuarios_bodega': usuarios_bodega,
+        'ciudad': ciudad,
+    })
