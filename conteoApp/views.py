@@ -394,13 +394,19 @@ def asignar_tareas(request):
     if 'assigned' in request.GET:
         tareas = Tarea.objects.filter(usuario__in=selected_users) if selected_users else None
         selected_users = None  # Limpiar seleccionados para evitar reasignación
-    tipo_bodega_resumen = request.GET.get('tipo_bodega', 'almacen')
-    usuarios_con_tareas = (Tarea.objects.filter(fecha_asignacion = datetime.date.today(), usuario__usercity__ciudad=ciudad, tipo_bodega=tipo_bodega_resumen)
-                           .values('usuario__id', 'usuario__username', 'usuario__first_name', 'usuario__last_name')
-                           .annotate(total_tareas=Count('id'))) # retornar los usuarios que tienen tareas asignadas
-    
-    total_tareas_usuarios = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad, tipo_bodega = tipo_bodega_resumen).count()
-    
+    usuarios_con_tareas_almacen = (
+        Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad, tipo_bodega='almacen')
+        .values('usuario__id', 'usuario__username', 'usuario__first_name', 'usuario__last_name')
+        .annotate(total_tareas=Count('id'))
+    )
+    usuarios_con_tareas_bodega = (
+        Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad, tipo_bodega='0105')
+        .values('usuario__id', 'usuario__username', 'usuario__first_name', 'usuario__last_name')
+        .annotate(total_tareas=Count('id'))
+    )
+
+    total_tareas_almacen = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad, tipo_bodega='almacen').count()
+    total_tareas_bodega = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad, tipo_bodega='0105').count()
     BODEGA_ALMACEN_POR_CIUDAD = {
         'Tulua': '0101',
         'Buga': '0201',
@@ -430,13 +436,35 @@ def asignar_tareas(request):
     # formatear la fecha para mostrar en la vista
     fecha_asignar_formateada = datetime.datetime.strptime(fecha_asignar, "%Y%m%d").strftime("%Y-%m-%d")
     
+    BODEGA_CONTEO_EXTRA = '0105'
+
+    def calcular_total_disponibles(bod):
+        productos = list(Venta.objects.filter(
+            sku__regex=r'^\d+$', bod=bod, fecha=fecha_asignar
+        ).exclude(marca_nom__in=['INSMEVET', 'JL INSTRUMENTAL', 'LHAURA', 'FEDEGAN']).distinct('sku', 'bod'))
+
+        sku_list = [p.sku for p in productos]
+        bod_list = [p.bod for p in productos]
+        fecha_corte_reciente = (
+            Inventario.objects.filter(sku__in=sku_list, bod__in=bod_list)
+            .aggregate(Max('fecha_corte'))['fecha_corte__max']
+        )
+        return Inventario.objects.filter(
+            sku__in=sku_list, bod__in=bod_list, inv_saldo__gt=0, fecha_corte=fecha_corte_reciente
+        ).count()
+
+    total_tareas_hoy_almacen = calcular_total_disponibles(bodega) if bodega else 0
+    total_tareas_hoy_bodega = calcular_total_disponibles(BODEGA_CONTEO_EXTRA)
     return render(request, 'conteoApp/asignar_tareas.html', {
         # 'form': form,
         'tareas': tareas,
         'cant_tareas_por_usuario': cant_tareas_por_usuario,
-        'usuarios_con_tareas': usuarios_con_tareas,
-        'total_tareas_usuarios': total_tareas_usuarios,
-        'total_tareas_hoy': total_tareas_hoy,
+        'usuarios_con_tareas_almacen': usuarios_con_tareas_almacen,
+        'usuarios_con_tareas_bodega': usuarios_con_tareas_bodega,
+        'total_tareas_almacen': total_tareas_almacen,
+        'total_tareas_bodega': total_tareas_bodega,
+        'total_tareas_hoy_almacen': total_tareas_hoy_almacen,
+        'total_tareas_hoy_bodega': total_tareas_hoy_bodega,
         'usuarios': usuarios,
         'mostrar_exportar_todo': mostrar_exportar_todo,
         'fecha_asignar': fecha_asignar_formateada,
