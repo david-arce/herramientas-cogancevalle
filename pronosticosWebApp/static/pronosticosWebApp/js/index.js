@@ -38,70 +38,7 @@ document.getElementById('send-data').addEventListener('click', async () => {
     }
 });
 
-// Función para exportar datos visibles del DataTable
-document.getElementById('export-visible').addEventListener('click', function () {
-    // Crear un nuevo libro de trabajo
-    const wb = XLSX.utils.book_new();
 
-    // Obtener todos los datos actualmente filtrados y visibles en el DataTable
-    const filteredData = dataTable.rows({ filter: 'applied' }).data().toArray();
-
-    // Recorrer los datos filtrados y cambiar los valores en los índices 10, 11 y 12 a enteros
-    const updatedData = filteredData.map(row => {
-        row[9] = parseInt(row[9], 10);  // Convertir a entero el índice 9
-        row[10] = parseInt(row[10], 10);  // Convertir a entero el índice 10
-        row[11] = parseInt(row[11], 10);  // Convertir a entero el índice 11
-        row[12] = parseInt(row[12], 10);  // Convertir a entero el índice 12
-        return row;
-    });
-
-    // Índices de las columnas que deseas exportar (empezando desde 0)
-    const columnsToExport = [0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13]; // columnas a exportar
-    // const columnsToExport2 = [0, 1, 2, 3, 4, 5]; // nombre columnas 
-
-    // Recolectar encabezados de las columnas seleccionadas
-    const headers = ['REG.N12', 'BODEGA.C5', 'PRODUCTO.C15', 'CODCMC.C50', 'NOMBRE.C100', 'UNIMED.C4', 'LOTEPRO.C12', 'CANTIDAD.N20', 'CANTIDAD.N20', 'CANTIDAD.N20', 'PRECIO_UNITARIO.N20', 'FECHAENTREGA.C10'];
-    // $('#datatable-productos thead th').each(function (index) {
-    //     if (columnsToExport2.includes(index)) {
-    //         headers.push($(this).text());
-    //     }
-    // });
-
-    // Convertir los datos filtrados en un formato adecuado para la exportación
-    const exportData = [headers]; // Incluir encabezados como la primera fila
-    let index = 1; // Iniciar índice desde 1
-    updatedData.forEach(row => {
-        const rowData = [];
-        columnsToExport.forEach((colIndex, i) => {
-            if (i === 0) {
-                // Primera columna: índice reiniciado
-                rowData.push(index++);
-            } else {
-                rowData.push(row[colIndex]);
-            }
-        });
-        exportData.push(rowData);
-    });
-
-    // Crear una nueva hoja de trabajo con los datos filtrados
-    const ws = XLSX.utils.aoa_to_sheet(exportData);
-
-    // Añadir la hoja de trabajo al libro
-    XLSX.utils.book_append_sheet(wb, ws, 'Datos_Productos');
-
-    //obtener fecha actual 
-    const fechaActual = new Date();
-    const year = fechaActual.getFullYear();
-    const mes = String(fechaActual.getMonth() + 1).padStart(2, '0'); // Los meses empiezan en 0
-    const dia = String(fechaActual.getDate()).padStart(2, '0');
-
-    const fechaFormateada = `${dia}/${mes}/${year}`;
-    const nombreArchivo = `Datos_filtrados_${fechaFormateada}.xlsx`;
-    // Guardar el archivo Excel
-    XLSX.writeFile(wb, nombreArchivo);
-});
-
-/*
 document.getElementById('export-visible').addEventListener('click', function () {
     const wb = XLSX.utils.book_new();
     const filteredData = dataTable.rows({ filter: 'applied' }).data().toArray();
@@ -924,7 +861,7 @@ document.getElementById('export-visible').addEventListener('click', function () 
 
     XLSX.writeFile(wb, nombreArchivo);
 });
-*/
+
 async function uploadData() {
     const params = new URLSearchParams();
 
