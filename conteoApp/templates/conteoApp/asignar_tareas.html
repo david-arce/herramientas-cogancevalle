@@ -12,7 +12,9 @@
         {% csrf_token %}
         <div class="dropdown">
             <h4 style="max-width:350px">Asignar o eliminar productos</h4>
+            {% if ciudad == 'Tulua'%}
             <a href="{% url 'asignar_bodega_usuarios' %}" class="button-generic" style="display:inline-block; text-decoration:none; margin-bottom:8px;">Asignar usuarios a Almacén/Bodega</a>
+            {% endif %}
             <input type="text" id="searchInput" class="search-box" placeholder="Buscar usuarios...">
                 <div id="checkboxList" class="dropdown-content">
                     <label style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 5px;">
@@ -99,7 +101,6 @@
     <div style="flex:1; min-width:300px;">
         <h3>Almacén</h3>
         <p>Total productos disponibles: {{ total_tareas_hoy_almacen }} ----- Fecha de venta: {{ fecha_asignar }}</p>
-        <p>Total tareas asignadas hoy: {{ total_tareas_almacen }}</p>
         <ul>
             {% for usuario in usuarios_con_tareas_almacen %}
             <form method="post">
@@ -114,6 +115,7 @@
             <li>Sin usuarios con tareas asignadas en Almacén.</li>
             {% endfor %}
         </ul>
+        <p>Total tareas asignadas hoy: {{ total_tareas_almacen }}</p>
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="tipo_bodega" value="0101">
@@ -121,11 +123,10 @@
             <button class="button-view-task" name="view_all_user_tasks" title="ver diferencias de almacén">ver todas las diferencias almacen</button>
         </form>
     </div>
-
+    {% if ciudad == 'Tulua'%}
     <div style="flex:1; min-width:300px;">
         <h3>Bodega 0105</h3>
         <p>Total productos disponibles: {{ total_tareas_hoy_bodega }} ----- Fecha de venta: {{ fecha_asignar }}</p>
-        <p>Total tareas asignadas hoy: {{ total_tareas_bodega }}</p>
         <ul>
             {% for usuario in usuarios_con_tareas_bodega %}
             <form method="post">
@@ -140,6 +141,7 @@
             <li>Sin usuarios con tareas asignadas en Bodega 0105.</li>
             {% endfor %}
         </ul>
+        <p>Total tareas asignadas hoy: {{ total_tareas_bodega }}</p>
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="tipo_bodega" value="0105">
@@ -147,7 +149,7 @@
             <button class="button-view-task" name="view_all_user_tasks" title="ver diferencias de bodega">ver todas las diferencias bodega</button>
         </form>
     </div>
-
+    {% endif %}
 </div>
 
 {% if tareas %}
