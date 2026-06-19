@@ -12,6 +12,7 @@
         {% csrf_token %}
         <div class="dropdown">
             <h4 style="max-width:350px">Asignar o eliminar productos</h4>
+            <a href="{% url 'asignar_bodega_usuarios' %}" class="button-generic" style="display:inline-block; text-decoration:none; margin-bottom:8px;">Asignar usuarios a Almacén/Bodega</a>
             <input type="text" id="searchInput" class="search-box" placeholder="Buscar usuarios...">
                 <div id="checkboxList" class="dropdown-content">
                     <label style="font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 5px;">
@@ -21,6 +22,12 @@
                         <label><input type="checkbox" name="usuarios" value="{{ usuario.id }}" class="user-checkbox"> {{ usuario.first_name }} {{usuario.last_name}}</label>
                     {% endfor %}
                 </div>
+                {% comment %} <label for="tipo_bodega">Tipo de conteo:</label>
+                <select name="tipo_bodega" id="tipo_bodega" required>
+                    <option value="almacen">Almacén</option>
+                    <option value="0105">Bodega 0105</option>
+                    {# futuras bodegas se agregan aquí como nuevas <option> #}
+                </select> {% endcomment %}
             {% if ciudad == 'Buga'%}
             </br>
             </br>
@@ -87,32 +94,60 @@
     </div>
 </div>
 
-<div>
-    <p>Total productos disponibles: {{ total_tareas_hoy }} ----- Fecha de la venta cargada por defecto: {{fecha_asignar}}</p>
-    <h3>Usuarios con productos asignados para hoy</h3>
-    <ul>
-        {% for usuario in usuarios_con_tareas %}
+<div style="display:flex; gap:30px; flex-wrap:wrap;">
+
+    <div style="flex:1; min-width:300px;">
+        <h3>Almacén</h3>
+        <p>Total productos disponibles: {{ total_tareas_hoy_almacen }} ----- Fecha de venta: {{ fecha_asignar }}</p>
+        <p>Total tareas asignadas hoy: {{ total_tareas_almacen }}</p>
+        <ul>
+            {% for usuario in usuarios_con_tareas_almacen %}
+            <form method="post">
+                <li>{{ usuario.usuario__first_name }} {{ usuario.usuario__last_name }}: {{ usuario.total_tareas }}
+                    {% csrf_token %}
+                    <input type="hidden" name="usuario_id" value="{{ usuario.usuario__id }}">
+                    <input type="hidden" name="tipo_bodega" value="almacen">
+                    <button class="button-view-task" name="view_user_tasks">Diferencias</button>
+                </li>
+            </form>
+            {% empty %}
+            <li>Sin usuarios con tareas asignadas en Almacén.</li>
+            {% endfor %}
+        </ul>
         <form method="post">
-            <li>{{ usuario.usuario__first_name }} {{usuario.usuario__last_name}}: {{ usuario.total_tareas}} 
-                {%csrf_token%}
-                <input type="hidden" name="usuario_id" value="{{ usuario.usuario__id }}">
-                <button class="button-view-task" name="view_user_tasks">Diferencias</button>
-            </li> 
+            {% csrf_token %}
+            <input type="hidden" name="tipo_bodega" value="0101">
+            <button class="button-view-task" name="view_all_tasks" title="ver todas las tareas de almacén">ver todo almacen</button>
+            <button class="button-view-task" name="view_all_user_tasks" title="ver diferencias de almacén">ver todas las diferencias almacen</button>
         </form>
-        {% endfor %}
-    </ul>
-    {% comment %} {% for usuario in usuarios_con_tareas %} {% endcomment %}
-    <form method="post">
-        {%csrf_token%}
-        {% comment %} <input type="hidden" name="usuario_id" value="{{ usuario.usuario__id }}"> {% endcomment %}
-        
-        <p>Total tareas: {{ total_tareas_usuarios }}
-            <button class="button-view-task" name="view_all_tasks" title="ver todas las tareas">ver todo</button>
-            <button class="button-view-task" name="view_all_user_tasks" title="ver todas las diferencias de los contadores">ver todas las diferencias</button>
-        </p>
-        
-    </form>
-    {% comment %} {% endfor %} {% endcomment %}
+    </div>
+
+    <div style="flex:1; min-width:300px;">
+        <h3>Bodega 0105</h3>
+        <p>Total productos disponibles: {{ total_tareas_hoy_bodega }} ----- Fecha de venta: {{ fecha_asignar }}</p>
+        <p>Total tareas asignadas hoy: {{ total_tareas_bodega }}</p>
+        <ul>
+            {% for usuario in usuarios_con_tareas_bodega %}
+            <form method="post">
+                <li>{{ usuario.usuario__first_name }} {{ usuario.usuario__last_name }}: {{ usuario.total_tareas }}
+                    {% csrf_token %}
+                    <input type="hidden" name="usuario_id" value="{{ usuario.usuario__id }}">
+                    <input type="hidden" name="tipo_bodega" value="0105">
+                    <button class="button-view-task" name="view_user_tasks">Diferencias</button>
+                </li>
+            </form>
+            {% empty %}
+            <li>Sin usuarios con tareas asignadas en Bodega 0105.</li>
+            {% endfor %}
+        </ul>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="tipo_bodega" value="0105">
+            <button class="button-view-task" name="view_all_tasks" title="ver todas las tareas de bodega">ver todo bodega</button>
+            <button class="button-view-task" name="view_all_user_tasks" title="ver diferencias de bodega">ver todas las diferencias bodega</button>
+        </form>
+    </div>
+
 </div>
 
 {% if tareas %}
@@ -127,13 +162,10 @@
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
     <div>
-        <form method="post">
-            {% csrf_token %} 
-            {% if mostrar_exportar_todo %}
-                <button type="submit" name="export_excel" class="button-generic">Exportar todo</button>
-            {% endif %}
-            <button type="submit" name="export_excel_diferencias" class="button-generic">Exportar diferencias</button>
-        </form>
+        {% if mostrar_exportar_todo %}
+            <button type="button" onclick="exportarExcel(false)" class="button-generic">Exportar todo</button>
+        {% endif %}
+        <button type="button" onclick="exportarExcel(true)" class="button-generic">Exportar diferencias</button>
     </div>
     <div>
         <form method="post">
@@ -198,7 +230,7 @@
     const toggleVerificadoURL = "{% url 'toggle_verificado' %}";
 </script>
 <script src="{% static 'conteoApp/js/conteoApp.js' %}"></script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
     const contenedor = document.getElementById('fechas-container');
     
@@ -225,6 +257,49 @@
             });
         }
     });
+    function exportarExcel(soloDiferencias) {
+        const tabla = document.getElementById('table-tareas');
+        const filas = tabla.querySelectorAll('tbody tr');
+        const encabezados = [...tabla.querySelectorAll('thead th')].map(th => th.textContent.trim());
+
+        // Índice de la columna DIFERENCIAS (posición 7)
+        const indiceDiferencia = 7;
+
+        const datos = [];
+
+        filas.forEach(fila => {
+            const celdas = fila.querySelectorAll('td');
+            
+            // Si solo diferencias, saltar filas donde diferencia esté vacía o sea 0
+            if (soloDiferencias) {
+                const valDif = celdas[indiceDiferencia]?.textContent.trim();
+                if (!valDif || valDif === '0') return;
+            }
+
+            const fila_datos = [...celdas].map((td, i) => {
+                // La columna VERIFICADO es un checkbox — leer su estado
+                if (i === encabezados.length - 1) {
+                    const cb = td.querySelector('input[type="checkbox"]');
+                    return cb ? (cb.checked ? 'OK' : '') : td.textContent.trim();
+                }
+                return td.textContent.trim();
+            });
+
+            datos.push(fila_datos);
+        });
+
+        if (datos.length === 0) {
+            alert('No hay datos para exportar.');
+            return;
+        }
+
+        const hoja = XLSX.utils.aoa_to_sheet([encabezados, ...datos]);
+        const libro = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(libro, hoja, 'Tareas');
+
+        const nombre = soloDiferencias ? 'diferencias.xlsx' : 'tareas.xlsx';
+        XLSX.writeFile(libro, nombre);
+    }
 </script>
 
 {% endblock %}
