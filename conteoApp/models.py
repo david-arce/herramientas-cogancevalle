@@ -118,7 +118,7 @@ class Tarea(models.Model):
     activo = models.BooleanField(default=True)
     verificado = models.BooleanField(default=False)
     inventario = models.IntegerField(null=True, blank=True)
-    tipo_bodega = models.CharField(max_length=20, default='almacen')
+    tipo_bodega = models.CharField(max_length=20, default='0101')
 
     class Meta:
         db_table = 'tarea'
@@ -140,7 +140,7 @@ class UserCity(models.Model):
         ('Cartago', 'Cartago'),
         ('Cali', 'Cali'),
     ], default='Tulua')
-    bodega_asignada = models.CharField(max_length=20, default='almacen')
+    bodega_asignada = models.CharField(max_length=20, default='0101')
     class Meta:
         db_table = 'user_city'
         verbose_name = 'User City'

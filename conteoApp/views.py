@@ -79,7 +79,7 @@ def asignar_tareas(request):
 
             print(f"Fechas para asignar: {fechas_asignar}")
 
-            # Agrupar usuarios seleccionados según su bodega_asignada (almacen / 0105 / etc.)
+            # Agrupar usuarios seleccionados según su bodega_asignada (0101 / 0105 / etc.)
             grupos_usuarios = {}
             for usuario in selected_users:
                 try:
@@ -96,7 +96,7 @@ def asignar_tareas(request):
 
             with transaction.atomic():
                 for tipo_bodega, usuarios_grupo in grupos_usuarios.items():
-                    if tipo_bodega == 'almacen':
+                    if tipo_bodega == '0101':
                         bodega = BODEGA_ALMACEN_POR_CIUDAD.get(ciudad, '')
                     else:
                         bodega = tipo_bodega  # ej. '0105'
@@ -187,16 +187,16 @@ def asignar_tareas(request):
 
             return redirect('asignar_tareas')
         if 'delete_task' in request.POST:
-            tipo_bodega = request.POST.get('tipo_bodega', 'almacen')
+            # tipo_bodega = request.POST.get('tipo_bodega', '0101')
             usuarios_sede = User.objects.filter(usercity__ciudad=ciudad)
             fecha = datetime.date.today()
-            Tarea.objects.filter(usuario__in=usuarios_sede, fecha_asignacion=fecha, tipo_bodega = tipo_bodega).delete()
+            Tarea.objects.filter(usuario__in=usuarios_sede, fecha_asignacion=fecha).delete()
             return redirect('asignar_tareas')
         if 'filter_users' in request.POST:
             selected_user_ids = request.POST.getlist('usuarios')  # Obtiene una lista de IDs de los usuarios seleccionados
             selected_users = User.objects.filter(id__in=selected_user_ids) # Obtener los objetos Usuario a partir de los IDs
             fecha_asignacion_filter = request.POST.get('fecha_asignacion') # obtener la fecha seleccionada
-            tipo_bodega_filter = request.POST.get('tipo_bodega', 'almacen')
+            tipo_bodega_filter = request.POST.get('tipo_bodega', '0101')
             # Guardar los datos en la sesión
             request.session['tipo_bodega'] = tipo_bodega_filter
             request.session['selected_user_ids'] = selected_user_ids
@@ -220,7 +220,7 @@ def asignar_tareas(request):
         if 'view_user_tasks' in request.POST:
             # Mostrar las tareas de un usuario específico
             usuario_id = request.POST.get('usuario_id')  # Obtener el ID del usuario
-            tipo_bodega_filter = request.POST.get('tipo_bodega', 'almacen')
+            tipo_bodega_filter = request.POST.get('tipo_bodega', '0101')
             request.session['tipo_bodega'] = tipo_bodega_filter
             tareas = Tarea.objects.filter(usuario__id=usuario_id, fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad, tipo_bodega=tipo_bodega_filter).exclude(diferencia=0)
             # guardar tareas en la session
@@ -229,7 +229,7 @@ def asignar_tareas(request):
             # return redirect('asignar_tareas')
         if 'view_all_user_tasks' in request.POST:
             fecha_tasks = datetime.date.today()
-            tipo_bodega_filter = request.POST.get('tipo_bodega', 'almacen')
+            tipo_bodega_filter = request.POST.get('tipo_bodega', '0101')
             request.session['tipo_bodega'] = tipo_bodega_filter
             # usuario_id = request.POST.get('usuario_id')  # Obtener el ID del usuario
             tareas = Tarea.objects.filter(fecha_asignacion=fecha_tasks, activo=True, usuario__usercity__ciudad=ciudad, tipo_bodega=tipo_bodega_filter).exclude(diferencia=0)
@@ -243,9 +243,10 @@ def asignar_tareas(request):
         if 'view_all_tasks' in request.POST:
             # Mostrar todas las tareas asignadas para hoy
             fecha_tasks = datetime.date.today()
-            tipo_bodega_filter = request.POST.get('tipo_bodega', 'almacen')
+            tipo_bodega_filter = request.POST.get('tipo_bodega', '0101')
             request.session['tipo_bodega'] = tipo_bodega_filter
             tareas = Tarea.objects.filter(fecha_asignacion=fecha_tasks, usuario__usercity__ciudad=ciudad, tipo_bodega=tipo_bodega_filter)
+            print(f"Cantidad de tareas para {ciudad} en {fecha_tasks} y bodega {tipo_bodega_filter}: {tareas.count()}")
             # guardar un solo id de los usuarios que están en tareas obteniendo el numero, quitando el queryset
             usuario_id = list(tareas.values_list('usuario__id', flat=True).distinct())
             request.session['selected_user_ids'] = usuario_id
@@ -253,7 +254,7 @@ def asignar_tareas(request):
             # return redirect('asignar_tareas')
         
         if 'ver_no_verificados' in request.POST:
-            tipo_bodega_filter = request.POST.get('tipo_bodega', 'almacen')
+            tipo_bodega_filter = request.POST.get('tipo_bodega', '0101')
             request.session['tipo_bodega'] = tipo_bodega_filter
             tareas = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad, verificado=False, tipo_bodega=tipo_bodega_filter)
             
@@ -261,7 +262,7 @@ def asignar_tareas(request):
             # Recuperar los datos de la sesión
             selected_user_ids = request.session.get('selected_user_ids', [])
             fecha_asignacion = request.session.get('fecha_asignacion', None)
-            tipo_bodega_filter = request.POST.get('tipo_bodega', 'almacen')
+            tipo_bodega_filter = request.POST.get('tipo_bodega', '0101')
             request.session['tipo_bodega'] = tipo_bodega_filter
             
             if selected_user_ids and fecha_asignacion:
@@ -312,7 +313,7 @@ def asignar_tareas(request):
             # Recuperar los datos de la sesión
             selected_user_ids = request.session.get('selected_user_ids', [])
             fecha_asignacion = request.session.get('fecha_asignacion', None)
-            tipo_bodega_filter = request.POST.get('tipo_bodega', 'almacen')
+            tipo_bodega_filter = request.POST.get('tipo_bodega', '0101')
             request.session['tipo_bodega'] = tipo_bodega_filter
             if selected_user_ids and fecha_asignacion:
                 selected_users = User.objects.filter(id__in=selected_user_ids)
@@ -362,7 +363,7 @@ def asignar_tareas(request):
             # Obtener todos los usuarios de la sede
             usuarios_sede = User.objects.filter(usercity__ciudad=ciudad, is_active=True).exclude(username="admin")
             selected_users = usuarios_sede
-            tipo_bodega_filter = request.POST.get('tipo_bodega', 'almacen')
+            tipo_bodega_filter = request.POST.get('tipo_bodega', '0101')
             request.session['tipo_bodega'] = tipo_bodega_filter
             
             # Obtener la fecha seleccionada
@@ -395,7 +396,7 @@ def asignar_tareas(request):
         tareas = Tarea.objects.filter(usuario__in=selected_users) if selected_users else None
         selected_users = None  # Limpiar seleccionados para evitar reasignación
     usuarios_con_tareas_almacen = (
-        Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad, tipo_bodega='almacen')
+        Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad, tipo_bodega='0101')
         .values('usuario__id', 'usuario__username', 'usuario__first_name', 'usuario__last_name')
         .annotate(total_tareas=Count('id'))
     )
@@ -405,7 +406,7 @@ def asignar_tareas(request):
         .annotate(total_tareas=Count('id'))
     )
 
-    total_tareas_almacen = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad, tipo_bodega='almacen').count()
+    total_tareas_almacen = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad, tipo_bodega='0101').count()
     total_tareas_bodega = Tarea.objects.filter(fecha_asignacion=datetime.date.today(), usuario__usercity__ciudad=ciudad, tipo_bodega='0105').count()
     BODEGA_ALMACEN_POR_CIUDAD = {
         'Tulua': '0101',
@@ -710,10 +711,10 @@ def asignar_bodega_usuarios(request):
 
     if request.method == 'POST':
         if 'mover_usuarios' in request.POST:
-            destino = request.POST.get('destino')  # 'almacen' o '0105'
+            destino = request.POST.get('destino')  # '0101' o '0105'
             user_ids = request.POST.getlist('usuarios')
 
-            if destino not in ('almacen', '0105'):
+            if destino not in ('0101', '0105'):
                 messages.error(request, "Destino inválido.")
                 return redirect('asignar_bodega_usuarios')
 
@@ -725,7 +726,7 @@ def asignar_bodega_usuarios(request):
             return redirect('asignar_bodega_usuarios')
 
     usuarios_almacen = UserCity.objects.filter(
-        ciudad=ciudad, bodega_asignada='almacen', user__is_active=True
+        ciudad=ciudad, bodega_asignada='0101', user__is_active=True
     ).exclude(user__username="admin").select_related('user')
 
     usuarios_bodega = UserCity.objects.filter(

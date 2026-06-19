@@ -41,13 +41,15 @@
     position: relative;
     background-color: #fff;
     min-width: 200px;
-    max-height: 150px;
+    max-width: 450px;
+    max-height: 200px;
     overflow-y: auto;
     box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
     padding: 10px;
     z-index: 1;
     border: 1px solid #ccc;
     border-radius: 5px;
+    word-wrap: break-word;
 }
 
 /* Moderniza el estilo del scroll */

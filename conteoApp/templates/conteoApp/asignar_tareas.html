@@ -116,9 +116,9 @@
         </ul>
         <form method="post">
             {% csrf_token %}
-            <input type="hidden" name="tipo_bodega" value="almacen">
-            <button class="button-view-task" name="view_all_tasks" title="ver todas las tareas de almacén">ver todo</button>
-            <button class="button-view-task" name="view_all_user_tasks" title="ver diferencias de almacén">ver todas las diferencias</button>
+            <input type="hidden" name="tipo_bodega" value="0101">
+            <button class="button-view-task" name="view_all_tasks" title="ver todas las tareas de almacén">ver todo almacen</button>
+            <button class="button-view-task" name="view_all_user_tasks" title="ver diferencias de almacén">ver todas las diferencias almacen</button>
         </form>
     </div>
 
@@ -143,8 +143,8 @@
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="tipo_bodega" value="0105">
-            <button class="button-view-task" name="view_all_tasks" title="ver todas las tareas de bodega">ver todo</button>
-            <button class="button-view-task" name="view_all_user_tasks" title="ver diferencias de bodega">ver todas las diferencias</button>
+            <button class="button-view-task" name="view_all_tasks" title="ver todas las tareas de bodega">ver todo bodega</button>
+            <button class="button-view-task" name="view_all_user_tasks" title="ver diferencias de bodega">ver todas las diferencias bodega</button>
         </form>
     </div>
 
