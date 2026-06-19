@@ -31,7 +31,8 @@ def dashboard(request):
     df_demanda = df_demanda.sort_values(by=['sku', 'sede', 'mm']).reset_index(drop=True)
     sku = df_demanda['sku'].unique().tolist()  # Obtener los valores únicos de 'sku'
     sku_nom = df_demanda['sku_nom'].unique().tolist()  # Obtener los valores únicos de 'sku_nom'
-    marca_nom = df_demanda['marca_nom'].unique().tolist()  # Obtener los valores únicos de 'marca_nom'
+    # marca_nom = df_demanda['marca_nom'].unique().tolist()  # Obtener los valores únicos de 'marca_nom'
+    marca_nom = ['ALL VET', 'BIOS','FAB. Y MERCADEO', 'FERCON', 'FERRAGRO', 'HERRADURA LA MONTANA', 'INSMEVET', 'LHAURA', 'QUIMPAC', 'RENTASAL', 'VITALES']
     sede = df_demanda['sede'].unique().tolist()  # Obtener los valores únicos de 'sede'
     context = {
         'items': sku,
