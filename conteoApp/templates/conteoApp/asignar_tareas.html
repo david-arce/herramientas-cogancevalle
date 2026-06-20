@@ -164,10 +164,14 @@
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
     <div>
-        {% if mostrar_exportar_todo %}
-            <button type="button" onclick="exportarExcel(false)" class="button-generic">Exportar todo</button>
-        {% endif %}
-        <button type="button" onclick="exportarExcel(true)" class="button-generic">Exportar diferencias</button>
+        <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="tipo_bodega" value="{{ tipo_bodega_actual }}">
+            {% if mostrar_exportar_todo %}
+                <button type="submit" name="export_excel" class="button-generic">Exportar todo</button>
+            {% endif %}
+            <button type="submit" name="export_excel_diferencias" class="button-generic">Exportar diferencias</button>
+        </form>
     </div>
     <div>
         <form method="post">
@@ -232,7 +236,6 @@
     const toggleVerificadoURL = "{% url 'toggle_verificado' %}";
 </script>
 <script src="{% static 'conteoApp/js/conteoApp.js' %}"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
     const contenedor = document.getElementById('fechas-container');
     
@@ -259,49 +262,7 @@
             });
         }
     });
-    function exportarExcel(soloDiferencias) {
-        const tabla = document.getElementById('table-tareas');
-        const filas = tabla.querySelectorAll('tbody tr');
-        const encabezados = [...tabla.querySelectorAll('thead th')].map(th => th.textContent.trim());
-
-        // Índice de la columna DIFERENCIAS (posición 7)
-        const indiceDiferencia = 7;
-
-        const datos = [];
-
-        filas.forEach(fila => {
-            const celdas = fila.querySelectorAll('td');
-            
-            // Si solo diferencias, saltar filas donde diferencia esté vacía o sea 0
-            if (soloDiferencias) {
-                const valDif = celdas[indiceDiferencia]?.textContent.trim();
-                if (!valDif || valDif === '0') return;
-            }
-
-            const fila_datos = [...celdas].map((td, i) => {
-                // La columna VERIFICADO es un checkbox — leer su estado
-                if (i === encabezados.length - 1) {
-                    const cb = td.querySelector('input[type="checkbox"]');
-                    return cb ? (cb.checked ? 'OK' : '') : td.textContent.trim();
-                }
-                return td.textContent.trim();
-            });
-
-            datos.push(fila_datos);
-        });
-
-        if (datos.length === 0) {
-            alert('No hay datos para exportar.');
-            return;
-        }
-
-        const hoja = XLSX.utils.aoa_to_sheet([encabezados, ...datos]);
-        const libro = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(libro, hoja, 'Tareas');
-
-        const nombre = soloDiferencias ? 'diferencias.xlsx' : 'tareas.xlsx';
-        XLSX.writeFile(libro, nombre);
-    }
+    
 </script>
 
 {% endblock %}
