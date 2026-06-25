@@ -57,7 +57,8 @@ document.getElementById('export-visible').addEventListener('click', function () 
         'REG.N12', 'BODEGA.C5', 'PRODUCTO.C15', 'CODCMC.C50', 'NOMBRE.C100',
         'UNIMED.C4', 'LOTEPRO.C12', 'CANTIDAD.N20', 'CANTIDAD.N20',
         'CANTIDAD.N20', 'PRECIO_UNITARIO.N20', 'FECHAENTREGA.C10',
-        'MULTIPLO_BASE.C20'  // nueva columna
+        'MULTIPLO_BASE.C20',
+        'DETALLE.C255',
     ];
 
     // Diccionario de múltiplos (misma estructura que MULTIPLOS_BASE_COL en Python)
@@ -823,6 +824,8 @@ document.getElementById('export-visible').addEventListener('click', function () 
 
     updatedData.forEach(row => {
         const rowData = [];
+        // Columnas fijas (sin detalle aún)
+        const colsSinDetalle = [0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13];
         columnsToExport.forEach((colIndex, i) => {
             if (i === 0) {
                 rowData.push(index++);
@@ -846,6 +849,9 @@ document.getElementById('export-visible').addEventListener('click', function () 
         }
 
         rowData.push(valorMultiplo);
+        // Columna DETALLE (índice 14 en la tabla DataTable)
+        const detalle = row[14] !== undefined && row[14] !== null ? row[14] : '';
+        rowData.push(detalle);
         exportData.push(rowData);
     });
 
@@ -938,7 +944,7 @@ const dataTableOptions = {
     },
     columnDefs: [
         { className: 'centered', targets: '_all' },
-        { targets: [0, 1, 3, 5, 6, 12, 13], visible: false, searchable: false },
+        { targets: [0, 1, 3, 5, 6, 12, 13, 14], visible: false, searchable: false },
     ],
 };
 
@@ -1014,6 +1020,7 @@ const listProductos = async (datos) => {
                     <td>${producto.cantidadx3}</td>
                     <td>${producto.precio}</td>
                     <td>${producto.fecha}</td>
+                    <td>${producto.detalle ?? ''}</td>
                 </tr>
             `;
         });

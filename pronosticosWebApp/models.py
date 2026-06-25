@@ -223,7 +223,8 @@ class PronosticoFinal(models.Model):
     cantidadx3 = models.IntegerField()
     precio = models.IntegerField()
     fecha = models.CharField(max_length=50, null=True, blank=True)
-
+    detalle = models.CharField(max_length=255, null=True, blank=True)
+    
     class Meta:
         db_table = "pronostico_final"
         managed = False
