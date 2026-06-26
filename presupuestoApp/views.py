@@ -10743,7 +10743,7 @@ def cuenta5(request):
     usuarios_permitidos = ['admin', 'NICOLAS']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuesto_consolidado/cuenta5.html")
+    return render(request, "presupuesto_consolidado/cuenta5_base.html")
 
 def excel_serial_to_date(serial):
     if serial is None:
@@ -10885,6 +10885,42 @@ def borrar_cuenta5_base(request):
         Cuenta5Base.objects.all().delete()
         return JsonResponse({"status": "ok", "message": "Datos de cuenta 5 eliminados"})
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+@require_POST
+def eliminar_cuenta5_base(request, pk):
+    try:
+        Cuenta5Base.objects.filter(pk=pk).delete()
+        return JsonResponse({'ok': True})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
+
+@require_POST
+def editar_cuenta5_base(request, pk):
+    try:
+        data = json.loads(request.body)
+        # mcnfecha puede llegar como "2024-01-15" o como número serial
+        # si llega como string de fecha, reconvertir a serial para el FloatField
+        if 'mcnfecha' in data and data['mcnfecha']:
+            val = data['mcnfecha']
+            if isinstance(val, str) and '-' in val:
+                from datetime import date
+                d = date.fromisoformat(val)
+                origin = date(1899, 12, 30)
+                data['mcnfecha'] = (d - origin).days
+        Cuenta5Base.objects.filter(pk=pk).update(**data)
+        return JsonResponse({'ok': True})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
+
+@require_POST
+def eliminar_bulk_cuenta5_base(request):
+    try:
+        data = json.loads(request.body)
+        ids = data.get('ids', [])
+        Cuenta5Base.objects.filter(pk__in=ids).delete()
+        return JsonResponse({'ok': True, 'eliminados': len(ids)})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
 
 @login_required
 def consolidado_tulua(request):

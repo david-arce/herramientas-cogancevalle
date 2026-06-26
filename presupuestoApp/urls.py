@@ -452,13 +452,8 @@ urlpatterns = [
     path('consolidado-cartago/', views.consolidado_cartago, name='consolidado_cartago'),
     path('consolidado-cali/', views.consolidado_cali, name='consolidado_cali'),
     path('obtener-consolidado/', views.obtener_consolidado, name='obtener_consolidado'),
-    # path('obtener-consolidado-tulua/', views.obtener_consolidado_tulua, name='obtener_consolidado_tulua'),
-    # path('obtener-consolidado-buga/', views.obtener_consolidado_buga, name='obtener_consolidado_buga'),
-    # path('obtener-consolidado-cartago/', views.obtener_consolidado_cartago, name='obtener_consolidado_cartago'),
-    # path('obtener-consolidado-cali/', views.obtener_consolidado_cali, name='obtener_consolidado_cali'),
-   
+    
     path('consolidado-total-base/', views.consolidado_total_base, name='consolidado_total_base'), 
-    # path('obtener-consolidado-total-base/', views.obtener_consolidado_total_base, name='obtener_consolidado_total_base'),
     path('guardar-fila-consolidado/', views.guardar_fila_consolidado, name='guardar_fila_consolidado'),
     path('eliminar-fila-consolidado/', views.eliminar_fila_consolidado, name='eliminar_fila_consolidado'),
     path('obtener-valores-filtros/', views.obtener_valores_filtros, name='obtener_valores_filtros'),
@@ -472,14 +467,14 @@ urlpatterns = [
     path('renombrar-nivel/',          views.renombrar_nivel,           name='renombrar_nivel'),
     path('eliminar-nivel/', views.eliminar_nivel, name='eliminar_nivel'),
     
-    # ── Página de carga ──────────────────────────────────────
+    # ── Página de carga ──────────────────────────────────────-----------------------------------
     path(
         'consolidado-base/carga/',
         views.vista_carga_consolidado_base,   # view del template
         name='vista_carga_consolidado_base',
     ),
  
-    # ── API endpoints ────────────────────────────────────────
+    # ── API endpoints ────
     path(
         'cargar_consolidado_total_base/',
         views.cargar_consolidado_total_base,
@@ -501,6 +496,10 @@ urlpatterns = [
         name='eliminar_fila_consolidado_total_base',
     ),
     
+    # urls.py
+    path('cuenta5/editar/<int:pk>/', views.editar_cuenta5_base, name='editar_cuenta5_base'),
+    path('cuenta5/eliminar/<int:pk>/', views.eliminar_cuenta5_base, name='eliminar_cuenta5_base'),
+    path('cuenta5/eliminar-bulk/', views.eliminar_bulk_cuenta5_base, name='eliminar_bulk_cuenta5_base'),
     #------------------PRESUPUESTO CONSOLIDADO---------------------------
     path('<str:area>/', views.presupuesto_consolidado, name='presupuesto_consolidado'),
     path('<str:area>/obtener-presupuesto-consolidado/', views.obtener_presupuesto_consolidado, name='obtener_presupuesto_consolidado'),
