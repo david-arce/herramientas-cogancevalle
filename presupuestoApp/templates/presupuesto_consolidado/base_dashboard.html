@@ -98,7 +98,7 @@
         {% endwith %}
         {% endwith %}
         
-        {% with presupuestado_active="dashboardPresupuesto" %}
+        {% with presupuestado_active="cuenta5_Presupuestado" %}
         {% with is_open_p=request.resolver_match.url_name %}
         <div class="nav-group {% if is_open_p in presupuestado_active %}open{% endif %}" id="grupoPresupuestado">
 
@@ -110,12 +110,36 @@
           </button>
 
           <div class="nav-group-menu" id="presupuestadoMenu" role="menu">
-            <a href="{% url 'dashboardPresupuesto' %}" class="nav-link nav-child
-              {% if request.resolver_match.url_name == 'dashboardPresupuesto' %}active{% endif %}">
+            <a href="{% url 'cuenta5_Presupuestado' %}" class="nav-link nav-child
+              {% if request.resolver_match.url_name == 'cuenta5_Presupuestado' %}active{% endif %}">
               <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Presupuestos</span>
+              <span class="nav-text">Cuenta 5</span>
             </a>
-            <!-- Agrega más ítems aquí con el mismo patrón -->
+            <a href="{% url 'consolidado_tulua' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'consolidado_tulua' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Consolidado Tuluá</span>
+            </a>
+            <a href="{% url 'consolidado_buga' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'consolidado_buga' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Consolidado Buga</span>
+            </a>
+            <a href="{% url 'consolidado_cartago' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'consolidado_cartago' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Consolidado Cartago</span>
+            </a>
+            <a href="{% url 'consolidado_cali' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'consolidado_cali' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Consolidado Cali</span>
+            </a>
+            <a href="{% url 'consolidado_total_base' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'consolidado_total_base' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Consolidado Total Base</span>
+            </a>
           </div>
 
         </div>

@@ -75,7 +75,6 @@ let perPage          = 50;
 let sortCol          = null;
 let sortDir          = "asc";
 let searchQuery      = "";
-let pendingDeleteIndex = null;
 
 // ─── Arranque ─────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
@@ -211,21 +210,6 @@ function renderTable() {
     chk.className = "row-check";
     tdCheck.appendChild(chk);
     tr.appendChild(tdCheck);
-
-    // Botón eliminar
-    const tdAct = document.createElement("td");
-    tdAct.className = "c5-col-actions";
-    const btn = document.createElement("button");
-    btn.className = "c5-btn-icon c5-btn-delete";
-    btn.title = "Eliminar fila";
-    btn.setAttribute("aria-label", "Eliminar fila");
-    btn.innerHTML = "&#10006;";
-    btn.addEventListener("click", () => {
-      pendingDeleteIndex = globalIdx;
-      openModal("modalEliminar");
-    });
-    tdAct.appendChild(btn);
-    tr.appendChild(tdAct);
 
     // Datos
     COLUMNS.forEach(col => {
@@ -406,25 +390,6 @@ function bindUI() {
   // Delegación checkboxes individuales
   document.getElementById("c5Tbody").addEventListener("change", e => {
     if (e.target.classList.contains("row-check")) syncCheckAll();
-  });
-
-  // ── Eliminar fila ──────────────────────────────────────────
-  document.getElementById("cancelEliminar").addEventListener("click", () => closeModal("modalEliminar"));
-  document.getElementById("confirmEliminar").addEventListener("click", () => {
-    if (pendingDeleteIndex !== null) {
-      const row = filteredRows[pendingDeleteIndex];
-      const globalPos = allRows.indexOf(row);
-      if (globalPos !== -1) allRows.splice(globalPos, 1);
-      filteredRows.splice(pendingDeleteIndex, 1);
-      pendingDeleteIndex = null;
-      // Regenerar valores únicos para los filtros tras eliminar fila
-      feedFilterValues();
-      renderTable();
-      renderPagination();
-      renderInfo();
-      showToast("Fila eliminada", "error");
-    }
-    closeModal("modalEliminar");
   });
 
   // ── Borrar cuenta completa ─────────────────────────────────

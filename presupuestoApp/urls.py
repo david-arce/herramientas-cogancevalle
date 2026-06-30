@@ -9,6 +9,10 @@ urlpatterns = [
     path("subir_excel_cuenta5/", views.subir_excel_cuenta5, name="subir_excel_cuenta5"),
     path("borrar_cuenta5_base/", views.borrar_cuenta5_base, name="borrar_cuenta5_base"),
     
+    # cuenta 5 y consolidado presupuestado -------------------------------------------------------
+    path('cuenta5-presupuestado/', views.cuenta5_presupuestado, name='cuenta5_Presupuestado'),
+    path('obtener-cuenta5-presupuestado/', views.obtener_cuenta5_presupuestado, name='obtener_cuenta5_presupuestado'),
+    
     path('exportar-excel-presupuestos/', views.exportar_excel_presupuestos, name='exportar_excel_presupuestos'),
     
     path("exportar-excel/", views.exportar_excel_nomina, name="exportar_excel"),

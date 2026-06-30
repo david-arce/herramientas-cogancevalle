@@ -288,7 +288,6 @@ th.c5-filterable:hover .c5-filter-icon {
       <thead>
         <tr>
           <th class="c5-col-check"><input type="checkbox" id="checkAll" title="Seleccionar todo"></th>
-          <th class="c5-col-actions">Acciones</th>
 
           <!-- Columnas filtrables: data-filter="key" identifica el filtro -->
           <th data-col="mcncuenta" class="c5-filterable" data-filter="mcncuenta">
@@ -349,7 +348,7 @@ th.c5-filterable:hover .c5-filter-icon {
       </tfoot>
       <tbody id="c5Tbody">
         <tr class="c5-loading-row">
-          <td colspan="28">Cargando datos…</td>
+          <td colspan="27">Cargando datos…</td>
         </tr>
       </tbody>
     </table>
@@ -396,18 +395,6 @@ th.c5-filterable:hover .c5-filter-icon {
   <div class="c5-modal-box c5-modal-large">
     <button class="c5-modal-close" onclick="document.getElementById('manualModal').style.display='none'">&#10005;</button>
     <iframe src="/static/manuales/PUC.pdf" width="100%" height="100%"></iframe>
-  </div>
-</div>
-
-<!-- ── Modal Eliminar fila ── -->
-<div id="modalEliminar" class="c5-modal-overlay" style="display:none">
-  <div class="c5-modal-box">
-    <div class="c5-modal-header">&#9888;&#65039; Confirmar eliminación</div>
-    <p class="c5-modal-body">¿Estás seguro de eliminar esta fila?</p>
-    <div class="c5-modal-footer">
-      <button class="c5-btn" id="cancelEliminar">Cancelar</button>
-      <button class="c5-btn c5-btn-danger" id="confirmEliminar">Eliminar</button>
-    </div>
   </div>
 </div>
 
