@@ -1,0 +1,969 @@
+{% extends 'presupuesto_consolidado/base_dashboard.html' %}
+{% load static %}
+
+{% block css %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+<link rel="stylesheet" href="{% static 'css/consolidado_total_base.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="consolidado-wrap">
+
+    <!-- CABECERA — mismo .header de la dinámica -->
+    <div class="consolidado-header">
+        <div class="consolidado-title">
+            📊 Presupuestado <span>Total Base</span>
+        </div>
+        <div class="controls-bar">
+            <div class="search-box">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input type="text" id="globalSearch" placeholder="Buscar cuenta o concepto...">
+            </div>
+            <button class="btn btn-primary" id="agregarFilaBtn">➕ Agregar fila</button>
+            <button class="btn btn-outline"  id="recargarBtn">🔄 Recargar</button>
+            <button class="btn btn-export"   id="exportarBtn">📥 Exportar CSV</button>
+        </div>
+    </div>
+
+    <!-- STATS — mismo .stats de la dinámica -->
+    <div class="stats-bar" id="statsBar">
+        <div class="stat-pill">
+            Filas cargadas: <span class="stat-val" id="statFilas">—</span>
+        </div>
+        <div class="stat-pill stat-indigo">
+            Total anual: <span class="stat-val" id="statTotal">—</span>
+        </div>
+    </div>
+
+    <!-- TABLA — mismo .table-container de la dinámica -->
+    <div class="table-wrap">
+        <div class="loading-overlay active" id="loadingOverlay">
+            <div class="spinner"></div>
+            <span style="font-size:.85rem;color:var(--c-muted);">Cargando datos...</span>
+        </div>
+
+        <div class="table-scroll">
+            <table class="consolidado" id="consolidadoTable">
+                <thead>
+                    <tr>
+                        <th class="ctr" style="width:90px;">Acciones</th>
+                        <th class="sortable" data-col="mcncuenta">
+                            Cuentas <span class="sort-icon"></span>
+                        </th>
+                        <th class="sortable" data-col="ctanombre">
+                            Concepto <span class="sort-icon"></span>
+                        </th>
+                        <th class="num sortable" data-col="Enero">Enero <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Febrero">Febrero <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Marzo">Marzo <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Abril">Abril <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Mayo">Mayo <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Junio">Junio <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Julio">Julio <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Agosto">Agosto <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Septiembre">Septiembre <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Octubre">Octubre <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Noviembre">Noviembre <span class="sort-icon"></span></th>
+                        <th class="num sortable" data-col="Diciembre">Diciembre <span class="sort-icon"></span></th>
+                        <th class="num col-total">Total</th>
+                    </tr>
+                </thead>
+                <tbody id="consolidadoBody">
+                    <tr class="empty-row"><td colspan="16">⏳ Cargando datos...</td></tr>
+                </tbody>
+                <tfoot id="consolidadoFoot">
+                    <tr>
+                        <td colspan="3">Total general</td>
+                        <td class="num" id="ft-Enero">—</td>
+                        <td class="num" id="ft-Febrero">—</td>
+                        <td class="num" id="ft-Marzo">—</td>
+                        <td class="num" id="ft-Abril">—</td>
+                        <td class="num" id="ft-Mayo">—</td>
+                        <td class="num" id="ft-Junio">—</td>
+                        <td class="num" id="ft-Julio">—</td>
+                        <td class="num" id="ft-Agosto">—</td>
+                        <td class="num" id="ft-Septiembre">—</td>
+                        <td class="num" id="ft-Octubre">—</td>
+                        <td class="num" id="ft-Noviembre">—</td>
+                        <td class="num" id="ft-Diciembre">—</td>
+                        <td class="num col-total" id="ft-total">—</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Toast container -->
+<div id="toastContainer"></div>
+
+<!-- Modal confirmar eliminar — mismo .modal de la dinámica -->
+<div id="modalEliminar" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-head">
+            🗑️ Confirmar eliminación
+            <button class="modal-close" onclick="cerrarModal('modalEliminar')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div style="text-align:center;padding:8px 0 16px;">
+                <div style="font-size:2.8rem;margin-bottom:10px;">⚠️</div>
+                <p style="color:#374151;line-height:1.6;">¿Estás seguro de eliminar esta fila?</p>
+                <p><strong id="modalEliminarInfo" style="color:var(--c-red);font-size:.85rem;display:block;margin-top:8px;"></strong></p>
+                <p style="margin-top:8px;font-size:.82rem;color:var(--c-muted);">Esta acción no se puede deshacer.</p>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" id="modalEliminarCancelar">Cancelar</button>
+            <button class="btn-danger" id="modalEliminarConfirmar">🗑️ Eliminar</button>
+        </div>
+    </div>
+</div>
+
+{% block js %}
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   URLS
+══════════════════════════════════════════════════════════════════ */
+const URL_OBTENER  = "{% url 'obtener_consolidado' %}";
+const URL_GUARDAR  = "{% url 'guardar_fila_consolidado' %}";
+const URL_ELIMINAR = "{% url 'eliminar_fila_consolidado' %}";
+const CSRF_TOKEN   = document.querySelector('[name=csrf-token]').content;
+
+/* ══════════════════════════════════════════════════════════════════
+   CONSTANTES
+══════════════════════════════════════════════════════════════════ */
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+               'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+const FMT = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+function fmt(n) {
+    if (n === 0 || n === null || n === undefined) return '-';
+    return FMT.format(n);
+}
+function parseFmt(str) {
+    return parseFloat(String(str).replace(/\./g,'').replace(',','.')) || 0;
+}
+function getCsrf() { return CSRF_TOKEN; }
+
+/* ══════════════════════════════════════════════════════════════════
+   ESTADO GLOBAL
+══════════════════════════════════════════════════════════════════ */
+let datosOriginales = [];
+let filaEnEdicion   = null;
+let filaAEliminar   = null;
+let sortCol         = null;
+let sortDir         = 'asc';
+
+/* ══════════════════════════════════════════════════════════════════
+   TOAST — mismo mostrarToast de la dinámica
+══════════════════════════════════════════════════════════════════ */
+function showToast(msg, tipo = 'info') {
+    const div = document.createElement('div');
+    div.className = `toast toast-${tipo}`;
+    div.textContent = msg;
+    document.getElementById('toastContainer').appendChild(div);
+    requestAnimationFrame(() => requestAnimationFrame(() => div.classList.add('show')));
+    setTimeout(() => {
+        div.classList.remove('show');
+        setTimeout(() => div.remove(), 350);
+    }, 4000);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   MODAL — mismas funciones de la dinámica
+══════════════════════════════════════════════════════════════════ */
+function abrirModal(id)  { document.getElementById(id).classList.add('active'); }
+function cerrarModal(id) { document.getElementById(id).classList.remove('active'); }
+
+document.getElementById('modalEliminarCancelar').addEventListener('click', () => cerrarModal('modalEliminar'));
+document.getElementById('modalEliminar').addEventListener('click', e => {
+    if (e.target === document.getElementById('modalEliminar')) cerrarModal('modalEliminar');
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   CÁLCULOS DE NEGOCIO
+══════════════════════════════════════════════════════════════════ */
+function calcularTotalesPorPrefijo(data, prefijo) {
+    const t = { total: 0 };
+    MESES.forEach(m => t[m] = 0);
+    data.forEach(row => {
+        if (row.mcncuenta && String(row.mcncuenta).startsWith(prefijo)) {
+            MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
+            t.total += parseFloat(row.total) || 0;
+        }
+    });
+    return t;
+}
+
+function calcularTotalesPorLista(data, lista) {
+    const t = { total: 0 };
+    MESES.forEach(m => t[m] = 0);
+    data.forEach(row => {
+        if (row.mcncuenta) {
+            const c = String(row.mcncuenta);
+            if (lista.some(cod => c.startsWith(cod))) {
+                MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
+                t.total += parseFloat(row.total) || 0;
+            }
+        }
+    });
+    return t;
+}
+
+/* ── GASTOS POR SERVICIOS ──────────────────────────────────── */
+function calcularGastosPorServicios(data) {
+    const CUENTAS_GASTOS_SERVICIOS = ['5', '6', '7', '8', '5230'];
+    const t = { total: 0 };
+    MESES.forEach(m => t[m] = 0);
+    data.forEach(row => {
+        const c = String(row.mcncuenta || '');
+        if (CUENTAS_GASTOS_SERVICIOS.includes(c)) {
+            MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
+            t.total += parseFloat(row.total) || 0;
+        }
+    });
+    return { ...t, mcncuenta: '', ctanombre: 'GASTOS POR SERVICIOS', isTotalRow: true, tipoTotal: 'GastosPorServicios' };
+}
+
+/* ── EXCEDENTES O PERDIDA NETA ─────────────────────────────── */
+// UTILIDAD OPERACIONAL - GASTOS FINANCIEROS + INGRESOS POR SERVICIOS - GASTOS POR SERVICIOS
+function calcularExcedentesPerdidaNeta(data) {
+    const utilidadOp         = calcularUtilidadOperacional(data);
+    const gastosFinanc       = calcularGastosFinancieros(data);
+    const ingresosPorServ    = calcularIngresosPorServicios(data);
+    const gastosPorServ      = calcularGastosPorServicios(data);
+
+    const fila = { mcncuenta: '', ctanombre: 'EXCEDENTES O PERDIDA NETA', isTotalRow: true, tipoTotal: 'ExcedentesPerdidaNeta', total: 0 };
+    MESES.forEach(m => {
+        fila[m] = (utilidadOp[m] || 0) - (gastosFinanc[m] || 0) + (ingresosPorServ[m] || 0) - (gastosPorServ[m] || 0);
+    });
+    fila.total = (utilidadOp.total || 0) - (gastosFinanc.total || 0) + (ingresosPorServ.total || 0) - (gastosPorServ.total || 0);
+    return fila;
+}
+
+/* ── % EXCEDENTE O PERDIDA ─────────────────────────────────── */
+function calcularPorcentajeExcedentes(data) {
+    const ventasNetas      = calcularTotalesPorLista(data, ['1', '2', '41750201']);
+    const excedentesPerdida = calcularExcedentesPerdidaNeta(data);
+
+    const fila = { mcncuenta: '', ctanombre: '% Excedente o Pérdida', isTotalRow: true, tipoTotal: 'PctExcedentes', total: 0 };
+    MESES.forEach(m => {
+        const vn = ventasNetas[m] || 0;
+        fila[m] = vn !== 0 ? (excedentesPerdida[m] / vn) * 100 : 0;
+    });
+    fila.total = ventasNetas.total !== 0 ? (excedentesPerdida.total / ventasNetas.total) * 100 : 0;
+    return fila;
+}
+
+// ── NUEVO: Asistencia Técnica (cuentas que empiezan con AT o VT) ──
+function calcularAsistenciaTecnica(data) {
+    const t = { total: 0 };
+    MESES.forEach(m => t[m] = 0);
+    data.forEach(row => {
+        const c = String(row.mcncuenta || '');
+        if (c.startsWith('AT') || c.startsWith('VT')) {
+            MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
+            t.total += parseFloat(row.total) || 0;
+        }
+    });
+    return { ...t, mcncuenta: '', ctanombre: 'ASISTENCIA TECNICA', isTotalRow: true, tipoTotal: 'AsistenciaTecnica' };
+}
+
+// ── NUEVO: Otros Ingresos ────────────────────────────────────────
+function calcularOtrosIngresos(data) {
+    const CUENTAS_OTROS_INGRESOS = [
+        '41659505','41659501','422004','422507','422529',
+        '4240900202','4240900301','4240900401',
+        '4240909501','4240909503','4240909901','4','420560'
+    ];
+    const t = { total: 0 };
+    MESES.forEach(m => t[m] = 0);
+
+    data.forEach(row => {
+        const c = String(row.mcncuenta || '');
+        if (CUENTAS_OTROS_INGRESOS.includes(c)) {
+            MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
+            t.total += parseFloat(row.total) || 0;
+        }
+    });
+
+    return { ...t, mcncuenta: '', ctanombre: 'OTROS INGRESOS', isTotalRow: true, tipoTotal: 'OtrosIngresos' };
+}
+
+// ── NUEVO: Ingresos por Servicios = Asistencia Técnica + Otros Ingresos ──
+function calcularIngresosPorServicios(data) {
+    const at  = calcularAsistenciaTecnica(data);
+    const oi  = calcularOtrosIngresos(data);
+    const fila = { mcncuenta: '', ctanombre: 'INGRESOS POR SERVICIOS', isTotalRow: true, tipoTotal: 'IngresosPorServicios', total: 0 };
+    MESES.forEach(m => { fila[m] = (at[m] || 0) + (oi[m] || 0); });
+    fila.total = (at.total || 0) + (oi.total || 0);
+    return fila;
+}
+
+// gastos financieros
+function calcularGastosFinancieros(data) {
+    const cuentas = ['521005', '521015', '521020', '3', '615035'];
+    const t = calcularTotalesPorLista(data, cuentas);
+    const fila = {
+        mcncuenta: '', ctanombre: 'Gastos Financieros',
+        isTotalRow: true, tipoTotal: 'GastosFinancieros', total: 0
+    };
+    MESES.forEach(m => { fila[m] = t[m] || 0; });
+    fila.total = t.total || 0;
+    return fila;
+}
+
+// ── Utilidad Operacional ────────────────────────────────────────
+function calcularUtilidadOperacional(data) {
+    const margenCtb  = calcularMargenContribucion(data);
+    const gastos54   = calcularTotalesPorPrefijo(data, '54');
+    const gastos51   = calcularTotalesPorPrefijo(data, '51');
+
+    const fila = { mcncuenta: '', ctanombre: 'Utilidad Operacional', isTotalRow: true, tipoTotal: 'UtilidadOperacional', total: 0 };
+    MESES.forEach(m => {
+        fila[m] = (margenCtb[m] || 0) - (gastos54[m] || 0) - (gastos51[m] || 0);
+    });
+    fila.total = (margenCtb.total || 0) - (gastos54.total || 0) - (gastos51.total || 0);
+    return fila;
+}
+
+// ── % Utilidad Operacional ──────────────────────────────────────
+function calcularPorcentajeUtilidadOperacional(data) {
+    const ventasNetas   = calcularTotalesPorLista(data, ['1', '2', '41750201']);
+    const utilidadOp    = calcularUtilidadOperacional(data);
+
+    const fila = { mcncuenta: '', ctanombre: '% Utilidad Operacional', isTotalRow: true, tipoTotal: 'PctUtilidadOperacional', total: 0 };
+    MESES.forEach(m => {
+        const vn = ventasNetas[m] || 0;
+        fila[m] = vn !== 0 ? (utilidadOp[m] / vn) * 100 : 0;
+    });
+    fila.total = ventasNetas.total !== 0 ? (utilidadOp.total / ventasNetas.total) * 100 : 0;
+    return fila;
+}
+
+// ── Margen de Contribución ──────────────────────────────────────
+function calcularMargenContribucion(data) {
+    const margenBruto       = calcularMargenBruto(data);
+    const descuentosPago    = calcularTotalesPorLista(data, ['4240900101']);
+    const bonificaciones    = calcularTotalesPorLista(data, ['4240909502']);
+
+    const fila = { mcncuenta: '', ctanombre: 'Margen de Contribución', isTotalRow: true, tipoTotal: 'MargenContribucion', total: 0 };
+    MESES.forEach(m => {
+        fila[m] = (margenBruto[m] || 0) + (descuentosPago[m] || 0) + (bonificaciones[m] || 0);
+    });
+    fila.total = (margenBruto.total || 0) + (descuentosPago.total || 0) + (bonificaciones.total || 0);
+    return fila;
+}
+
+// ── % Margen de Contribución ────────────────────────────────────
+function calcularPorcentajeMargenContribucion(data) {
+    const ventasNetas        = calcularTotalesPorLista(data, ['1', '2', '41750201']);
+    const margenContribucion = calcularMargenContribucion(data);
+
+    const fila = { mcncuenta: '', ctanombre: '% Margen de Contribución', isTotalRow: true, tipoTotal: 'PctMargenContribucion', total: 0 };
+    MESES.forEach(m => {
+        const vn = ventasNetas[m] || 0;
+        fila[m] = vn !== 0 ? (margenContribucion[m] / vn) * 100 : 0;
+    });
+    fila.total = ventasNetas.total !== 0 ? (margenContribucion.total / ventasNetas.total) * 100 : 0;
+    return fila;
+}
+
+// ── NUEVO: helper para calcular la fila de porcentaje costo de ventas──────────
+function calcularPorcentajeCostoVentas(data) {
+    const ventasNetas = calcularTotalesPorLista(data, ['1', '2', '41750201']);
+    const costoVentas = calcularTotalesPorLista(data, ['613522']);
+
+    const fila = { mcncuenta: '', ctanombre: '% Costo de Ventas', isTotalRow: true, tipoTotal: 'PctCostoVentas', total: 0 };
+    MESES.forEach(m => {
+        const vn = ventasNetas[m] || 0;
+        fila[m] = vn !== 0 ? (costoVentas[m] / vn) * 100 : 0;
+    });
+    // total = costoVentas.total / ventasNetas.total
+    fila.total = ventasNetas.total !== 0 ? (costoVentas.total / ventasNetas.total) * 100 : 0;
+    return fila;
+}
+
+// ── NUEVO: helper margen bruto ──────────────────────────────────
+function calcularMargenBruto(data) {
+    const ventasNetas = calcularTotalesPorLista(data, ['1', '2', '41750201']);
+    const costoVentas = calcularTotalesPorLista(data, ['613522']);
+
+    const fila = { mcncuenta: '', ctanombre: 'Margen Bruto', isTotalRow: true, tipoTotal: 'MargenBruto', total: 0 };
+    MESES.forEach(m => {
+        fila[m] = (ventasNetas[m] || 0) - (costoVentas[m] || 0);
+    });
+    fila.total = (ventasNetas.total || 0) - (costoVentas.total || 0);
+    return fila;
+}
+// ── NUEVO: helper % margen bruto ────────────────────────────────
+function calcularPorcentajeMargenBruto(data) {
+    const ventasNetas = calcularTotalesPorLista(data, ['1', '2', '41750201']);
+    const margenBruto = calcularMargenBruto(data);
+
+    const fila = { mcncuenta: '', ctanombre: '% Margen Bruto', isTotalRow: true, tipoTotal: 'PctMargenBruto', total: 0 };
+    MESES.forEach(m => {
+        const vn = ventasNetas[m] || 0;
+        fila[m] = vn !== 0 ? (margenBruto[m] / vn) * 100 : 0;
+    });
+    fila.total = ventasNetas.total !== 0 ? (margenBruto.total / ventasNetas.total) * 100 : 0;
+    return fila;
+}
+
+function construirFilas(data) {
+    const totales54  = calcularTotalesPorPrefijo(data, '54');
+    const totales51  = calcularTotalesPorPrefijo(data, '51');
+    const totalesVN  = calcularTotalesPorLista(data, ['1','2','41750201']);
+    const filaPct    = calcularPorcentajeCostoVentas(data);  
+    const filaMargen = calcularMargenBruto(data);
+    const filaPctMargen = calcularPorcentajeMargenBruto(data);
+    const filaMargenCtb       = calcularMargenContribucion(data);         
+    const filaPctMargenCtb    = calcularPorcentajeMargenContribucion(data); 
+    const filaUtilidadOp        = calcularUtilidadOperacional(data);         
+    const filaPctUtilidadOp     = calcularPorcentajeUtilidadOperacional(data);
+    const filaGastosFinanc = calcularGastosFinancieros(data);
+    const filaAsistenciaTecnica   = calcularAsistenciaTecnica(data);
+    const filaOtrosIngresos       = calcularOtrosIngresos(data);
+    const filaIngresosPorServicios = calcularIngresosPorServicios(data);
+    const filaGastosPorServicios    = calcularGastosPorServicios(data);
+    const filaExcedentesPerdida     = calcularExcedentesPerdidaNeta(data);
+    const filaPctExcedentes         = calcularPorcentajeExcedentes(data);
+
+    const resultado = [];
+    let pos54 = -1, pos51 = -1, posVN = -1;
+
+    data.forEach((row, i) => {
+        const c = String(row.mcncuenta || '');
+        if (pos54 < 0 && c.startsWith('54')) pos54 = i;
+        if (pos51 < 0 && c.startsWith('51')) pos51 = i;
+        if (posVN < 0 && c.startsWith('1'))  posVN = i;
+    });
+
+    // Rastrear qué cuentas de referencia existen en data
+    const cuentasExistentes = new Set(data.map(row => String(row.mcncuenta || '')));
+
+    // Rastrear qué inserciones ya se hicieron (para el fallback al final)
+    const insertado = {
+        pct_margen:         false,
+        margenCtb:          false,
+        utilidadOp:         false,
+        ingresoServicios:   false,
+        otrosIngresos:      false,
+        gastosPorServicios: false,
+        excedentes:         false,
+    };
+
+    data.forEach((row, i) => {
+        if (i === posVN) resultado.push({ ...totalesVN, mcncuenta: '', ctanombre: 'VENTAS NETAS', isTotalRow: true, tipoTotal: 'VentasNetas' });
+        if (i === pos54) resultado.push({ ...totales54, mcncuenta: '54', ctanombre: 'GASTOS DE VENTAS', isTotalRow: true, tipoTotal: '54' });
+        if (i === pos51) resultado.push({ ...totales51, mcncuenta: '51', ctanombre: 'GASTOS DE ADMINISTRACIÓN', isTotalRow: true, tipoTotal: '51' });
+
+        
+        const cuenta = String(row.mcncuenta || '');
+        
+        // ── GASTOS POR SERVICIOS antes de cuenta '5' ──
+        if (cuenta === '5') {
+            resultado.push(filaGastosPorServicios);
+            insertado.gastosPorServicios = true;
+        }
+        resultado.push(row);
+        // ── insertar % justo después de la fila 613522 ──
+        if (cuenta === '613522') {
+            resultado.push(filaPct);
+            resultado.push(filaMargen);
+            resultado.push(filaPctMargen);
+            insertado.pct_margen = true;
+        }
+        // ── insertar Margen de Contribución después de 4240909502 ──
+        if (cuenta === '4240909502') {
+            resultado.push(filaMargenCtb);
+            resultado.push(filaPctMargenCtb);
+            insertado.margenCtb = true;
+        }
+        // ── insertar Utilidad Operacional 
+        const cuentasUtilidadGastosFinanc = ['511534', '511512', '51109501_51109502'];
+        const cuentaExistenteUtilidadGastos = cuentasUtilidadGastosFinanc.find(c => data.some(row => row.mcncuenta === c));
+        if (cuenta === cuentaExistenteUtilidadGastos && !insertado.utilidadOp) {
+            resultado.push(filaUtilidadOp);
+            resultado.push(filaPctUtilidadOp);
+            resultado.push(filaGastosFinanc);
+            insertado.utilidadOp = true;
+        }
+        // ── Insertar INGRESOS POR SERVICIOS + ASISTENCIA TECNICA después de 615035 ──
+        if (cuenta === '615035') {
+            resultado.push(filaIngresosPorServicios);
+            resultado.push(filaAsistenciaTecnica);
+            insertado.ingresoServicios = true;
+        }
+        // ── Insertar OTROS INGRESOS después de VT-00001 ──
+        const cuentasOtrosIngresos = ['AT-00003',  'VT-00025', 'AT-00032', 'VT-00001'];
+        // Respetar el orden de cuentasOtrosIngresos, no el de data
+        // Primera cuenta de la lista que realmente existe en data
+        const cuentaDisparo = cuentasOtrosIngresos.find(c => data.some(row => row.mcncuenta === c));
+        // ── Dentro del forEach, después de resultado.push(row) ───────────
+        if (cuenta === cuentaDisparo && !insertado.otrosIngresos) {
+            resultado.push(filaOtrosIngresos);
+            insertado.otrosIngresos = true;
+        }
+        // ── Insertar EXCEDENTES después de 5230 ──
+        if (cuenta === '5230') {
+            resultado.push(filaExcedentesPerdida);
+            resultado.push(filaPctExcedentes);
+            insertado.excedentes = true;
+        }
+    });
+
+    // ── Fallback: insertar al final las filas cuya cuenta de referencia no existía ──
+    if (!insertado.pct_margen && !cuentasExistentes.has('613522')) {
+        resultado.push(filaPct);
+        resultado.push(filaMargen);
+        resultado.push(filaPctMargen);
+    }
+    if (!insertado.margenCtb && !cuentasExistentes.has('4240909502')) {
+        resultado.push(filaMargenCtb);
+        resultado.push(filaPctMargenCtb);
+    }
+    if (!insertado.utilidadOp && !cuentasExistentes.has('511534')) {
+        resultado.push(filaUtilidadOp);
+        resultado.push(filaPctUtilidadOp);
+        resultado.push(filaGastosFinanc);
+    }
+    if (!insertado.ingresoServicios && !cuentasExistentes.has('615035')) {
+        resultado.push(filaIngresosPorServicios);
+        resultado.push(filaAsistenciaTecnica);
+    }
+    if (!insertado.otrosIngresos && !cuentasExistentes.has('VT-00001')) {
+        resultado.push(filaOtrosIngresos);
+    }
+    if (!insertado.gastosPorServicios && !cuentasExistentes.has('4')) {
+        resultado.push(filaGastosPorServicios);
+    }
+    if (!insertado.excedentes && !cuentasExistentes.has('5230')) {
+        resultado.push(filaExcedentesPerdida);
+        resultado.push(filaPctExcedentes);
+    }
+
+    return resultado;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   RENDERIZADO
+══════════════════════════════════════════════════════════════════ */
+function renderTabla(data) {
+    const tbody = document.getElementById('consolidadoBody');
+    tbody.innerHTML = '';
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="16">Sin datos disponibles.</td></tr>`;
+        actualizarFooter([]); actualizarStats([]);
+        return;
+    }
+
+    const filas = construirFilas(data);
+    let filas54 = [], filas51 = [];
+
+    filas.forEach(fila => {
+        const tr = document.createElement('tr');
+        tr.dataset.fila = JSON.stringify(fila);
+
+        if (fila.isTotalRow) { // asignar clase según tipoTotal para filas de totales
+            if      (fila.tipoTotal === '54')          tr.className = 'total-row-54';
+            else if (fila.tipoTotal === '51')          tr.className = 'total-row-51';
+            else if (fila.tipoTotal === 'PctCostoVentas') tr.className = 'total-row-pct';
+            else if (fila.tipoTotal === 'MargenBruto') tr.className = 'total-row-margen';
+            else if (fila.tipoTotal === 'PctMargenBruto') tr.className = 'total-row-pct-margen';
+            else if (fila.tipoTotal === 'MargenContribucion')    tr.className = 'total-row-margen-ctb';
+            else if (fila.tipoTotal === 'PctMargenContribucion') tr.className = 'total-row-pct-margen-ctb';
+            else if (fila.tipoTotal === 'UtilidadOperacional')   tr.className = 'total-row-utilidad-op';    
+            else if (fila.tipoTotal === 'PctUtilidadOperacional') tr.className = 'total-row-pct-utilidad-op'; 
+            else if (fila.tipoTotal === 'GastosFinancieros') tr.className = 'total-row-gastos-financ';
+            else if (fila.tipoTotal === 'AsistenciaTecnica')    tr.className = 'total-row-asistencia-tecnica';
+            else if (fila.tipoTotal === 'OtrosIngresos')        tr.className = 'total-row-otros-ingresos';
+            else if (fila.tipoTotal === 'IngresosPorServicios') tr.className = 'total-row-ingresos-servicios';
+            else if (fila.tipoTotal === 'GastosPorServicios')    tr.className = 'total-row-gastos-servicios';
+            else if (fila.tipoTotal === 'ExcedentesPerdidaNeta') tr.className = 'total-row-excedentes';
+            else if (fila.tipoTotal === 'PctExcedentes')         tr.className = 'total-row-pct-excedentes';
+            else                                        tr.className = 'total-row-ventas-netas';
+        } else {
+            const c = String(fila.mcncuenta || '');
+            if      (c.startsWith('54')) { tr.className = 'cuenta-54'; filas54.push(tr); }
+            else if (c.startsWith('51')) { tr.className = 'cuenta-51'; filas51.push(tr); }
+        }
+
+        // Celda acciones
+        const tdAcc = document.createElement('td');
+        tdAcc.className = 'ctr';
+        if (fila.isTotalRow) {
+            tdAcc.innerHTML = `<span style="color:var(--c-hint);">—</span>`;
+        } else {
+            const div = document.createElement('div');
+            div.className = 'action-cell';
+            div.innerHTML = `
+                <input type="checkbox" class="row-check">
+                <button class="btn-row btn-row-edit"   title="Editar">✏️</button>
+                <button class="btn-row btn-row-delete" title="Eliminar">🗑️</button>`;
+            div.querySelector('.btn-row-edit').addEventListener('click',   () => iniciarEdicion(tr, fila));
+            div.querySelector('.btn-row-delete').addEventListener('click', () => iniciarEliminar(tr, fila));
+            tdAcc.appendChild(div);
+        }
+        tr.appendChild(tdAcc);
+
+        // Celdas de datos
+        [{ key:'mcncuenta' }, { key:'ctanombre' },
+         ...MESES.map(m => ({ key:m, num:true })),
+         { key:'total', num:true, cls:'col-total' }
+        ].forEach(({ key, num, cls }) => {
+            const td = document.createElement('td');
+            if (num) {
+                td.className = 'num' + (cls ? ' ' + cls : '');
+                const v = parseFloat(fila[key]) || 0;
+
+                // ── NUEVO: formato especial para fila de porcentaje ──
+                if (fila.tipoTotal === 'PctCostoVentas' || fila.tipoTotal === 'PctMargenBruto' || fila.tipoTotal === 'PctMargenContribucion' || fila.tipoTotal === 'PctUtilidadOperacional' || fila.tipoTotal === 'PctExcedentes') {
+                    td.textContent = v !== 0 ? v.toFixed(2) + '%' : '-';
+                    td.style.fontStyle = 'italic';
+                } else {
+                    td.textContent = fmt(v);
+                    if (!fila.isTotalRow && v !== 0) td.classList.add(v > 0 ? 'pos' : 'neg');
+                }
+            } else {
+                td.textContent = fila[key] || '';
+            }
+            tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+    });
+
+    if (filas54.length) { filas54[0].classList.add('cuenta-54-first'); filas54[filas54.length-1].classList.add('cuenta-54-last'); }
+    if (filas51.length) { filas51[0].classList.add('cuenta-51-first'); filas51[filas51.length-1].classList.add('cuenta-51-last'); }
+
+    actualizarFooter(data);
+    actualizarStats(data);
+    aplicarBusqueda();
+}
+
+function actualizarFooter(data) {
+    const t = { total: 0 };
+    MESES.forEach(m => t[m] = 0);
+    data.forEach(row => {
+        MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
+        t.total += parseFloat(row.total) || 0;
+    });
+    MESES.forEach(m => {
+        const el = document.getElementById(`ft-${m}`);
+        if (el) el.textContent = fmt(t[m]);
+    });
+    const ftTot = document.getElementById('ft-total');
+    if (ftTot) ftTot.textContent = fmt(t.total);
+}
+
+function actualizarStats(data) {
+    document.getElementById('statFilas').textContent = data.length;
+    const total = data.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
+    document.getElementById('statTotal').textContent = '$' + FMT.format(total);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CARGA DE DATOS
+══════════════════════════════════════════════════════════════════ */
+async function cargarDatos() {
+    document.getElementById('loadingOverlay').classList.add('active');
+    document.getElementById('consolidadoBody').innerHTML =
+        `<tr class="empty-row"><td colspan="16">⏳ Cargando...</td></tr>`;
+    try {
+        const resp = await fetch(URL_OBTENER);
+        const json = await resp.json();
+        if (json.error) { showToast('Error: ' + json.error, 'error'); return; }
+        datosOriginales = json.data || [];
+        renderTabla(datosOriginales);
+    } catch(e) {
+        showToast('Error al cargar datos: ' + e.message, 'error');
+        document.getElementById('consolidadoBody').innerHTML =
+            `<tr class="empty-row"><td colspan="16">❌ Error al cargar datos.</td></tr>`;
+    } finally {
+        document.getElementById('loadingOverlay').classList.remove('active');
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   BÚSQUEDA GLOBAL
+══════════════════════════════════════════════════════════════════ */
+function aplicarBusqueda() {
+    const q = document.getElementById('globalSearch').value.toLowerCase().trim();
+    document.querySelectorAll('#consolidadoBody tr').forEach(tr => {
+        if (tr.classList.contains('empty-row')) return;
+        if (!q) { tr.classList.remove('hidden-search'); return; }
+        const texto = Array.from(tr.querySelectorAll('td')).slice(1, 3)
+            .map(td => td.textContent.toLowerCase()).join(' ');
+        tr.classList.toggle('hidden-search', !texto.includes(q));
+    });
+}
+document.getElementById('globalSearch').addEventListener('input', aplicarBusqueda);
+
+/* ══════════════════════════════════════════════════════════════════
+   ORDENAMIENTO
+══════════════════════════════════════════════════════════════════ */
+document.querySelectorAll('thead th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+        const col = th.dataset.col;
+        sortDir = (sortCol === col && sortDir === 'asc') ? 'desc' : 'asc';
+        sortCol = col;
+        document.querySelectorAll('thead th').forEach(t => t.classList.remove('sorted-asc','sorted-desc'));
+        th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+
+        const sorted = [...datosOriginales].sort((a, b) => {
+            const av = MESES.includes(col) || col === 'total'
+                ? (parseFloat(a[col]) || 0) : String(a[col] || '').toLowerCase();
+            const bv = MESES.includes(col) || col === 'total'
+                ? (parseFloat(b[col]) || 0) : String(b[col] || '').toLowerCase();
+            if (av < bv) return sortDir === 'asc' ? -1 : 1;
+            if (av > bv) return sortDir === 'asc' ?  1 : -1;
+            return 0;
+        });
+        renderTabla(sorted);
+    });
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   EDICIÓN INLINE
+══════════════════════════════════════════════════════════════════ */
+function iniciarEdicion(tr, fila) {
+    if (filaEnEdicion && filaEnEdicion.tr !== tr) cancelarEdicion(false);
+    filaEnEdicion = { tr, oldData: { ...fila } };
+    tr.classList.add('editing');
+
+    const accDiv = tr.querySelector('.action-cell');
+    accDiv.innerHTML = `
+        <button class="btn-row btn-row-save"   id="btnSave"   title="Guardar">💾 Guardar</button>
+        <button class="btn-row btn-row-cancel" id="btnCancel" title="Cancelar">✕</button>`;
+    accDiv.querySelector('#btnSave').addEventListener('click',   () => guardarEdicion());
+    accDiv.querySelector('#btnCancel').addEventListener('click', () => cancelarEdicion(true));
+
+    const celdas = Array.from(tr.querySelectorAll('td'));
+    celdas[1].innerHTML = `<input class="edit-input" type="text" value="${escHtml(fila.mcncuenta || '')}">`;
+    celdas[2].innerHTML = `<input class="edit-input" type="text" value="${escHtml(fila.ctanombre || '')}" style="min-width:160px;">`;
+    MESES.forEach((mes, i) => {
+        const v = parseFloat(fila[mes]) || 0;
+        celdas[3+i].innerHTML = `<input class="edit-input numeric" type="number" step="1" value="${v === 0 ? '' : v}" placeholder="0">`;
+    });
+    celdas[15].classList.add('col-total');
+    actualizarTotalEnEdicion(tr);
+
+    tr.querySelectorAll('.numeric').forEach(inp =>
+        inp.addEventListener('input', () => actualizarTotalEnEdicion(tr))
+    );
+    (fila.isNew ? celdas[1].querySelector('input') : celdas[3].querySelector('input'))?.focus();
+}
+
+function actualizarTotalEnEdicion(tr) {
+    let total = 0;
+    tr.querySelectorAll('.numeric').forEach(inp => total += parseFloat(inp.value) || 0);
+    Array.from(tr.querySelectorAll('td'))[15].textContent = fmt(total);
+}
+
+function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function cancelarEdicion(eliminarSiNueva) {
+    if (!filaEnEdicion) return;
+    const { tr, oldData } = filaEnEdicion;
+    if (eliminarSiNueva && oldData.isNew) { tr.remove(); filaEnEdicion = null; return; }
+    redibujarFila(tr, oldData);
+    filaEnEdicion = null;
+}
+
+function redibujarFila(tr, fila) {
+    tr.classList.remove('editing');
+    const celdas = Array.from(tr.querySelectorAll('td'));
+
+    const accDiv = tr.querySelector('.action-cell');
+    if (accDiv && !fila.isTotalRow) {
+        accDiv.innerHTML = `
+            <input type="checkbox" class="row-check">
+            <button class="btn-row btn-row-edit"   title="Editar">✏️</button>
+            <button class="btn-row btn-row-delete" title="Eliminar">🗑️</button>`;
+        accDiv.querySelector('.btn-row-edit').addEventListener('click',   () => iniciarEdicion(tr, fila));
+        accDiv.querySelector('.btn-row-delete').addEventListener('click', () => iniciarEliminar(tr, fila));
+    }
+
+    celdas[1].textContent = fila.mcncuenta || '';
+    celdas[2].textContent = fila.ctanombre || '';
+    MESES.forEach((m, i) => {
+        const v = parseFloat(fila[m]) || 0;
+        celdas[3+i].textContent = fmt(v);
+        celdas[3+i].className = 'num' + (v > 0 ? ' pos' : v < 0 ? ' neg' : '');
+    });
+    const tot = parseFloat(fila.total) || 0;
+    celdas[15].textContent = fmt(tot);
+    celdas[15].className = 'num col-total' + (tot > 0 ? ' pos' : tot < 0 ? ' neg' : '');
+    tr.dataset.fila = JSON.stringify(fila);
+}
+
+async function guardarEdicion() {
+    if (!filaEnEdicion) return;
+    const { tr, oldData } = filaEnEdicion;
+    const celdas = Array.from(tr.querySelectorAll('td'));
+
+    const nuevaData = {
+        mcncuenta: celdas[1].querySelector('input')?.value?.trim() || oldData.mcncuenta || '',
+        ctanombre: celdas[2].querySelector('input')?.value?.trim() || oldData.ctanombre || '',
+    };
+    MESES.forEach((m, i) => { nuevaData[m] = parseFloat(celdas[3+i].querySelector('input')?.value) || 0; });
+    nuevaData.total = MESES.reduce((s, m) => s + nuevaData[m], 0);
+
+    if (!nuevaData.mcncuenta) { showToast('❌ La cuenta es obligatoria', 'error'); return; }
+
+    const btnSave = tr.querySelector('#btnSave');
+    if (btnSave) { btnSave.disabled = true; btnSave.textContent = '⏳'; }
+
+    try {
+        const resp = await fetch(URL_GUARDAR, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+            body: JSON.stringify({ nueva_data: nuevaData, old_data: oldData }),
+        });
+        const json = await resp.json();
+        if (!resp.ok || !json.success) {
+            showToast('Error al guardar: ' + (json.error || resp.statusText), 'error');
+            if (btnSave) { btnSave.disabled = false; btnSave.textContent = '💾 Guardar'; }
+            return;
+        }
+
+        if (oldData.isNew) {
+            datosOriginales.unshift(nuevaData);
+        } else {
+            const idx = datosOriginales.findIndex(r =>
+                r.mcncuenta === oldData.mcncuenta && r.ctanombre === oldData.ctanombre);
+            if (idx >= 0) datosOriginales[idx] = nuevaData;
+        }
+
+        filaEnEdicion = null;
+        redibujarFila(tr, nuevaData);
+        tr.classList.add('row-new-flash');
+        setTimeout(() => tr.classList.remove('row-new-flash'), 1300);
+        actualizarFooter(datosOriginales);
+        actualizarStats(datosOriginales);
+        showToast('✅ Guardado correctamente', 'success');
+    } catch(e) {
+        showToast('Error de red: ' + e.message, 'error');
+        if (btnSave) { btnSave.disabled = false; btnSave.textContent = '💾 Guardar'; }
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ELIMINAR
+══════════════════════════════════════════════════════════════════ */
+function iniciarEliminar(tr, fila) {
+    filaAEliminar = { tr, fila };
+    document.getElementById('modalEliminarInfo').textContent =
+        `Cuenta: ${fila.mcncuenta} — ${fila.ctanombre}`;
+    abrirModal('modalEliminar');
+}
+
+document.getElementById('modalEliminarConfirmar').addEventListener('click', async () => {
+    if (!filaAEliminar) return;
+    const { tr, fila } = filaAEliminar;
+    try {
+        const resp = await fetch(URL_ELIMINAR, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+            body: JSON.stringify({ mcncuenta: fila.mcncuenta }),
+        });
+        const json = await resp.json();
+        if (!resp.ok || !json.success) {
+            showToast('Error al eliminar: ' + (json.error || resp.statusText), 'error');
+            return;
+        }
+        const idx = datosOriginales.findIndex(r => r.mcncuenta === fila.mcncuenta);
+        if (idx >= 0) datosOriginales.splice(idx, 1);
+        tr.remove();
+        actualizarFooter(datosOriginales);
+        actualizarStats(datosOriginales);
+        showToast('🗑️ Fila eliminada', 'success');
+    } catch(e) {
+        showToast('Error de red: ' + e.message, 'error');
+    } finally {
+        filaAEliminar = null;
+        cerrarModal('modalEliminar');
+    }
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   AGREGAR FILA
+══════════════════════════════════════════════════════════════════ */
+document.getElementById('agregarFilaBtn').addEventListener('click', () => {
+    if (filaEnEdicion) cancelarEdicion(true);
+
+    const fila = {
+        mcncuenta: '', ctanombre: '', isNew: true,
+        total: 0, ...Object.fromEntries(MESES.map(m => [m, 0]))
+    };
+
+    const tbody = document.getElementById('consolidadoBody');
+    const emptyRow = tbody.querySelector('.empty-row');
+    if (emptyRow) emptyRow.remove();
+
+    const tr = document.createElement('tr');
+    tr.className = 'row-new-flash';
+
+    const tdAcc = document.createElement('td');
+    tdAcc.className = 'ctr';
+    const div = document.createElement('div');
+    div.className = 'action-cell';
+    div.innerHTML = `
+        <input type="checkbox" class="row-check">
+        <button class="btn-row btn-row-edit"   title="Editar">✏️</button>
+        <button class="btn-row btn-row-delete" title="Eliminar">🗑️</button>`;
+    tdAcc.appendChild(div);
+    tr.appendChild(tdAcc);
+
+    ['mcncuenta','ctanombre',...MESES,'total'].forEach(key => {
+        const td = document.createElement('td');
+        td.className = ['mcncuenta','ctanombre'].includes(key) ? '' : 'num' + (key === 'total' ? ' col-total' : '');
+        td.textContent = '-';
+        tr.appendChild(td);
+    });
+
+    tbody.prepend(tr);
+    tbody.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    div.querySelector('.btn-row-edit').addEventListener('click',   () => iniciarEdicion(tr, fila));
+    div.querySelector('.btn-row-delete').addEventListener('click', () => { tr.remove(); filaEnEdicion = null; });
+
+    iniciarEdicion(tr, fila);
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   RECARGAR / EXPORTAR
+══════════════════════════════════════════════════════════════════ */
+document.getElementById('recargarBtn').addEventListener('click', () => {
+    if (filaEnEdicion) cancelarEdicion(true);
+    cargarDatos();
+});
+
+document.getElementById('exportarBtn').addEventListener('click', () => {
+    if (!datosOriginales.length) { showToast('Sin datos para exportar', 'error'); return; }
+    const headers = ['Cuenta','Concepto',...MESES.map(m => m.charAt(0).toUpperCase()+m.slice(1)),'Total'];
+    const rows    = construirFilas(datosOriginales).map(r =>
+        [r.mcncuenta, r.ctanombre, ...MESES.map(m => r[m] || 0), r.total || 0]
+    );
+    const csv  = [headers, ...rows].map(r => r.join(';')).join('\n');
+    const blob = new Blob(['\ufeff'+csv], { type: 'text/csv;charset=utf-8;' });
+    const a    = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `consolidado_${new Date().toISOString().split('T')[0]}.csv`; a.click();
+    showToast('📥 CSV exportado', 'success');
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════════════ */
+cargarDatos();
+</script>
+{% endblock %}
+{% endblock %}

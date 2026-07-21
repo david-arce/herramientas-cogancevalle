@@ -455,9 +455,17 @@ urlpatterns = [
     path('consolidado-buga/', views.consolidado_buga, name='consolidado_buga'),
     path('consolidado-cartago/', views.consolidado_cartago, name='consolidado_cartago'),
     path('consolidado-cali/', views.consolidado_cali, name='consolidado_cali'),
+    path('consolidado-total-base/', views.consolidado_total_base, name='consolidado_total_base'), 
     path('obtener-consolidado/', views.obtener_consolidado, name='obtener_consolidado'),
     
-    path('consolidado-total-base/', views.consolidado_total_base, name='consolidado_total_base'), 
+    # PRESUPUESTADO
+    path('presupuestado-tulua/', views.presupuestado_tulua, name='presupuestado_tulua'),
+    path('presupuestado-buga/', views.presupuestado_buga, name='presupuestado_buga'),
+    path('presupuestado-cartago/', views.presupuestado_cartago, name='presupuestado_cartago'),
+    path('presupuestado-cali/', views.presupuestado_cali, name='presupuestado_cali'),
+    path('presupuestado-total-base/', views.presupuestado_total_base, name='presupuestado_total_base'), 
+    # path('obtener-consolidado/', views.obtener_consolidado, name='obtener_consolidado'),
+    
     path('guardar-fila-consolidado/', views.guardar_fila_consolidado, name='guardar_fila_consolidado'),
     path('eliminar-fila-consolidado/', views.eliminar_fila_consolidado, name='eliminar_fila_consolidado'),
     path('obtener-valores-filtros/', views.obtener_valores_filtros, name='obtener_valores_filtros'),

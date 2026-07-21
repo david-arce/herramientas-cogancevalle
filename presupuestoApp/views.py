@@ -10957,6 +10957,7 @@ def consolidado_total_base(request):
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     return render(request, "presupuesto_consolidado/consolidado_total_base.html")
 
+# ----------------- PRESUPUESTADO ------------------------
 @login_required
 def cuenta5_presupuestado(request):
     usuarios_permitidos = ['admin', 'NICOLAS']
@@ -10996,6 +10997,42 @@ def obtener_cuenta5_presupuestado(request):
         print(f"❌ Error en obtener_cuenta5_base: {e}")
         return JsonResponse({'error': str(e)}, status=500) 
    
+@login_required
+def presupuestado_tulua(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuestado/presupuestado_tulua.html")
+
+@login_required
+def presupuestado_buga(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuestado/presupuestado_buga.html")
+
+@login_required
+def presupuestado_cartago(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuestado/presupuestado_cartago.html")
+
+@login_required
+def presupuestado_cali(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuestado/presupuestado_cali.html")
+
+@login_required
+def presupuestado_total_base(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuestado/presupuestado_total_base.html")
+
+
 # ══════════════════════════════════════════════════════════════════
 #  FUNCIÓN GENÉRICA — reemplaza todas las calcular_consolidado_*
 # ══════════════════════════════════════════════════════════════════
@@ -11223,7 +11260,6 @@ def calcular_consolidado(sede='consolidado'):
         print(f"❌ Error en calcular_consolidado({sede}): {e}")
         return {'success': False, 'error': str(e)}
 
-
 # ══════════════════════════════════════════════════════════════════
 #  VISTA GENÉRICA — reemplaza todas las obtener_consolidado_*
 # ══════════════════════════════════════════════════════════════════
@@ -11286,6 +11322,271 @@ def obtener_consolidado(request):
                          'recordsTotal': len(result),
                          'recordsFiltered': len(result)})
 
+
+# CALCULAR Y OBTENER PRESUPUESTADO ----------------
+def calcular_presupuestado(sede='consolidado'):
+    """
+    Calcula el consolidado para una sede específica o para todas.
+
+    sede: clave de SEDE_CONFIG  ('cali' | 'tulua' | 'buga' | 'palmira' | 'consolidado')
+    """
+    try:
+        config = SEDE_CONFIG[sede]
+        CUENTAS_OMITIR = ['521020']
+
+        queryset = (
+            Cuenta5Presupuestado.objects
+            .filter(**config['cuenta5_filter'])
+            .exclude(mcncuenta__in=CUENTAS_OMITIR)
+            .values('mcncuenta', 'mcnccosto', 'mcnfecha',
+                    'mcnvaldebi', 'mcnvalcred', 'mcndestino')
+        )
+
+        queryset_consolidado = (
+            ConsolidadoTotalBase.objects
+            .filter(**config['consolidado_filter'])
+            .values('mcncuenta', 'mcnccosto', 'mcnfecha', 'valor')
+        )
+
+        # ── todo lo demás es idéntico en todas las versiones ──────
+        MESES_ES = {
+            1: 'Enero',  2: 'Febrero', 3: 'Marzo',     4: 'Abril',
+            5: 'Mayo',   6: 'Junio',   7: 'Julio',      8: 'Agosto',
+            9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+        }
+
+        def aplicar_agrupaciones(cuenta, costo):
+            if cuenta.startswith('4'):
+                return cuenta
+            if costo.startswith('02040'):                          cuenta = '5'
+            if costo == '020201' and cuenta.startswith('5405'):    cuenta = '5405'
+            if costo == '0101':                                    cuenta = '5105'
+            if cuenta.startswith('541001'):                        cuenta = '541001'
+
+            agrupaciones_exactas = {
+                frozenset(['54100207','54100208','54100209','54100210','54100211']): '54100207_54100211',
+                frozenset(['541009','541033','54103301','54103302']):                '541009_541033',
+                frozenset(['541015','541016']):                                      '541015_541016',
+                frozenset(['511015','511016']):                                      '511015_511016',
+                frozenset(['51109501','51109502']):                                  '51109501_51109502',
+            }
+            for grupo, destino_cuenta in agrupaciones_exactas.items():
+                if cuenta in grupo:
+                    cuenta = destino_cuenta
+                    break
+
+            prefijos = [
+                ('5230',   '5230'),
+                ('541003', '541003'),
+                ('541005', '541005'),
+                ('541006', '541006'),
+                ('541024', '541024'),
+                ('541027', '541027'),
+                ('5415',   '5415'),
+            ]
+            for prefijo, destino_cuenta in prefijos:
+                if cuenta.startswith(prefijo):
+                    cuenta = destino_cuenta
+                    break
+
+            return cuenta
+
+        asistencia_tecnica          = ["AT-00004","AT-00008","AT-00010","AT-00013","AT-00014",
+                                       "AT-00015","AT-00016","AT-00019","AT-00020","AT-00021",
+                                       "AT-00022","AT-00023","AT-00024","AT-00026","AT-00028",
+                                       "AT-00029","AT-00030","AT-00032","VT-00025","AT-00003"]
+        asistencia_tecnica_propia    = ['AT-00001','AT-00002','AT-00005']
+        asistencia_tecnica_convenios = ['AT-00003','AT-00004','AT-00006']
+
+        consolidado         = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0})
+        consolidado_normal  = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0})
+        consolidado_at      = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0})
+        consolidado_cuenta4 = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0})
+
+        # ── pase único sobre queryset ─────────────────────────────
+        for row in queryset:
+            fecha = excel_serial_to_date(row['mcnfecha'])
+            if not fecha:
+                continue
+            fecha   = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            mes     = MESES_ES[fecha.month]
+            cuenta  = row['mcncuenta'] or 'SIN CUENTA'
+            costo   = row['mcnccosto'] or 'SIN COSTO'
+            destino = row['mcndestino'] or 'SIN DESTINO'
+            destino_norm = destino.strip().upper()
+
+            if cuenta.startswith('4'):
+                # Pase 2 — AT
+                if destino_norm in asistencia_tecnica:
+                    key = (mes, destino_norm, costo, destino)
+                    consolidado_at[key]['total_debito']  += row['mcnvaldebi'] or 0
+                    consolidado_at[key]['total_credito'] += row['mcnvalcred'] or 0
+                # Pase 3 — cuenta 4 normal
+                else:
+                    key = (mes, cuenta, costo, destino)
+                    consolidado_cuenta4[key]['total_debito']  += row['mcnvaldebi'] or 0
+                    consolidado_cuenta4[key]['total_credito'] += row['mcnvalcred'] or 0
+                continue
+
+            # Pase 1 — cuentas normales (no 4)
+            cuenta = aplicar_agrupaciones(cuenta, costo)
+            if destino_norm in asistencia_tecnica_propia:    cuenta = '6'
+            elif destino_norm in asistencia_tecnica_convenios: cuenta = '7'
+            elif costo.startswith('0203') and destino_norm not in asistencia_tecnica_convenios \
+                                          and destino_norm not in asistencia_tecnica_propia:
+                cuenta = '8'
+
+            key = (mes, cuenta, costo, destino)
+            consolidado_normal[key]['total_debito']  += row['mcnvaldebi'] or 0
+            consolidado_normal[key]['total_credito'] += row['mcnvalcred'] or 0
+
+        # ── unir acumuladores ─────────────────────────────────────
+        for acc in (consolidado_normal, consolidado_at, consolidado_cuenta4):
+            for key, valores in acc.items():
+                consolidado[key]['total_debito']  += valores['total_debito']
+                consolidado[key]['total_credito'] += valores['total_credito']
+
+        # ── ConsolidadoTotalBase ──────────────────────────────────
+        for row in queryset_consolidado:
+            fecha = row['mcnfecha']
+            if not fecha:
+                continue
+            if isinstance(fecha, str):
+                fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
+            mes    = MESES_ES[fecha.month]
+            cuenta = aplicar_agrupaciones(row['mcncuenta'] or 'SIN CUENTA',
+                                          row['mcnccosto'] or 'SIN COSTO')
+            key = (mes, cuenta, row['mcnccosto'] or 'SIN COSTO', 'SIN DESTINO')
+            consolidado[key]['total_debito'] += row['valor'] or 0
+
+        # ── nombres ───────────────────────────────────────────────
+        cuentas_dict = {}
+        for qs in (Cuenta5Base.objects.values('mcncuenta','ctanombre').distinct(),
+                   ConsolidadoTotalBase.objects.values('mcncuenta','ctanombre').distinct()):
+            for c in qs:
+                cta, nom = c['mcncuenta'], (c['ctanombre'] or '').strip()
+                if cta and nom and cta not in cuentas_dict:
+                    cuentas_dict[cta] = nom
+
+        nombres_especiales = {
+            '541001':'Honorarios','54100207_54100211':'Tasas Bomberil-otras',
+            '541003':'Arrendamientos','541005':'Seguros',
+            '541006':'Mantenimiento y Reparaciónes',
+            '541009_541033':'Adecuación e Instalaciones-Reparac locat',
+            '541015_541016':'Utiles - Papelería- Fotocopias',
+            '541024':'Gastos Legales','541027':'Gastos de Viaje',
+            '5415':'Depreciación','511015_511016':'Papelería y Utiles de Oficina',
+            '5405':'Gastos de Personal','5105':'Gastos de Personal',
+            '51109501_51109502':'Gastos de Fondos Sociales',
+            '5':'Proyecto de Aftosa','6':'Asistencia Técnica Propia',
+            '7':'Asistencia Técnica Convenios',
+            '8':'Asistencia Técnica Otros - Capacitaciones',
+            '5230':'Gastos no Operacionales-IVA obsequios',
+            '521015':'Gastos Contribución 4 x1000','615035':'Intereses',
+            'AT-00003':'Convenio Elanco','AT-00004':'Apoyo ciclo aftosa Virbac',
+            'AT-00005':'Convenio Proalba-Santa Lucía','AT-00007':'Convenio Tecnoquímicas',
+            'AT-00008':'Seminario ambiental',
+            'AT-00010':'Jornada de actualización en reproducción',
+            'AT-00013':'Curso de gestión empresarial','AT-00014':'Curso de mayordomía',
+            'AT-00015':'Ecografo Bovino','AT-00016':'Curso de Inseminación',
+            'AT-00019':'Brucelosis-Tuberculosis','AT-00020':'Programa ambiental',
+            'AT-00021':'Chequeo reproductivo','AT-00022':'Curso de Bromatología',
+            'AT-00023':'Capacitación software ganadero','AT-00024':'Atencion urgencias',
+            'AT-00026':'Taller atención básica equipos de ordeño',
+            'AT-00028':'Mantenimiento equipo técnico-Diplomado',
+            'AT-00029':'Taller en bienestar y sanidad bovina',
+            'AT-00030':'Seminario productividad láctea',
+            'AT-00032':'Servicio de imágenes con dron',
+            'VT-00025':'Convenio Tecnoquímicas','41659505':'Proyecto de Aftosa',
+            '41659501':'Patrocinio de eventos','420560':'Venta PPE (moto)',
+        }
+
+        registros = defaultdict(lambda: {'mcncuenta':'','ctanombre':'','meses':{}})
+
+        for (mes, cuenta, costo, destino) in consolidado:
+            vals = consolidado[(mes, cuenta, costo, destino)]
+            if cuenta in asistencia_tecnica or cuenta.startswith('4'):
+                saldo = vals['total_credito'] - vals['total_debito']
+            else:
+                saldo = vals['total_debito'] - vals['total_credito']
+
+            registros[cuenta]['mcncuenta'] = cuenta
+            registros[cuenta]['ctanombre'] = nombres_especiales.get(
+                cuenta, cuentas_dict.get(cuenta, 'SIN NOMBRE')
+            ).capitalize()
+            registros[cuenta]['meses'][mes] = round(
+                registros[cuenta]['meses'].get(mes, 0) + saldo
+            )
+
+        return {'success': True, 'data': registros}
+
+    except Exception as e:
+        print(f"❌ Error en calcular_consolidado({sede}): {e}")
+        return {'success': False, 'error': str(e)}
+
+# ══════════════════════════════════════════════════════════════════
+#  VISTA GENÉRICA — reemplaza todas las obtener_presupuestado_*
+# ══════════════════════════════════════════════════════════════════
+
+def obtener_presupuestado(request):
+    """
+    Vista única para todas las sedes.
+    Recibe ?sede=cali | tulua | buga | palmira | consolidado  (default: consolidado)
+    """
+    sede = request.GET.get('sede', 'consolidado').lower()
+    if sede not in SEDE_CONFIG:
+        return JsonResponse({'error': f'Sede inválida: {sede}'}, status=400)
+
+    ORDEN_PERSONALIZADO = [
+        '1','2','41750201','613522','4240900101','4240909502',
+        '5405','541001','54100201','54100202','54100204','54100205','54100206',
+        '54100207_54100211','541003','541005','541006','541009_541033',
+        '541010','541011','54101201','54101202','54101203','54101204',
+        '541013','541014','541015_541016','541018','541023','541024','541027',
+        '541029','541032','541035','54109501','54109502','54109503','54109504',
+        '54109505','54109506','54109507','54109508','54109509','54109510',
+        '5415','542005','54100203','54100211',
+        '5105','511001','511002','511003','511005','511006','511009','511010',
+        '511011','511012','511013','511015_511016','511018','511019','511020',
+        '511021','511022','511023','511024','511026','511027','511031','511033',
+        '511035','51109502','51109501_51109502','511512','511534',
+        '521005','521015','521020','3','615035',
+        'AT-00004','AT-00005','AT-00007','AT-00008','AT-00010','AT-00013',
+        'AT-00014','AT-00015','AT-00016','AT-00019','AT-00020','AT-00021',
+        'AT-00022','AT-00023','AT-00024','AT-00026','AT-00028','AT-00029',
+        'AT-00030','AT-00032','VT-00001','VT-00025','AT-00003',
+        '41659505','41659501','422004','422507','422529','4240900202','420560',
+        '4240900301','4240900401','4240909501','4240909503','4240909901','41750105',
+        '5','6','7','8','5230',
+    ]
+
+    MESES_COLS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+
+    resultado = calcular_presupuestado(sede)
+    if not resultado['success']:
+        return JsonResponse({'error': resultado.get('error', 'Error')}, status=500)
+
+    pivot_data = {}
+    for key, row in resultado['data'].items():
+        entry = {'mcncuenta': row['mcncuenta'], 'ctanombre': row['ctanombre'],
+                 **{m: 0 for m in MESES_COLS}, 'total': 0}
+        for mes, valor in row['meses'].items():
+            if mes in entry:
+                entry[mes]    = valor
+                entry['total'] += valor
+        pivot_data[key] = entry
+
+    result = sorted(
+        [v for v in pivot_data.values() if v['mcncuenta'] in ORDEN_PERSONALIZADO],
+        key=lambda item: ORDEN_PERSONALIZADO.index(item['mcncuenta'])
+    )
+
+    return JsonResponse({'data': result,
+                         'recordsTotal': len(result),
+                         'recordsFiltered': len(result)})
+
+# FIN CALCULAR Y OBTENER PRESUPUESTADO -----------------
 
 @require_http_methods(["POST"])
 def guardar_fila_consolidado(request):
