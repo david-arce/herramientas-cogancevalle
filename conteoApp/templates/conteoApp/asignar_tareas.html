@@ -30,7 +30,7 @@
                     <option value="0105">Bodega 0105</option>
                     {# futuras bodegas se agregan aquí como nuevas <option> #}
                 </select> {% endcomment %}
-            {% if ciudad == 'Buga' or ciudad == 'Tulua'%}
+            {% if ciudad == 'Buga' %}
             </br>
             </br>
             <p> Utiliza el siguiente campo de fecha para seleccionar el día de la venta a cargar, si requiere más de una fecha selecciona el botón 'Agregar fecha'. </p>
@@ -107,7 +107,7 @@
                 <li>{{ usuario.usuario__first_name }} {{ usuario.usuario__last_name }}: {{ usuario.total_tareas }}
                     {% csrf_token %}
                     <input type="hidden" name="usuario_id" value="{{ usuario.usuario__id }}">
-                    <input type="hidden" name="tipo_bodega" value="almacen">
+                    <input type="hidden" name="tipo_bodega" value="0101">
                     <button class="button-view-task" name="view_user_tasks">Diferencias</button>
                 </li>
             </form>
