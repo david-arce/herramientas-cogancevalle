@@ -44,7 +44,11 @@
           <span class="material-icons nav-icon">file_download</span>
           <span class="nav-text">Exportar Presupuesto Nómina</span>
         </a>
-
+        <a href="{% url 'comparativo_tulua' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'comparativo_tulua' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Comparativo tulua</span>
+            </a>
         <!-- ── Grupo desplegable: EJECUTADO ── -->
         {% with ejecutado_active="cuenta5 consolidado_tulua consolidado_buga consolidado_cartago consolidado_cali consolidado_total_base cargar_consolidado_total_base vista_carga_consolidado_base" %}
         {% with is_open=request.resolver_match.url_name %}
@@ -98,7 +102,7 @@
         {% endwith %}
         {% endwith %}
         
-        {% with presupuestado_active="cuenta5_Presupuestado" %}
+        {% with presupuestado_active="cuenta5_presupuestado" %}
         {% with is_open_p=request.resolver_match.url_name %}
         <div class="nav-group {% if is_open_p in presupuestado_active %}open{% endif %}" id="grupoPresupuestado">
 
@@ -110,10 +114,10 @@
           </button>
 
           <div class="nav-group-menu" id="presupuestadoMenu" role="menu">
-            <a href="{% url 'cuenta5_Presupuestado' %}" class="nav-link nav-child
-              {% if request.resolver_match.url_name == 'cuenta5_Presupuestado' %}active{% endif %}">
+            <a href="{% url 'cuenta5_presupuestado' %}" class="nav-link nav-child
+              {% if request.resolver_match.url_name == 'cuenta5_presupuestado' %}active{% endif %}">
               <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Cuenta 5</span>
+              <span class="nav-text">Cuenta 5 presupuestado</span>
             </a>
             <a href="{% url 'presupuestado_tulua' %}" class="nav-link nav-child
                {% if request.resolver_match.url_name == 'presupuestado_tulua' %}active{% endif %}">

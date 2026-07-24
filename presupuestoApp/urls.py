@@ -5,12 +5,18 @@ urlpatterns = [
     path('dashboard/', views.dashboard_home, name='dashboardPresupuesto'), 
     path('cuenta5/', views.cuenta5, name='cuenta5'),
     path('obtener-cuenta5-base/', views.obtener_cuenta5_base, name='obtener_cuenta5_base'),
-    path('cargar-cuenta5-base/', views.cargar_cuenta5_base, name='cargar_cuenta5_base'),
+    # path('cargar-cuenta5-base/', views.cargar_cuenta5_base, name='cargar_cuenta5_base'),
     path("subir_excel_cuenta5/", views.subir_excel_cuenta5, name="subir_excel_cuenta5"),
     path("borrar_cuenta5_base/", views.borrar_cuenta5_base, name="borrar_cuenta5_base"),
     
+    # OBTENER, SUBIR Y BORRAR PRESUPUESTO CONSOLIDADO
+    path('obtener-cuenta5-presupuestado/', views.obtener_cuenta5_presupuestado, name='obtener_cuenta5_presupuestado'),
+    path("subir_excel_cuenta5_presupuestado/", views.subir_excel_cuenta5_presupuestado, name="subir_excel_cuenta5_presupuestado"),
+    path("borrar_cuenta5_presupuestado/", views.borrar_cuenta5_presupuestado, name="borrar_cuenta5_presupuestado"),
+    
+    
     # cuenta 5 y consolidado presupuestado -------------------------------------------------------
-    path('cuenta5-presupuestado/', views.cuenta5_presupuestado, name='cuenta5_Presupuestado'),
+    path('cuenta5-presupuestado/', views.cuenta5_presupuestado, name='cuenta5_presupuestado'),
     path('obtener-cuenta5-presupuestado/', views.obtener_cuenta5_presupuestado, name='obtener_cuenta5_presupuestado'),
     
     path('exportar-excel-presupuestos/', views.exportar_excel_presupuestos, name='exportar_excel_presupuestos'),
@@ -464,7 +470,7 @@ urlpatterns = [
     path('presupuestado-cartago/', views.presupuestado_cartago, name='presupuestado_cartago'),
     path('presupuestado-cali/', views.presupuestado_cali, name='presupuestado_cali'),
     path('presupuestado-total-base/', views.presupuestado_total_base, name='presupuestado_total_base'), 
-    # path('obtener-consolidado/', views.obtener_consolidado, name='obtener_consolidado'),
+    path('obtener-presupuestado/', views.obtener_presupuestado, name='obtener_presupuestado'),
     
     path('guardar-fila-consolidado/', views.guardar_fila_consolidado, name='guardar_fila_consolidado'),
     path('eliminar-fila-consolidado/', views.eliminar_fila_consolidado, name='eliminar_fila_consolidado'),
@@ -508,9 +514,12 @@ urlpatterns = [
         name='eliminar_fila_consolidado_total_base',
     ),
     
+    #COMPARATIVO 
+    path('comparativo-tulua/', views.comparativo_tulua, name='comparativo_tulua'),
+    
     # urls.py
     path('cuenta5/editar/<int:pk>/', views.editar_cuenta5_base, name='editar_cuenta5_base'),
-    path('cuenta5/eliminar/<int:pk>/', views.eliminar_cuenta5_base, name='eliminar_cuenta5_base'),
+    # path('cuenta5/eliminar/<int:pk>/', views.eliminar_cuenta5_base, name='eliminar_cuenta5_base'),
     path('cuenta5/eliminar-bulk/', views.eliminar_bulk_cuenta5_base, name='eliminar_bulk_cuenta5_base'),
     #------------------PRESUPUESTO CONSOLIDADO---------------------------
     path('<str:area>/', views.presupuesto_consolidado, name='presupuesto_consolidado'),

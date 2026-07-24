@@ -101,7 +101,7 @@ function loadData() {
   formData.append("length", 999999);
   formData.append("search[value]", "");
 
-  fetch(url_obtener_cuenta5_base, {
+  fetch(url_obtener_cuenta5_presupuestado, {
     method: "POST",
     headers: { "X-CSRFToken": getCookie("csrftoken") },
     body: formData,
@@ -594,7 +594,7 @@ function bindUI() {
   document.getElementById("cancelEliminarCuenta").addEventListener("click", () => closeModal("modalEliminarCuenta"));
   document.getElementById("confirmEliminarCuenta").addEventListener("click", () => {
     closeModal("modalEliminarCuenta");
-    fetch(url_borrar_cuenta5_base, {
+    fetch(url_borrar_cuenta5_presupuestado, {
       method: "POST",
       headers: { "X-CSRFToken": getCookie("csrftoken") },
     })
@@ -696,7 +696,7 @@ function bindUI() {
           spinner.style.display = "none"; btn.disabled = false; return;
         }
 
-        fetch("/presupuesto/subir_excel_cuenta5/", {
+        fetch("/presupuesto/subir_excel_cuenta5_presupuestado/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
