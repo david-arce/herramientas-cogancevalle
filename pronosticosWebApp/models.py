@@ -223,10 +223,27 @@ class PronosticoFinal(models.Model):
     cantidadx3 = models.IntegerField()
     precio = models.IntegerField()
     fecha = models.CharField(max_length=50, null=True, blank=True)
-
+    detalle = models.CharField(max_length=255, null=True, blank=True)
+    
     class Meta:
         db_table = "pronostico_final"
         managed = False
     
+class TrasladoResumenSede(models.Model):
+    sku = models.CharField(max_length=50)
+    sku_nom = models.CharField(max_length=200)
+    marca_nom = models.CharField(max_length=100)   # proveedor
 
-        
+    sede_origen = models.CharField(max_length=50)
+    sede_destino = models.CharField(max_length=50)
+
+    cantidad = models.IntegerField()
+
+    fecha_generacion = models.DateTimeField()
+
+    class Meta:
+        db_table = "traslados_resumen_sede"
+        managed = False   # ya existe en la BD, gestionada por carga_bd
+
+    def __str__(self):
+        return f"{self.sku} {self.sede_origen} -> {self.sede_destino}: {self.cantidad}"
