@@ -16,7 +16,7 @@ from pronosticosWebApp.pronosticos.promedioMovil import PronosticoMovil as pm
 from pronosticosWebApp.pronosticos.pronosticos import Pronosticos
 from django.contrib.auth.decorators import permission_required
 from django.core.exceptions import PermissionDenied
-from pronosticosWebApp.models import PronosticoMoviln3, PronosticoMoviln4, PronosticoMoviln5, PronosticoSes, PronosticoSed, Demanda, PronosticoFinal
+from pronosticosWebApp.models import PronosticoMoviln3, PronosticoMoviln4, PronosticoMoviln5, PronosticoSes, PronosticoSed, Demanda, PronosticoFinal, TrasladoResumenSede
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +31,8 @@ def dashboard(request):
     df_demanda = df_demanda.sort_values(by=['sku', 'sede', 'mm']).reset_index(drop=True)
     sku = df_demanda['sku'].unique().tolist()  # Obtener los valores únicos de 'sku'
     sku_nom = df_demanda['sku_nom'].unique().tolist()  # Obtener los valores únicos de 'sku_nom'
-    # marca_nom = df_demanda['marca_nom'].unique().tolist()  # Obtener los valores únicos de 'marca_nom'
-    marca_nom = ['ALL VET', 'BIOS','FAB. Y MERCADEO', 'FERCON', 'FERRAGRO', 'HERRADURA LA MONTANA', 'INSMEVET', 'LHAURA', 'QUIMPAC', 'RENTASAL', 'VITALES']
+    marca_nom = df_demanda['marca_nom'].unique().tolist()  # Obtener los valores únicos de 'marca_nom'
+    # marca_nom = ['ALL VET', 'BIOS','FAB. Y MERCADEO', 'FERCON', 'FERRAGRO', 'HERRADURA LA MONTANA', 'INSMEVET', 'LHAURA', 'QUIMPAC', 'RENTASAL', 'VITALES']
     sede = df_demanda['sede'].unique().tolist()  # Obtener los valores únicos de 'sede'
     context = {
         'items': sku,
@@ -282,3 +282,57 @@ def get_chart(request):
     }
     return JsonResponse(chart)
 
+@login_required
+def traslados_resumen_json(request):
+    """
+    Devuelve el reporte de traslados entre sedes ya pivoteado
+    (una 'hoja' por sede origen, con una columna por sede destino),
+    replicando la misma estructura que tenía el Excel original,
+    para que el frontend los agregue como hojas adicionales al workbook.
+    """
+    qs = TrasladoResumenSede.objects.all().values(
+        'sku', 'sku_nom', 'marca_nom', 'sede_origen', 'sede_destino', 'cantidad'
+    )
+    df = pd.DataFrame(list(qs))
+
+    if df.empty:
+        return JsonResponse({"hojas": {}})
+
+    # mismo orden que usaba el reporte original
+    ORDEN_SEDES = ['Tuluá', 'Buga', 'Cartago', 'Cali']
+    todas_sedes = sorted(
+        set(df['sede_origen'].unique()) | set(df['sede_destino'].unique()),
+        key=lambda x: ORDEN_SEDES.index(x) if x in ORDEN_SEDES else len(ORDEN_SEDES)
+    )
+
+    hojas = {}
+    for sede_actual in todas_sedes:
+        sedes_destino = [s for s in todas_sedes if s != sede_actual]
+        df_sede = df[df['sede_origen'] == sede_actual].copy()
+
+        headers = ["SKU", "Proveedor", "Descripción"] + sedes_destino
+        rows = []
+
+        if not df_sede.empty:
+            pivot_wide = df_sede.pivot_table(
+                index=["sku", "marca_nom", "sku_nom"],
+                columns="sede_destino",
+                values="cantidad",
+                fill_value=0
+            ).reset_index()
+            pivot_wide.columns.name = None
+
+            for sd in sedes_destino:
+                if sd not in pivot_wide.columns:
+                    pivot_wide[sd] = 0
+
+            for _, row in pivot_wide.iterrows():
+                fila = [str(row['sku']), str(row['marca_nom']), str(row['sku_nom'])]
+                for sd in sedes_destino:
+                    val = int(row.get(sd, 0))
+                    fila.append(val if val > 0 else '-')
+                rows.append(fila)
+
+        hojas[sede_actual] = {"headers": headers, "rows": rows}
+
+    return JsonResponse({"hojas": hojas})
