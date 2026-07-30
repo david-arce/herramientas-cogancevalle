@@ -516,6 +516,10 @@ urlpatterns = [
     
     #COMPARATIVO 
     path('comparativo-tulua/', views.comparativo_tulua, name='comparativo_tulua'),
+    path('comparativo-buga/', views.comparativo_buga, name='comparativo_buga'),
+    path('comparativo-cartago/', views.comparativo_cartago, name='comparativo_cartago'),
+    path('comparativo-cali/', views.comparativo_cali, name='comparativo_cali'),
+    path('comparativo-total/', views.comparativo_total, name='comparativo_total'),
     
     # urls.py
     path('cuenta5/editar/<int:pk>/', views.editar_cuenta5_base, name='editar_cuenta5_base'),

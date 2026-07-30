@@ -435,3 +435,8 @@ tr.total-row-pct-excedentes td {
     font-style: italic;
     border-bottom: 2px solid #86efac;
 }
+.table-scroll {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 75vh;   /* altura máxima para activar el scroll vertical */
+}

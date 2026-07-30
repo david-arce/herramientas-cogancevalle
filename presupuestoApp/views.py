@@ -11065,21 +11065,21 @@ def presupuestado_total_base(request):
 #  FUNCIÓN GENÉRICA — reemplaza todas las calcular_consolidado_*
 # ══════════════════════════════════════════════════════════════════
 
-SEDE_CONFIG = {
+SEDE_CONFIG_CONSOLIDADO = {
     'cali': {
         'cuenta5_filter':   {'mcnzona__in': ['004', 4]},
         'consolidado_filter': {'sede__icontains': 'CALI'},
     },
     'tulua': {
-        'cuenta5_filter':   {'mcnzona__in': ['002', 2]},
+        'cuenta5_filter':   {'mcnzona__in': ['001', 1]},
         'consolidado_filter': {'sede__icontains': 'TULUA'},
     },
     'buga': {
-        'cuenta5_filter':   {'mcnzona__in': ['003', 3]},
+        'cuenta5_filter':   {'mcnzona__in': ['002', 2]},
         'consolidado_filter': {'sede__icontains': 'BUGA'},
     },
     'cartago': {
-        'cuenta5_filter':   {'mcnzona__in': ['001', 1]},
+        'cuenta5_filter':   {'mcnzona__in': ['003', 3]},
         'consolidado_filter': {'sede__icontains': 'CARTAGO'},
     },
     'consolidado': {
@@ -11095,7 +11095,7 @@ def calcular_consolidado(sede='consolidado'):
     sede: clave de SEDE_CONFIG  ('cali' | 'tulua' | 'buga' | 'palmira' | 'consolidado')
     """
     try:
-        config = SEDE_CONFIG[sede]
+        config = SEDE_CONFIG_CONSOLIDADO[sede]
         CUENTAS_OMITIR = ['521020']
 
         queryset = (
@@ -11298,7 +11298,7 @@ def obtener_consolidado(request):
     Recibe ?sede=cali | tulua | buga | palmira | consolidado  (default: consolidado)
     """
     sede = request.GET.get('sede', 'consolidado').lower()
-    if sede not in SEDE_CONFIG:
+    if sede not in SEDE_CONFIG_CONSOLIDADO:
         return JsonResponse({'error': f'Sede inválida: {sede}'}, status=400)
 
     ORDEN_PERSONALIZADO = [
@@ -11350,16 +11350,37 @@ def obtener_consolidado(request):
                          'recordsTotal': len(result),
                          'recordsFiltered': len(result)})
 
-
+SEDE_CONFIG_PRESUPUESTADO = {
+    'cali': {
+        'cuenta5_filter':   {'mcnzona__in': ['004', 4]},
+        'presupuestado_filter': {'sede__icontains': 'CALI'},
+    },
+    'tulua': {
+        'cuenta5_filter':   {'mcnzona__in': ['001', 1]},
+        'presupuestado_filter': {'sede__icontains': 'TULUA'},
+    },
+    'buga': {
+        'cuenta5_filter':   {'mcnzona__in': ['002', 2]},
+        'presupuestado_filter': {'sede__icontains': 'BUGA'},
+    },
+    'cartago': {
+        'cuenta5_filter':   {'mcnzona__in': ['003', 3]},
+        'presupuestado_filter': {'sede__icontains': 'CARTAGO'},
+    },
+    'presupuestado': {
+        'cuenta5_filter':   {},          # sin filtro → todas las sedes
+        'presupuestado_filter': {},
+    },
+}
 # CALCULAR Y OBTENER PRESUPUESTADO ----------------
-def calcular_presupuestado(sede='consolidado'):
+def calcular_presupuestado(sede='presupuestado'):
     """
-    Calcula el consolidado para una sede específica o para todas.
+    Calcula el presupuestado para una sede específica o para todas.
 
-    sede: clave de SEDE_CONFIG  ('cali' | 'tulua' | 'buga' | 'palmira' | 'consolidado')
+    sede: clave de SEDE_CONFIG  ('cali' | 'tulua' | 'buga' | 'palmira' | 'presupuestado')
     """
     try:
-        config = SEDE_CONFIG[sede]
+        config = SEDE_CONFIG_PRESUPUESTADO[sede]
         CUENTAS_OMITIR = ['521020']
 
         queryset = (
@@ -11370,9 +11391,9 @@ def calcular_presupuestado(sede='consolidado'):
                     'mcnvaldebi', 'mcnvalcred', 'mcndestino')
         )
 
-        queryset_consolidado = (
+        queryset_presupuestado = (
             ConsolidadoTotalBase.objects
-            .filter(**config['consolidado_filter'])
+            .filter(**config['presupuestado_filter'])
             .values('mcncuenta', 'mcnccosto', 'mcnfecha', 'valor')
         )
 
@@ -11475,7 +11496,7 @@ def calcular_presupuestado(sede='consolidado'):
                 consolidado[key]['total_credito'] += valores['total_credito']
 
         # ── ConsolidadoTotalBase ──────────────────────────────────
-        for row in queryset_consolidado:
+        for row in queryset_presupuestado:
             fecha = row['mcnfecha']
             if not fecha:
                 continue
@@ -11549,7 +11570,7 @@ def calcular_presupuestado(sede='consolidado'):
         return {'success': True, 'data': registros}
 
     except Exception as e:
-        print(f"❌ Error en calcular_consolidado({sede}): {e}")
+        print(f"❌ Error en calcular_presupuestado({sede}): {e}")
         return {'success': False, 'error': str(e)}
 
 # ══════════════════════════════════════════════════════════════════
@@ -11559,10 +11580,10 @@ def calcular_presupuestado(sede='consolidado'):
 def obtener_presupuestado(request):
     """
     Vista única para todas las sedes.
-    Recibe ?sede=cali | tulua | buga | cartago | consolidado  (default: consolidado)
+    Recibe ?sede=cali | tulua | buga | cartago | presupuestado  (default: presupuestado)
     """
-    sede = request.GET.get('sede', 'consolidado').lower()
-    if sede not in SEDE_CONFIG:
+    sede = request.GET.get('sede', 'presupuestado').lower()
+    if sede not in SEDE_CONFIG_PRESUPUESTADO:
         return JsonResponse({'error': f'Sede inválida: {sede}'}, status=400)
 
     ORDEN_PERSONALIZADO = [
@@ -12346,3 +12367,31 @@ def comparativo_tulua(request):
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     return render(request, "comparativo/comparativo_tulua.html")
+
+@login_required
+def comparativo_buga(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "comparativo/comparativo_buga.html")
+
+@login_required
+def comparativo_cartago(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "comparativo/comparativo_cartago.html")
+
+@login_required
+def comparativo_cali(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "comparativo/comparativo_cali.html")
+
+@login_required
+def comparativo_total(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "comparativo/comparativo_total.html")

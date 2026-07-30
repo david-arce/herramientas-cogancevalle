@@ -44,14 +44,14 @@
           <span class="material-icons nav-icon">file_download</span>
           <span class="nav-text">Exportar Presupuesto Nómina</span>
         </a>
-        <a href="{% url 'comparativo_tulua' %}" class="nav-link nav-child
-               {% if request.resolver_match.url_name == 'comparativo_tulua' %}active{% endif %}">
-              <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Comparativo tulua</span>
-            </a>
-        <!-- ── Grupo desplegable: EJECUTADO ── -->
-        {% with ejecutado_active="cuenta5 consolidado_tulua consolidado_buga consolidado_cartago consolidado_cali consolidado_total_base cargar_consolidado_total_base vista_carga_consolidado_base" %}
-        {% with is_open=request.resolver_match.url_name %}
+
+        <!-- ── Grupo desplegable: EJECUTADO ──
+             NOTA: las listas "*_active" ahora usan delimitador "|" en ambos extremos
+             y la comprobación compara "|valor|" contra la cadena completa, para
+             evitar falsos positivos por coincidencia de subcadena (p.ej. "cuenta5"
+             siendo subcadena de "cuenta5_presupuestado"). -->
+        {% with ejecutado_active="|cuenta5|consolidado_tulua|consolidado_buga|consolidado_cartago|consolidado_cali|consolidado_total_base|cargar_consolidado_total_base|vista_carga_consolidado_base|" %}
+        {% with is_open="|"|add:request.resolver_match.url_name|add:"|" %}
         <div class="nav-group {% if is_open in ejecutado_active %}open{% endif %}" id="grupoEjecutado">
 
           <button class="nav-group-toggle" aria-expanded="false" aria-controls="ejecutadoMenu"
@@ -101,9 +101,12 @@
         </div>
         {% endwith %}
         {% endwith %}
-        
-        {% with presupuestado_active="cuenta5_presupuestado" %}
-        {% with is_open_p=request.resolver_match.url_name %}
+
+        <!-- ── Grupo desplegable: PRESUPUESTADO ──
+             Textos normalizados a Title Case (antes iban en minúscula,
+             inconsistente con el grupo Ejecutado). -->
+        {% with presupuestado_active="|cuenta5_presupuestado|presupuestado_tulua|presupuestado_buga|presupuestado_cartago|presupuestado_cali|presupuestado_total_base|" %}
+        {% with is_open_p="|"|add:request.resolver_match.url_name|add:"|" %}
         <div class="nav-group {% if is_open_p in presupuestado_active %}open{% endif %}" id="grupoPresupuestado">
 
           <button class="nav-group-toggle" aria-expanded="false" aria-controls="presupuestadoMenu"
@@ -117,38 +120,89 @@
             <a href="{% url 'cuenta5_presupuestado' %}" class="nav-link nav-child
               {% if request.resolver_match.url_name == 'cuenta5_presupuestado' %}active{% endif %}">
               <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Cuenta 5 presupuestado</span>
+              <span class="nav-text">Cuenta 5 Presupuestado</span>
             </a>
             <a href="{% url 'presupuestado_tulua' %}" class="nav-link nav-child
                {% if request.resolver_match.url_name == 'presupuestado_tulua' %}active{% endif %}">
               <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">presupuestado Tuluá</span>
+              <span class="nav-text">Presupuestado Tuluá</span>
             </a>
             <a href="{% url 'presupuestado_buga' %}" class="nav-link nav-child
                {% if request.resolver_match.url_name == 'presupuestado_buga' %}active{% endif %}">
               <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">presupuestado Buga</span>
+              <span class="nav-text">Presupuestado Buga</span>
             </a>
             <a href="{% url 'presupuestado_cartago' %}" class="nav-link nav-child
                {% if request.resolver_match.url_name == 'presupuestado_cartago' %}active{% endif %}">
               <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">presupuestado Cartago</span>
+              <span class="nav-text">Presupuestado Cartago</span>
             </a>
             <a href="{% url 'presupuestado_cali' %}" class="nav-link nav-child
                {% if request.resolver_match.url_name == 'presupuestado_cali' %}active{% endif %}">
               <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">presupuestado Cali</span>
+              <span class="nav-text">Presupuestado Cali</span>
             </a>
             <a href="{% url 'presupuestado_total_base' %}" class="nav-link nav-child
                {% if request.resolver_match.url_name == 'presupuestado_total_base' %}active{% endif %}">
               <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">presupuestado Total Base</span>
+              <span class="nav-text">Presupuestado Total Base</span>
             </a>
           </div>
 
         </div>
         {% endwith %}
         {% endwith %}
+
+        <!-- ── Grupo desplegable: COMPARATIVOS ──
+             Nuevo. Sigue el mismo patrón de sedes que Ejecutado y Presupuestado.
+             "Comparativo tulua" venía suelto fuera de cualquier grupo pero con
+             clase nav-child (pensada para vivir dentro de nav-group-menu); se
+             movió aquí. Los demás sedes quedan comentados como plantilla: solo
+             descoméntalos cuando existan las vistas/url_names correspondientes
+             (comparativo_buga, comparativo_cartago, comparativo_cali). -->
+        {% with comparativos_active="|comparativo_tulua|comparativo_buga|comparativo_cartago|comparativo_cali|" %}
+        {% with is_open_c="|"|add:request.resolver_match.url_name|add:"|" %}
+        <div class="nav-group {% if is_open_c in comparativos_active %}open{% endif %}" id="grupoComparativos">
+
+          <button class="nav-group-toggle" aria-expanded="false" aria-controls="comparativosMenu"
+                  id="comparativosToggle">
+            <span class="material-icons nav-icon">compare_arrows</span>
+            <span class="nav-text">Comparativos</span>
+            <span class="material-icons nav-chevron">expand_more</span>
+          </button>
+
+          <div class="nav-group-menu" id="comparativosMenu" role="menu">
+            <a href="{% url 'comparativo_tulua' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'comparativo_tulua' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Comparativo tulua</span>
+            </a>
+            <a href="{% url 'comparativo_buga' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'comparativo_buga' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Comparativo buga</span>
+            </a>
+            <a href="{% url 'comparativo_cartago' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'comparativo_cartago' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Comparativo cartago</span>
+            </a>
+            <a href="{% url 'comparativo_cali' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'comparativo_cali' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Comparativo cali</span>
+            </a>
+            <a href="{% url 'comparativo_total' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'comparativo_total' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Comparativo total</span>
+            </a>
+          </div>
+
+        </div>
+        {% endwith %}
+        {% endwith %}
+
       </nav>
     </aside>
 
