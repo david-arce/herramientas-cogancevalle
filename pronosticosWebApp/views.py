@@ -124,7 +124,7 @@ def export_elanco(request):
         venta_formateada = f"{abs(p.venta):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
         salida.append({
-            "Distributor SAP Code": "50045719",
+            "Distributor SAP Code": "50045723",
             "Distributor Name": "COOP GANA DEL CTRO Y NTE VALLE",
             "Customer CNPJ or CPF": ccnit_val,
             "Company Name or Customer Name": ccnit_nom_val,
