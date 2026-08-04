@@ -373,68 +373,7 @@ urlpatterns = [
     path('presupuesto/<str:sede>/auxiliar/guardar/', views.guardar_temp_sede, name='guardar_temp_sede'),
     path('presupuesto/<str:sede>/subir/', views.subir_presupuesto_sede, name='subir_presupuesto_sede'),
     path('presupuesto/<str:sede>/borrar/', views.borrar_presupuesto_sede, name='borrar_presupuesto_sede'),
-    # -------------- ALIAS RETROCOMPATIBLES PARA TULUÁ --------------
-    # Mantienen los nombres de URL antiguos para no romper templates/JS
-    # existentes que ya usan {% url 'presupuestoAlmacenTulua' %}, etc.
-    # Todos apuntan a las mismas vistas genéricas con sede='tulua' fijo.
-    path('presupuesto-almacen-tulua/', views.presupuesto_sede, {'sede': 'tulua'}, name='presupuestoAlmacenTulua'),
-    path('obtener-presupuesto-almacen-tulua/', views.obtener_presupuesto_sede, {'sede': 'tulua'}, name='obtener_presupuesto_almacen_tulua'),
-    path('presupuesto-aprobado-almacen-tulua/', views.presupuesto_aprobado_sede, {'sede': 'tulua'}, name='presupuestoAprobadoAlmacenTulua'),
-    path('obtener-presupuesto-aprobado-almacen-tulua/', views.obtener_presupuesto_aprobado_sede, {'sede': 'tulua'}, name='obtener_presupuesto_aprobado_almacen_tulua'),
-    path('tabla-auxiliar-almacen-tulua/', views.tabla_auxiliar_sede, {'sede': 'tulua'}, name='tabla_auxiliar_almacen_tulua'),
-    path('obtener-almacen-tulua-temp/', views.obtener_temp_sede, {'sede': 'tulua'}, name='obtener_almacen_tulua_temp'),
-    path('cargar-almacen-tulua-base/', views.cargar_base_sede, {'sede': 'tulua'}, name='cargar_almacen_tulua_base'),
-    path('guardar-almacen-tulua-temp/', views.guardar_temp_sede, {'sede': 'tulua'}, name='guardar_almacen_tulua_temp'),
-    path('subir-presupuesto-almacen-tulua/', views.subir_presupuesto_sede, {'sede': 'tulua'}, name='subir_presupuesto_almacen_tulua'),
-    path('borrar_presupuesto_almacen_tulua/', views.borrar_presupuesto_sede, {'sede': 'tulua'}, name='borrar_presupuesto_almacen_tulua'),
     
-    # -------------- ALIAS RETROCOMPATIBLES PARA BUGA --------------
-    path('presupuesto-almacen-buga/', views.presupuesto_sede, {'sede': 'buga'}, name='presupuestoAlmacenBuga'),
-    path('obtener-presupuesto-almacen-buga/', views.obtener_presupuesto_sede, {'sede': 'buga'}, name='obtener_presupuesto_almacen_buga'),
-    path('presupuesto-aprobado-almacen-buga/', views.presupuesto_aprobado_sede, {'sede': 'buga'}, name='presupuestoAprobadoAlmacenBuga'),
-    path('obtener-presupuesto-aprobado-almacen-buga/', views.obtener_presupuesto_aprobado_sede, {'sede': 'buga'}, name='obtener_presupuesto_aprobado_almacen_buga'),
-    path('tabla-auxiliar-almacen-buga/', views.tabla_auxiliar_sede, {'sede': 'buga'}, name='tabla_auxiliar_almacen_buga'),
-    path('obtener-almacen-buga-temp/', views.obtener_temp_sede, {'sede': 'buga'}, name='obtener_almacen_buga_temp'),
-    path('cargar-almacen-buga-base/', views.cargar_base_sede, {'sede': 'buga'}, name='cargar_almacen_buga_base'),
-    path('guardar-almacen-buga-temp/', views.guardar_temp_sede, {'sede': 'buga'}, name='guardar_almacen_buga_temp'),
-    path('subir-presupuesto-almacen-buga/', views.subir_presupuesto_sede, {'sede': 'buga'}, name='subir_presupuesto_almacen_buga'),
-    path('borrar_presupuesto_almacen_buga/', views.borrar_presupuesto_sede, {'sede': 'buga'}, name='borrar_presupuesto_almacen_buga'),
- 
-    #-------------PRESUPUESTO ALMACEN CARTAGO----------------
-    path('presupuesto-almacen-cartago/', views.presupuesto_sede, {'sede': 'cartago'}, name='presupuestoAlmacenCartago'), 
-    path('obtener-presupuesto-almacen-cartago/', views.obtener_presupuesto_sede, {'sede': 'cartago'}, name='obtener_presupuesto_almacen_cartago'),
-    path('presupuesto-aprobado-almacen-cartago/', views.presupuesto_aprobado_sede, {'sede': 'cartago'}, name='presupuestoAprobadoAlmacenCartago'), 
-    path('obtener-presupuesto-aprobado-almacen-cartago/', views.obtener_presupuesto_aprobado_sede, {'sede': 'cartago'}, name='obtener_presupuesto_aprobado_almacen_cartago'),
-    path('tabla-auxiliar-almacen-cartago/', views.tabla_auxiliar_sede, {'sede': 'cartago'}, name='tabla_auxiliar_almacen_cartago'), # ruta para la tabla temporal del presupuesto almacen cartago
-    path('obtener-almacen-cartago-temp/', views.obtener_temp_sede, {'sede': 'cartago'}, name='obtener_almacen_cartago_temp'),
-    path('cargar-almacen-cartago-base/', views.cargar_base_sede, {'sede': 'cartago'}, name='cargar_almacen_cartago_base'),
-    path('guardar-almacen-cartago-temp/', views.guardar_temp_sede, {'sede': 'cartago'}, name='guardar_almacen_cartago_temp'),
-    path('subir-presupuesto-almacen-cartago/', views.subir_presupuesto_sede, {'sede': 'cartago'}, name='subir_presupuesto_almacen_cartago'),
-    path('borrar_presupuesto_almacen_cartago/', views.borrar_presupuesto_sede, {'sede': 'cartago'}, name='borrar_presupuesto_almacen_cartago'),
-    
-    #-------------PRESUPUESTO ALMACEN CALI----------------
-    path('presupuesto-almacen-cali/', views.presupuesto_sede, {'sede': 'cali'}, name='presupuestoAlmacenCali'), 
-    path('obtener-presupuesto-almacen-cali/', views.obtener_presupuesto_sede, {'sede': 'cali'}, name='obtener_presupuesto_almacen_cali'),
-    path('presupuesto-aprobado-almacen-cali/', views.presupuesto_aprobado_sede, {'sede': 'cali'}, name='presupuestoAprobadoAlmacenCali'), 
-    path('obtener-presupuesto-aprobado-almacen-cali/', views.obtener_presupuesto_aprobado_sede, {'sede': 'cali'}, name='obtener_presupuesto_aprobado_almacen_cali'),
-    path('tabla-auxiliar-almacen-cali/', views.tabla_auxiliar_sede, {'sede': 'cali'}, name='tabla_auxiliar_almacen_cali'), # ruta para la tabla temporal del presupuesto almacen cali
-    path('obtener-almacen-cali-temp/', views.obtener_temp_sede, {'sede': 'cali'}, name='obtener_almacen_cali_temp'),
-    path('cargar-almacen-cali-base/', views.cargar_base_sede, {'sede': 'cali'}, name='cargar_almacen_cali_base'),
-    path('guardar-almacen-cali-temp/', views.guardar_temp_sede, {'sede': 'cali'}, name='guardar_almacen_cali_temp'),
-    path('subir-presupuesto-almacen-cali/', views.subir_presupuesto_sede, {'sede': 'cali'}, name='subir_presupuesto_almacen_cali'),
-    path('borrar_presupuesto_almacen_cali/', views.borrar_presupuesto_sede, {'sede': 'cali'}, name='borrar_presupuesto_almacen_cali'),
-    
-    #-------------PRESUPUESTO COMUNICACIONES----------------
-    path('presupuesto-comunicaciones/', views.presupuesto_comunicaciones, name='presupuestoComunicaciones'), 
-    path('obtener-presupuesto-comunicaciones/', views.obtener_presupuesto_comunicaciones, name='obtener_presupuesto_comunicaciones'),
-    path('presupuesto-aprobado-comunicaciones/', views.presupuesto_aprobado_comunicaciones, name='presupuestoAprobadoComunicaciones'), 
-    path('obtener-presupuesto-aprobado-comunicaciones/', views.obtener_presupuesto_aprobado_comunicaciones, name='obtener_presupuesto_aprobado_comunicaciones'),
-    path('tabla-auxiliar-comunicaciones/', views.tabla_auxiliar_comunicaciones, name='tabla_auxiliar_comunicaciones'), # ruta para la tabla temporal del presupuesto comunicaciones
-    path('obtener-comunicaciones-temp/', views.obtener_comunicaciones_temp, name='obtener_comunicaciones_temp'),
-    path('cargar-comunicaciones-base/', views.cargar_comunicaciones_base, name='cargar_comunicaciones_base'),
-    path('guardar-comunicaciones-temp/', views.guardar_comunicaciones_temp, name='guardar_comunicaciones_temp'),
-    path('subir-presupuesto-comunicaciones/', views.subir_presupuesto_comunicaciones, name='subir_presupuesto_comunicaciones'),
-    path('borrar_presupuesto_comunicaciones/', views.borrar_presupuesto_comunicaciones, name='borrar_presupuesto_comunicaciones'),
     
     #-----------PRESUPUESTO COMERCIAL COSTOS----------------
     path('presupuesto-comercial-costos/', views.presupuesto_comercial_costos, name='presupuestoComercialCostos'),

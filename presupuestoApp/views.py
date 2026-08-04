@@ -8810,6 +8810,16 @@ SEDE_CONFIG = {
         "fecha_limite_auxiliar": datetime.date(2026, 10, 15),
         "fecha_limite_aprobado": datetime.date(2025, 10, 30),
     },
+    "comunicaciones": {
+        "label": "Comunicaciones y Mercadeo",
+        "usuarios_permitidos": {"admin", "COMUNICACIONES"},
+        "responsable_filtro": "CARLOS USMAN",
+        "model_oficial": PresupuestoComunicaciones,
+        "model_aprobado": PresupuestoComunicacionesAprobado,
+        "model_temp": PresupuestoComunicacionesAux,
+        "fecha_limite_auxiliar": datetime.date(2026, 10, 8),
+        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+    },
 }
  
 def _config_sede(sede):
@@ -8848,9 +8858,10 @@ def presupuesto_sede(request, sede):
         .order_by("version")
     )
     ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_almacen_sede.html", {
+    return render(request, "presupuesto_general/presupuesto_sede_readonly.html", {
         "sede": sede,
         "sede_label": config["label"],
+        "modo": "proyectado",
         "versiones": versiones,
         "ultima_version": ultima_version,
     })
@@ -8875,9 +8886,10 @@ def presupuesto_aprobado_sede(request, sede):
  
     versiones = config["model_aprobado"].objects.values_list("version", flat=True).distinct()
     ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_aprobado_sede.html", {
+    return render(request, "presupuesto_general/presupuesto_sede_readonly.html", {
         "sede": sede,
         "sede_label": config["label"],
+        "modo": "aprobado",
         "ultima_version": ultima_version,
     })
  
@@ -9035,241 +9047,6 @@ def borrar_presupuesto_sede(request, sede):
     return JsonResponse({"status": "ok", "message": f"Presupuesto de {config['label']} eliminado"})
  
 
-#-----------------PRESUPUESTO COMUNICACIONES-------------------
-@login_required
-def presupuesto_comunicaciones(request):
-    usuarios_permitidos = ['admin', 'COMUNICACIONES']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoComunicaciones.objects
-        .values_list("version", flat=True)
-        .distinct()
-        .order_by("version")
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_comunicaciones.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_comunicaciones(request):
-    version = request.GET.get("version")  #🔥 versión 
-    qs = PresupuestoComunicaciones.objects.all()
-    if version:
-        qs = qs.filter(version=version)
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_comunicaciones(request):
-    # obtener última version disponible
-    versiones = (
-        PresupuestoComunicacionesAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    
-    return render(request, "presupuesto_general/presupuesto_aprobado_comunicaciones.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_comunicaciones(request):
-    # filtrar por la última versión
-    versiones = (
-        PresupuestoComunicacionesAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoComunicacionesAprobado.objects.filter(version=ultima_version)
-    data = list(qs.values())
-    
-    return JsonResponse({"data": data}, safe=False)
-
-def tabla_auxiliar_comunicaciones(request):
-    usuarios_permitidos = ['admin', 'COMUNICACIONES']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 8)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-    # 🚫 Si ya pasó la fecha, negar acceso
-    if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
-                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_comunicaciones.html")
-
-def subir_presupuesto_comunicaciones(request):
-    if request.method == "POST":
-        temporales = PresupuestoComunicacionesAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-        # 📌 Obtener versión global (tomando la última registrada en la tabla 
-        ultima_version = PresupuestoComunicaciones.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
-        for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoComunicaciones.objects.update_or_create(
-                id=temp.id,
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,  
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoComunicacionesAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,  
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto de comunicaciones actualizado ✅ (versión {nueva_version})"
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_comunicaciones_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-                registros.append(PresupuestoComunicacionesAux(**row_filtrado))
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                # limpio toda la tabla auxiliar antes de insertar
-                PresupuestoComunicacionesAux.objects.all().delete()
-                PresupuestoComunicacionesAux.objects.bulk_create(registros)
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_comunicaciones_temp(request):
-    data = list(PresupuestoComunicacionesAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_comunicaciones_base(request):
-    # limpio tabla auxiliar de comunicaciones antes de recalcular
-    PresupuestoComunicacionesAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'JEFE COMUNICACIONES'
-    base_data = base_data.filter(responsable__iexact="CARLOS USMAN")
-    
-    for row in base_data:
-        PresupuestoComunicacionesAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"], 
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
-        )
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_comunicaciones(request):
-    if request.method == "POST":
-        version = request.POST.get("version")  # 🔥 versión enviada desde el frontend
-
-        if not version:
-            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
-        # borrar solo la versión seleccionada
-        PresupuestoComunicaciones.objects.filter(version=version).delete()
-        # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 30)
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoComunicacionesAprobado.objects.filter(version=version).delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de comunicaciones eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
 #---------------PRESUPUESTO COMERCIAL COSTOS-------------------
 @login_required
