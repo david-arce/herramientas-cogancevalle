@@ -8745,937 +8745,295 @@ def borrar_presupuesto_gh(request):
         return JsonResponse({"status": "ok", "message": f"Presupuesto de GH versión {version} eliminado"})
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
+# ---------------------------------------------------------------------------
+# Configuración centralizada por sede
+# ---------------------------------------------------------------------------
+ 
+FECHA_LIMITE_DEFAULT = datetime.date(2025, 10, 30)
+ 
+def _fecha_limite_auxiliar(config):
+    return config.get("fecha_limite_auxiliar", FECHA_LIMITE_DEFAULT)
+ 
+def _fecha_limite_aprobado(config):
+    return config.get("fecha_limite_aprobado", FECHA_LIMITE_DEFAULT)
+ 
+# Campos de negocio compartidos por los 3 modelos (temp/oficial/aprobado)
+# de cada sede. Se define una sola vez para no repetir la lista 3+ veces.
+CAMPOS_PRESUPUESTO = [
+    "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta",
+    "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor",
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+    "total", "comentario",
+]
+MESES = CAMPOS_PRESUPUESTO[9:21]
+CAMPOS_BASE_PLANTILLA = [c for c in CAMPOS_PRESUPUESTO if c not in ("total", "comentario")]
+CAMPOS_NUMERICOS = ["cuenta", "sede_distribucion"] + MESES + ["total"]
+SEDE_CONFIG = {
+    "tulua": {
+        "label": "Almacén Tuluá",
+        "usuarios_permitidos": {"admin", "JEFEALMACENTULUA", "DBENITEZ"},
+        "responsable_filtro": "JEFE ALMACEN TULUA",
+        "model_oficial": PresupuestoAlmacenTulua,
+        "model_aprobado": PresupuestoAlmacenTuluaAprobado,
+        "model_temp": PresupuestoAlmacenTuluaAux,
+        "fecha_limite_auxiliar": datetime.date(2026, 10, 15),  
+        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+    },
+    "buga": {
+        "label": "Almacén Buga",
+        "usuarios_permitidos": {"admin", "JEFEALMACENBUGA", "FDUQUE"},
+        "responsable_filtro": "JEFE ALMACEN BUGA",
+        "model_oficial": PresupuestoAlmacenBuga,
+        "model_aprobado": PresupuestoAlmacenBugaAprobado,
+        "model_temp": PresupuestoAlmacenBugaAux,
+        "fecha_limite_auxiliar": datetime.date(2026, 10, 15),  
+        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+    },
+    "cartago": {
+        "label": "Almacén Cartago",
+        "usuarios_permitidos": {"admin", "JEFEALMACENCARTAGO", "CHINCAPI"},
+        "responsable_filtro": "JEFE ALMACEN CARTAGO",
+        "model_oficial": PresupuestoAlmacenCartago,
+        "model_aprobado": PresupuestoAlmacenCartagoAprobado,
+        "model_temp": PresupuestoAlmacenCartagoAux,
+        "fecha_limite_auxiliar": datetime.date(2026, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+    },
+    "cali": {
+        "label": "Almacén Cali",
+        "usuarios_permitidos": {"admin", "JEFEALMACENCALI", "LAMAYA"},
+        "responsable_filtro": "JEFE ALMACEN CALI",
+        "model_oficial": PresupuestoAlmacenCali,
+        "model_aprobado": PresupuestoAlmacenCaliAprobado,
+        "model_temp": PresupuestoAlmacenCaliAux,
+        "fecha_limite_auxiliar": datetime.date(2026, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+    },
+}
+ 
+def _config_sede(sede):
+    """Devuelve la configuración de la sede o None si no existe."""
+    return SEDE_CONFIG.get(sede)
+ 
+def _usuario_autorizado(request, config):
+    return request.user.username in config["usuarios_permitidos"]
+ 
+def _defaults_desde_temp(temp_obj, version, fecha):
+    """Construye el dict `defaults` para update_or_create a partir de un
+    registro temporal. Se reutiliza para la tabla oficial y la aprobada,
+    en vez de escribir el mismo dict de 19 campos dos veces."""
+    data = {campo: getattr(temp_obj, campo) for campo in CAMPOS_PRESUPUESTO}
+    data["version"] = version
+    data["fecha"] = fecha
+    return data
+# FIN DE CONFIGURACIÓN CENTRALIZADA POR SEDE---------------------------------------
 
-#-------------PRESUPUESTO ALMACEN TULUA----------------
+# ---------------------------------------------------------------------------
+# Vistas genéricas (una sola implementación para todas las sedes)
+# ---------------------------------------------------------------------------
+ 
 @login_required
-def presupuesto_almacen_tulua(request):
-    usuarios_permitidos = ['admin', 'JEFEALMACENTULUA', 'DBENITEZ']
-    if request.user.username not in usuarios_permitidos:
+def presupuesto_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return HttpResponseForbidden("⛔ Sede no configurada.")
+    if not _usuario_autorizado(request, config):
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoAlmacenTulua.objects
+ 
+    versiones = list(
+        config["model_oficial"].objects
         .values_list("version", flat=True)
         .distinct()
         .order_by("version")
     )
     ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_almacen_tulua.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_almacen_tulua(request):
-    version = request.GET.get("version")  #🔥 versión 
-    qs = PresupuestoAlmacenTulua.objects.all()
+    return render(request, "presupuesto_general/presupuesto_almacen_sede.html", {
+        "sede": sede,
+        "sede_label": config["label"],
+        "versiones": versiones,
+        "ultima_version": ultima_version,
+    })
+ 
+ 
+def obtener_presupuesto_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return JsonResponse({"error": "Sede no configurada"}, status=404)
+ 
+    version = request.GET.get("version")
+    qs = config["model_oficial"].objects.all()
     if version:
         qs = qs.filter(version=version)
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_almacen_tulua(request):
-    # 🔹 obtener última versión disponible
-    versiones = (
-        PresupuestoAlmacenTuluaAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
+    return JsonResponse({"data": list(qs.values())}, safe=False)
+ 
+ 
+def presupuesto_aprobado_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return HttpResponseForbidden("⛔ Sede no configurada.")
+ 
+    versiones = config["model_aprobado"].objects.values_list("version", flat=True).distinct()
     ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_aprobado_almacen_tulua.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_almacen_tulua(request):
-    # 🔥 siempre filtrar por la última versión
-    versiones = (
-        PresupuestoAlmacenTuluaAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
+    return render(request, "presupuesto_general/presupuesto_aprobado_sede.html", {
+        "sede": sede,
+        "sede_label": config["label"],
+        "ultima_version": ultima_version,
+    })
+ 
+ 
+def obtener_presupuesto_aprobado_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return JsonResponse({"error": "Sede no configurada"}, status=404)
+ 
+    versiones = config["model_aprobado"].objects.values_list("version", flat=True).distinct()
     ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoAlmacenTuluaAprobado.objects.filter(version=ultima_version)
-    almacen_tulua_aprobado = list(qs.values())
-    return JsonResponse({"data": almacen_tulua_aprobado}, safe=False)   
-
-def tabla_auxiliar_almacen_tulua(request):
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-    # 🚫 Si ya pasó la fecha, negar acceso
-    if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
-                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_almacen_tulua.html")
-
-def subir_presupuesto_almacen_tulua(request):
-    if request.method == "POST":
-        temporales = PresupuestoAlmacenTuluaAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-        # 📌 Obtener versión global (tomando la última registrada en la tabla 
-        ultima_version = PresupuestoAlmacenTulua.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
-        for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoAlmacenTulua.objects.update_or_create(
-                id=temp.id,
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,  
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoAlmacenTuluaAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,  
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto de almacén Tuluá actualizado ✅ (versión {nueva_version})"
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_almacen_tulua_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-                registros.append(PresupuestoAlmacenTuluaAux(**row_filtrado))
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                # limpio toda la tabla auxiliar antes de insertar
-                PresupuestoAlmacenTuluaAux.objects.all().delete()
-                PresupuestoAlmacenTuluaAux.objects.bulk_create(registros)
-                
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_almacen_tulua_temp(request):
-    data = list(PresupuestoAlmacenTuluaAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_almacen_tulua_base(request):
-    # limpio tabla auxiliar de almacen tulua antes de recalcular
-    PresupuestoAlmacenTuluaAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'JEFE ALMACEN TULUA'
-    base_data = base_data.filter(responsable__iexact="JEFE ALMACEN TULUA")
-    for row in base_data:
-        PresupuestoAlmacenTuluaAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"],
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
-        )
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_almacen_tulua(request):
-    if request.method == "POST":
-        version = request.POST.get("version")  # 🔥 versión enviada desde el frontend
-
-        if not version:
-            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
-        # borrar solo la versión seleccionada
-        PresupuestoAlmacenTulua.objects.filter(version=version).delete()
-        # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 30)
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoAlmacenTuluaAprobado.objects.filter(version=version).delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de almacén Tuluá eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-
-#-------------PRESUPUESTO ALMACEN BUGA----------------
+    qs = config["model_aprobado"].objects.filter(version=ultima_version)
+    return JsonResponse({"data": list(qs.values())}, safe=False)
+ 
+ 
 @login_required
-def presupuesto_almacen_buga(request):
-    usuarios_permitidos = ['admin', 'JEFEALMACENBUGA', 'FDUQUE']
-    if request.user.username not in usuarios_permitidos:
+def tabla_auxiliar_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return HttpResponseForbidden("⛔ Sede no configurada.")
+    if not _usuario_autorizado(request, config):
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoAlmacenBuga.objects
-        .values_list("version", flat=True)
-        .distinct()
-        .order_by("version")
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_almacen_buga.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_almacen_buga(request):
-    version = request.GET.get("version")  #🔥 versión 
-    qs = PresupuestoAlmacenBuga.objects.all()
-    if version:
-        qs = qs.filter(version=version)
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_almacen_buga(request):
-    # obtener última version disponible
-    versiones = (
-        PresupuestoAlmacenBugaAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    
-    return render(request, "presupuesto_general/presupuesto_aprobado_almacen_buga.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_almacen_buga(request):
-    # filtrar por la última versión
-    versiones = (
-        PresupuestoAlmacenBugaAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoAlmacenBugaAprobado.objects.filter(version=ultima_version)
-    data = list(qs.values())
-    
-    return JsonResponse({"data": data}, safe=False)
-
-def tabla_auxiliar_almacen_buga(request):
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-    # 🚫 Si ya pasó la fecha, negar acceso
+ 
+    fecha_limite = _fecha_limite_auxiliar(config)
+    hoy = timezone.now().date()
     if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
-                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_almacen_buga.html")
-
-def subir_presupuesto_almacen_buga(request):
-    if request.method == "POST":
-        temporales = PresupuestoAlmacenBugaAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-        # 📌 Obtener versión global (tomando la última registrada en la tabla 
-        ultima_version = PresupuestoAlmacenBuga.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
-        for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoAlmacenBuga.objects.update_or_create(
-                id=temp.id,
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,  
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoAlmacenBugaAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,  
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto de almacén Buga actualizado ✅ (versión {nueva_version})"
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_almacen_buga_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-                registros.append(PresupuestoAlmacenBugaAux(**row_filtrado))
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                # limpio toda la tabla auxiliar antes de insertar
-                PresupuestoAlmacenBugaAux.objects.all().delete()
-                PresupuestoAlmacenBugaAux.objects.bulk_create(registros)
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_almacen_buga_temp(request):
-    data = list(PresupuestoAlmacenBugaAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_almacen_buga_base(request):
-    # limpio tabla auxiliar de almacen buga antes de recalcular
-    PresupuestoAlmacenBugaAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'JEFE ALMACEN BUGA'
-    base_data = base_data.filter(responsable__iexact="JEFE ALMACEN BUGA")
-    
-    for row in base_data:
-        PresupuestoAlmacenBugaAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"], 
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
+        return HttpResponseForbidden(
+            "⛔ El acceso a esta vista está bloqueado después del "
+            f"{fecha_limite.strftime('%d/%m/%Y')}"
         )
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_almacen_buga(request):
-    if request.method == "POST":
-        version = request.POST.get("version")  # 🔥 versión enviada desde el frontend
-
-        if not version:
-            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
-        # borrar solo la versión seleccionada
-        PresupuestoAlmacenBuga.objects.filter(version=version).delete()
-        # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 30)
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoAlmacenBugaAprobado.objects.filter(version=version).delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de almacén Buga eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-#--------PRESUPUESTO ALMACEN CARTAGO----------------
+    return render(request, "presupuesto_general/aux_presupuesto_almacen_sede.html", {
+        "sede": sede,
+        "sede_label": config["label"],
+    })
+ 
+ 
+def obtener_temp_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return JsonResponse({"error": "Sede no configurada"}, status=404)
+    return JsonResponse(list(config["model_temp"].objects.values()), safe=False)
+ 
+ 
 @login_required
-def presupuesto_almacen_cartago(request):
-    usuarios_permitidos = ['admin', 'JEFEALMACENCARTAGO', 'CHINCAPI']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoAlmacenCartago.objects
-        .values_list("version", flat=True)
-        .distinct()
-        .order_by("version")
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_almacen_cartago.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_almacen_cartago(request):
-    version = request.GET.get("version")  #🔥 versión 
-    qs = PresupuestoAlmacenCartago.objects.all()
-    if version:
-        qs = qs.filter(version=version)
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_almacen_cartago(request):
-    # obtener última version disponible
-    versiones = (
-        PresupuestoAlmacenCartagoAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    
-    return render(request, "presupuesto_general/presupuesto_aprobado_almacen_cartago.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_almacen_cartago(request):
-    # filtrar por la última versión
-    versiones = (
-        PresupuestoAlmacenCartagoAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoAlmacenCartagoAprobado.objects.filter(version=ultima_version)
-    data = list(qs.values())
-    
-    return JsonResponse({"data": data}, safe=False)
-
-def tabla_auxiliar_almacen_cartago(request):
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-    # 🚫 Si ya pasó la fecha, negar acceso
-    if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
-                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_almacen_cartago.html")
-
-def subir_presupuesto_almacen_cartago(request):
-    if request.method == "POST":
-        temporales = PresupuestoAlmacenCartagoAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-        # 📌 Obtener versión global (tomando la última registrada en la tabla 
-        ultima_version = PresupuestoAlmacenCartago.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
-        for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoAlmacenCartago.objects.update_or_create(
-                id=temp.id,
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,  
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoAlmacenCartagoAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,  
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto de almacén Cartago actualizado ✅ (versión {nueva_version})"
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_almacen_cartago_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-                registros.append(PresupuestoAlmacenCartagoAux(**row_filtrado))
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                # limpio toda la tabla auxiliar antes de insertar
-                PresupuestoAlmacenCartagoAux.objects.all().delete()
-                PresupuestoAlmacenCartagoAux.objects.bulk_create(registros)
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_almacen_cartago_temp(request):
-    data = list(PresupuestoAlmacenCartagoAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_almacen_cartago_base(request):
-    # limpio tabla auxiliar de almacen cartago antes de recalcular
-    PresupuestoAlmacenCartagoAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'JEFE ALMACEN CARTAGO'
-    base_data = base_data.filter(responsable__iexact="CLAUDIA H")
-    
-    for row in base_data:
-        PresupuestoAlmacenCartagoAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"], 
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
-        )
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_almacen_cartago(request):
-    if request.method == "POST":
-        version = request.POST.get("version")  # 🔥 versión enviada desde el frontend
-
-        if not version:
-            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
-        # borrar solo la versión seleccionada
-        PresupuestoAlmacenCartago.objects.filter(version=version).delete()
-        # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 30)
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoAlmacenCartagoAprobado.objects.filter(version=version).delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de almacén Cartago eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-#----------PRESUPUESTO ALMACEN CALI----------------
+def guardar_temp_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return JsonResponse({"status": "error", "message": "Sede no configurada"}, status=404)
+    if not _usuario_autorizado(request, config):
+        return JsonResponse({"status": "error", "message": "Sin permisos"}, status=403)
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+ 
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        model_temp = config["model_temp"]
+        registros = []
+        for row in data:
+            row_filtrado = {campo: row.get(campo) for campo in CAMPOS_PRESUPUESTO}
+            for campo in CAMPOS_NUMERICOS:
+                if row_filtrado.get(campo) in (None, ""):
+                    row_filtrado[campo] = 0
+            registros.append(model_temp(**row_filtrado))
+ 
+        with transaction.atomic():
+            model_temp.objects.all().delete()
+            model_temp.objects.bulk_create(registros)
+ 
+        return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+ 
+ 
 @login_required
-def presupuesto_almacen_cali(request):
-    usuarios_permitidos = ['admin', 'JEFEALMACENCALI', 'LAMAYA']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoAlmacenCali.objects
-        .values_list("version", flat=True)
-        .distinct()
-        .order_by("version")
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_almacen_cali.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_almacen_cali(request):
-    version = request.GET.get("version")  #🔥 versión 
-    qs = PresupuestoAlmacenCali.objects.all()
-    if version:
-        qs = qs.filter(version=version)
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_almacen_cali(request):
-    # obtener última version disponible
-    versiones = (
-        PresupuestoAlmacenCaliAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    
-    return render(request, "presupuesto_general/presupuesto_aprobado_almacen_cali.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_almacen_cali(request):
-    # filtrar por la última versión
-    versiones = (
-        PresupuestoAlmacenCaliAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoAlmacenCaliAprobado.objects.filter(version=ultima_version)
-    data = list(qs.values())
-    
-    return JsonResponse({"data": data}, safe=False)
-
-def tabla_auxiliar_almacen_cali(request):
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-    # 🚫 Si ya pasó la fecha, negar acceso
-    if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
-                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_almacen_cali.html")
-
-def subir_presupuesto_almacen_cali(request):
-    if request.method == "POST":
-        temporales = PresupuestoAlmacenCaliAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-        # 📌 Obtener versión global (tomando la última registrada en la tabla 
-        ultima_version = PresupuestoAlmacenCali.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
+def cargar_base_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return JsonResponse({"status": "error", "message": "Sede no configurada"}, status=404)
+    if not _usuario_autorizado(request, config):
+        return JsonResponse({"status": "error", "message": "Sin permisos"}, status=403)
+ 
+    model_temp = config["model_temp"]
+    base_qs = Plantillagastos2025.objects.filter(
+        responsable__iexact=config["responsable_filtro"]
+    ).values(*CAMPOS_BASE_PLANTILLA)
+ 
+    nuevos = []
+    for row in base_qs:
+        fila = dict(row)
+        fila["total"] = sum(fila[m] for m in MESES)
+        fila["comentario"] = ""
+        nuevos.append(model_temp(**fila))
+ 
+    with transaction.atomic():
+        model_temp.objects.all().delete()
+        model_temp.objects.bulk_create(nuevos)
+ 
+    return JsonResponse({"status": "ok", "msg": f"{len(nuevos)} filas cargadas desde plantilla 📂"})
+ 
+ 
+@login_required
+def subir_presupuesto_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return JsonResponse({"success": False, "msg": "Sede no configurada"}, status=404)
+    if not _usuario_autorizado(request, config):
+        return JsonResponse({"success": False, "msg": "Sin permisos"}, status=403)
+    if request.method != "POST":
+        return JsonResponse({"success": False, "msg": "Método no permitido"}, status=405)
+ 
+    model_temp = config["model_temp"]
+    model_oficial = config["model_oficial"]
+    model_aprobado = config["model_aprobado"]
+ 
+    temporales = model_temp.objects.all()
+    if not temporales.exists():
+        return JsonResponse({"success": False, "msg": "No hay datos temporales para subir ❌"}, status=400)
+ 
+    fecha_hoy = timezone.now().date()
+    fecha_limite_aprobado = _fecha_limite_aprobado(config)
+    ultima_version = model_oficial.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
+    nueva_version = ultima_version + 1
+ 
+    with transaction.atomic():
         for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoAlmacenCali.objects.update_or_create(
-                id=temp.id,
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,  
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoAlmacenCaliAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,  
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto de almacén Cali actualizado ✅ (versión {nueva_version})"
-        })
+            defaults = _defaults_desde_temp(temp, nueva_version, fecha_hoy)
+            model_oficial.objects.update_or_create(id=temp.id, defaults=defaults)
+            if fecha_hoy <= fecha_limite_aprobado:
+                model_aprobado.objects.update_or_create(id=temp.id, defaults=defaults)
+ 
     return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_almacen_cali_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-                registros.append(PresupuestoAlmacenCaliAux(**row_filtrado))
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                # limpio toda la tabla auxiliar antes de insertar
-                PresupuestoAlmacenCaliAux.objects.all().delete()
-                PresupuestoAlmacenCaliAux.objects.bulk_create(registros)
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_almacen_cali_temp(request):
-    data = list(PresupuestoAlmacenCaliAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_almacen_cali_base(request):
-    # limpio tabla auxiliar de almacen cali antes de recalcular
-    PresupuestoAlmacenCaliAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'JEFE ALMACEN CALI'
-    base_data = base_data.filter(responsable__iexact="JEFE ALMACEN CALI")
-    
-    for row in base_data:
-        PresupuestoAlmacenCaliAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"], 
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
-        )
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_almacen_cali(request):
-    if request.method == "POST":
-        version = request.POST.get("version")  # 🔥 versión enviada desde el frontend
-
-        if not version:
-            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
-        # borrar solo la versión seleccionada
-        PresupuestoAlmacenCali.objects.filter(version=version).delete()
-        # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 30)
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoAlmacenCaliAprobado.objects.filter(version=version).delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de almacén Cali eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+        "success": True,
+        "msg": f"Presupuesto de {config['label']} actualizado ✅ (versión {nueva_version})",
+    })
+ 
+ 
+@login_required
+def borrar_presupuesto_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return JsonResponse({"status": "error", "message": "Sede no configurada"}, status=404)
+    if not _usuario_autorizado(request, config):
+        return JsonResponse({"status": "error", "message": "Sin permisos"}, status=403)
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+ 
+    version = request.POST.get("version")
+    if not version:
+        return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
+ 
+    config["model_oficial"].objects.filter(version=version).delete()
+    if timezone.now().date() <= _fecha_limite_aprobado(config):
+        config["model_aprobado"].objects.filter(version=version).delete()
+ 
+    return JsonResponse({"status": "ok", "message": f"Presupuesto de {config['label']} eliminado"})
+ 
 
 #-----------------PRESUPUESTO COMUNICACIONES-------------------
 @login_required
@@ -11162,10 +10520,10 @@ def calcular_consolidado(sede='consolidado'):
         asistencia_tecnica_propia    = ['AT-00001','AT-00002','AT-00005']
         asistencia_tecnica_convenios = ['AT-00003','AT-00004','AT-00006']
 
-        consolidado         = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0})
-        consolidado_normal  = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0})
-        consolidado_at      = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0})
-        consolidado_cuenta4 = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0})
+        consolidado         = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
+        consolidado_normal  = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
+        consolidado_at      = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
+        consolidado_cuenta4 = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
 
         # ── pase único sobre queryset ─────────────────────────────
         for row in queryset:
@@ -11221,7 +10579,7 @@ def calcular_consolidado(sede='consolidado'):
             cuenta = aplicar_agrupaciones(row['mcncuenta'] or 'SIN CUENTA',
                                           row['mcnccosto'] or 'SIN COSTO')
             key = (mes, cuenta, row['mcnccosto'] or 'SIN COSTO', 'SIN DESTINO')
-            consolidado[key]['total_debito'] += row['valor'] or 0
+            consolidado[key]['total_valor'] += row['valor'] or 0
 
         # ── nombres ───────────────────────────────────────────────
         cuentas_dict = {}
@@ -11270,9 +10628,9 @@ def calcular_consolidado(sede='consolidado'):
         for (mes, cuenta, costo, destino) in consolidado:
             vals = consolidado[(mes, cuenta, costo, destino)]
             if cuenta in asistencia_tecnica or cuenta.startswith('4'):
-                saldo = vals['total_credito'] - vals['total_debito']
+                saldo = vals['total_credito'] - vals['total_debito'] + vals['total_valor']
             else:
-                saldo = vals['total_debito'] - vals['total_credito']
+                saldo = vals['total_debito'] - vals['total_credito'] + vals['total_valor']
 
             registros[cuenta]['mcncuenta'] = cuenta
             registros[cuenta]['ctanombre'] = nombres_especiales.get(
@@ -11301,29 +10659,43 @@ def obtener_consolidado(request):
     if sede not in SEDE_CONFIG_CONSOLIDADO:
         return JsonResponse({'error': f'Sede inválida: {sede}'}, status=400)
 
-    ORDEN_PERSONALIZADO = [
-        '1','2','41750201','613522','4240900101','4240909502',
-        '5405','541001','54100201','54100202','54100204','54100205','54100206',
-        '54100207_54100211','541003','541005','541006','541009_541033',
-        '541010','541011','54101201','54101202','54101203','54101204',
-        '541013','541014','541015_541016','541018','541023','541024','541027',
-        '541029','541032','541035','54109501','54109502','54109503','54109504',
-        '54109505','54109506','54109507','54109508','54109509','54109510',
-        '5415','542005','54100203','54100211',
-        '5105','511001','511002','511003','511005','511006','511009','511010',
-        '511011','511012','511013','511015_511016','511018','511019','511020',
-        '511021','511022','511023','511024','511026','511027','511031','511033',
-        '511035','51109502','51109501_51109502','511512','511534',
-        '521005','521015','521020','3','615035',
-        'AT-00004','AT-00005','AT-00007','AT-00008','AT-00010','AT-00013',
-        'AT-00014','AT-00015','AT-00016','AT-00019','AT-00020','AT-00021',
-        'AT-00022','AT-00023','AT-00024','AT-00026','AT-00028','AT-00029',
-        'AT-00030','AT-00032','VT-00001','VT-00025','AT-00003',
-        '41659505','41659501','422004','422507','422529','4240900202','420560',
-        '4240900301','4240900401','4240909501','4240909503','4240909901','41750105',
-        '5','6','7','8','5230',
-    ]
-
+    if sede == 'consolidado':
+        # Para la vista consolidado_total_base, se mantiene el orden personalizado de cuentas
+        ORDEN_PERSONALIZADO = [
+            '1','2','41750201','613522','4240900101','4240909502',
+            '5405','541001','54100201','54100202','54100204','54100205','54100206',
+            '54100207_54100211','541003','541005','541006','541009_541033',
+            '541010','541011','54101201','54101202','54101203','54101204',
+            '541013','541014','541015_541016','541018','541023','541024','541027',
+            '541029','541032','541035','54109501','54109502','54109503','54109504',
+            '54109505','54109506','54109507','54109508','54109509','54109510',
+            '5415','542005','54100203','54100211',
+            '5105','511001','511002','511003','511005','511006','511009','511010',
+            '511011','511012','511013','511015_511016','511018','511019','511020',
+            '511021','511022','511023','511024','511026','511027','511031','511033',
+            '511035','51109502','51109501_51109502','511512','511534',
+            '521005','521015','521020','3','615035',
+            'AT-00004','AT-00005','AT-00007','AT-00008','AT-00010','AT-00013',
+            'AT-00014','AT-00015','AT-00016','AT-00019','AT-00020','AT-00021',
+            'AT-00022','AT-00023','AT-00024','AT-00026','AT-00028','AT-00029',
+            'AT-00030','AT-00032','VT-00001','VT-00025','AT-00003',
+            '41659505','41659501','422004','422507','422529','4240900202','420560',
+            '4240900301','4240900401','4240909501','4240909503','4240909901','41750105',
+            '5','6','7','8','5230',
+        ]
+    else:
+        # Para las vistas de sedes individuales, se omiten ciertas cuentas y se ordena alfabéticamente
+        ORDEN_PERSONALIZADO = [
+            '1','2','41750201','613522','4240900101','4240909502',
+            '5405','541001','54100201','54100202','54100204','54100205','54100206',
+            '54100207_54100211','541003','541005','541006','541009_541033',
+            '541010','541011','54101201','54101202','54101203','54101204',
+            '541013','541014','541015_541016','541018','541023','541024','541027',
+            '541029','541032','541035','54109501','54109502','54109503','54109504',
+            '54109505','54109506','54109507','54109508','54109509','54109510',
+            '5415','542005',
+        ]
+            
     MESES_COLS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
@@ -11447,10 +10819,10 @@ def calcular_presupuestado(sede='presupuestado'):
         asistencia_tecnica_propia    = ['AT-00001','AT-00002','AT-00005']
         asistencia_tecnica_convenios = ['AT-00003','AT-00004','AT-00006']
 
-        consolidado         = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0})
-        consolidado_normal  = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0})
-        consolidado_at      = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0})
-        consolidado_cuenta4 = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0})
+        consolidado         = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
+        consolidado_normal  = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
+        consolidado_at      = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
+        consolidado_cuenta4 = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
 
         # ── pase único sobre queryset ─────────────────────────────
         for row in queryset:
@@ -11506,7 +10878,7 @@ def calcular_presupuestado(sede='presupuestado'):
             cuenta = aplicar_agrupaciones(row['mcncuenta'] or 'SIN CUENTA',
                                           row['mcnccosto'] or 'SIN COSTO')
             key = (mes, cuenta, row['mcnccosto'] or 'SIN COSTO', 'SIN DESTINO')
-            consolidado[key]['total_debito'] += row['valor'] or 0
+            consolidado[key]['total_valor'] += row['valor'] or 0
 
         # ── nombres ───────────────────────────────────────────────
         cuentas_dict = {}
@@ -11555,9 +10927,9 @@ def calcular_presupuestado(sede='presupuestado'):
         for (mes, cuenta, costo, destino) in consolidado:
             vals = consolidado[(mes, cuenta, costo, destino)]
             if cuenta in asistencia_tecnica or cuenta.startswith('4'):
-                saldo = vals['total_credito'] - vals['total_debito']
+                saldo = vals['total_credito'] - vals['total_debito'] + vals['total_valor']
             else:
-                saldo = vals['total_debito'] - vals['total_credito']
+                saldo = vals['total_debito'] - vals['total_credito'] + vals['total_valor']
 
             registros[cuenta]['mcncuenta'] = cuenta
             registros[cuenta]['ctanombre'] = nombres_especiales.get(
