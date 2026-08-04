@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="csrf-token" content="{{ csrf_token }}">
+<title>Presupuesto {{ sede_label }}</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+    :root {
+        --color-primario: #1F3A93;
+        --color-borde: #d7d9dc;
+        --color-fila-activa: #b6b6b6;
+        --color-celda-edit: #fff8d6;
+        --color-fondo-header: #f8f9fa;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; margin: 16px; }
+    h2 { margin-bottom: 12px; }
+
+    .toolbar { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 15px; }
+    .toolbar-group {
+        display: flex; align-items: center; gap: 8px; padding: 8px;
+        border: 1px solid var(--color-borde); border-radius: 6px; background: var(--color-fondo-header);
+    }
+    .toolbar-group button, .toolbar-group input[type="number"] { font-size: 14px; }
+    .toolbar-group button {
+        margin: 2px; padding: 4px 12px; border: 1px solid #fff; border-radius: 6px;
+        cursor: pointer; background: #5e5e5e; color: #fff; transition: all .2s ease;
+    }
+    .toolbar-group button:hover { background: #8b8b8b; color: #111; }
+    #ipcInput { padding: 6px 10px; border: 1px solid #ced4da; border-radius: 6px; width: 120px; }
+
+    #gridContainer { overflow: auto; max-width: 100%; height: 65vh; border: 1px solid var(--color-borde); position: relative; }
+    table.grid { border-collapse: collapse; width: 100%; font-size: 13px; }
+    table.grid th, table.grid td {
+        border: 1px solid var(--color-borde); padding: 4px 8px; white-space: nowrap; text-align: left;
+    }
+    table.grid thead th {
+        background: var(--color-primario); color: #fff; position: sticky; top: 0; z-index: 2;
+    }
+    td.editable { background: #fdfdfd; cursor: cell; }
+    td.locked { background: #eee; color: #777; cursor: not-allowed; }
+    td.numeric { text-align: right; }
+    td.selected { outline: 2px solid var(--color-primario); outline-offset: -1px; }
+    td.editing { background: var(--color-celda-edit); padding: 0; }
+    td.editing input, td.editing select {
+        width: 100%; height: 100%; border: none; outline: none; padding: 4px 8px;
+        font-size: 13px; background: transparent; box-sizing: border-box;
+    }
+    tr.fila-activa td:not(.editing) { background: var(--color-fila-activa); }
+    tr.blink td { animation: blink 0.8s ease-in-out 3; }
+    @keyframes blink { 0%,100% { background: #d0ffb5; } 50% { background: #fff; } }
+
+    .resize-handle { height: 10px; background: #ccc; cursor: ns-resize; text-align: center; color: #555; user-select: none; }
+    .fab { position: fixed; bottom: 15px; left: 15px; background: #007bff; color: #fff; border: none;
+        border-radius: 20px; padding: 10px 18px; cursor: pointer; font-weight: bold;
+        box-shadow: 0 2px 8px rgba(0,0,0,.3); z-index: 999; }
+
+    .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 12px; }
+    .toast { min-width: 320px; max-width: 480px; padding: 14px 22px; border-radius: 10px; color: #fff;
+        font-size: 15px; box-shadow: 0 4px 12px rgba(0,0,0,.2); opacity: 0; transform: translateX(100%);
+        transition: all .4s ease-in-out; }
+    .toast.show { opacity: 1; transform: translateX(0); }
+    .toast.success { background: #28a745; }
+    .toast.error { background: #dc3545; }
+    .spinner { border: 2px solid #f3f3f3; border-top: 2px solid #fff; border-right: 2px solid #fff;
+        border-radius: 50%; width: 12px; height: 12px; display: inline-block; animation: spin .6s linear infinite;
+        vertical-align: middle; margin-left: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .modal { display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,.6); }
+    .modal-content { background: #fff; margin: 15% auto; padding: 20px; border-radius: 10px; width: 400px; text-align: center; }
+    .modal-header { font-size: 18px; margin-bottom: 15px; }
+    .modal-footer { margin-top: 20px; display: flex; justify-content: space-around; }
+    .modal-footer button { padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; }
+    .btn-cancel { background: #ccc; }
+    .btn-confirm { background: #d9534f; color: #fff; }
+    .btn-confirm-upload { background: #007bff; color: #fff; }
+    .manual-modal iframe { width: 100%; height: 100%; border: none; }
+</style>
+</head>
+<body>
+<h2>Presupuesto {{ sede_label }}</h2>
+
+<div class="toolbar">
+    <div class="toolbar-group">
+        <button id="guardarBtn">💾 Guardar cambios<span class="spinner" id="spinnerGuardar" style="display:none;"></span></button>
+        <button id="subirBtn">⬆️ Subir presupuesto proyectado<span class="spinner" id="spinnerSubir" style="display:none;"></span></button>
+    </div>
+    <div class="toolbar-group">
+        <button id="btnTabla" class="btn-main">📊 Ir a tabla principal</button>
+        <button id="btnTablaAprobado" class="btn-main">✅ Ir a presupuesto aprobado</button>
+    </div>
+    <div class="toolbar-group">
+        <input type="number" id="ipcInput" placeholder="IPC %" step="0.01">
+        <button id="calcularIPCBtn" title="Aplica el IPC a las filas seleccionadas">📈 Calcular IPC</button>
+    </div>
+    <div class="toolbar-group">
+        <button id="agregarFilaBtn">➕ Agregar fila</button>
+        <button id="exportarExcelBtn">📥 Exportar a Excel</button>
+        <button id="verManualBtn">📘 Ver manual de cuentas</button>
+    </div>
+</div>
+
+<div id="gridContainer">
+    <table class="grid" id="gridTable">
+        <thead><tr id="gridHeaderRow"></tr></thead>
+        <tbody id="gridBody"></tbody>
+    </table>
+</div>
+<div class="resize-handle" id="resizeHandle">⬍</div>
+<button class="fab" id="expandBtn">Expandir</button>
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Modales -->
+<div id="modalEliminar" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">⚠️ Confirmar eliminación</div>
+        <p>¿Estás seguro de eliminar esta fila?</p>
+        <div class="modal-footer">
+            <button class="btn-cancel" data-modal="modalEliminar">Cancelar</button>
+            <button class="btn-confirm" id="confirmEliminarBtn">Eliminar</button>
+        </div>
+    </div>
+</div>
+<div id="modalSubir" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">📤 Confirmar subida</div>
+        <p>Recuerda guardar los cambios antes de subir el presupuesto proyectado. ¿Continuar?</p>
+        <div class="modal-footer">
+            <button class="btn-cancel" data-modal="modalSubir">Cancelar</button>
+            <button class="btn-confirm-upload" id="confirmSubirBtn">Subir</button>
+        </div>
+    </div>
+</div>
+<div id="modalIrTabla" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">📤 Confirmar acción</div>
+        <p>Recuerda guardar los cambios antes de salir. ¿Continuar?</p>
+        <div class="modal-footer">
+            <button class="btn-cancel" data-modal="modalIrTabla">Cancelar</button>
+            <button class="btn-confirm-upload" id="confirmIrTablaBtn">Continuar</button>
+        </div>
+    </div>
+</div>
+<div id="manualModal" class="modal manual-modal">
+    <div class="modal-content" style="width:80%; height:80%; margin:5% auto; position:relative;">
+        <span style="position:absolute; top:8px; right:12px; cursor:pointer;" id="cerrarManualBtn">❌</span>
+        <iframe src="/static/manuales/PUC.pdf"></iframe>
+    </div>
+</div>
+
+<script>
+const SEDE = "{{ sede }}";
+const URLS = {
+    obtenerTemp: "{% url 'obtener_temp_sede' sede=sede %}",
+    guardarTemp: "{% url 'guardar_temp_sede' sede=sede %}",
+    subir: "{% url 'subir_presupuesto_sede' sede=sede %}",
+    tablaPrincipal: "{% url 'presupuesto_sede' sede=sede %}",
+    tablaAprobado: "{% url 'presupuesto_aprobado_sede' sede=sede %}",
+    cuentasContables: "{% url 'seleccionCuentasContables' %}",
+};
+
+// ---------------------------------------------------------------------
+// Config de columnas: UNA sola fuente de verdad para header, celdas,
+// validación, export y cálculo de total (evita repetir cada columna
+// en 4 lugares distintos como pasaba antes).
+// ---------------------------------------------------------------------
+const MESES = ["enero","febrero","marzo","abril","mayo","junio",
+               "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+const COLUMNS = [
+    { key: "_check", label: "", type: "check", locked: false, width: 30 },
+    { key: "_acciones", label: "Acciones", type: "acciones", locked: true, width: 60 },
+    { key: "nombre_cen", label: "Nombre asignación del gasto", type: "select-centro" },
+    { key: "cuenta", label: "Cuenta", type: "text", locked: true },
+    { key: "cuenta_mayor", label: "Cuenta Mayor", type: "select-cuenta" },
+    { key: "detalle_cuenta", label: "Detalle Cuenta", type: "text" },
+    ...MESES.map(m => ({ key: m, label: m[0].toUpperCase() + m.slice(1), type: "number" })),
+    { key: "total", label: "Total", type: "number", locked: true },
+    { key: "comentario", label: "Comentario", type: "text" },
+];
+
+const OPCIONES_NOMBRE_CENTRO = {
+    "ALMACEN TULUA":    { codigoCosto: "020202", centro: "001" },
+    "ALMACEN BUGA":     { codigoCosto: "020200", centro: "002" },
+    "ALMACEN CARTAGO":  { codigoCosto: "020202", centro: "003" },
+    "ALMACEN CALI":     { codigoCosto: "020202", centro: "004" },
+    "ADMINISTRACIÓN":   { codigoCosto: "0102",   centro: "001" },
+    "SEVICIOS TÉCNICOS":{ codigoCosto: "020302", centro: "001" },
+};
+const EXCLUIR_CUENTAS = ["51","52","5105","5110","54","541001","541003","541006",
+    "5410","541019","541027","541033","541095"];
+
+let mapaCuentaMayor = {};
+let rows = [];               // datos de la grilla
+let activeCell = null;       // { rowIndex, colKey, td }
+let editingInput = null;
+
+// ---------------------------------------------------------------------
+// Utilidades
+// ---------------------------------------------------------------------
+function csrfToken() {
+    return document.querySelector('meta[name="csrf-token"]').content;
+}
+function fmt(n) {
+    if (n === null || n === undefined || n === "" || isNaN(n)) return n ?? "";
+    return new Intl.NumberFormat('es-ES').format(n);
+}
+function recalcularTotal(row) {
+    row.total = MESES.reduce((acc, m) => acc + (parseFloat(row[m]) || 0), 0);
+}
+function showToast(message, type = "success", duration = 3000, persistent = false) {
+    const container = document.getElementById("toastContainer");
+    const toast = document.createElement("div");
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add("show"));
+    if (persistent) { toast.dataset.persistent = "1"; return toast; }
+    setTimeout(() => { toast.classList.remove("show"); setTimeout(() => toast.remove(), 400); }, duration);
+}
+function ocultarToastsPersistentes() {
+    document.querySelectorAll('.toast[data-persistent="1"]').forEach(t => {
+        t.classList.remove("show");
+        setTimeout(() => t.remove(), 400);
+    });
+}
+function abrirModal(id) { document.getElementById(id).style.display = "block"; }
+function cerrarModal(id) { document.getElementById(id).style.display = "none"; }
+document.querySelectorAll('.btn-cancel').forEach(b => b.addEventListener('click', () => cerrarModal(b.dataset.modal)));
+
+async function apiGet(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`GET ${url} -> ${res.status}`);
+    return res.json();
+}
+async function apiPost(url, body, isJson = true) {
+    const res = await fetch(url, {
+        method: "POST",
+        headers: isJson
+            ? { "Content-Type": "application/json", "X-CSRFToken": csrfToken() }
+            : { "X-CSRFToken": csrfToken() },
+        body: isJson ? JSON.stringify(body) : body,
+    });
+    return res.json();
+}
+
+// ---------------------------------------------------------------------
+// Carga inicial
+// ---------------------------------------------------------------------
+async function cargarOpcionesCuenta() {
+    try {
+        const resp = await apiGet(URLS.cuentasContables);
+        mapaCuentaMayor = resp.cuentas_dict || {};
+    } catch (e) { showToast("No se pudieron cargar las cuentas contables ❌", "error"); }
+}
+async function cargarDatos() {
+    rows = await apiGet(URLS.obtenerTemp);
+    rows.forEach(r => { r._checked = false; });
+    render();
+}
+
+// ---------------------------------------------------------------------
+// Render de la grilla (header + filas) a partir de COLUMNS + rows
+// ---------------------------------------------------------------------
+function renderHeader() {
+    const headerRow = document.getElementById("gridHeaderRow");
+    headerRow.innerHTML = "";
+    COLUMNS.forEach(col => {
+        const th = document.createElement("th");
+        if (col.key === "_check") {
+            th.innerHTML = `<input type="checkbox" id="checkAllIPC" title="Seleccionar todo">`;
+        } else {
+            th.textContent = col.label;
+        }
+        headerRow.appendChild(th);
+    });
+}
+
+function render() {
+    const tbody = document.getElementById("gridBody");
+    tbody.innerHTML = "";
+    rows.forEach((row, rowIndex) => {
+        const tr = document.createElement("tr");
+        tr.dataset.rowIndex = rowIndex;
+        COLUMNS.forEach(col => {
+            tr.appendChild(renderCell(row, rowIndex, col));
+        });
+        tbody.appendChild(tr);
+    });
+    syncCheckAllState();
+}
+
+function renderCell(row, rowIndex, col) {
+    const td = document.createElement("td");
+    td.dataset.rowIndex = rowIndex;
+    td.dataset.colKey = col.key;
+
+    if (col.key === "_check") {
+        td.innerHTML = `<input type="checkbox" class="row-check" ${row._checked ? "checked" : ""}>`;
+        return td;
+    }
+    if (col.key === "_acciones") {
+        td.innerHTML = `<button class="dupBtn" title="Duplicar fila">📑</button><button class="delBtn" title="Eliminar fila">❌</button>`;
+        return td;
+    }
+
+    const locked = !!col.locked;
+    td.classList.add(locked ? "locked" : "editable");
+    if (col.type === "number") td.classList.add("numeric");
+
+    let value = row[col.key];
+    td.textContent = col.type === "number" ? fmt(value) : (value ?? "");
+    return td;
+}
+
+function syncCheckAllState() {
+    const total = rows.length;
+    const marcados = rows.filter(r => r._checked).length;
+    const checkAll = document.getElementById("checkAllIPC");
+    checkAll.checked = marcados > 0 && marcados === total;
+    checkAll.indeterminate = marcados > 0 && marcados < total;
+}
+
+// ---------------------------------------------------------------------
+// Selección de fila / celda activa
+// ---------------------------------------------------------------------
+function marcarFilaActiva(tr) {
+    document.querySelectorAll("#gridBody tr.fila-activa").forEach(r => r.classList.remove("fila-activa"));
+    if (tr) tr.classList.add("fila-activa");
+}
+function marcarCeldaActiva(td) {
+    document.querySelectorAll("#gridBody td.selected").forEach(c => c.classList.remove("selected"));
+    if (td) td.classList.add("selected");
+}
+
+// ---------------------------------------------------------------------
+// Edición estilo Excel: click selecciona, escribir/Enter/F2 edita,
+// flechas/Tab navegan, Escape cancela.
+// ---------------------------------------------------------------------
+function colIndex(key) { return COLUMNS.findIndex(c => c.key === key); }
+
+function moverA(rowIndex, colKey) {
+    if (rowIndex < 0 || rowIndex >= rows.length) return;
+    const col = COLUMNS.find(c => c.key === colKey);
+    if (!col || col.locked || col.type === "check" || col.type === "acciones") return;
+    const td = document.querySelector(`#gridBody td[data-row-index="${rowIndex}"][data-col-key="${colKey}"]`);
+    if (!td) return;
+    seleccionarCelda(td);
+    td.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+
+function seleccionarCelda(td) {
+    const colKey = td.dataset.colKey;
+    const col = COLUMNS.find(c => c.key === colKey);
+    // Columnas de checkbox/acciones no son celdas de datos: no se seleccionan
+    if (!col || col.type === "check" || col.type === "acciones") return;
+
+    // Si había otra celda en edición, se CONFIRMA (no se descarta) el valor
+    // antes de moverse — así el usuario no pierde lo que acaba de escribir
+    // o seleccionar en un <select> al hacer clic en otra celda.
+    if (editingInput && activeCell && activeCell.td !== td) {
+        cerrarEdicion(false);
+    }
+
+    const rowIndex = parseInt(td.dataset.rowIndex, 10);
+    activeCell = { rowIndex, colKey, td };
+    marcarCeldaActiva(td);
+    marcarFilaActiva(td.closest("tr"));
+}
+
+function iniciarEdicion(td, valorInicial = null) {
+    if (!td || !td.classList.contains("editable")) return;
+    const rowIndex = parseInt(td.dataset.rowIndex, 10);
+    const colKey = td.dataset.colKey;
+    const col = COLUMNS.find(c => c.key === colKey);
+    const row = rows[rowIndex];
+    td.classList.add("editing");
+
+    if (col.type === "select-cuenta") {
+        td.innerHTML = renderSelectCuentaMayor(row, valorInicial ?? row.cuenta);
+    } else if (col.type === "select-centro") {
+        td.innerHTML = renderSelectNombreCentro(valorInicial ?? row.nombre_cen);
+    } else {
+        const val = valorInicial ?? row[colKey] ?? "";
+        td.innerHTML = `<input type="text" value="${String(val).replace(/"/g,'&quot;')}">`;
+    }
+
+    const input = td.querySelector("input, select");
+
+    // 🔧 Aseguramos el valor seleccionado directamente por DOM (más confiable
+    // que depender del atributo "selected" armado como string). El setter
+    // .value de un <select> hace la coerción string/number automáticamente,
+    // así que aunque row.cuenta llegue como number, esto sí selecciona bien.
+    if (input.tagName === "SELECT") {
+        const valorActual = valorInicial ?? (colKey === "cuenta_mayor" ? row.cuenta : row.nombre_cen);
+        if (valorActual !== null && valorActual !== undefined) {
+            input.value = String(valorActual);
+        }
+    }
+
+    input.focus();
+    if (input.tagName === "INPUT") input.select();
+    editingInput = input;
+
+    if (col.type === "number") {
+        input.addEventListener("input", () => { input.value = input.value.replace(/[^0-9]/g, ""); });
+    } else if (input.tagName === "INPUT") {
+        input.addEventListener("input", () => { input.value = input.value.toUpperCase(); });
+    }
+
+    input.addEventListener("keydown", (e) => manejarTeclaEnEdicion(e, td));
+    if (input.tagName === "SELECT") {
+        input.addEventListener("change", () => cerrarEdicion(false, input.value));
+    }
+}
+
+function renderSelectCuentaMayor(row, valorActual) {
+    let opciones = Object.keys(mapaCuentaMayor);
+    const esAdmin = (row.nombre_cen || "").toUpperCase() === "ADMINISTRACIÓN";
+    opciones = opciones.filter(o => esAdmin ? o.startsWith("51") : !o.startsWith("51"));
+    opciones = opciones.filter(o => !EXCLUIR_CUENTAS.includes(o));
+    // 🔧 Normalizar a string: row.cuenta llega como number (BigIntegerField
+    // del backend), pero Object.keys(mapaCuentaMayor) siempre son strings.
+    // Comparar con === entre number y string nunca coincide.
+    const valorActualStr = (valorActual !== null && valorActual !== undefined) ? String(valorActual) : "";
+
+    // Defensivo: si el código guardado no está en las opciones filtradas
+    // (por ejemplo datos legados que no cumplen la regla esAdmin/EXCLUIR),
+    // lo agregamos igual para no perderlo silenciosamente.
+    if (valorActualStr && !opciones.includes(valorActualStr) && mapaCuentaMayor[valorActualStr] !== undefined) {
+        opciones.push(valorActualStr);
+    }
+    opciones.sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+    return `<select>` + opciones.map(o =>
+        `<option value="${o}" ${o === valorActual ? "selected" : ""}>${o} - ${mapaCuentaMayor[o] || ""}</option>`
+    ).join("") + `</select>`;
+}
+function renderSelectNombreCentro(valorActual) {
+    return `<select>` + Object.keys(OPCIONES_NOMBRE_CENTRO).map(o =>
+        `<option value="${o}" ${o === valorActual ? "selected" : ""}>${o}</option>`
+    ).join("") + `</select>`;
+}
+
+function cerrarEdicion(cancelar = false, valorForzado = null) {
+    if (!activeCell || !editingInput) { editingInput = null; return; }
+    const { rowIndex, colKey, td } = activeCell;
+    const col = COLUMNS.find(c => c.key === colKey);
+    const row = rows[rowIndex];
+
+    if (!cancelar) {
+        const nuevoValor = valorForzado ?? editingInput.value;
+        if (colKey === "cuenta_mayor") {
+            row.cuenta_mayor = mapaCuentaMayor[nuevoValor] || "";
+            row.cuenta = nuevoValor;
+            if (["510531", "51059503"].includes(nuevoValor)) row.codcosto = "0101";
+            if (["540531", "54059503"].includes(nuevoValor)) row.codcosto = "020201";
+        } else if (colKey === "nombre_cen") {
+            row.nombre_cen = nuevoValor;
+            row.codcosto = OPCIONES_NOMBRE_CENTRO[nuevoValor]?.codigoCosto || "";
+            row.centro_tra = OPCIONES_NOMBRE_CENTRO[nuevoValor]?.centro || "";
+        } else if (col.type === "number") {
+            row[colKey] = parseFloat(nuevoValor) || 0;
+            recalcularTotal(row);
+        } else {
+            row[colKey] = nuevoValor;
+        }
+    }
+
+    td.classList.remove("editing");
+    editingInput = null;
+    render();
+    // Re-seleccionar la misma celda tras redibujar
+    const nuevoTd = document.querySelector(`#gridBody td[data-row-index="${rowIndex}"][data-col-key="${colKey}"]`);
+    if (nuevoTd) seleccionarCelda(nuevoTd);
+}
+
+function manejarTeclaEnEdicion(e, td) {
+    const rowIndex = parseInt(td.dataset.rowIndex, 10);
+    const colIdx = colIndex(td.dataset.colKey);
+
+    if (e.key === "Escape") { cerrarEdicion(true); return; }
+    if (e.key === "Enter") { e.preventDefault(); cerrarEdicion(false); moverA(rowIndex + 1, COLUMNS[colIdx].key); return; }
+    if (e.key === "Tab") {
+        e.preventDefault();
+        cerrarEdicion(false);
+        const dir = e.shiftKey ? -1 : 1;
+        const siguiente = siguienteColumnaEditable(colIdx, dir);
+        if (siguiente) moverA(rowIndex, siguiente.key);
+        return;
+    }
+}
+
+function siguienteColumnaEditable(desdeIdx, direccion) {
+    let i = desdeIdx + direccion;
+    while (i >= 0 && i < COLUMNS.length) {
+        const c = COLUMNS[i];
+        if (!c.locked && c.type !== "check" && c.type !== "acciones") return c;
+        i += direccion;
+    }
+    return null;
+}
+
+// Navegación con teclado cuando NO se está editando (celda solo seleccionada)
+document.addEventListener("keydown", (e) => {
+    if (editingInput || !activeCell) return;
+    const { rowIndex, colKey } = activeCell;
+    const colIdx = colIndex(colKey);
+
+    if (e.key === "ArrowDown") { e.preventDefault(); moverA(rowIndex + 1, colKey); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); moverA(rowIndex - 1, colKey); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); const c = siguienteColumnaEditable(colIdx, -1); if (c) moverA(rowIndex, c.key); }
+    else if (e.key === "ArrowRight" || e.key === "Tab") { e.preventDefault(); const c = siguienteColumnaEditable(colIdx, 1); if (c) moverA(rowIndex, c.key); }
+    else if (e.key === "Enter" || e.key === "F2") { e.preventDefault(); iniciarEdicion(activeCell.td); }
+    else if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        const col = COLUMNS.find(c => c.key === colKey);
+        if (col && !col.locked) {
+            rows[rowIndex][colKey] = col.type === "number" ? 0 : "";
+            if (MESES.includes(colKey)) recalcularTotal(rows[rowIndex]);
+            render();
+            moverA(rowIndex, colKey);
+        }
+    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+        // escribir directo sobre la celda seleccionada (como Excel)
+        iniciarEdicion(activeCell.td, e.key === " " ? "" : e.key);
+    }
+});
+
+// Click para seleccionar / doble click (o Enter) para editar
+document.getElementById("gridBody").addEventListener("click", (e) => {
+    const td = e.target.closest("td");
+    if (!td) return;
+    if (td.dataset.colKey === undefined) return;
+    // 🔧 Si la celda ya está en edición (tiene un <input>/<select> abierto),
+    // NO volver a seleccionarla: ese clic es del usuario interactuando con
+    // el propio input/select (p. ej. abriendo la lista desplegable). Si se
+    // llamara a seleccionarCelda() aquí, se redibujaría la tabla y el
+    // <select> nativo que el navegador acaba de abrir se cerraría al instante.
+    if (td.classList.contains("editing")) return;
+    seleccionarCelda(td);
+});
+document.getElementById("gridBody").addEventListener("dblclick", (e) => {
+    const td = e.target.closest("td.editable");
+    if (td && !td.classList.contains("editing")) iniciarEdicion(td);
+});
+
+// Pegado tipo Excel: pega texto con tabs/saltos de línea a partir de la celda activa
+document.addEventListener("paste", (e) => {
+    if (!activeCell || editingInput) return;
+    const texto = e.clipboardData.getData("text/plain");
+    if (!texto) return;
+    e.preventDefault();
+    const filasPegadas = texto.replace(/\r/g, "").split("\n").filter(l => l.length || true);
+    const colIdxInicial = colIndex(activeCell.colKey);
+
+    filasPegadas.forEach((linea, dRow) => {
+        const destRowIndex = activeCell.rowIndex + dRow;
+        if (destRowIndex >= rows.length) return;
+        const celdas = linea.split("\t");
+        celdas.forEach((valor, dCol) => {
+            const col = COLUMNS[colIdxInicial + dCol];
+            if (!col || col.locked || col.type === "check" || col.type === "acciones") return;
+            const row = rows[destRowIndex];
+            if (col.type === "number") row[col.key] = parseFloat(valor.replace(/[^0-9.-]/g, "")) || 0;
+            else row[col.key] = valor.trim();
+            if (MESES.includes(col.key)) recalcularTotal(row);
+        });
+    });
+    render();
+});
+
+// ---------------------------------------------------------------------
+// Checkboxes IPC
+// ---------------------------------------------------------------------
+document.getElementById("gridHeaderRow").addEventListener("change", (e) => {
+    if (e.target.id !== "checkAllIPC") return;
+    rows.forEach(r => r._checked = e.target.checked);
+    render();
+});
+document.getElementById("gridBody").addEventListener("change", (e) => {
+    if (!e.target.classList.contains("row-check")) return;
+    const rowIndex = parseInt(e.target.closest("td").dataset.rowIndex, 10);
+    rows[rowIndex]._checked = e.target.checked;
+    syncCheckAllState();
+});
+
+// ---------------------------------------------------------------------
+// Acciones de fila: duplicar / eliminar
+// ---------------------------------------------------------------------
+let filaAEliminar = null;
+document.getElementById("gridBody").addEventListener("click", (e) => {
+    if (e.target.classList.contains("dupBtn")) {
+        const rowIndex = parseInt(e.target.closest("td").dataset.rowIndex, 10);
+        const nueva = { ...rows[rowIndex] };
+        MESES.forEach(m => nueva[m] = 0);
+        nueva.total = 0;
+        nueva._checked = false;
+        rows.splice(rowIndex + 1, 0, nueva);
+        render();
+        const tr = document.querySelector(`#gridBody tr[data-row-index="${rowIndex + 1}"]`);
+        if (tr) { tr.classList.add("blink"); setTimeout(() => tr.classList.remove("blink"), 1800); }
+        showToast("Fila duplicada 📑", "success");
+    }
+    if (e.target.classList.contains("delBtn")) {
+        filaAEliminar = parseInt(e.target.closest("td").dataset.rowIndex, 10);
+        abrirModal("modalEliminar");
+    }
+});
+document.getElementById("confirmEliminarBtn").addEventListener("click", () => {
+    if (filaAEliminar !== null) {
+        rows.splice(filaAEliminar, 1);
+        render();
+        showToast("Fila eliminada ❌", "error");
+        filaAEliminar = null;
+    }
+    cerrarModal("modalEliminar");
+});
+
+// ---------------------------------------------------------------------
+// Agregar fila vacía
+// ---------------------------------------------------------------------
+document.getElementById("agregarFilaBtn").addEventListener("click", () => {
+    const nueva = { centro_tra: "", nombre_cen: "", codcosto: "", responsable: "",
+        cuenta: "", cuenta_mayor: "", detalle_cuenta: "", sede_distribucion: "", proveedor: "",
+        comentario: "", total: 0, _checked: false };
+    MESES.forEach(m => nueva[m] = 0);
+    rows.push(nueva);
+    render();
+    showToast("Fila agregada ✅", "success");
+});
+
+// ---------------------------------------------------------------------
+// Calcular IPC sobre filas seleccionadas
+// ---------------------------------------------------------------------
+document.getElementById("calcularIPCBtn").addEventListener("click", () => {
+    const valor = document.getElementById("ipcInput").value;
+    if (!valor || isNaN(valor)) { showToast("Debe ingresar un número válido ❌", "error"); return; }
+    const factor = 1 + (parseFloat(valor) / 100);
+    let algunaSeleccionada = false;
+    rows.forEach(row => {
+        if (!row._checked) return;
+        algunaSeleccionada = true;
+        MESES.forEach(m => { row[m] = Math.round((parseFloat(row[m]) || 0) * factor); });
+        recalcularTotal(row);
+    });
+    if (!algunaSeleccionada) { showToast("Selecciona al menos una fila ❌", "error"); return; }
+    render();
+    showToast("IPC aplicado a filas seleccionadas 📈", "success");
+});
+
+// ---------------------------------------------------------------------
+// Guardar / Subir / Navegación con modales de confirmación
+// ---------------------------------------------------------------------
+let hayCambiosSinGuardar = false;
+let advertenciaToast = null;
+function marcarCambiosPendientes() {
+    if (!hayCambiosSinGuardar) {
+        hayCambiosSinGuardar = true;
+        advertenciaToast = showToast("⚠️ Estás editando la tabla. Recuerda guardar los cambios.", "error", 0, true);
+    }
+}
+// Cualquier edición confirmada marca cambios pendientes
+const _cerrarEdicionOriginal = cerrarEdicion;
+cerrarEdicion = function(cancelar = false, valorForzado = null) {
+    const habiaEdicion = !!editingInput;
+    _cerrarEdicionOriginal(cancelar, valorForzado);
+    if (habiaEdicion && !cancelar) marcarCambiosPendientes();
+};
+
+document.getElementById("guardarBtn").addEventListener("click", async () => {
+    const spinner = document.getElementById("spinnerGuardar");
+    spinner.style.display = "inline-block";
+    try {
+        const payload = rows.map(r => { const { _checked, ...resto } = r; return resto; });
+        const resp = await apiPost(URLS.guardarTemp, payload);
+        if (resp.status === "ok") {
+            showToast(resp.msg, "success");
+            hayCambiosSinGuardar = false;
+            if (advertenciaToast) { advertenciaToast.classList.remove("show"); setTimeout(() => advertenciaToast.remove(), 400); advertenciaToast = null; }
+        } else {
+            showToast(resp.message || "Error al guardar ❌", "error");
+        }
+    } catch (e) {
+        showToast("Error al guardar ❌", "error");
+    } finally {
+        spinner.style.display = "none";
+    }
+});
+
+document.getElementById("subirBtn").addEventListener("click", () => abrirModal("modalSubir"));
+document.getElementById("confirmSubirBtn").addEventListener("click", async () => {
+    cerrarModal("modalSubir");
+    const btn = document.getElementById("subirBtn");
+    const spinner = document.getElementById("spinnerSubir");
+    spinner.style.display = "inline-block";
+    btn.disabled = true;
+    try {
+        const resp = await apiPost(URLS.subir, {});
+        showToast(resp.msg, resp.success ? "success" : "error");
+    } catch (e) {
+        showToast("Error en la subida ❌", "error");
+    } finally {
+        spinner.style.display = "none";
+        btn.disabled = false;
+    }
+});
+
+let destinoNavegacion = null;
+document.getElementById("btnTabla").addEventListener("click", () => { destinoNavegacion = URLS.tablaPrincipal; abrirModal("modalIrTabla"); });
+document.getElementById("btnTablaAprobado").addEventListener("click", () => { destinoNavegacion = URLS.tablaAprobado; abrirModal("modalIrTabla"); });
+document.getElementById("confirmIrTablaBtn").addEventListener("click", () => { if (destinoNavegacion) window.location.href = destinoNavegacion; });
+
+document.getElementById("verManualBtn").addEventListener("click", () => abrirModal("manualModal"));
+document.getElementById("cerrarManualBtn").addEventListener("click", () => cerrarModal("manualModal"));
+
+// ---------------------------------------------------------------------
+// Exportar a Excel (SheetJS) — reemplaza el botón excelHtml5 de DataTables
+// ---------------------------------------------------------------------
+document.getElementById("exportarExcelBtn").addEventListener("click", () => {
+    const cols = COLUMNS.filter(c => c.type !== "check" && c.type !== "acciones");
+    const encabezados = cols.map(c => c.label);
+    const datos = rows.map(r => cols.map(c => r[c.key] ?? ""));
+    const ws = XLSX.utils.aoa_to_sheet([encabezados, ...datos]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Presupuesto");
+    XLSX.writeFile(wb, `presupuesto_${SEDE}_auxiliar.xlsx`);
+});
+
+// ---------------------------------------------------------------------
+// Redimensionar contenedor + botón expandir (igual comportamiento que antes)
+// ---------------------------------------------------------------------
+(function initResize() {
+    const container = document.getElementById("gridContainer");
+    const handle = document.getElementById("resizeHandle");
+    let isResizing = false, startY, startHeight;
+
+    handle.addEventListener("mousedown", (e) => {
+        isResizing = true; startY = e.clientY;
+        startHeight = parseInt(getComputedStyle(container).height, 10);
+        document.body.style.cursor = "ns-resize"; document.body.style.userSelect = "none";
+    });
+    document.addEventListener("mousemove", (e) => {
+        if (!isResizing) return;
+        const newHeight = startHeight + (e.clientY - startY);
+        if (newHeight > 150) container.style.height = `${newHeight}px`;
+    });
+    document.addEventListener("mouseup", () => {
+        isResizing = false; document.body.style.cursor = ""; document.body.style.userSelect = "";
+    });
+
+    let expanded = false, previousHeight = container.style.height;
+    document.getElementById("expandBtn").addEventListener("click", () => {
+        const btn = document.getElementById("expandBtn");
+        if (!expanded) {
+            previousHeight = container.style.height;
+            container.style.height = "auto";
+            btn.textContent = "Colapsar"; expanded = true;
+        } else {
+            container.style.height = previousHeight || "65vh";
+            btn.textContent = "Expandir"; expanded = false;
+        }
+    });
+})();
+
+// ---------------------------------------------------------------------
+// Init
+// ---------------------------------------------------------------------
+renderHeader();
+Promise.all([cargarOpcionesCuenta(), cargarDatos()]);
+</script>
+</body>
+</html>
