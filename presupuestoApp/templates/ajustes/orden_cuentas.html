@@ -1,0 +1,186 @@
+{% extends 'presupuesto_consolidado/base_dashboard.html' %}
+{% load static %}
+
+{% block css %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+<link rel="stylesheet" href="{% static 'css/consolidado_sedes.css' %}">
+<style>
+  .orden-wrap { padding: 1rem 1.25rem; }
+  .orden-head { display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1rem; }
+  .orden-title { font-size:1.1rem; font-weight:700; }
+  .orden-hint { font-size:.78rem; color:var(--c-muted,#9a9aab); margin-bottom:.75rem; }
+  .orden-list { border:1px solid var(--c-border,#3c3c3c); border-radius:10px; overflow:hidden; max-height:65vh; overflow-y:auto; }
+  .orden-row {
+    display:grid; grid-template-columns:34px 60px 120px 1fr 70px 70px 34px;
+    align-items:center; gap:.5rem; padding:.4rem .6rem;
+    border-bottom:1px solid var(--c-border,#3c3c3c); font-size:.8rem;
+    background:transparent; cursor:grab;
+  }
+  .orden-row.header { position:sticky; top:0; z-index:2; background:var(--c-header-bg,#1e1e2e); font-weight:700; cursor:default; }
+  .orden-row:hover:not(.header) { background:rgba(255,255,255,.04); }
+  .orden-row.dragging { opacity:.4; }
+  .orden-row.drop-target { border-top:2px solid var(--c-accent,#6d6df6); }
+  .orden-row.hidden-search { display:none; }
+  .drag-handle { text-align:center; color:var(--c-muted,#9a9aab); user-select:none; }
+  .cta-code { font-family:monospace; font-weight:600; }
+  .cta-nombre { width:100%; background:transparent; border:1px solid transparent; border-radius:6px;
+                color:inherit; font:inherit; font-size:.8rem; padding:.25rem .4rem; }
+  .cta-nombre:hover { border-color:var(--c-border,#3c3c3c); }
+  .cta-nombre:focus { outline:none; border-color:var(--c-accent,#6d6df6); background:rgba(255,255,255,.03); }
+  .chk-cell { text-align:center; }
+  .btn-del { background:none; border:none; color:#c62828; cursor:pointer; font-size:.9rem; }
+  .pos-num { color:var(--c-muted,#9a9aab); font-size:.72rem; text-align:right; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="consolidado-wrap orden-wrap">
+
+  <div class="orden-head">
+    <div class="orden-title">⚙️ Orden y nombres de cuentas</div>
+    <div class="controls-bar">
+      <div class="search-box">
+        <input type="text" id="buscar" placeholder="Buscar cuenta o nombre...">
+      </div>
+      <button class="btn btn-outline" id="btnSync">🔄 Sincronizar cuentas</button>
+      <button class="btn btn-export" id="btnGuardar">💾 Guardar orden</button>
+    </div>
+  </div>
+
+  <div class="orden-hint">
+    Arrastra las filas para reordenar. <b>Total</b> = aparece en Consolidado/Presupuestado general y Total Base ·
+    <b>Sede</b> = aparece en las pestañas por sede. Los nombres editados reemplazan al nombre contable.
+  </div>
+
+  <div class="orden-list" id="lista">
+    <div class="orden-row header">
+      <div></div><div>#</div><div>Cuenta</div><div>Nombre a mostrar</div>
+      <div class="chk-cell">Total</div><div class="chk-cell">Sede</div><div></div>
+    </div>
+    <div id="filas"></div>
+  </div>
+</div>
+
+<div id="toastContainer"></div>
+
+{% block js %}
+<script>
+const URL_LISTAR   = "{% url 'listar_orden_cuentas' %}";
+const URL_SYNC     = "{% url 'sincronizar_orden_cuentas' %}";
+const URL_GUARDAR  = "{% url 'guardar_orden_cuentas' %}";
+const URL_ELIMINAR = "{% url 'eliminar_orden_cuenta' %}";
+
+function csrf() {
+  const m = document.querySelector('meta[name="csrf-token"]');
+  if (m && m.content) return m.content;
+  const c = document.cookie.match(/csrftoken=([^;]+)/);
+  return c ? decodeURIComponent(c[1]) : '';
+}
+function toast(msg, tipo='info') {
+  const d = document.createElement('div');
+  d.className = `toast toast-${tipo}`; d.textContent = msg;
+  document.getElementById('toastContainer').appendChild(d);
+  requestAnimationFrame(() => requestAnimationFrame(() => d.classList.add('show')));
+  setTimeout(() => { d.classList.remove('show'); setTimeout(() => d.remove(), 350); }, 3500);
+}
+
+const cont = document.getElementById('filas');
+let arrastrando = null;
+
+function crearFila(c) {
+  const row = document.createElement('div');
+  row.className = 'orden-row';
+  row.draggable = true;
+  row.dataset.id = c.id ?? '';
+  row.dataset.cuenta = c.mcncuenta;
+
+  row.innerHTML = `
+    <div class="drag-handle">⠿</div>
+    <div class="pos-num"></div>
+    <div class="cta-code">${c.mcncuenta}</div>
+    <div><input class="cta-nombre" type="text" value="${(c.ctanombre||'').replace(/"/g,'&quot;')}" placeholder="(nombre contable)"></div>
+    <div class="chk-cell"><input type="checkbox" class="chk-total" ${c.visible_total ? 'checked' : ''}></div>
+    <div class="chk-cell"><input type="checkbox" class="chk-sede"  ${c.visible_sede  ? 'checked' : ''}></div>
+    <div><button class="btn-del" title="Eliminar">✕</button></div>`;
+
+  row.addEventListener('dragstart', () => { arrastrando = row; row.classList.add('dragging'); });
+  row.addEventListener('dragend',   () => {
+    row.classList.remove('dragging');
+    document.querySelectorAll('.drop-target').forEach(r => r.classList.remove('drop-target'));
+    arrastrando = null; renumerar();
+  });
+  row.addEventListener('dragover', e => {
+    e.preventDefault();
+    if (!arrastrando || arrastrando === row) return;
+    const medio = row.getBoundingClientRect().top + row.offsetHeight / 2;
+    cont.insertBefore(arrastrando, e.clientY < medio ? row : row.nextSibling);
+  });
+  row.querySelector('.btn-del').addEventListener('click', async () => {
+    if (!confirm(`¿Eliminar ${c.mcncuenta} de la lista de orden?`)) return;
+    if (row.dataset.id) {
+      await fetch(URL_ELIMINAR, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
+        body: JSON.stringify({ id: Number(row.dataset.id) })
+      });
+    }
+    row.remove(); renumerar();
+  });
+  return row;
+}
+
+function renumerar() {
+  [...cont.children].forEach((r, i) => r.querySelector('.pos-num').textContent = i + 1);
+}
+
+async function cargar() {
+  const r = await fetch(URL_LISTAR);
+  const j = await r.json();
+  cont.innerHTML = '';
+  (j.data || []).forEach(c => cont.appendChild(crearFila(c)));
+  renumerar();
+  if (!(j.data || []).length) toast('Lista vacía: pulsa "Sincronizar cuentas" para poblarla', 'info');
+}
+
+document.getElementById('btnSync').addEventListener('click', async () => {
+  toast('Sincronizando… puede tardar unos segundos');
+  try {
+    const r = await fetch(URL_SYNC, { method:'POST', headers:{'X-CSRFToken':csrf()} });
+    const j = await r.json();
+    if (!j.success) throw new Error(j.error || 'Error');
+    toast(`✅ ${j.creadas} cuentas nuevas (total ${j.total})`, 'success');
+    cargar();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+});
+
+document.getElementById('btnGuardar').addEventListener('click', async () => {
+  const cuentas = [...cont.children].map(r => ({
+    mcncuenta:     r.dataset.cuenta,
+    ctanombre:     r.querySelector('.cta-nombre').value,
+    visible_total: r.querySelector('.chk-total').checked,
+    visible_sede:  r.querySelector('.chk-sede').checked,
+  }));
+  try {
+    const resp = await fetch(URL_GUARDAR, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
+      body: JSON.stringify({ cuentas })
+    });
+    const j = await resp.json();
+    if (!j.success) throw new Error(j.error || 'Error');
+    toast(`💾 ${j.guardadas} cuentas guardadas`, 'success');
+  } catch (e) { toast('No se pudo guardar: ' + e.message, 'error'); }
+});
+
+document.getElementById('buscar').addEventListener('input', e => {
+  const q = e.target.value.toLowerCase().trim();
+  [...cont.children].forEach(r => {
+    const txt = (r.dataset.cuenta + ' ' + r.querySelector('.cta-nombre').value).toLowerCase();
+    r.classList.toggle('hidden-search', !!q && !txt.includes(q));
+  });
+});
+
+cargar();
+</script>
+{% endblock %}
+{% endblock %}

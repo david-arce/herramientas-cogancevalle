@@ -592,57 +592,6 @@ $(document).ready(function() {
         });
     }
 
-    // // Botón para calcular y guardar consolidado
-    // $('#calcularConsolidadoBtn').on('click', function() {
-    //     const btn = $(this);
-    //     const originalText = btn.html();
-        
-    //     // Confirmar acción
-    //     if (!confirm('¿Está seguro de recalcular y guardar el consolidado? Esto eliminará los datos actuales y creará nuevos registros.')) {
-    //         return;
-    //     }
-        
-    //     // Deshabilitar botón y mostrar loading
-    //     btn.prop('disabled', true).html('⏳ Calculando...');
-        
-    //     // Obtener CSRF token
-    //     const csrftoken = document.querySelector('[name=csrf-token]').content;
-        
-    //     $.ajax({
-    //         url: url_calcular_consolidado_total_base,  // 👈 Usar la variable definida en el template
-    //         type: 'POST',
-    //         headers: {
-    //             'X-CSRFToken': csrftoken
-    //         },
-    //         success: function(response) {
-    //             if (response.success) {
-    //                 showToast(response.mensaje, 'success');
-                    
-    //                 // Recargar la tabla después de 1 segundo
-    //                 setTimeout(function() {
-    //                     table.ajax.reload(null, false);  // 👈 Usar la variable table directamente
-    //                 }, 1000);
-    //             } else {
-    //                 showToast('Error: ' + (response.error || 'Error desconocido'), 'error');
-    //             }
-    //         },
-    //         error: function(xhr) {
-    //             let errorMsg = 'Error al calcular consolidado';
-    //             if (xhr.responseJSON && xhr.responseJSON.error) {
-    //                 errorMsg = xhr.responseJSON.error;
-    //             } else if (xhr.statusText) {
-    //                 errorMsg += ': ' + xhr.statusText;
-    //             }
-    //             showToast(errorMsg, 'error');
-    //             console.error('Error completo:', xhr);
-    //         },
-    //         complete: function() {
-    //             // Restaurar botón
-    //             btn.prop('disabled', false).html(originalText);
-    //         }
-    //     });
-    // });
-
     // 🔥 Función para mostrar toasts
     function showToast(message, type = 'info') {
         const toastContainer = $('#toastContainer');

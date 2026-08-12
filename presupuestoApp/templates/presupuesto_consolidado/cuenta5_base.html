@@ -1,0 +1,710 @@
+{% extends 'presupuesto_consolidado/base_dashboard.html' %}
+{% load static %}
+
+{% block css %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+<link rel="stylesheet" href="{% static 'css/cuenta5.css' %}">
+<style>
+  /* ══════════════════════════════════════════
+    FILTROS ESTILO EXCEL
+  ══════════════════════════════════════════ */
+
+  /* ── Cabeceras filtrables ── */
+  th.c5-filterable {
+    position: relative;
+    white-space: nowrap;
+    padding-right: 26px !important;
+    cursor: default;
+  }
+
+  .c5-filter-icon {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    cursor: pointer;
+    color: #6b7280;
+    background: transparent;
+    transition: background .12s, color .12s;
+    user-select: none;
+    line-height: 1;
+  }
+
+  .c5-filter-icon:hover,
+  th.c5-filterable:hover .c5-filter-icon {
+    background: rgba(79,128,225,.15);
+    color: #4f80e1;
+  }
+
+  /* Icono activo (tiene filtro aplicado) */
+  .c5-filter-icon.active {
+    background: #4f80e1;
+    color: #fff;
+  }
+
+  /* ── Dropdown del filtro ── */
+  .c5-fdd-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    display: none;
+  }
+
+  .c5-fdd-overlay.open {
+    display: block;
+  }
+
+  .c5-fdd {
+    position: fixed;
+    z-index: 9001;
+    min-width: 220px;
+    max-width: 280px;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.14);
+    display: flex;
+    flex-direction: column;
+    font-size: 13px;
+    color: #1f2937;
+  }
+
+  .c5-fdd-head {
+    padding: 8px 10px 6px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .c5-fdd-search {
+    width: 100%;
+    box-sizing: border-box;
+    height: 28px;
+    padding: 0 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 12px;
+    outline: none;
+  }
+
+  .c5-fdd-search:focus {
+    border-color: #4f80e1;
+    box-shadow: 0 0 0 2px rgba(79,128,225,.18);
+  }
+
+  .c5-fdd-selall {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .c5-fdd-selall:hover {
+    background: #f3f4f6;
+  }
+
+  .c5-fdd-list {
+    overflow-y: auto;
+    max-height: 210px;
+    padding: 3px 0;
+  }
+
+  .c5-fdd-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 10px;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .c5-fdd-item:hover {
+    background: #f3f6ff;
+  }
+
+  .c5-fdd-item input[type="checkbox"] {
+    flex-shrink: 0;
+    width: 13px;
+    height: 13px;
+    accent-color: #4f80e1;
+    cursor: pointer;
+  }
+
+  .c5-fdd-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+  }
+
+  .c5-fdd-empty {
+    padding: 10px;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 12px;
+  }
+
+  .c5-fdd-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 7px 10px;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .c5-fdd-btn {
+    height: 26px;
+    padding: 0 10px;
+    font-size: 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    transition: background .12s;
+  }
+
+  .c5-fdd-btn:hover {
+    background: #f3f4f6;
+  }
+
+  .c5-fdd-btn.primary {
+    background: #4f80e1;
+    color: #fff;
+    border-color: #4f80e1;
+  }
+
+  .c5-fdd-btn.primary:hover {
+    background: #3a68c8;
+  }
+
+  /* Badge de filtros activos en toolbar */
+  .c5-filter-counter {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: #eff4ff;
+    border: 1px solid #c7d9fb;
+    border-radius: 12px;
+    font-size: 11px;
+    color: #3a68c8;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .c5-filter-counter.hidden {
+    display: none;
+  }
+
+  .c5-filter-clear-all {
+    cursor: pointer;
+    font-size: 11px;
+    color: #ef4444;
+    text-decoration: underline;
+    margin-left: 4px;
+  }
+  /* ── Fila de totales ── */
+  #c5Table tfoot tr {
+    background: #eef2ff;
+    font-weight: 700;
+    font-size: 12px;
+    color: #1e3a8a;
+    border-top: 2px solid #4f80e1;
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+  }
+
+  #c5Table tfoot td {
+    padding: 6px 8px;
+    white-space: nowrap;
+  }
+
+  #c5Table tfoot td.c5-total-label {
+    text-align: left;
+    color: #4f80e1;
+    font-size: 11px;
+    letter-spacing: .03em;
+  }
+
+  #c5Table tfoot td.c5-num {
+    text-align: right;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="c5-wrap">
+
+  <!-- ── Barra de acciones ── -->
+  <div class="c5-toolbar">
+    <div class="c5-toolbar-left">
+      <div class="c5-search-box">
+        <i class="c5-icon">&#128269;</i>
+        <input type="text" id="searchInput" placeholder="Buscar…" autocomplete="off">
+      </div>
+      <!-- Indicador de filtros activos -->
+      <div class="c5-filter-counter hidden" id="filterCounter">
+        <span>&#9660;</span>
+        <span id="filterCounterText">0 filtros activos</span>
+        <span class="c5-filter-clear-all" id="clearAllFilters">Limpiar todo</span>
+      </div>
+    </div>
+    <div class="c5-toolbar-right">
+      <button class="c5-btn" onclick="document.getElementById('manualModal').style.display='flex'">
+        &#128216; Manual de Cuentas
+      </button>
+      <button class="c5-btn" id="exportarPlantillaBtn">
+        &#128196; Exportar plantilla
+      </button>
+      <button class="c5-btn" id="btnCargarExcel">
+        &#11014;&#65039; Cargar Excel
+        <span class="c5-spinner" id="spinnerCargar" style="display:none"></span>
+      </button>
+      <input type="file" id="inputExcel" accept=".xlsx,.xls" style="display:none">
+      <button class="c5-btn c5-btn-danger" id="btnBorrar">
+        &#128465; Borrar Cuenta 5 Base
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Tabla ── -->
+  <div class="c5-table-wrap" id="tableWrap">
+    <table class="c5-table" id="c5Table">
+      <thead>
+        <tr>
+          <th class="c5-col-check"><input type="checkbox" id="checkAll" title="Seleccionar todo"></th>
+
+          <!-- Columnas filtrables: data-filter="key" identifica el filtro -->
+          <th data-col="mcncuenta" class="c5-filterable" data-filter="mcncuenta">
+            MCNCUENTA
+            <span class="c5-filter-icon" data-filter="mcncuenta" title="Filtrar MCNCUENTA">&#9660;</span>
+          </th>
+          <th data-col="mcnfecha" class="c5-filterable" data-filter="mcnfecha">
+            MCNFECHA
+            <span class="c5-filter-icon" data-filter="mcnfecha" title="Filtrar MCNFECHA">&#9660;</span>
+          </th>
+
+          <th data-col="mcntipodoc">MCNTIPODOC</th>
+          <th data-col="mcnnumedoc">MCNNUMEDOC</th>
+          <th data-col="mcnvincula">MCNVINCULA</th>
+          <th data-col="vinnombre">VINNOMBRE</th>
+          <th data-col="mcnsucvin">MCNSUCVIN</th>
+          <th data-col="saldoant">SALDOANT</th>
+          <th data-col="mcnvaldebi">MCNVALDEBI</th>
+          <th data-col="mcnvalcred">MCNVALCRED</th>
+          <th data-col="saldonew">SALDONEW</th>
+          <th data-col="mcnsucurs">MCNSUCURS</th>
+          <th data-col="mcnccosto" class="c5-filterable" data-filter="mcnccosto">
+            MCNCCOSTO
+            <span class="c5-filter-icon" data-filter="mcnccosto" title="Filtrar MCNCCOSTO">&#9660;</span>
+          </th>
+
+          <th data-col="mcndestino" class="c5-filterable" data-filter="mcndestino">
+            MCNDESTINO
+            <span class="c5-filter-icon" data-filter="mcndestino" title="Filtrar MCNDESTINO">&#9660;</span>
+          </th>
+
+          <th data-col="mcndetalle">MCNDETALLE</th>
+
+          <th data-col="mcnzona" class="c5-filterable" data-filter="mcnzona">
+            MCNZONA
+            <span class="c5-filter-icon" data-filter="mcnzona" title="Filtrar MCNZONA">&#9660;</span>
+          </th>
+
+          <th data-col="cconombre">CCONOMBRE</th>
+          <th data-col="dnonombre">DNONOMBRE</th>
+          <th data-col="zonnombre">ZONNOMBRE</th>
+          <th data-col="mcnempresa">MCNEMPRESA</th>
+          <th data-col="mcnclase">MCNCLASE</th>
+          <th data-col="mcnvinkey">MCNVINKEY</th>
+          <th data-col="tpreg">TPREG</th>
+
+          <th data-col="ctanombre" class="c5-filterable" data-filter="ctanombre">
+            CTANOMBRE
+            <span class="c5-filter-icon" data-filter="ctanombre" title="Filtrar CTANOMBRE">&#9660;</span>
+          </th>
+
+          <th data-col="docdetalle">DOCDETALLE</th>
+          <th data-col="infdetalle">INFDETALLE</th>
+        </tr>
+      </thead>
+      <tfoot id="c5Tfoot">
+        <tr id="c5TotalRow"></tr>
+      </tfoot>
+      <tbody id="c5Tbody">
+        <tr class="c5-loading-row">
+          <td colspan="27">Cargando datos…</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Pie ── -->
+  <div class="c5-footer">
+    <div class="c5-info" id="c5Info"></div>
+    <div class="c5-pagination" id="c5Pagination"></div>
+    <div class="c5-perpage">
+      <label>Filas:
+        <select id="perPageSelect">
+          <option value="25">25</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+          <option value="200">200</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="c5-toasts" id="toastContainer"></div>
+</section>
+
+<!-- ── Overlay + Dropdown del filtro (único, reutilizable) ── -->
+<div class="c5-fdd-overlay" id="fddOverlay">
+  <div class="c5-fdd" id="fddBox">
+    <div class="c5-fdd-head">
+      <input type="text" class="c5-fdd-search" id="fddSearch" placeholder="Buscar valor…">
+    </div>
+    <div class="c5-fdd-selall" id="fddSelAll">
+      <input type="checkbox" id="fddCheckAll"> <label for="fddCheckAll">Seleccionar todo</label>
+    </div>
+    <div class="c5-fdd-list" id="fddList"></div>
+    <div class="c5-fdd-foot">
+      <button class="c5-fdd-btn" id="fddCancel">Cancelar</button>
+      <button class="c5-fdd-btn primary" id="fddApply">Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Manual ── -->
+<div id="manualModal" class="c5-modal-overlay" style="display:none">
+  <div class="c5-modal-box c5-modal-large">
+    <button class="c5-modal-close" onclick="document.getElementById('manualModal').style.display='none'">&#10005;</button>
+    <iframe src="/static/manuales/PUC.pdf" width="100%" height="100%"></iframe>
+  </div>
+</div>
+
+<!-- ── Modal Borrar cuenta ── -->
+<div id="modalEliminarCuenta" class="c5-modal-overlay" style="display:none">
+  <div class="c5-modal-box">
+    <div class="c5-modal-header">&#9888;&#65039; Confirmar eliminación Cuenta</div>
+    <p class="c5-modal-body">¿Estás seguro de eliminar todos los datos de la tabla?</p>
+    <div class="c5-modal-footer">
+      <button class="c5-btn" id="cancelEliminarCuenta">Cancelar</button>
+      <button class="c5-btn c5-btn-danger" id="confirmEliminarCuenta">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+{% block js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+  const url_obtener_cuenta5_base      = "{% url 'obtener_cuenta5_base' %}";
+  const url_borrar_cuenta5_base       = "{% url 'borrar_cuenta5_base' %}";
+
+  /* ═══════════════════════════════════════════════════
+     MÓDULO: Filtros estilo Excel
+     ═══════════════════════════════════════════════════
+     Expone window.C5Filters con:
+       .getParams()          → { mcncuenta: [...], mcnfecha: [...], ... }
+       .setValues(col, vals) → carga valores disponibles en el dropdown
+       .clear()              → limpia todos los filtros
+       .getActiveCount()     → número de filtros activos
+  ═══════════════════════════════════════════════════ */
+  (() => {
+    /* ── Estado ── */
+    const state = {
+      /* col → Set de valores seleccionados (null = sin filtro = todo) */
+      filters: {
+        mcncuenta: null,
+        mcnfecha:  null,
+        mcnccosto:  null,
+        mcndestino: null,
+        mcnzona:   null,
+        ctanombre: null,
+      },
+      /* col → Array de todos los valores disponibles (cargados desde la API) */
+      values: {
+        mcncuenta: [],
+        mcnfecha:  [],
+        mcnccosto:  [],
+        mcndestino: [],
+        mcnzona:   [],
+        ctanombre: [],
+      },
+      /* columna actualmente abierta en el dropdown */
+      activeCol: null,
+      /* selección temporal mientras el dropdown está abierto */
+      tempSelection: null,
+    };
+
+    /* ── DOM ── */
+    const overlay     = document.getElementById('fddOverlay');
+    const box         = document.getElementById('fddBox');
+    const searchInput = document.getElementById('fddSearch');
+    const selAllWrap  = document.getElementById('fddSelAll');
+    const chkAll      = document.getElementById('fddCheckAll');
+    const list        = document.getElementById('fddList');
+    const btnCancel   = document.getElementById('fddCancel');
+    const btnApply    = document.getElementById('fddApply');
+    const counter     = document.getElementById('filterCounter');
+    const counterTxt  = document.getElementById('filterCounterText');
+    const clearAllBtn = document.getElementById('clearAllFilters');
+
+    /* ── Renderizar lista de items ── */
+    function renderList(col, query) {
+      const all    = state.values[col] || [];
+      const q      = (query || '').toLowerCase().trim();
+      const subset = q ? all.filter(v => String(v).toLowerCase().includes(q)) : all;
+      const sel    = state.tempSelection;
+
+      if (subset.length === 0) {
+        list.innerHTML = '<div class="c5-fdd-empty">Sin resultados</div>';
+        return;
+      }
+
+      list.innerHTML = subset.map(v => {
+        const checked  = sel === null || sel.has(String(v));
+        const label    = v === '' || v === null ? '(Vacío)' : String(v);
+        return `
+          <label class="c5-fdd-item">
+            <input type="checkbox" value="${escapeAttr(String(v))}" ${checked ? 'checked' : ''}>
+            <span title="${escapeAttr(label)}">${escapeHtml(label)}</span>
+          </label>`;
+      }).join('');
+
+      /* Actualizar "Seleccionar todo" */
+      const allChecked = [...list.querySelectorAll('input[type=checkbox]')].every(c => c.checked);
+      chkAll.checked       = allChecked;
+      chkAll.indeterminate = !allChecked && [...list.querySelectorAll('input[type=checkbox]')].some(c => c.checked);
+
+      /* Evento en cada checkbox */
+      list.querySelectorAll('input[type=checkbox]').forEach(cb => {
+        cb.addEventListener('change', () => syncTempFromList(col));
+      });
+    }
+
+    /* ── Sincronizar selección temporal desde checkboxes visibles ── */
+    function syncTempFromList(col) {
+      const all     = state.values[col] || [];
+      const visible = [...list.querySelectorAll('input[type=checkbox]')];
+      const q       = searchInput.value.toLowerCase().trim();
+
+      /* Si tempSelection es null, inicializamos con todos */
+      if (state.tempSelection === null) {
+        state.tempSelection = new Set(all.map(String));
+      }
+
+      /* Actualizar solo los visibles */
+      visible.forEach(cb => {
+        if (cb.checked) state.tempSelection.add(cb.value);
+        else            state.tempSelection.delete(cb.value);
+      });
+
+      /* Actualizar checkbox "todos" */
+      const allChecked = visible.every(c => c.checked);
+      chkAll.checked       = allChecked;
+      chkAll.indeterminate = !allChecked && visible.some(c => c.checked);
+    }
+
+    /* ── Seleccionar / deseleccionar todo (solo los visibles) ── */
+    chkAll.addEventListener('change', () => {
+      const visible = [...list.querySelectorAll('input[type=checkbox]')];
+      const all     = state.values[state.activeCol] || [];
+
+      if (state.tempSelection === null) {
+        state.tempSelection = new Set(all.map(String));
+      }
+
+      visible.forEach(cb => {
+        cb.checked = chkAll.checked;
+        if (chkAll.checked) state.tempSelection.add(cb.value);
+        else                state.tempSelection.delete(cb.value);
+      });
+    });
+
+    /* ── Buscar dentro del dropdown ── */
+    searchInput.addEventListener('input', () => {
+      renderList(state.activeCol, searchInput.value);
+    });
+
+    /* ── Abrir dropdown ── */
+    function openDropdown(col, iconEl) {
+      state.activeCol    = col;
+      searchInput.value  = '';
+
+      /* Clonar la selección actual para edición temporal */
+      const cur = state.filters[col];
+      state.tempSelection = cur ? new Set(cur) : null;
+
+      renderList(col, '');
+
+      /* Posicionar el box cerca del icono */
+      const rect = iconEl.getBoundingClientRect();
+      const boxW = 240;
+      let   left = rect.left;
+      if (left + boxW > window.innerWidth - 8) left = window.innerWidth - boxW - 8;
+      box.style.top  = (rect.bottom + 4) + 'px';
+      box.style.left = left + 'px';
+
+      overlay.classList.add('open');
+      searchInput.focus();
+    }
+
+    /* ── Cerrar sin aplicar ── */
+    function closeDropdown() {
+      overlay.classList.remove('open');
+      state.activeCol    = null;
+      state.tempSelection = null;
+    }
+
+    /* ── Aplicar filtro ── */
+    function applyFilter() {
+      const col = state.activeCol;
+      const all = state.values[col] || [];
+      const sel = state.tempSelection;
+
+      if (sel === null || sel.size === all.length) {
+        /* Todo seleccionado → sin filtro */
+        state.filters[col] = null;
+      } else {
+        state.filters[col] = new Set(sel);
+      }
+
+      updateIcons();
+      updateCounter();
+      closeDropdown();
+      document.dispatchEvent(new CustomEvent('c5:filtros-aplicados'));
+    }
+
+    btnApply.addEventListener('click', applyFilter);
+    btnCancel.addEventListener('click', closeDropdown);
+
+    /* Clic fuera cierra */
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) closeDropdown();
+    });
+
+    /* ── Delegar clic en iconos de filtro ── */
+    document.addEventListener('click', e => {
+      const icon = e.target.closest('.c5-filter-icon');
+      if (!icon) return;
+      const col = icon.dataset.filter;
+      if (!col) return;
+      e.stopPropagation();
+
+      /* Si ya estaba abierto para esta columna, cerrar */
+      if (overlay.classList.contains('open') && state.activeCol === col) {
+        closeDropdown();
+        return;
+      }
+      openDropdown(col, icon);
+    });
+
+    /* ── Actualizar estilo de iconos (activo/inactivo) ── */
+    function updateIcons() {
+      document.querySelectorAll('.c5-filter-icon').forEach(icon => {
+        const col = icon.dataset.filter;
+        icon.classList.toggle('active', !!(col && state.filters[col]));
+      });
+    }
+
+    /* ── Actualizar contador de filtros activos ── */
+    function updateCounter() {
+      const n = Object.values(state.filters).filter(Boolean).length;
+      if (n === 0) {
+        counter.classList.add('hidden');
+      } else {
+        counter.classList.remove('hidden');
+        counterTxt.textContent = n === 1 ? '1 filtro activo' : `${n} filtros activos`;
+      }
+    }
+
+    /* ── Limpiar todo ── */
+    clearAllBtn.addEventListener('click', () => {
+      Object.keys(state.filters).forEach(k => { state.filters[k] = null; });
+      updateIcons();
+      updateCounter();
+      document.dispatchEvent(new CustomEvent('c5:filtros-aplicados'));
+    });
+
+    /* ── Escape cierra ── */
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && overlay.classList.contains('open')) closeDropdown();
+    });
+
+    /* ── Helpers ── */
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function escapeAttr(s) {
+      return String(s).replace(/"/g,'&quot;');
+    }
+
+    /* ══════════════════════════════════════════
+       API pública → window.C5Filters
+    ══════════════════════════════════════════ */
+    window.C5Filters = {
+      /**
+       * Retorna los filtros activos.
+       * { mcncuenta: ["51050601","51050602"], mcnzona: ["NORTE"], ... }
+       * Las columnas sin filtro no aparecen.
+       */
+      getParams() {
+        const p = {};
+        Object.entries(state.filters).forEach(([col, set]) => {
+          if (set) p[col] = [...set];
+        });
+        return p;
+      },
+
+      /**
+       * Carga los valores disponibles para un campo.
+       * Llamar desde cuenta5.js después de recibir los datos de la API:
+       *   C5Filters.setValues('mcncuenta', ['510506','510507',...])
+       */
+      setValues(col, values) {
+        if (!(col in state.values)) return;
+        /* Ordenar: fechas cronológico, resto alfabético */
+        const sorted = [...new Set(values.map(String))].sort((a, b) =>
+          a.localeCompare(b, undefined, { numeric: true })
+        );
+        state.values[col] = sorted;
+
+        /* Si el dropdown de esta columna está abierto, re-renderizar */
+        if (state.activeCol === col) renderList(col, searchInput.value);
+      },
+
+      /** Limpia todos los filtros programáticamente */
+      clear() {
+        Object.keys(state.filters).forEach(k => { state.filters[k] = null; });
+        updateIcons();
+        updateCounter();
+      },
+
+      /** Número de filtros activos */
+      getActiveCount() {
+        return Object.values(state.filters).filter(Boolean).length;
+      },
+    };
+  })();
+</script>
+<script src="{% static 'js/cuenta5_base.js' %}"></script>
+{% endblock %}
+
+{% endblock %}

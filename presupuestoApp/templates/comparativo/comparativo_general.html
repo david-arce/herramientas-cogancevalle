@@ -1,0 +1,879 @@
+{% extends 'presupuesto_consolidado/base_dashboard.html' %}
+{% load static %}
+
+{% block css %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+<link rel="stylesheet" href="{% static 'css/consolidado_sedes.css' %}">
+<style>
+    /* ── Pestañas de sede ── */
+    .tabs-bar { display:flex; gap:.4rem; margin: .75rem 0 1rem; flex-wrap:wrap; }
+    .tab-btn {
+        padding: .45rem 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--c-border, #3c3c3c);
+        background: transparent;
+        color: var(--c-muted, #9a9aab);
+        cursor: pointer;
+        font-size: .85rem;
+        font-weight: 600;
+        transition: background .15s, color .15s, border-color .15s;
+    }
+    .tab-btn:hover { border-color: var(--c-accent, #6d6df6); color: var(--c-text, #f1f1f5); }
+    .tab-btn.active {
+        background: var(--c-accent, #6d6df6);
+        border-color: var(--c-accent, #6d6df6);
+        color: #fff;
+    }
+
+    /* ── Sticky vertical: ambas filas del thead ── */
+    .comparativo table thead tr.grp-row th {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background: var(--c-header-bg, #1e1e2e);
+        text-align: center;
+        font-weight: 700;
+    }
+    .comparativo table thead tr.sub-row th {
+        position: sticky;
+        top: 0;   /* se calcula dinámicamente por JS */
+        z-index: 3;
+        background: var(--c-header-bg, #1e1e2e);
+        font-size: .72rem;
+        font-weight: 600;
+        text-align: right;
+    }
+    .comparativo table thead tr.sub-row th.lbl { text-align: left; }
+
+    /* ── Sticky horizontal: Cuenta, Nombre y Comentarios ── */
+    .comparativo table tr th.th-fixed,
+    .comparativo table tr td.th-fixed {
+        position: sticky;
+        z-index: 2;
+        background: inherit;
+    }
+    .comparativo table tr .th-cuenta,
+    .comparativo table tr .td-cuenta { left: 0; min-width: 90px; max-width: 90px; }
+
+    /* NOMBRE CUENTA: se corrige el desbordamiento — el texto ahora
+       hace salto de línea dentro de la celda en lugar de sobresalir. */
+    .comparativo table tr .th-nombre,
+    .comparativo table tr .td-nombre {
+        left: 90px;
+        min-width: 220px;
+        max-width: 220px;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        line-height: 1.3;
+        vertical-align: middle;
+        box-shadow: 2px 0 6px -2px rgba(0,0,0,0.3);
+    }
+
+    /* COMENTARIOS: última columna fija a la izquierda (siempre visible) */
+    .comparativo table tr .th-comentario,
+    .comparativo table tr .td-comentario {
+        min-width: 210px;
+        max-width: 210px;
+        border-left: 2px solid var(--c-border, #3c3c3c);
+    }
+
+    /* Las celdas fijas en thead tienen z-index mayor */
+    .comparativo table thead tr th.th-fixed { z-index: 4; }
+
+    /* ── Borde entre meses ── */
+    .comparativo td.mes-sep,
+    .comparativo th.mes-sep {
+        border-left: 2px solid var(--c-border, #3c3c3c) !important;
+    }
+
+    /* Resto de estilos */
+    .comparativo td.pos { color: #1a7f37; }
+    .comparativo td.neg { color: #c62828; }
+    .comparativo td.dif { font-weight: 600; }
+
+    /* ── Comentarios: input + indicador de guardado ── */
+    .comentario-cell { display:flex; align-items:center; gap:.35rem; padding:.25rem .4rem; }
+    .comentario-input {
+        flex: 1;
+        min-width: 0;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        color: inherit;
+        font: inherit;
+        font-size: .78rem;
+        padding: .3rem .4rem;
+        transition: border-color .15s, background .15s;
+    }
+    .comentario-input:hover { border-color: var(--c-border, #3c3c3c); }
+    .comentario-input:focus {
+        outline: none;
+        border-color: var(--c-accent, #6d6df6);
+        background: rgba(255,255,255,0.03);
+    }
+    .comentario-estado { width: 14px; text-align:center; font-size:.75rem; flex-shrink:0; }
+    .comentario-estado.guardando { color: var(--c-muted, #9a9aab); }
+    .comentario-estado.guardado  { color: #1a7f37; }
+    .comentario-estado.error     { color: #c62828; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="consolidado-wrap comparativo">
+
+    <!-- CABECERA -->
+    <div class="consolidado-header">
+        <div class="consolidado-title">
+            📊 Comparativo Consolidado vs Presupuestado <span id="tituloSede">Tuluá</span>
+        </div>
+        <div class="controls-bar">
+            <div class="search-box">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input type="text" id="globalSearch" placeholder="Buscar cuenta o concepto...">
+            </div>
+            <button class="btn btn-outline" id="recargarBtn">🔄 Recargar</button>
+            <button class="btn btn-export"  id="exportarBtn">📥 Exportar CSV</button>
+        </div>
+    </div>
+
+    <!-- PESTAÑAS: 4 sedes + total -->
+    <div class="tabs-bar" id="tabsBar">
+        <button class="tab-btn active" data-sede="tulua">Tuluá</button>
+        <button class="tab-btn" data-sede="buga">Buga</button>
+        <button class="tab-btn" data-sede="cartago">Cartago</button>
+        <button class="tab-btn" data-sede="cali">Cali</button>
+        <button class="tab-btn" data-sede="consolidado">Total</button>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-bar" id="statsBar">
+        <div class="stat-pill">
+            Filas cargadas: <span class="stat-val" id="statFilas">—</span>
+        </div>
+        <div class="stat-pill stat-indigo">
+            Acumulado Consolidado: <span class="stat-val" id="statTotalC">—</span>
+        </div>
+        <div class="stat-pill stat-indigo">
+            Acumulado Presupuestado: <span class="stat-val" id="statTotalP">—</span>
+        </div>
+    </div>
+
+    <!-- TABLA -->
+    <div class="table-wrap">
+        <div class="loading-overlay active" id="loadingOverlay">
+            <div class="spinner"></div>
+            <span style="font-size:.85rem;color:var(--c-muted);">Cargando datos...</span>
+        </div>
+
+        <div class="table-scroll">
+            <table class="consolidado" id="comparativoTable">
+                <thead>
+                    <tr class="grp-row" id="grpRow">
+                        <th class="th-fixed th-cuenta">CUENTA</th>
+                        <th class="th-fixed th-nombre">NOMBRE CUENTA</th>
+                        <th colspan="4" class="col-sep col-acum">Acumulado Año</th>
+                        <th class="th-comentario">COMENTARIOS</th>
+                    </tr>
+                    <tr class="sub-row" id="subRow">
+                        <th class="th-fixed th-cuenta"></th>
+                        <th class="th-fixed th-nombre"></th>
+                        <th class="col-sep col-acum" id="lbl-acum-c">Consolidado</th>
+                        <th class="col-acum" id="lbl-acum-p">Presupuestado</th>
+                        <th class="col-acum">DIF</th>
+                        <th class="col-acum">%</th>
+                        <th class="th-comentario"></th>
+                    </tr>
+                </thead>
+                <tbody id="comparativoBody">
+                    <tr class="empty-row"><td colspan="55">⏳ Cargando datos...</td></tr>
+                </tbody>
+                <tfoot id="comparativoFoot"></tfoot>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Toast container -->
+<div id="toastContainer"></div>
+
+{% block js %}
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   CONFIGURACIÓN
+══════════════════════════════════════════════════════════════════ */
+const ANIO_C = '-25';   // sufijo columna Consolidado
+const ANIO_P = '-26';   // sufijo columna Presupuestado
+
+const URL_CONSOLIDADO_BASE   = "{% url 'obtener_consolidado' %}";
+const URL_PRESUPUESTADO_BASE = "{% url 'obtener_presupuestado' %}";
+const URL_GUARDAR_COMENTARIO = "{% url 'guardar_comentario_comparativo' %}";
+
+/* OJO: la clave de "todas las sedes" NO se llama igual en los dos
+   endpoints del backend:
+     SEDE_CONFIG_CONSOLIDADO   -> 'consolidado'
+     SEDE_CONFIG_PRESUPUESTADO -> 'presupuestado'
+   Si se manda ?sede=consolidado a obtener_presupuestado, el view
+   responde 400 "Sede inválida" y el lado presupuestado queda vacío.
+   Estas funciones traducen la sede de la pestaña a la clave que
+   espera cada endpoint. */
+function sedeParaConsolidado(sede) {
+    return sede === 'consolidado' ? 'consolidado' : sede;
+}
+function sedeParaPresupuestado(sede) {
+    return sede === 'consolidado' ? 'presupuestado' : sede;
+}
+
+// Los endpoints de comentarios llevan la sede en la URL, así que se
+// resuelven una vez por sede en el servidor (no se puede parametrizar
+// en JS puro porque la URL la arma Django).
+const URL_COMENTARIOS = {
+    tulua:       "{% url 'obtener_comentarios_comparativo' sede='tulua' %}",
+    buga:        "{% url 'obtener_comentarios_comparativo' sede='buga' %}",
+    cartago:     "{% url 'obtener_comentarios_comparativo' sede='cartago' %}",
+    cali:        "{% url 'obtener_comentarios_comparativo' sede='cali' %}",
+    consolidado: "{% url 'obtener_comentarios_comparativo' sede='consolidado' %}",
+};
+
+const SEDES = [
+    { key: 'tulua',       label: 'Tuluá' },
+    { key: 'buga',        label: 'Buga' },
+    { key: 'cartago',     label: 'Cartago' },
+    { key: 'cali',        label: 'Cali' },
+    { key: 'consolidado', label: 'Total' },
+];
+
+const MESES = [
+    'Enero','Febrero','Marzo','Abril','Mayo','Junio',
+    'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'
+];
+const MESES_ABREV = {
+    Enero:'ene', Febrero:'feb', Marzo:'mar', Abril:'abr', Mayo:'may', Junio:'jun',
+    Julio:'jul', Agosto:'ago', Septiembre:'sep', Octubre:'oct', Noviembre:'nov', Diciembre:'dic'
+};
+
+const FMT = new Intl.NumberFormat('es-ES', { minimumFractionDigits:0, maximumFractionDigits:0 });
+function fmt(n){ if (n === 0 || n === null || n === undefined) return '-'; return FMT.format(n); }
+function fmtPct(n){ if (n === 0 || n === null || n === undefined || !isFinite(n)) return '-'; return n.toFixed(2) + '%'; }
+
+let sedeActual          = 'tulua';
+let datosConsolidado    = [];
+let datosPresupuestado  = [];
+let comentariosActuales = {};   // { fila_key: texto }
+const cache             = {};   // { sede: { consolidado, presupuestado, comentarios } }
+const timersGuardado    = {};   // debounce por fila_key
+
+/* ══════════════════════════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════════════════════════ */
+function showToast(msg, tipo = 'info') {
+    const div = document.createElement('div');
+    div.className = `toast toast-${tipo}`;
+    div.textContent = msg;
+    document.getElementById('toastContainer').appendChild(div);
+    requestAnimationFrame(() => requestAnimationFrame(() => div.classList.add('show')));
+    setTimeout(() => {
+        div.classList.remove('show');
+        setTimeout(() => div.remove(), 350);
+    }, 4000);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CSRF (para el POST de guardado de comentarios)
+══════════════════════════════════════════════════════════════════ */
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta && meta.content) return meta.content;
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CÁLCULOS DE NEGOCIO (idénticos a los dashboards individuales,
+   se ejecutan sobre CUALQUIER dataset que se les pase — consolidado
+   o presupuestado — para poder comparar fila contra fila)
+══════════════════════════════════════════════════════════════════ */
+function calcularTotalesPorPrefijo(data, prefijo) {
+    const t = { total: 0 };
+    MESES.forEach(m => t[m] = 0);
+    data.forEach(row => {
+        if (row.mcncuenta && String(row.mcncuenta).startsWith(prefijo)) {
+            MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
+            t.total += parseFloat(row.total) || 0;
+        }
+    });
+    return t;
+}
+function calcularTotalesPorLista(data, lista) {
+    const t = { total: 0 };
+    MESES.forEach(m => t[m] = 0);
+    data.forEach(row => {
+        if (row.mcncuenta) {
+            const c = String(row.mcncuenta);
+            if (lista.some(cod => c.startsWith(cod))) {
+                MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
+                t.total += parseFloat(row.total) || 0;
+            }
+        }
+    });
+    return t;
+}
+function cerosTotales() {
+    const t = { total: 0 };
+    MESES.forEach(m => t[m] = 0);
+    return t;
+}
+function calcularSeguros(fn, data) {
+    if (typeof fn !== 'function') return cerosTotales();
+    try {
+        const result = fn(data);
+        const tieneValores = result && (
+            result.total !== 0 || MESES.some(m => (result[m] || 0) !== 0)
+        );
+        return tieneValores ? result : cerosTotales();
+    } catch { return cerosTotales(); }
+}
+
+function calcularPorcentajeCostoVentas(data) {
+    const ventasNetas = calcularTotalesPorLista(data, ['1', '2', '41750201']);
+    const costoVentas = calcularTotalesPorLista(data, ['613522']);
+    const fila = { mcncuenta: '', ctanombre: '% Costo de Ventas', isTotalRow: true, tipoTotal: 'PctCostoVentas', total: 0 };
+    MESES.forEach(m => { const vn = ventasNetas[m] || 0; fila[m] = vn !== 0 ? (costoVentas[m] / vn) * 100 : 0; });
+    fila.total = ventasNetas.total !== 0 ? (costoVentas.total / ventasNetas.total) * 100 : 0;
+    return fila;
+}
+function calcularMargenBruto(data) {
+    const ventasNetas = calcularTotalesPorLista(data, ['1', '2', '41750201']);
+    const costoVentas = calcularTotalesPorLista(data, ['613522']);
+    const fila = { mcncuenta: '', ctanombre: 'Margen Bruto', isTotalRow: true, tipoTotal: 'MargenBruto', total: 0 };
+    MESES.forEach(m => { fila[m] = (ventasNetas[m] || 0) - (costoVentas[m] || 0); });
+    fila.total = (ventasNetas.total || 0) - (costoVentas.total || 0);
+    return fila;
+}
+function calcularPorcentajeMargenBruto(data) {
+    const ventasNetas = calcularTotalesPorLista(data, ['1', '2', '41750201']);
+    const margenBruto = calcularMargenBruto(data);
+    const fila = { mcncuenta: '', ctanombre: '% Margen Bruto', isTotalRow: true, tipoTotal: 'PctMargenBruto', total: 0 };
+    MESES.forEach(m => { const vn = ventasNetas[m] || 0; fila[m] = vn !== 0 ? (margenBruto[m] / vn) * 100 : 0; });
+    fila.total = ventasNetas.total !== 0 ? (margenBruto.total / ventasNetas.total) * 100 : 0;
+    return fila;
+}
+function calcularMargenContribucion(data) {
+    const margenBruto    = calcularSeguros(calcularMargenBruto, data);
+    const descuentosPago = calcularSeguros(d => calcularTotalesPorLista(d, ['4240900101']), data);
+    const bonificaciones = calcularSeguros(d => calcularTotalesPorLista(d, ['4240909502']), data);
+    const fila = { mcncuenta: '', ctanombre: 'Margen de Contribución', isTotalRow: true, tipoTotal: 'MargenContribucion', total: 0 };
+    MESES.forEach(m => { fila[m] = (margenBruto[m] || 0) + (descuentosPago[m] || 0) + (bonificaciones[m] || 0); });
+    fila.total = (margenBruto.total || 0) + (descuentosPago.total || 0) + (bonificaciones.total || 0);
+    return fila;
+}
+function calcularPorcentajeMargenContribucion(data) {
+    const ventasNetas        = calcularSeguros(d => calcularTotalesPorLista(d, ['1', '2', '41750201']), data);
+    const margenContribucion = calcularSeguros(calcularMargenContribucion, data);
+    const fila = { mcncuenta: '', ctanombre: '% Margen de Contribución', isTotalRow: true, tipoTotal: 'PctMargenContribucion', total: 0 };
+    MESES.forEach(m => { const vn = ventasNetas[m] || 0; fila[m] = vn !== 0 ? (margenContribucion[m] / vn) * 100 : 0; });
+    fila.total = ventasNetas.total !== 0 ? (margenContribucion.total / ventasNetas.total) * 100 : 0;
+    return fila;
+}
+function calcularUtilidadOperacional(data) {
+    const margenCtb = calcularSeguros(calcularMargenContribucion, data);
+    const gastos54  = calcularSeguros(d => calcularTotalesPorPrefijo(d, '54'), data);
+    const gastos51  = calcularSeguros(d => calcularTotalesPorPrefijo(d, '51'), data);
+    const fila = { mcncuenta: '', ctanombre: 'Utilidad Operacional', isTotalRow: true, tipoTotal: 'UtilidadOperacional', total: 0 };
+    MESES.forEach(m => { fila[m] = (margenCtb[m] || 0) - (gastos54[m] || 0) - (gastos51[m] || 0); });
+    fila.total = (margenCtb.total || 0) - (gastos54.total || 0) - (gastos51.total || 0);
+    return fila;
+}
+function calcularPorcentajeUtilidadOperacional(data) {
+    const ventasNetas = calcularSeguros(d => calcularTotalesPorLista(d, ['1', '2', '41750201']), data);
+    const utilidadOp  = calcularSeguros(calcularUtilidadOperacional, data);
+    const fila = { mcncuenta: '', ctanombre: '% Utilidad Operacional', isTotalRow: true, tipoTotal: 'PctUtilidadOperacional', total: 0 };
+    MESES.forEach(m => { const vn = ventasNetas[m] || 0; fila[m] = vn !== 0 ? (utilidadOp[m] / vn) * 100 : 0; });
+    fila.total = ventasNetas.total !== 0 ? (utilidadOp.total / ventasNetas.total) * 100 : 0;
+    return fila;
+}
+function calcularExcedentesPerdidaNeta(data) {
+    const utilidadOp      = calcularSeguros(calcularUtilidadOperacional, data);
+    const gastosFinanc    = calcularSeguros(typeof calcularGastosFinancieros === 'function' ? calcularGastosFinancieros : null, data);
+    const ingresosPorServ = calcularSeguros(typeof calcularIngresosPorServicios === 'function' ? calcularIngresosPorServicios : null, data);
+    const gastosPorServ   = calcularSeguros(typeof calcularGastosPorServicios === 'function' ? calcularGastosPorServicios : null, data);
+    const fila = { mcncuenta: '', ctanombre: 'EXCEDENTES O PERDIDA NETA', isTotalRow: true, tipoTotal: 'ExcedentesPerdidaNeta', total: 0 };
+    MESES.forEach(m => {
+        fila[m] = (utilidadOp[m] || 0) - (gastosFinanc[m] || 0) + (ingresosPorServ[m] || 0) - (gastosPorServ[m] || 0);
+    });
+    fila.total = (utilidadOp.total || 0) - (gastosFinanc.total || 0) + (ingresosPorServ.total || 0) - (gastosPorServ.total || 0);
+    return fila;
+}
+function calcularPorcentajeExcedentes(data) {
+    const ventasNetas       = calcularSeguros(d => calcularTotalesPorLista(d, ['1', '2', '41750201']), data);
+    const excedentesPerdida = calcularSeguros(calcularExcedentesPerdidaNeta, data);
+    const fila = { mcncuenta: '', ctanombre: '% Excedente o Pérdida', isTotalRow: true, tipoTotal: 'PctExcedentes', total: 0 };
+    MESES.forEach(m => { const vn = ventasNetas[m] || 0; fila[m] = vn !== 0 ? (excedentesPerdida[m] / vn) * 100 : 0; });
+    fila.total = ventasNetas.total !== 0 ? (excedentesPerdida.total / ventasNetas.total) * 100 : 0;
+    return fila;
+}
+
+const CALCULADORAS_TOTAL = {
+    'VentasNetas':            d => ({ ...calcularTotalesPorLista(d, ['1','2','41750201']) }),
+    '54':                     d => calcularTotalesPorPrefijo(d, '54'),
+    'PctCostoVentas':         calcularPorcentajeCostoVentas,
+    'MargenBruto':            calcularMargenBruto,
+    'PctMargenBruto':         calcularPorcentajeMargenBruto,
+    'MargenContribucion':     calcularMargenContribucion,
+    'PctMargenContribucion':  calcularPorcentajeMargenContribucion,
+    'UtilidadOperacional':    calcularUtilidadOperacional,
+    'PctUtilidadOperacional': calcularPorcentajeUtilidadOperacional,
+    'ExcedentesPerdidaNeta':  calcularExcedentesPerdidaNeta,
+    'PctExcedentes':          calcularPorcentajeExcedentes,
+};
+const FILAS_PORCENTAJE = new Set([
+    'PctCostoVentas','PctMargenBruto','PctMargenContribucion',
+    'PctUtilidadOperacional','PctExcedentes'
+]);
+
+function construirFilas(data) {
+    const totales54        = calcularTotalesPorPrefijo(data, '54');
+    const totalesVN        = calcularTotalesPorLista(data, ['1','2','41750201']);
+    const filaPct          = calcularPorcentajeCostoVentas(data);
+    const filaMargen       = calcularMargenBruto(data);
+    const filaPctMargen    = calcularPorcentajeMargenBruto(data);
+    const filaMargenCtb    = calcularMargenContribucion(data);
+    const filaPctMargenCtb = calcularPorcentajeMargenContribucion(data);
+    const filaUtilidadOp   = calcularUtilidadOperacional(data);
+    const filaPctUtilidadOp     = calcularPorcentajeUtilidadOperacional(data);
+    const filaExcedentesPerdida = calcularExcedentesPerdidaNeta(data);
+    const filaPctExcedentes     = calcularPorcentajeExcedentes(data);
+
+    const insertado = { VentasNetas:false, Gastos54:false, Despues613522:false, Despues5415:false };
+    const resultado = [];
+
+    data.forEach(row => {
+        const cuenta = String(row.mcncuenta || '');
+
+        if (cuenta === '1' && !insertado.VentasNetas) {
+            resultado.push({ ...totalesVN, mcncuenta:'', ctanombre:'VENTAS NETAS', isTotalRow:true, tipoTotal:'VentasNetas' });
+            insertado.VentasNetas = true;
+        }
+        if (cuenta === '5405' && !insertado.Gastos54) {
+            resultado.push({ ...totales54, mcncuenta:'', ctanombre:'GASTOS DE VENTAS', isTotalRow:true, tipoTotal:'54' });
+            insertado.Gastos54 = true;
+        }
+
+        resultado.push(row);
+
+        if (cuenta === '613522' && !insertado.Despues613522) {
+            resultado.push(filaPct, filaMargen, filaPctMargen, filaMargenCtb, filaPctMargenCtb);
+            insertado.Despues613522 = true;
+        }
+        if (cuenta === '5415' && !insertado.Despues5415) {
+            resultado.push(filaUtilidadOp, filaPctUtilidadOp, filaExcedentesPerdida, filaPctExcedentes);
+            insertado.Despues5415 = true;
+        }
+    });
+
+    if (!insertado.VentasNetas) resultado.push({ ...totalesVN, mcncuenta:'', ctanombre:'VENTAS NETAS', isTotalRow:true, tipoTotal:'VentasNetas' });
+    if (!insertado.Gastos54)   resultado.push({ ...totales54, mcncuenta:'', ctanombre:'GASTOS DE VENTAS', isTotalRow:true, tipoTotal:'54' });
+    if (!insertado.Despues613522) resultado.push(filaPct, filaMargen, filaPctMargen, filaMargenCtb, filaPctMargenCtb);
+    if (!insertado.Despues5415)   resultado.push(filaUtilidadOp, filaPctUtilidadOp, filaExcedentesPerdida, filaPctExcedentes);
+
+    return resultado;
+}
+
+function obtenerFilaEquivalente(filaC, mapaPresupuestado) {
+    if (filaC.isTotalRow) {
+        const fn = CALCULADORAS_TOTAL[filaC.tipoTotal];
+        return fn ? fn(datosPresupuestado) : cerosTotales();
+    }
+    return mapaPresupuestado.get(String(filaC.mcncuenta)) || cerosTotales();
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   IDENTIFICADOR DE FILA PARA LOS COMENTARIOS
+   - Cuenta normal  -> su código (mcncuenta)
+   - Fila calculada -> su tipoTotal (VentasNetas, MargenBruto, ...)
+══════════════════════════════════════════════════════════════════ */
+function filaKeyDe(filaC) {
+    return String(filaC.mcncuenta || filaC.tipoTotal || '');
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ENCABEZADOS (2 filas: nombre de mes + subcolumnas)
+══════════════════════════════════════════════════════════════════ */
+function construirEncabezados() {
+    const grpRow = document.getElementById('grpRow');
+    const subRow = document.getElementById('subRow');
+
+    document.querySelectorAll('#grpRow th.mes-th').forEach(th => th.remove());
+    document.querySelectorAll('#subRow th.mes-sub').forEach(th => th.remove());
+
+    const acumTh = grpRow.querySelector('.col-acum');
+    const primerSub = subRow.querySelector('.col-acum');
+
+    MESES.forEach((mes, i) => {
+        const thGrp = document.createElement('th');
+        thGrp.colSpan = 4;
+        thGrp.className = 'mes-th' + (i === 0 ? ' col-sep' : '');
+        thGrp.textContent = MESES_ABREV[mes];
+        grpRow.insertBefore(thGrp, acumTh);
+
+        [{ t:'Consol.'+ANIO_C, sep:true }, { t:'Presup.'+ANIO_P }, { t:'DIF' }, { t:'%' }].forEach(cfg => {
+            const th = document.createElement('th');
+            th.className = 'mes-sub' + (cfg.sep ? ' col-sep mes-sep' : '');
+            th.textContent = cfg.t;
+            subRow.insertBefore(th, primerSub);
+        });
+    });
+
+    document.getElementById('lbl-acum-c').textContent = 'Consol.' + ANIO_C;
+    document.getElementById('lbl-acum-p').textContent = 'Presup.' + ANIO_P;
+    requestAnimationFrame(() => {
+        const alturaGrp = document.querySelector('thead tr.grp-row')?.offsetHeight || 35;
+        document.querySelectorAll('thead tr.sub-row th').forEach(th => {
+            th.style.top = alturaGrp + 'px';
+        });
+    });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   COMENTARIOS: celda editable + guardado automático
+══════════════════════════════════════════════════════════════════ */
+function crearCeldaComentario(filaKey, cuenta, nombre) {
+    const td = document.createElement('td');
+    td.className = 'td-comentario';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'comentario-cell';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'comentario-input';
+    input.placeholder = 'Agregar comentario...';
+    input.value = comentariosActuales[filaKey] || '';
+    input.title = input.value;
+
+    const estado = document.createElement('span');
+    estado.className = 'comentario-estado';
+
+    input.addEventListener('input', () => {
+        input.title = input.value;
+        clearTimeout(timersGuardado[filaKey]);
+        estado.textContent = '';
+        estado.className = 'comentario-estado';
+        timersGuardado[filaKey] = setTimeout(
+            () => guardarComentario(filaKey, input.value, cuenta, nombre, estado),
+            800
+        );
+    });
+    input.addEventListener('blur', () => {
+        clearTimeout(timersGuardado[filaKey]);
+        guardarComentario(filaKey, input.value, cuenta, nombre, estado);
+    });
+
+    wrap.appendChild(input);
+    wrap.appendChild(estado);
+    td.appendChild(wrap);
+    return td;
+}
+
+async function guardarComentario(filaKey, valor, cuenta, nombre, estadoEl) {
+    if (!filaKey) return;
+    if (comentariosActuales[filaKey] === valor) return; // sin cambios
+
+    estadoEl.textContent = '⏳';
+    estadoEl.className = 'comentario-estado guardando';
+    try {
+        const resp = await fetch(URL_GUARDAR_COMENTARIO, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken(),
+            },
+            body: JSON.stringify({
+                sede: sedeActual,
+                fila_key: filaKey,
+                comentario: valor,
+                mcncuenta: cuenta || '',
+                ctanombre: nombre || '',
+            }),
+        });
+        const json = await resp.json();
+        if (!resp.ok || !json.success) throw new Error(json.error || 'Error desconocido');
+
+        comentariosActuales[filaKey] = valor;
+        if (cache[sedeActual]) cache[sedeActual].comentarios[filaKey] = valor;
+
+        estadoEl.textContent = '✓';
+        estadoEl.className = 'comentario-estado guardado';
+        setTimeout(() => {
+            estadoEl.textContent = '';
+            estadoEl.className = 'comentario-estado';
+        }, 1500);
+    } catch (e) {
+        estadoEl.textContent = '✗';
+        estadoEl.className = 'comentario-estado error';
+        showToast('No se pudo guardar el comentario: ' + e.message, 'error');
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   RENDERIZADO
+══════════════════════════════════════════════════════════════════ */
+function claseTotal(tipoTotal) {
+    switch (tipoTotal) {
+        case '54':                     return 'total-row-54';
+        case 'PctCostoVentas':         return 'total-row-pct';
+        case 'MargenBruto':            return 'total-row-margen';
+        case 'PctMargenBruto':         return 'total-row-pct-margen';
+        case 'MargenContribucion':     return 'total-row-margen-ctb';
+        case 'PctMargenContribucion':  return 'total-row-pct-margen-ctb';
+        case 'UtilidadOperacional':    return 'total-row-utilidad-op';
+        case 'PctUtilidadOperacional': return 'total-row-pct-utilidad-op';
+        case 'ExcedentesPerdidaNeta':  return 'total-row-excedentes';
+        case 'PctExcedentes':          return 'total-row-pct-excedentes';
+        default:                       return 'total-row-ventas-netas';
+    }
+}
+
+function celdaValor(v, esPct) {
+    const td = document.createElement('td');
+    td.className = 'num';
+    td.textContent = esPct ? fmtPct(v) : fmt(v);
+    if (esPct) td.style.fontStyle = 'italic';
+    return td;
+}
+function celdaDif(v, esPct) {
+    const td = document.createElement('td');
+    td.className = 'num dif' + (v > 0 ? ' pos' : (v < 0 ? ' neg' : ''));
+    td.textContent = esPct ? (v !== 0 ? (v > 0 ? '+' : '') + v.toFixed(2) + 'pp' : '-') : fmt(v);
+    return td;
+}
+function celdaPct(v) {
+    const td = document.createElement('td');
+    td.className = 'num' + (v > 0 ? ' pos' : (v < 0 ? ' neg' : ''));
+    td.textContent = v !== 0 && isFinite(v) ? (v > 0 ? '+' : '') + v.toFixed(2) + '%' : '-';
+    return td;
+}
+
+function renderTabla() {
+    const tbody = document.getElementById('comparativoBody');
+    tbody.innerHTML = '';
+
+    if (!datosConsolidado.length && !datosPresupuestado.length) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="55">Sin datos disponibles.</td></tr>`;
+        actualizarStats();
+        return;
+    }
+
+    const mapaPresupuestado = new Map(datosPresupuestado.map(r => [String(r.mcncuenta), r]));
+    const filasC = construirFilas(datosConsolidado);
+
+    filasC.forEach(filaC => {
+        const filaP = obtenerFilaEquivalente(filaC, mapaPresupuestado);
+        const esPct = FILAS_PORCENTAJE.has(filaC.tipoTotal);
+        const filaKey = filaKeyDe(filaC);
+
+        const tr = document.createElement('tr');
+        if (filaC.isTotalRow) tr.className = claseTotal(filaC.tipoTotal);
+
+        const tdCuenta = document.createElement('td');
+        tdCuenta.className = 'th-fixed td-cuenta';
+        tdCuenta.textContent = filaC.mcncuenta || '';
+
+        const tdNombre = document.createElement('td');
+        tdNombre.className = 'th-fixed td-nombre';
+        tdNombre.textContent = filaC.ctanombre || '';
+        tdNombre.title = filaC.ctanombre || '';
+
+        tr.appendChild(tdCuenta);
+        tr.appendChild(tdNombre);
+
+        MESES.forEach((mes) => {
+            const valC = parseFloat(filaC[mes]) || 0;
+            const valP = parseFloat(filaP[mes]) || 0;
+            const dif  = valP - valC;
+            const pct  = valC !== 0 ? (dif / valC) * 100 : 0;
+
+            const tdC = celdaValor(valC, esPct);
+            tdC.classList.add('mes-sep');
+            tr.appendChild(tdC);
+            tr.appendChild(celdaValor(valP, esPct));
+            tr.appendChild(celdaDif(dif, esPct));
+            tr.appendChild(celdaPct(pct));
+        });
+
+        const totC = parseFloat(filaC.total) || 0;
+        const totP = parseFloat(filaP.total) || 0;
+        const totDif = totP - totC;
+        const totPct = totC !== 0 ? (totDif / totC) * 100 : 0;
+
+        const tdAcumC = celdaValor(totC, esPct);
+        tdAcumC.classList.add('mes-sep');
+        tr.appendChild(tdAcumC);
+        tr.appendChild(celdaValor(totP, esPct));
+        tr.appendChild(celdaDif(totDif, esPct));
+        tr.appendChild(celdaPct(totPct));
+        tr.appendChild(crearCeldaComentario(filaKey, filaC.mcncuenta, filaC.ctanombre));
+
+        tbody.appendChild(tr);
+    });
+
+    actualizarStats();
+    aplicarBusqueda();
+}
+
+function actualizarStats() {
+    document.getElementById('statFilas').textContent = datosConsolidado.length;
+    const totC = datosConsolidado.reduce((s, r) => s + MESES.reduce((ms, m) => ms + (parseFloat(r[m]) || 0), 0), 0);
+    const totP = datosPresupuestado.reduce((s, r) => s + MESES.reduce((ms, m) => ms + (parseFloat(r[m]) || 0), 0), 0);
+    document.getElementById('statTotalC').textContent = '$' + FMT.format(totC);
+    document.getElementById('statTotalP').textContent = '$' + FMT.format(totP);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PESTAÑAS Y CARGA DE DATOS
+══════════════════════════════════════════════════════════════════ */
+function actualizarTabsUI() {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.sede === sedeActual);
+    });
+    document.getElementById('tituloSede').textContent =
+        (SEDES.find(s => s.key === sedeActual) || {}).label || sedeActual;
+}
+
+async function cargarDatos(sede, forzar = false) {
+    sedeActual = sede;
+    actualizarTabsUI();
+
+    if (!forzar && cache[sede]) {
+        datosConsolidado    = cache[sede].consolidado;
+        datosPresupuestado  = cache[sede].presupuestado;
+        comentariosActuales = cache[sede].comentarios;
+        construirEncabezados();
+        renderTabla();
+        return;
+    }
+
+    document.getElementById('loadingOverlay').classList.add('active');
+    document.getElementById('comparativoBody').innerHTML =
+        `<tr class="empty-row"><td colspan="55">⏳ Cargando...</td></tr>`;
+
+    try {
+        const [respC, respP, respCom] = await Promise.all([
+            fetch(`${URL_CONSOLIDADO_BASE}?sede=${sedeParaConsolidado(sede)}`),
+            fetch(`${URL_PRESUPUESTADO_BASE}?sede=${sedeParaPresupuestado(sede)}`),
+            fetch(URL_COMENTARIOS[sede]),
+        ]);
+        const [jsonC, jsonP, jsonCom] = await Promise.all([respC.json(), respP.json(), respCom.json()]);
+
+        if (!respC.ok || jsonC.error)
+            showToast('Error consolidado: ' + (jsonC.error || respC.status), 'error');
+        if (!respP.ok || jsonP.error)
+            showToast('Error presupuestado: ' + (jsonP.error || respP.status), 'error');
+        if (!respCom.ok || jsonCom.error)
+            showToast('Error comentarios: ' + (jsonCom.error || respCom.status), 'error');
+
+        datosConsolidado    = jsonC.data || [];
+        datosPresupuestado  = jsonP.data || [];
+        comentariosActuales = jsonCom.data || {};
+
+        cache[sede] = {
+            consolidado: datosConsolidado,
+            presupuestado: datosPresupuestado,
+            comentarios: comentariosActuales,
+        };
+
+        construirEncabezados();
+        renderTabla();
+    } catch (e) {
+        showToast('Error al cargar datos: ' + e.message, 'error');
+        document.getElementById('comparativoBody').innerHTML =
+            `<tr class="empty-row"><td colspan="55">❌ Error al cargar datos.</td></tr>`;
+    } finally {
+        document.getElementById('loadingOverlay').classList.remove('active');
+    }
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        if (btn.dataset.sede === sedeActual && cache[sedeActual]) return;
+        cargarDatos(btn.dataset.sede);
+    });
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   BÚSQUEDA GLOBAL
+══════════════════════════════════════════════════════════════════ */
+function aplicarBusqueda() {
+    const q = document.getElementById('globalSearch').value.toLowerCase().trim();
+    document.querySelectorAll('#comparativoBody tr').forEach(tr => {
+        if (tr.classList.contains('empty-row')) return;
+        if (!q) { tr.classList.remove('hidden-search'); return; }
+        const texto = Array.from(tr.querySelectorAll('td')).slice(0, 2)
+            .map(td => td.textContent.toLowerCase()).join(' ');
+        tr.classList.toggle('hidden-search', !texto.includes(q));
+    });
+}
+document.getElementById('globalSearch').addEventListener('input', aplicarBusqueda);
+
+/* ══════════════════════════════════════════════════════════════════
+   RECARGAR / EXPORTAR
+══════════════════════════════════════════════════════════════════ */
+document.getElementById('recargarBtn').addEventListener('click', () => cargarDatos(sedeActual, true));
+
+function csvEscape(v) {
+    const s = String(v ?? '');
+    return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+document.getElementById('exportarBtn').addEventListener('click', () => {
+    if (!datosConsolidado.length && !datosPresupuestado.length) {
+        showToast('Sin datos para exportar', 'error'); return;
+    }
+    const mapaPresupuestado = new Map(datosPresupuestado.map(r => [String(r.mcncuenta), r]));
+    const filasC = construirFilas(datosConsolidado);
+
+    const headers = ['Cuenta', 'Nombre Cuenta'];
+    MESES.forEach(m => headers.push(
+        `${MESES_ABREV[m]}${ANIO_C}`, `${MESES_ABREV[m]}${ANIO_P}`, 'DIF', '%'
+    ));
+    headers.push(`Acum${ANIO_C}`, `Acum${ANIO_P}`, 'DIF Acum', '% Acum', 'Comentario');
+
+    const rows = filasC.map(filaC => {
+        const filaP = obtenerFilaEquivalente(filaC, mapaPresupuestado);
+        const filaKey = filaKeyDe(filaC);
+        const row = [filaC.mcncuenta || '', filaC.ctanombre];
+        MESES.forEach(mes => {
+            const valC = parseFloat(filaC[mes]) || 0;
+            const valP = parseFloat(filaP[mes]) || 0;
+            const dif  = valP - valC;
+            const pct  = valC !== 0 ? (dif / valC) * 100 : 0;
+            row.push(valC, valP, dif, pct.toFixed(2));
+        });
+        const totC = parseFloat(filaC.total) || 0;
+        const totP = parseFloat(filaP.total) || 0;
+        const totDif = totP - totC;
+        const totPct = totC !== 0 ? (totDif / totC) * 100 : 0;
+        row.push(totC, totP, totDif, totPct.toFixed(2));
+        row.push(comentariosActuales[filaKey] || '');
+        return row;
+    });
+
+    const csv  = [headers, ...rows].map(r => r.map(csvEscape).join(';')).join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(blob);
+    a.download = `comparativo_${sedeActual}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    showToast('📥 CSV exportado', 'success');
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════════════ */
+cargarDatos(sedeActual);
+</script>
+{% endblock %}
+{% endblock %}

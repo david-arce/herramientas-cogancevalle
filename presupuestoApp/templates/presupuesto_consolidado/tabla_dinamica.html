@@ -6,6 +6,401 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tabla Dinámica - Consolidado</title>
     <link rel="stylesheet" href="{% static 'css/tabla_dinamica.css' %}">
+    <style>
+        /* ── Modal base ──────────────────────────────────────────────────────── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.55);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(3px);
+        }
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,.25);
+            width: min(92vw, 700px);
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            animation: modalIn .2s ease;
+        }
+        @keyframes modalIn {
+            from { opacity:0; transform:translateY(-18px) scale(.97); }
+            to   { opacity:1; transform:none; }
+        }
+
+        .modal-header {
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .modal-header h2 { font-size: 1.1rem; font-weight: 700; margin: 0; color: #111; }
+        .modal-close {
+            background: none; border: none; cursor: pointer;
+            font-size: 1.4rem; color: #6b7280; line-height: 1;
+            padding: 4px 8px; border-radius: 6px;
+            transition: background .15s;
+        }
+        .modal-close:hover { background: #f3f4f6; color: #111; }
+
+        .modal-body {
+            padding: 20px 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        /* ── Registros list ──────────────────────────────────────────────────── */
+        .registros-list { display: flex; flex-direction: column; gap: 8px; }
+
+        .registro-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: background .15s, border-color .15s;
+            background: #fafafa;
+        }
+        .registro-item:hover { background: #f0f4ff; border-color: #a5b4fc; }
+
+        .reg-row { display: grid; gap: 8px 10px; align-items: start; }
+        .reg-row-top    { grid-template-columns: 1fr 1fr 1fr auto; }
+        .reg-row-bottom { grid-template-columns: 1fr 1fr 1fr; }
+
+        .reg-field { display: flex; flex-direction: column; gap: 2px; }
+        .reg-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; font-weight: 600; }
+        .reg-value { font-size: .88rem; color: #111; font-weight: 500; }
+
+        .reg-actions { display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
+
+        /* ── Buttons ─────────────────────────────────────────────────────────── */
+        .btn-edit, .btn-delete, .btn-view {
+            border: none; cursor: pointer; border-radius: 6px;
+            font-size: .78rem; font-weight: 600; padding: 5px 10px;
+            transition: opacity .15s, transform .1s;
+            white-space: nowrap;
+        }
+        .btn-edit   { background: #dbeafe; color: #1d4ed8; }
+        .btn-delete { background: #fee2e2; color: #dc2626; }
+        .btn-view   { background: #d1fae5; color: #065f46; }
+        .btn-edit:hover   { opacity:.8; transform:scale(1.04); }
+        .btn-delete:hover { opacity:.8; transform:scale(1.04); }
+        .btn-view:hover   { opacity:.8; transform:scale(1.04); }
+
+        .row-detalle .action-cell { width: 48px; text-align: center; }
+        .btn-row-view {
+            background: none; border: 1px solid #c7d2fe;
+            border-radius: 5px; cursor: pointer; padding: 2px 7px;
+            font-size: .75rem; color: #4f46e5; transition: background .15s;
+        }
+        .btn-row-view:hover { background: #e0e7ff; }
+
+        /* ── Edit form ───────────────────────────────────────────────────────── */
+        .edit-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group label { font-size: .8rem; font-weight: 600; color: #374151; }
+        .form-group input, .form-group select {
+            border: 1px solid #d1d5db; border-radius: 7px;
+            padding: 8px 10px; font-size: .9rem; color: #111;
+            transition: border-color .2s, box-shadow .2s;
+            outline: none; background: #fff;
+        }
+        .form-group input:focus, .form-group select:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+        }
+        .form-group.full { grid-column: 1 / -1; }
+
+        /* ── ▼ NUEVO: Barra de filtros en modal registros ────────────────────── */
+        .reg-filtros {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+        }
+        .reg-filtros-title {
+            font-size: .72rem; font-weight: 700; color: #6b7280;
+            text-transform: uppercase; letter-spacing: .06em;
+            margin-bottom: 10px;
+        }
+        .reg-filtros-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr auto;
+            gap: 8px;
+            align-items: end;
+        }
+        @media (max-width: 600px) {
+            .reg-filtros-grid { grid-template-columns: 1fr 1fr; }
+        }
+        .reg-filtro-group { display: flex; flex-direction: column; gap: 4px; }
+        .reg-filtro-group label {
+            font-size: .7rem; font-weight: 600; color: #9ca3af;
+            text-transform: uppercase; letter-spacing: .04em;
+        }
+        .reg-filtro-group input[type="date"],
+        .reg-filtro-group select {
+            border: 1px solid #d1d5db; border-radius: 7px;
+            padding: 7px 9px; font-size: .82rem; color: #111;
+            background: #fff; outline: none;
+            transition: border-color .2s, box-shadow .2s;
+            width: 100%; box-sizing: border-box;
+        }
+        .reg-filtro-group input[type="date"]:focus,
+        .reg-filtro-group select:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+        }
+        .reg-filtros-actions { display: flex; gap: 6px; padding-bottom: 1px; }
+        .btn-filtrar {
+            background: #4f46e5; color: #fff; border: none;
+            border-radius: 7px; padding: 7px 14px;
+            font-size: .82rem; font-weight: 600; cursor: pointer;
+            transition: background .15s; white-space: nowrap;
+        }
+        .btn-filtrar:hover { background: #4338ca; }
+        .btn-limpiar-filtros {
+            background: #f3f4f6; color: #374151; border: 1px solid #d1d5db;
+            border-radius: 7px; padding: 7px 12px;
+            font-size: .82rem; font-weight: 600; cursor: pointer;
+            transition: background .15s; white-space: nowrap;
+        }
+        .btn-limpiar-filtros:hover { background: #e5e7eb; }
+        .reg-filtros-badge {
+            display: inline-block; background: #e0e7ff; color: #4f46e5;
+            font-size: .68rem; font-weight: 700; padding: 1px 7px;
+            border-radius: 10px; margin-left: 6px; vertical-align: middle;
+        }
+        /* ── Multi-select dropdowns del modal de registros ───────────────────────── */
+        .rm-dropdown { position: relative; }
+        .rm-btn {
+            width: 100%; display: flex; justify-content: space-between; align-items: center;
+            border: 1px solid #d1d5db; border-radius: 7px;
+            padding: 7px 9px; font-size: .82rem; color: #111;
+            background: #fff; cursor: pointer; gap: 6px;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .rm-btn:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.15); outline: none; }
+        .rm-arrow { font-size: .65rem; color: #9ca3af; flex-shrink: 0; }
+        .rm-panel {
+            display: none; position: absolute; top: calc(100% + 4px); left: 0;
+            min-width: 200px; width: max-content; max-width: 280px;
+            background: #fff; border: 1px solid #d1d5db; border-radius: 9px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 1200;
+            flex-direction: column;
+        }
+        .rm-panel.open { display: flex; }
+        .rm-search { padding: 8px 10px 4px; }
+        .rm-search input {
+            width: 100%; border: 1px solid #e5e7eb; border-radius: 6px;
+            padding: 5px 8px; font-size: .8rem; outline: none; box-sizing: border-box;
+        }
+        .rm-search input:focus { border-color: #6366f1; }
+        .rm-options { max-height: 180px; overflow-y: auto; padding: 4px 0; }
+        .rm-option {
+            display: flex; align-items: center; gap: 8px;
+            padding: 5px 12px; font-size: .82rem; color: #111;
+            cursor: pointer; transition: background .1s;
+        }
+        .rm-option:hover { background: #f0f4ff; }
+        .rm-option input[type="checkbox"] { accent-color: #6366f1; cursor: pointer; }
+        .rm-actions {
+            display: flex; gap: 6px; padding: 6px 10px;
+            border-top: 1px solid #f3f4f6;
+        }
+        .rm-actions button {
+            flex: 1; background: #f3f4f6; border: 1px solid #e5e7eb;
+            border-radius: 5px; padding: 3px 0; font-size: .75rem;
+            font-weight: 600; cursor: pointer; color: #374151;
+            transition: background .15s;
+        }
+        .rm-actions button:hover { background: #e0e7ff; border-color: #a5b4fc; color: #4f46e5; }
+        .rm-selected-badge {
+            background: #e0e7ff; color: #4f46e5;
+            font-size: .7rem; font-weight: 700;
+            padding: 1px 6px; border-radius: 10px;
+            white-space: nowrap;
+        }
+        /* ── ▲ FIN filtros ───────────────────────────────────────────────────── */
+
+        /* ── Save / Cancel / Danger buttons ─────────────────────────────────── */
+        .btn-save {
+            background: #4f46e5; color: #fff; border: none;
+            border-radius: 8px; padding: 9px 22px;
+            font-size: .9rem; font-weight: 600; cursor: pointer;
+            transition: background .15s;
+        }
+        .btn-save:hover { background: #4338ca; }
+
+        .btn-cancel {
+            background: #f3f4f6; color: #374151; border: 1px solid #d1d5db;
+            border-radius: 8px; padding: 9px 22px;
+            font-size: .9rem; font-weight: 600; cursor: pointer;
+            transition: background .15s;
+        }
+        .btn-cancel:hover { background: #e5e7eb; }
+
+        .btn-danger {
+            background: #dc2626; color: #fff; border: none;
+            border-radius: 8px; padding: 9px 22px;
+            font-size: .9rem; font-weight: 600; cursor: pointer;
+            transition: background .15s;
+        }
+        .btn-danger:hover { background: #b91c1c; }
+
+        /* ── Toast ───────────────────────────────────────────────────────────── */
+        #toast {
+            position: fixed; bottom: 28px; right: 28px; z-index: 2000;
+            background: #1e293b; color: #fff; padding: 13px 20px;
+            border-radius: 10px; font-size: .88rem; font-weight: 500;
+            box-shadow: 0 8px 24px rgba(0,0,0,.3);
+            transform: translateY(20px); opacity: 0;
+            transition: opacity .25s, transform .25s;
+            pointer-events: none;
+        }
+        #toast.show { opacity: 1; transform: none; }
+        #toast.success { border-left: 4px solid #22c55e; }
+        #toast.error   { border-left: 4px solid #ef4444; }
+
+        /* ── Confirm delete ──────────────────────────────────────────────────── */
+        .confirm-body { text-align: center; padding: 8px 0 16px; }
+        .confirm-body .icon { font-size: 3rem; margin-bottom: 10px; }
+        .confirm-body p { color: #374151; font-size: .95rem; line-height: 1.5; }
+        .confirm-body strong { color: #dc2626; }
+
+        /* ── Loading spinner in modal ────────────────────────────────────────── */
+        .modal-loading {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 40px; color: #6b7280; gap: 12px;
+        }
+        .mini-spinner {
+            width: 32px; height: 32px;
+            border: 3px solid #e5e7eb;
+            border-top-color: #6366f1;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Paginación registros */
+        .reg-pagination { display: flex; gap: 6px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+        .reg-pagination span { font-size: .82rem; color: #6b7280; }
+        .reg-pagination button {
+            background: #f3f4f6; border: 1px solid #d1d5db;
+            border-radius: 5px; padding: 4px 10px; font-size: .82rem;
+            cursor: pointer; transition: background .15s;
+        }
+        .reg-pagination button:hover { background: #e0e7ff; border-color: #a5b4fc; }
+        .reg-pagination button.active { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+
+        /* Botones de acción en filas cuenta y vínculo */
+        .row-cuenta .action-cell,
+        .row-vinculo .action-cell { width: 80px; text-align: center; white-space: nowrap; }
+
+        .btn-nivel-view {
+            background: none; border: 1px solid #c7d2fe;
+            border-radius: 5px; cursor: pointer; padding: 2px 6px;
+            font-size: .75rem; color: #4f46e5; transition: background .15s;
+            margin-right: 3px;
+        }
+        .btn-nivel-view:hover { background: #e0e7ff; }
+
+        .btn-nivel-edit {
+            background: none; border: 1px solid #bbf7d0;
+            border-radius: 5px; cursor: pointer; padding: 2px 6px;
+            font-size: .75rem; color: #15803d; transition: background .15s;
+        }
+        .btn-nivel-edit:hover { background: #dcfce7; }
+
+        .btn-nivel-delete {
+            background: none; border: 1px solid #fecaca;
+            border-radius: 5px; cursor: pointer; padding: 2px 6px;
+            font-size: .75rem; color: #dc2626; transition: background .15s;
+            margin-left: 3px;
+        }
+        .btn-nivel-delete:hover { background: #fee2e2; }
+
+        /* ── Columna mcncuenta ───────────────────────────────────────────────── */
+        .mcncuenta-cell {
+            font-size: .82rem;
+            color: #4b5563;
+            white-space: nowrap;
+            padding: 0 8px;
+        }
+
+        /* ── Edición inline de celdas de mes ─────────────────────────────────── */
+        .number-cell.editable { cursor: cell; position: relative; }
+        .number-cell.editable:hover {
+            background: #eff6ff !important;
+            outline: 2px dashed #93c5fd;
+            outline-offset: -2px;
+        }
+        .number-cell.editing {
+            padding: 0 !important;
+            background: #fff !important;
+            outline: 2px solid #6366f1 !important;
+            outline-offset: -2px;
+        }
+        .cell-input {
+            width: 100%; height: 100%; min-height: 32px;
+            border: none; outline: none; background: transparent;
+            text-align: right; font-size: inherit; font-family: inherit;
+            font-weight: 600; color: #1e1b4b; padding: 4px 8px;
+            box-sizing: border-box;
+        }
+
+        /* ── Modal distribución proporcional ─────────────────────────────────── */
+        .dist-summary {
+            display: flex; gap: 16px; margin-bottom: 14px;
+            background: #f8fafc; border: 1px solid #e2e8f0;
+            border-radius: 8px; padding: 12px 16px; flex-wrap: wrap;
+        }
+        .dist-summary .ds-item { display: flex; flex-direction: column; gap: 2px; }
+        .dist-summary .ds-label { font-size: .7rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; }
+        .dist-summary .ds-value { font-size: 1.05rem; font-weight: 700; color: #111; }
+        .dist-summary .ds-value.new { color: #4f46e5; }
+        .dist-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+        .dist-table th {
+            background: #f3f4f6; text-align: left; padding: 6px 10px;
+            font-size: .72rem; font-weight: 700; color: #6b7280;
+            text-transform: uppercase; letter-spacing: .04em;
+            border-bottom: 2px solid #e5e7eb;
+            position: sticky; top: 0;
+        }
+        .dist-table th.num, .dist-table td.num { text-align: right; }
+        .dist-table td { padding: 7px 10px; border-bottom: 1px solid #f3f4f6; color: #111; vertical-align: middle; }
+        .dist-table tr:hover td { background: #f9fafb; }
+        .dist-table .col-prop { color: #6366f1; font-weight: 600; }
+        .dist-table .col-nuevo { color: #15803d; font-weight: 700; }
+        .dist-table .col-ant   { color: #9ca3af; }
+        .nivel-badge {
+            display: inline-block; font-size: .65rem; font-weight: 700;
+            padding: 1px 6px; border-radius: 4px; margin-right: 5px;
+            text-transform: uppercase; letter-spacing: .05em; vertical-align: middle;
+        }
+        .nivel-badge.cuenta  { background: #dbeafe; color: #1d4ed8; }
+        .nivel-badge.vinculo { background: #ede9fe; color: #5b21b6; }
+        .nivel-badge.detalle { background: #d1fae5; color: #065f46; }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -18,23 +413,16 @@
         <div class="filters-section">
             <h3>🔍 Filtros</h3>
             <div class="filters-grid">
-                <!-- Filtro Cuenta -->
                 <div class="filter-group">
                     <label>Cuenta</label>
                     <div class="filter-dropdown">
                         <button class="filter-btn" onclick="toggleFilter('cuenta')">
-                            <span id="cuenta-text">Todos</span>
-                            <span class="arrow">▼</span>
+                            <span id="cuenta-text">Todos</span><span class="arrow">▼</span>
                         </button>
                         <div id="filter-cuenta" class="filter-panel">
-                            <div class="filter-search">
-                                <input type="text" id="search-cuenta" placeholder="Buscar..." onkeyup="filtrarOpciones('cuenta')">
-                            </div>
+                            <div class="filter-search"><input type="text" id="search-cuenta" placeholder="Buscar..." onkeyup="filtrarOpciones('cuenta')"></div>
                             <div class="filter-options">
-                                <label class="filter-option">
-                                    <input type="checkbox" class="select-all" onchange="seleccionarTodos('cuenta', this.checked)">
-                                    <span>(Seleccionar todo)</span>
-                                </label>
+                                <label class="filter-option"><input type="checkbox" class="select-all" onchange="seleccionarTodos('cuenta', this.checked)"><span>(Seleccionar todo)</span></label>
                                 <div id="options-cuenta"></div>
                             </div>
                             <div class="filter-actions">
@@ -44,24 +432,16 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Filtro Zona -->
                 <div class="filter-group">
                     <label>Zona</label>
                     <div class="filter-dropdown">
                         <button class="filter-btn" onclick="toggleFilter('zona')">
-                            <span id="zona-text">Todos</span>
-                            <span class="arrow">▼</span>
+                            <span id="zona-text">Todos</span><span class="arrow">▼</span>
                         </button>
                         <div id="filter-zona" class="filter-panel">
-                            <div class="filter-search">
-                                <input type="text" id="search-zona" placeholder="Buscar..." onkeyup="filtrarOpciones('zona')">
-                            </div>
+                            <div class="filter-search"><input type="text" id="search-zona" placeholder="Buscar..." onkeyup="filtrarOpciones('zona')"></div>
                             <div class="filter-options">
-                                <label class="filter-option">
-                                    <input type="checkbox" class="select-all" onchange="seleccionarTodos('zona', this.checked)">
-                                    <span>(Seleccionar todo)</span>
-                                </label>
+                                <label class="filter-option"><input type="checkbox" class="select-all" onchange="seleccionarTodos('zona', this.checked)"><span>(Seleccionar todo)</span></label>
                                 <div id="options-zona"></div>
                             </div>
                             <div class="filter-actions">
@@ -71,24 +451,16 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Filtro Destino -->
                 <div class="filter-group">
                     <label>Destino</label>
                     <div class="filter-dropdown">
                         <button class="filter-btn" onclick="toggleFilter('destino')">
-                            <span id="destino-text">Todos</span>
-                            <span class="arrow">▼</span>
+                            <span id="destino-text">Todos</span><span class="arrow">▼</span>
                         </button>
                         <div id="filter-destino" class="filter-panel">
-                            <div class="filter-search">
-                                <input type="text" id="search-destino" placeholder="Buscar..." onkeyup="filtrarOpciones('destino')">
-                            </div>
+                            <div class="filter-search"><input type="text" id="search-destino" placeholder="Buscar..." onkeyup="filtrarOpciones('destino')"></div>
                             <div class="filter-options">
-                                <label class="filter-option">
-                                    <input type="checkbox" class="select-all" onchange="seleccionarTodos('destino', this.checked)">
-                                    <span>(Seleccionar todo)</span>
-                                </label>
+                                <label class="filter-option"><input type="checkbox" class="select-all" onchange="seleccionarTodos('destino', this.checked)"><span>(Seleccionar todo)</span></label>
                                 <div id="options-destino"></div>
                             </div>
                             <div class="filter-actions">
@@ -98,24 +470,16 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Filtro Costo -->
                 <div class="filter-group">
                     <label>Costo</label>
                     <div class="filter-dropdown">
                         <button class="filter-btn" onclick="toggleFilter('costo')">
-                            <span id="costo-text">Todos</span>
-                            <span class="arrow">▼</span>
+                            <span id="costo-text">Todos</span><span class="arrow">▼</span>
                         </button>
                         <div id="filter-costo" class="filter-panel">
-                            <div class="filter-search">
-                                <input type="text" id="search-costo" placeholder="Buscar..." onkeyup="filtrarOpciones('costo')">
-                            </div>
+                            <div class="filter-search"><input type="text" id="search-costo" placeholder="Buscar..." onkeyup="filtrarOpciones('costo')"></div>
                             <div class="filter-options">
-                                <label class="filter-option">
-                                    <input type="checkbox" class="select-all" onchange="seleccionarTodos('costo', this.checked)">
-                                    <span>(Seleccionar todo)</span>
-                                </label>
+                                <label class="filter-option"><input type="checkbox" class="select-all" onchange="seleccionarTodos('costo', this.checked)"><span>(Seleccionar todo)</span></label>
                                 <div id="options-costo"></div>
                             </div>
                             <div class="filter-actions">
@@ -125,458 +489,1679 @@
                         </div>
                     </div>
                 </div>
+                <div class="filter-group">
+                    <label>Nombre Cuenta</label>
+                    <div class="filter-dropdown">
+                        <button class="filter-btn" onclick="toggleFilter('ctanombre')">
+                            <span id="ctanombre-text">Todos</span><span class="arrow">▼</span>
+                        </button>
+                        <div id="filter-ctanombre" class="filter-panel">
+                            <div class="filter-search"><input type="text" id="search-ctanombre" placeholder="Buscar..." onkeyup="filtrarOpciones('ctanombre')"></div>
+                            <div class="filter-options">
+                                <label class="filter-option"><input type="checkbox" class="select-all" onchange="seleccionarTodos('ctanombre', this.checked)"><span>(Seleccionar todo)</span></label>
+                                <div id="options-ctanombre"></div>
+                            </div>
+                            <div class="filter-actions">
+                                <button onclick="aplicarFiltro('ctanombre')">Aplicar</button>
+                                <button onclick="limpiarFiltro('ctanombre')">Limpiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="controls">
-            <button class="btn btn-primary" onclick="cargarDatos()">
-                🔄 Cargar Datos
-            </button>
-
-            <button class="btn btn-primary" onclick="expandirTodo()">
-                ➕ Expandir Todo
-            </button>
-
-            <button class="btn btn-primary" onclick="colapsarTodo()">
-                ➖ Colapsar Todo
-            </button>
-
-            <button class="btn btn-export" onclick="exportarExcel()">
-                📥 Exportar a Excel
-            </button>
+            <button class="btn btn-primary" onclick="cargarDatos()">🔄 Cargar Datos</button>
+            <button class="btn btn-primary" onclick="expandirTodo()">➕ Expandir Todo</button>
+            <button class="btn btn-primary" onclick="colapsarTodo()">➖ Colapsar Todo</button>
+            <button class="btn btn-export" onclick="exportarExcel()">📥 Exportar a Excel</button>
         </div>
 
         <div class="table-container">
-            <div id="loading" class="loading" style="display: none;">
+            <div id="loading" class="loading" style="display:none;">
                 <div class="spinner"></div>
                 <p>Cargando datos...</p>
             </div>
-            
             <table id="tablaDinamica" class="pivot-table">
                 <thead>
                     <tr>
-                        <th style="min-width: 300px;">Etiquetas de fila</th>
-                        <th>Enero</th>
-                        <th>Febrero</th>
-                        <th>Marzo</th>
-                        <th>Abril</th>
-                        <th>Mayo</th>
-                        <th>Junio</th>
-                        <th>Julio</th>
-                        <th>Agosto</th>
-                        <th>Septiembre</th>
-                        <th>Octubre</th>
-                        <th>Noviembre</th>
-                        <th>Diciembre</th>
+                        <th style="min-width:130px;">Cta. Contable</th>
+                        <th style="min-width:300px;">Etiquetas de fila</th>
+                        <th title="Doble clic en cualquier celda para editar">Enero</th><th>Febrero</th><th>Marzo</th><th>Abril</th>
+                        <th>Mayo</th><th>Junio</th><th>Julio</th><th>Agosto</th>
+                        <th>Septiembre</th><th>Octubre</th><th>Noviembre</th><th>Diciembre</th>
                         <th class="total-column">Total</th>
+                        <th style="width:100px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="tablaBody">
+                    <tr id="emptyState">
+                        <td colspan="16" style="text-align:center;padding:48px 24px;color:#9ca3af;">
+                            <div style="font-size:2.5rem;margin-bottom:10px;">🔍</div>
+                            <div style="font-size:1rem;font-weight:600;color:#6b7280;margin-bottom:6px;">Sin datos cargados</div>
+                            <div style="font-size:.85rem;">Selecciona un filtro y presiona <strong>Aplicar</strong>, o haz clic en <strong>🔄 Cargar Datos</strong> para ver toda la información.</div>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
 
         <div class="stats">
-            <div class="stat-card">
-                <h3>Total Cuentas</h3>
-                <div class="value" id="totalCuentas">0</div>
+            <div class="stat-card"><h3>Total Cuentas</h3><div class="value" id="totalCuentas">0</div></div>
+            <div class="stat-card"><h3>Total Anual</h3><div class="value" id="totalAnual">$0</div></div>
+            <div class="stat-card"><h3>Promedio Mensual</h3><div class="value" id="promedioMensual">$0</div></div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         MODAL: Lista de registros del detalle
+         ▼ MODIFICADO: se agrega barra de filtros (fecha, zona, ccosto)
+    ══════════════════════════════════════════════════════════════════════ -->
+    <div id="modalRegistros" class="modal-overlay" onclick="cerrarModalSiOverlay(event,'modalRegistros')">
+        <div class="modal" style="width:min(96vw,780px);">
+            <div class="modal-header">
+                <h2 id="modalRegistrosTitulo">📋 Registros del detalle</h2>
+                <button class="modal-close" onclick="cerrarModal('modalRegistros')">✕</button>
             </div>
-            <div class="stat-card">
-                <h3>Total Anual</h3>
-                <div class="value" id="totalAnual">$0</div>
+
+            <!-- ▼ NUEVA: barra de filtros dentro del modal -->
+            <div style="padding: 14px 24px 0; border-bottom: 1px solid #f3f4f6;">
+                <div class="reg-filtros">
+                    <div class="reg-filtros-title">
+                        🔎 Filtrar registros
+                        <span id="regFiltrosBadge" class="reg-filtros-badge" style="display:none;">0 activos</span>
+                    </div>
+                    <div class="reg-filtros-grid">
+                        <!-- Fecha -->
+                        <div class="reg-filtro-group">
+                            <label>Fecha del Registro</label>
+                            <div class="rm-dropdown" id="rmd-fecha">
+                                <button class="rm-btn" onclick="_rmToggle('fecha')">
+                                    <span id="rmd-fecha-text">Todas</span><span class="rm-arrow">▼</span>
+                                </button>
+                                <div class="rm-panel" id="rm-panel-fecha">
+                                    <div class="rm-search"><input type="text" placeholder="Buscar..." id="rm-search-fecha" oninput="_rmFiltrarOpciones('fecha')"></div>
+                                    <div class="rm-options" id="rm-opts-fecha"></div>
+                                    <div class="rm-actions">
+                                        <button onclick="_rmSelTodos('fecha',true)">Todo</button>
+                                        <button onclick="_rmSelTodos('fecha',false)">Ninguno</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Zona -->
+                        <div class="reg-filtro-group">
+                            <label>Zona</label>
+                            <div class="rm-dropdown" id="rmd-zona">
+                                <button class="rm-btn" onclick="_rmToggle('zona')">
+                                    <span id="rmd-zona-text">Todas</span><span class="rm-arrow">▼</span>
+                                </button>
+                                <div class="rm-panel" id="rm-panel-zona">
+                                    <div class="rm-search"><input type="text" placeholder="Buscar..." id="rm-search-zona" oninput="_rmFiltrarOpciones('zona')"></div>
+                                    <div class="rm-options" id="rm-opts-zona"></div>
+                                    <div class="rm-actions">
+                                        <button onclick="_rmSelTodos('zona',true)">Todo</button>
+                                        <button onclick="_rmSelTodos('zona',false)">Ninguno</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Centro de costo -->
+                        <div class="reg-filtro-group">
+                            <label>Centro de costo</label>
+                            <div class="rm-dropdown" id="rmd-ccosto">
+                                <button class="rm-btn" onclick="_rmToggle('ccosto')">
+                                    <span id="rmd-ccosto-text">Todos</span><span class="rm-arrow">▼</span>
+                                </button>
+                                <div class="rm-panel" id="rm-panel-ccosto">
+                                    <div class="rm-search"><input type="text" placeholder="Buscar..." id="rm-search-ccosto" oninput="_rmFiltrarOpciones('ccosto')"></div>
+                                    <div class="rm-options" id="rm-opts-ccosto"></div>
+                                    <div class="rm-actions">
+                                        <button onclick="_rmSelTodos('ccosto',true)">Todo</button>
+                                        <button onclick="_rmSelTodos('ccosto',false)">Ninguno</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Botones -->
+                        <div class="reg-filtros-actions">
+                            <button class="btn-filtrar" onclick="aplicarFiltrosRegistros()">Filtrar</button>
+                            <button class="btn-limpiar-filtros" onclick="limpiarFiltrosRegistros()">✕</button>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="stat-card">
-                <h3>Promedio Mensual</h3>
-                <div class="value" id="promedioMensual">$0</div>
+            <!-- ▲ FIN barra de filtros -->
+
+            <div class="modal-body" id="modalRegistrosBody">
+                <div class="modal-loading"><div class="mini-spinner"></div><span>Cargando registros...</span></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="cerrarModal('modalRegistros')">Cerrar</button>
             </div>
         </div>
     </div>
 
-    <script>
-        let datosGlobales = [];
-        let filtrosActivos = {
-            cuenta: [],
-            zona: [],
-            destino: [],
-            costo: []
-        };
-        let valoresFiltros = {
-            cuenta: [],
-            zona: [],
-            destino: [],
-            costo: []
-        };
-        const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                       'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    <!-- ══════════════════════════════════════════════════════════════════════
+         MODAL: Editar registro
+         ▼ MODIFICADO: zona y ccosto ahora son editables
+    ══════════════════════════════════════════════════════════════════════ -->
+    <div id="modalEditar" class="modal-overlay" onclick="cerrarModalSiOverlay(event,'modalEditar')">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>✏️ Editar Registro</h2>
+                <button class="modal-close" onclick="cerrarModal('modalEditar')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="edit-form" id="editForm">
+                    <!-- Fila 1: Fecha serial (solo lectura) + Fecha legible (informativa) -->
+                    <div class="form-group">
+                        <label>Fecha (serial Excel)</label>
+                        <input type="text" id="edit-mcnfecha" disabled
+                            style="background:#f3f4f6;color:#9ca3af;cursor:not-allowed;">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha legible</label>
+                        <input type="text" id="edit-mcnfecha-legible" disabled
+                            style="background:#f3f4f6;color:#374151;cursor:not-allowed;font-weight:600;">
+                    </div>
+                    <!-- Fila 2: Cuenta (solo lectura) + Zona ▼ ahora editable -->
+                    <div class="form-group">
+                        <label>Cuenta</label>
+                        <input type="text" id="edit-mcncuenta" disabled
+                            style="background:#f3f4f6;color:#9ca3af;cursor:not-allowed;">
+                    </div>
+                    <div class="form-group">
+                        <label>Zona</label>
+                        <!-- ▼ quitado disabled, ahora es editable -->
+                        <input type="text" id="edit-mcnzona"
+                            placeholder="Ingresa zona...">
+                    </div>
+                    <!-- Fila 3: Destino + Centro de Costo ▼ ahora editable -->
+                    <div class="form-group">
+                        <label>Destino</label>
+                        <input type="text" id="edit-mcndestino">
+                    </div>
+                    <div class="form-group">
+                        <label>Centro de Costo</label>
+                        <!-- ▼ quitado disabled, ahora es editable -->
+                        <input type="text" id="edit-mcnccosto"
+                            placeholder="Ingresa centro de costo...">
+                    </div>
+                    <!-- Fila 4: Débito + Crédito -->
+                    <div class="form-group">
+                        <label>Valor Débito</label>
+                        <input type="text" id="edit-mcnvaldebi"
+                            onfocus="quitarFormato(this)"
+                            onblur="aplicarFormato(this)">
+                    </div>
+                    <div class="form-group">
+                        <label>Valor Crédito</label>
+                        <input type="text" id="edit-mcnvalcred"
+                            onfocus="quitarFormato(this)"
+                            onblur="aplicarFormato(this)">
+                    </div>
+                    <!-- Fila 5: Detalle (ancho completo) -->
+                    <div class="form-group full">
+                        <label>Detalle</label>
+                        <input type="text" id="edit-mcndetalle">
+                    </div>
+                    <!-- Fila 6: ctanombre + vinnombre -->
+                    <div class="form-group full">
+                        <label>Nombre Cuenta (ctanombre)</label>
+                        <input type="text" id="edit-ctanombre">
+                    </div>
+                    <div class="form-group full">
+                        <label>Nombre Vínculo (vinnombre)</label>
+                        <input type="text" id="edit-vinnombre">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="cerrarModal('modalEditar')">Cancelar</button>
+                <button class="btn-save" onclick="guardarEdicion()">💾 Guardar cambios</button>
+            </div>
+        </div>
+    </div>
 
-        function formatearNumero(numero) {
-            if (numero === 0) return '-';
-            return new Intl.NumberFormat('es-CO', {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-            }).format(numero);
+    <!-- ══════════════════════════════════════════════════════════════════════
+         MODAL: Confirmar eliminación
+    ══════════════════════════════════════════════════════════════════════ -->
+    <div id="modalEliminar" class="modal-overlay" onclick="cerrarModalSiOverlay(event,'modalEliminar')">
+        <div class="modal" style="max-width:420px;">
+            <div class="modal-header">
+                <h2>🗑️ Confirmar eliminación</h2>
+                <button class="modal-close" onclick="cerrarModal('modalEliminar')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="confirm-body">
+                    <div class="icon">⚠️</div>
+                    <p>¿Estás seguro de que deseas eliminar este registro?</p>
+                    <p><strong>Esta acción no se puede deshacer.</strong></p>
+                    <p id="eliminarDetalle" style="margin-top:10px;font-size:.82rem;color:#6b7280;"></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="cerrarModal('modalEliminar')">Cancelar</button>
+                <button class="btn-danger" onclick="confirmarEliminar()">🗑️ Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         MODAL: Renombrar cuenta o vínculo
+    ══════════════════════════════════════════════════════════════════════ -->
+    <div id="modalRenombrar" class="modal-overlay" onclick="cerrarModalSiOverlay(event,'modalRenombrar')">
+        <div class="modal" style="max-width:480px;">
+            <div class="modal-header">
+                <h2 id="modalRenombrarTitulo">✏️ Renombrar</h2>
+                <button class="modal-close" onclick="cerrarModal('modalRenombrar')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div style="display:flex;flex-direction:column;gap:14px;">
+                    <div class="form-group full">
+                        <label id="renombrarLabelActual">Nombre actual</label>
+                        <input type="text" id="renombrar-actual" disabled
+                               style="background:#f3f4f6;color:#9ca3af;cursor:not-allowed;">
+                    </div>
+                    <div class="form-group full">
+                        <label id="renombrarLabelNuevo">Nuevo nombre</label>
+                        <input type="text" id="renombrar-nuevo" placeholder="Ingresa el nuevo nombre...">
+                    </div>
+                    <p style="font-size:.8rem;color:#f59e0b;background:#fffbeb;border:1px solid #fde68a;
+                               border-radius:7px;padding:10px 12px;margin:0;">
+                        ⚠️ Este cambio actualizará <strong>todos los registros</strong> que tengan este nombre.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="cerrarModal('modalRenombrar')">Cancelar</button>
+                <button class="btn-save" onclick="confirmarRenombrar()">💾 Guardar nombre</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         MODAL: Confirmar eliminación de nivel (cuenta o vínculo completo)
+    ══════════════════════════════════════════════════════════════════════ -->
+    <div id="modalEliminarNivel" class="modal-overlay" onclick="cerrarModalSiOverlay(event,'modalEliminarNivel')">
+        <div class="modal" style="max-width:440px;">
+            <div class="modal-header">
+                <h2 id="modalEliminarNivelTitulo">🗑️ Eliminar</h2>
+                <button class="modal-close" onclick="cerrarModal('modalEliminarNivel')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="confirm-body">
+                    <div class="icon">🚨</div>
+                    <p id="eliminarNivelMensaje">¿Estás seguro?</p>
+                    <p><strong>Esta acción eliminará TODOS los registros y no se puede deshacer.</strong></p>
+                    <p id="eliminarNivelConteo" style="margin-top:8px;font-size:.82rem;color:#6b7280;"></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="cerrarModal('modalEliminarNivel')">Cancelar</button>
+                <button class="btn-danger" onclick="confirmarEliminarNivel()">🗑️ Sí, eliminar todo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         MODAL: Confirmación distribución proporcional
+    ══════════════════════════════════════════════════════════════════════ -->
+    <div id="modalDistribucion" class="modal-overlay" onclick="cerrarModalSiOverlay(event,'modalDistribucion')">
+        <div class="modal" style="width:min(96vw,780px);">
+            <div class="modal-header">
+                <h2>⚖️ Confirmar redistribución proporcional</h2>
+                <button class="modal-close" onclick="cerrarModal('modalDistribucion')">✕</button>
+            </div>
+            <div class="modal-body" style="position:relative;" id="modalDistribucionBody">
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="cerrarModal('modalDistribucion')">Cancelar</button>
+                <button class="btn-save"   onclick="confirmarDistribucion()">💾 Aplicar y guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast de notificación -->
+    <div id="toast"></div>
+
+    <script>
+        /* ══════════════════════════════════════════════════════════════════════
+           ESTADO GLOBAL
+        ══════════════════════════════════════════════════════════════════════ */
+        let datosGlobales = [];
+        let filtrosActivos = { cuenta: [], zona: [], destino: [], costo: [], ctanombre: [] };
+        let valoresFiltros = { cuenta: [], zona: [], destino: [], costo: [], ctanombre: [] };
+
+        let registroEnEdicion = null;
+        let registroAEliminar = null;
+        let contextoPaginacion = {};
+
+        // ▼ NUEVO: cache de registros cargados y registros filtrados en el modal
+        let _registrosCargados = [];      // todos los registros del servidor
+        let _registrosFiltrados = [];     // registros tras aplicar filtros locales
+
+        const MESES = ['enero','febrero','marzo','abril','mayo','junio',
+                       'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+        /* ══════════════════════════════════════════════════════════════════════
+           UTILS
+        ══════════════════════════════════════════════════════════════════════ */
+        function formatearNumero(n) {
+            if (n === 0) return '-';
+            return new Intl.NumberFormat('es-CO', { minimumFractionDigits:0, maximumFractionDigits:0 }).format(n);
         }
 
-        // Cargar valores de filtros
-        async function cargarValoresFiltros() {
-            const campos = ['mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto'];
-            const nombres = ['cuenta', 'zona', 'destino', 'costo'];
-            
-            for (let i = 0; i < campos.length; i++) {
-                try {
-                    const response = await fetch(`../obtener-valores-filtros/?campo=${campos[i]}`);
-                    const data = await response.json();
-                    valoresFiltros[nombres[i]] = data.valores || [];
-                    renderizarOpcionesFiltro(nombres[i], data.valores || []);
-                } catch (error) {
-                    console.error(`Error cargando filtro ${nombres[i]}:`, error);
+        function mostrarToast(mensaje, tipo='success') {
+            const t = document.getElementById('toast');
+            t.textContent = mensaje;
+            t.className = `show ${tipo}`;
+            clearTimeout(t._timer);
+            t._timer = setTimeout(() => t.className = '', 3200);
+        }
+
+        function getCsrfToken() {
+            const m = document.cookie.match(/csrftoken=([^;]+)/);
+            return m ? m[1] : '';
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           MODALES
+        ══════════════════════════════════════════════════════════════════════ */
+        function abrirModal(id)  { document.getElementById(id).classList.add('active'); }
+        function cerrarModal(id) { document.getElementById(id).classList.remove('active'); }
+        function cerrarModalSiOverlay(e, id) {
+            if (e.target === document.getElementById(id)) cerrarModal(id);
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           CONVERSIÓN SERIAL EXCEL → FECHA LEGIBLE
+        ══════════════════════════════════════════════════════════════════════ */
+        function excelSerialAFecha(serial) {
+            if (!serial && serial !== 0) return '-';
+            const n = parseInt(serial, 10);
+            if (isNaN(n) || n < 1) return serial;
+            const fecha = new Date(Date.UTC(1899, 11, 30) + n * 86400000);
+            return fecha.toLocaleDateString('es-CO', {
+                day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC'
+            });
+        }
+
+        /** Convierte serial Excel a objeto Date UTC */
+        function excelSerialADateObj(serial) {
+            if (!serial && serial !== 0) return null;
+            const n = parseInt(serial, 10);
+            if (isNaN(n) || n < 1) return null;
+            return new Date(Date.UTC(1899, 11, 30) + n * 86400000);
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           ▼ NUEVO: FILTROS DENTRO DEL MODAL DE REGISTROS
+        ══════════════════════════════════════════════════════════════════════ */
+        /* ══ Multi-select dropdowns del modal de registros ════════════════════════ */
+        const _rmState = { fecha: new Set(), zona: new Set(), ccosto: new Set() };
+
+        function _rmToggle(tipo) {
+            ['fecha','zona','ccosto'].forEach(t => {
+                if (t !== tipo) document.getElementById(`rm-panel-${t}`).classList.remove('open');
+            });
+            document.getElementById(`rm-panel-${tipo}`).classList.toggle('open');
+        }
+
+        function _rmFiltrarOpciones(tipo) {
+            const q = document.getElementById(`rm-search-${tipo}`).value.toLowerCase();
+            document.querySelectorAll(`#rm-opts-${tipo} .rm-option`).forEach(op => {
+                op.style.display = op.dataset.val.toLowerCase().includes(q) ? '' : 'none';
+            });
+        }
+
+        function _rmSelTodos(tipo, checked) {
+            document.querySelectorAll(`#rm-opts-${tipo} .rm-option`).forEach(op => {
+                if (op.style.display !== 'none') {
+                    op.querySelector('input').checked = checked;
+                    checked
+                        ? _rmState[tipo].add(op.dataset.val)
+                        : _rmState[tipo].delete(op.dataset.val);
                 }
+            });
+            _rmActualizarBoton(tipo);
+        }
+
+        function _rmOnCheck(tipo, val, checked) {
+            checked ? _rmState[tipo].add(val) : _rmState[tipo].delete(val);
+            _rmActualizarBoton(tipo);
+            _contarFiltrosActivos();
+        }
+
+        function _rmActualizarBoton(tipo) {
+            const total = document.querySelectorAll(`#rm-opts-${tipo} .rm-option`).length;
+            const sel   = _rmState[tipo].size;
+            const span  = document.getElementById(`rmd-${tipo}-text`);
+            if (sel === 0 || sel === total) {
+                span.innerHTML = tipo === 'ccosto' ? 'Todos' : 'Todas';
+            } else {
+                span.innerHTML = `<span class="rm-selected-badge">${sel}</span> seleccionados`;
+            }
+            _contarFiltrosActivos();
+        }
+
+        function _poblarSelectsFiltros(registros) {
+            const zonas  = [...new Set(registros.map(r => r.mcnzona  ).filter(Boolean))].sort();
+            const costos = [...new Set(registros.map(r => r.mcnccosto).filter(Boolean))].sort();
+            _rmPoblar('zona',   zonas);
+            _rmPoblar('ccosto', costos);
+        }
+
+        function _poblarSelectFecha(registros) {
+            const fechas = [...new Set(
+                registros.map(r => r.mcnfecha).filter(f => f !== null && f !== undefined)
+            )].sort((a, b) => a - b);
+            _rmPoblar('fecha', fechas.map(f => ({ val: String(f), label: excelSerialAFecha(f) })));
+        }
+
+        function _rmPoblar(tipo, valores) {
+            const container = document.getElementById(`rm-opts-${tipo}`);
+            const selActual = new Set(_rmState[tipo]);
+            _rmState[tipo].clear();
+            container.innerHTML = '';
+
+            const items = valores.map(v =>
+                typeof v === 'object' ? v : { val: String(v), label: String(v) }
+            );
+
+            items.forEach(({ val, label }) => {
+                const checked = selActual.has(val);
+                if (checked) _rmState[tipo].add(val);
+
+                const div = document.createElement('div');
+                div.className = 'rm-option';
+                div.dataset.val = val;
+                div.innerHTML = `<input type="checkbox" ${checked ? 'checked' : ''}
+                    onchange="_rmOnCheck('${tipo}','${val.replace(/'/g,"\\'")}',this.checked)">
+                    <span>${label}</span>`;
+                container.appendChild(div);
+            });
+
+            _rmActualizarBoton(tipo);
+        }
+
+        function _contarFiltrosActivos() {
+            let activos = 0;
+            ['fecha','zona','ccosto'].forEach(tipo => {
+                const total = document.querySelectorAll(`#rm-opts-${tipo} .rm-option`).length;
+                if (_rmState[tipo].size > 0 && _rmState[tipo].size < total) activos++;
+            });
+            const badge = document.getElementById('regFiltrosBadge');
+            if (activos > 0) {
+                badge.textContent = `${activos} activo${activos > 1 ? 's' : ''}`;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
             }
         }
 
-        function renderizarOpcionesFiltro(tipo, valores) {
+        function aplicarFiltrosRegistros() {
+            const fechasSel  = _rmState.fecha;
+            const zonasSel   = _rmState.zona;
+            const ccostosSel = _rmState.ccosto;
+
+            const totalFechas  = document.querySelectorAll('#rm-opts-fecha  .rm-option').length;
+            const totalZonas   = document.querySelectorAll('#rm-opts-zona   .rm-option').length;
+            const totalCcostos = document.querySelectorAll('#rm-opts-ccosto .rm-option').length;
+
+            _registrosFiltrados = _registrosCargados.filter(r => {
+                if (fechasSel.size > 0  && fechasSel.size < totalFechas  && !fechasSel.has(String(r.mcnfecha)))  return false;
+                if (zonasSel.size > 0   && zonasSel.size < totalZonas    && !zonasSel.has(r.mcnzona   || ''))    return false;
+                if (ccostosSel.size > 0 && ccostosSel.size < totalCcostos && !ccostosSel.has(r.mcnccosto || '')) return false;
+                return true;
+            });
+
+            _contarFiltrosActivos();
+            _cerrarTodosRmPanels();
+            _renderizarRegistros(_registrosFiltrados, 1);
+        }
+
+        function limpiarFiltrosRegistros() {
+            ['fecha','zona','ccosto'].forEach(tipo => {
+                _rmState[tipo].clear();
+                document.querySelectorAll(`#rm-opts-${tipo} .rm-option input`).forEach(cb => cb.checked = false);
+                _rmActualizarBoton(tipo);
+            });
+            ['fecha','zona','ccosto'].forEach(t => document.getElementById(`rm-search-${t}`).value = '');
+            _registrosFiltrados = [..._registrosCargados];
+            _contarFiltrosActivos();
+            _renderizarRegistros(_registrosFiltrados, 1);
+        }
+
+        function _limpiarFiltrosLocalesSinRender() {
+            ['fecha','zona','ccosto'].forEach(tipo => {
+                _rmState[tipo].clear();
+                document.getElementById(`rm-opts-${tipo}`).innerHTML = '';
+                _rmActualizarBoton(tipo);
+            });
+            document.getElementById('regFiltrosBadge').style.display = 'none';
+        }
+
+        function _cerrarTodosRmPanels() {
+            ['fecha','zona','ccosto'].forEach(t => document.getElementById(`rm-panel-${t}`).classList.remove('open'));
+        }
+
+        /* Cerrar panels al click fuera */
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.rm-dropdown')) _cerrarTodosRmPanels();
+            if (!e.target.closest('.filter-dropdown'))
+                document.querySelectorAll('.filter-panel').forEach(p => p.classList.remove('show'));
+        });
+
+        /* ══════════════════════════════════════════════════════════════════════
+           CARGAR REGISTROS DE UN DETALLE
+        ══════════════════════════════════════════════════════════════════════ */
+        const REG_POR_PAGINA = 15;
+
+        async function verRegistrosDetalle(ctanombre, vinnombre, mcndetalle) {
+            contextoPaginacion = { ctanombre, vinnombre, mcndetalle, pagina: 1 };
+            document.getElementById('modalRegistrosTitulo').textContent =
+                `📋 Registros — ${mcndetalle}`;
+            document.getElementById('modalRegistrosBody').innerHTML =
+                `<div class="modal-loading"><div class="mini-spinner"></div><span>Cargando...</span></div>`;
+            // Limpiar filtros locales al abrir el modal
+            _limpiarFiltrosLocalesSinRender();
+            abrirModal('modalRegistros');
+            await _cargarPaginaRegistros(1);
+        }
+
+        async function _cargarPaginaRegistros(pagina) {
+            if (contextoPaginacion._nivel) {
+                await _cargarPaginaRegistrosNivel(pagina);
+                return;
+            }
+
+            const { ctanombre, vinnombre, mcndetalle } = contextoPaginacion;
+            contextoPaginacion.pagina = pagina;
+
+            const params = new URLSearchParams({ ctanombre, vinnombre, mcndetalle });
+            if (filtrosActivos.cuenta.length)   params.set('mcncuenta',  filtrosActivos.cuenta.join(','));
+            if (filtrosActivos.zona.length)     params.set('mcnzona',    filtrosActivos.zona.join(','));
+            if (filtrosActivos.destino.length)  params.set('mcndestino', filtrosActivos.destino.join(','));
+            if (filtrosActivos.costo.length)    params.set('mcnccosto',  filtrosActivos.costo.join(','));
+
+            try {
+                const resp = await fetch(`../obtener-registros-detalle/?${params}`);
+                const data = await resp.json();
+                if (data.error) { mostrarToast('Error: ' + data.error, 'error'); return; }
+
+                // ▼ Guardar en cache y poblar selects de filtros locales
+                _registrosCargados   = data.registros;
+                _registrosFiltrados  = [..._registrosCargados];
+                _poblarSelectsFiltros(_registrosCargados);
+                _poblarSelectFecha(_registrosCargados);
+
+                _renderizarRegistros(_registrosFiltrados, pagina);
+            } catch(e) {
+                mostrarToast('Error al cargar registros', 'error');
+            }
+        }
+
+        function _renderizarRegistros(registros, pagina) {
+            const total = registros.length;
+            const totalPags = Math.ceil(total / REG_POR_PAGINA) || 1;
+            const inicio = (pagina - 1) * REG_POR_PAGINA;
+            const fin    = Math.min(inicio + REG_POR_PAGINA, total);
+            const slice  = registros.slice(inicio, fin);
+
+            let html = `<p style="font-size:.82rem;color:#6b7280;margin-bottom:10px;">
+                            ${total} registro${total!==1?'s':''} encontrado${total!==1?'s':''}
+                            ${total < _registrosCargados.length
+                                ? `<span style="color:#4f46e5;font-weight:600;"> (${_registrosCargados.length} total, filtrado)</span>`
+                                : ''}
+                        </p>`;
+
+            if (total === 0) {
+                html += `<p style="text-align:center;color:#9ca3af;padding:24px;">Sin registros para los filtros aplicados.</p>`;
+            } else {
+                html += `<div class="registros-list">`;
+                slice.forEach(reg => {
+                    const saldo = (reg.mcnvaldebi || 0) - (reg.mcnvalcred || 0);
+                    const signo = saldo >= 0 ? '+' : '';
+                    const fechaFmt = excelSerialAFecha(reg.mcnfecha);
+                    html += `
+                    <div class="registro-item" id="reg-item-${reg.id}">
+                        <div class="reg-row reg-row-top">
+                            <div class="reg-field">
+                                <span class="reg-label">Fecha</span>
+                                <span class="reg-value">${fechaFmt}</span>
+                                <span style="font-size:.68rem;color:#c4b5fd;">(serial: ${reg.mcnfecha ?? '-'})</span>
+                            </div>
+                            <div class="reg-field">
+                                <span class="reg-label">Débito / Crédito</span>
+                                <span class="reg-value">
+                                    ${formatearNumero(reg.mcnvaldebi)} /
+                                    ${formatearNumero(reg.mcnvalcred)}
+                                </span>
+                            </div>
+                            <div class="reg-field">
+                                <span class="reg-label">Saldo</span>
+                                <span class="reg-value" style="color:${saldo>=0?'#15803d':'#dc2626'}">
+                                    ${signo}${formatearNumero(saldo)}
+                                </span>
+                            </div>
+                            <div class="reg-actions">
+                                <button class="btn-edit"   onclick="abrirEditar(${JSON.stringify(reg).replace(/"/g,'&quot;')})">✏️ Editar</button>
+                                <button class="btn-delete" onclick="abrirEliminar(${reg.id},'${(reg.mcndetalle||'').replace(/'/g,"\\'")}')">🗑️ Eliminar</button>
+                            </div>
+                        </div>
+                        <div class="reg-row reg-row-bottom">
+                            <div class="reg-field">
+                                <span class="reg-label">Zona</span>
+                                <span class="reg-value">${reg.mcnzona || '-'}</span>
+                            </div>
+                            <div class="reg-field">
+                                <span class="reg-label">Centro de Costo</span>
+                                <span class="reg-value">${reg.mcnccosto || '-'}</span>
+                            </div>
+                            <div class="reg-field">
+                                <span class="reg-label">Destino</span>
+                                <span class="reg-value">${reg.mcndestino || '-'}</span>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                html += `</div>`;
+
+                if (totalPags > 1) {
+                    html += `<div class="reg-pagination">
+                        <span>Página ${pagina} de ${totalPags}</span>`;
+                    if (pagina > 1) html += `<button onclick="_irPaginaFiltrada(${pagina-1})">◀ Ant.</button>`;
+                    for (let p = Math.max(1,pagina-2); p <= Math.min(totalPags,pagina+2); p++) {
+                        html += `<button class="${p===pagina?'active':''}" onclick="_irPaginaFiltrada(${p})">${p}</button>`;
+                    }
+                    if (pagina < totalPags) html += `<button onclick="_irPaginaFiltrada(${pagina+1})">Sig. ▶</button>`;
+                    html += `</div>`;
+                }
+            }
+
+            document.getElementById('modalRegistrosBody').innerHTML = html;
+        }
+
+        /** Paginación sobre el conjunto filtrado actual */
+        function _irPaginaFiltrada(pagina) {
+            contextoPaginacion.pagina = pagina;
+            _renderizarRegistros(_registrosFiltrados, pagina);
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           FORMATO TIPO EXCEL PARA CAMPOS NUMÉRICOS
+        ══════════════════════════════════════════════════════════════════════ */
+        const FMT_ES = new Intl.NumberFormat('es-CO', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        function aplicarFormato(input) {
+            const raw = input.dataset.rawValue ?? input.value;
+            const num = parseFloat(String(raw).replace(/[^\d.-]/g, ''));
+            if (!isNaN(num)) {
+                input.dataset.rawValue = num;
+                input.value = FMT_ES.format(num);
+                input.style.color = num < 0 ? '#dc2626' : '#111';
+            }
+        }
+
+        function quitarFormato(input) {
+            const raw = input.dataset.rawValue ?? input.value;
+            const num = parseFloat(String(raw).replace(/[^\d.-]/g, ''));
+            input.value = isNaN(num) ? '' : num;
+            input.select();
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           EDITAR REGISTRO
+           ▼ MODIFICADO: ahora se muestran zona, ccosto editables + fecha legible
+        ══════════════════════════════════════════════════════════════════════ */
+        function abrirEditar(reg) {
+            registroEnEdicion = reg;
+            document.getElementById('edit-mcnfecha').value          = reg.mcnfecha   ?? '';
+            // ▼ Mostrar fecha legible en campo de solo lectura
+            document.getElementById('edit-mcnfecha-legible').value  = excelSerialAFecha(reg.mcnfecha);
+            document.getElementById('edit-mcncuenta').value         = reg.mcncuenta  ?? '';
+            document.getElementById('edit-mcnzona').value           = reg.mcnzona    ?? '';   // ▼ editable
+            document.getElementById('edit-mcndestino').value        = reg.mcndestino ?? '';
+            document.getElementById('edit-mcnccosto').value         = reg.mcnccosto  ?? '';   // ▼ editable
+            document.getElementById('edit-mcndetalle').value        = reg.mcndetalle ?? '';
+            document.getElementById('edit-ctanombre').value         = reg.ctanombre  ?? '';
+            document.getElementById('edit-vinnombre').value         = reg.vinnombre  ?? '';
+
+            const debi = document.getElementById('edit-mcnvaldebi');
+            const cred = document.getElementById('edit-mcnvalcred');
+            debi.dataset.rawValue = reg.mcnvaldebi ?? 0;
+            cred.dataset.rawValue = reg.mcnvalcred ?? 0;
+            aplicarFormato(debi);
+            aplicarFormato(cred);
+
+            abrirModal('modalEditar');
+        }
+
+        async function guardarEdicion() {
+            if (!registroEnEdicion) return;
+
+            const payload = {
+                mcnfecha:   document.getElementById('edit-mcnfecha').value,
+                mcncuenta:  document.getElementById('edit-mcncuenta').value,
+                mcnzona:    document.getElementById('edit-mcnzona').value,           // ▼ incluido
+                mcndestino: document.getElementById('edit-mcndestino').value,
+                mcnccosto:  document.getElementById('edit-mcnccosto').value,         // ▼ incluido
+                mcnvaldebi: parseFloat(document.getElementById('edit-mcnvaldebi').dataset.rawValue) || 0,
+                mcnvalcred: parseFloat(document.getElementById('edit-mcnvalcred').dataset.rawValue) || 0,
+                mcndetalle: document.getElementById('edit-mcndetalle').value,
+                ctanombre:  document.getElementById('edit-ctanombre').value,
+                vinnombre:  document.getElementById('edit-vinnombre').value,
+            };
+
+            try {
+                const resp = await fetch(`../editar-registro/${registroEnEdicion.id}/`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken(),
+                    },
+                    body: JSON.stringify(payload),
+                });
+                const data = await resp.json();
+                if (!resp.ok || data.error) {
+                    mostrarToast('Error al guardar: ' + (data.error || resp.statusText), 'error');
+                    return;
+                }
+                mostrarToast('✅ Registro actualizado correctamente');
+                cerrarModal('modalEditar');
+                await _cargarPaginaRegistros(contextoPaginacion.pagina);
+                cargarDatos();
+            } catch(e) {
+                mostrarToast('Error de red al guardar', 'error');
+            }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           ELIMINAR REGISTRO
+        ══════════════════════════════════════════════════════════════════════ */
+        function abrirEliminar(id, detalle) {
+            registroAEliminar = { id, detalle };
+            document.getElementById('eliminarDetalle').textContent =
+                `Registro ID: ${id} — ${detalle}`;
+            abrirModal('modalEliminar');
+        }
+
+        async function confirmarEliminar() {
+            if (!registroAEliminar) return;
+
+            try {
+                const resp = await fetch(`../eliminar-registro/${registroAEliminar.id}/`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRFToken': getCsrfToken() },
+                });
+                const data = await resp.json();
+                if (!resp.ok || data.error) {
+                    mostrarToast('Error al eliminar: ' + (data.error || resp.statusText), 'error');
+                    return;
+                }
+                mostrarToast('🗑️ Registro eliminado correctamente');
+                cerrarModal('modalEliminar');
+                await _cargarPaginaRegistros(contextoPaginacion.pagina);
+                cargarDatos();
+            } catch(e) {
+                mostrarToast('Error de red al eliminar', 'error');
+            }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           VER REGISTROS DE CUENTA / VÍNCULO
+        ══════════════════════════════════════════════════════════════════════ */
+        async function verRegistrosNivel(nivel, ctanombre, vinnombre) {
+            const titulo = nivel === 'cuenta'
+                ? `📋 Registros — ${ctanombre}`
+                : `📋 Registros — ${vinnombre}`;
+
+            contextoPaginacion = { _nivel: nivel, ctanombre, vinnombre, pagina: 1 };
+            document.getElementById('modalRegistrosTitulo').textContent = titulo;
+            document.getElementById('modalRegistrosBody').innerHTML =
+                `<div class="modal-loading"><div class="mini-spinner"></div><span>Cargando...</span></div>`;
+            _limpiarFiltrosLocalesSinRender();
+            abrirModal('modalRegistros');
+
+            await _cargarPaginaRegistrosNivel(1);
+        }
+
+        async function _cargarPaginaRegistrosNivel(pagina) {
+            const { _nivel, ctanombre, vinnombre } = contextoPaginacion;
+            contextoPaginacion.pagina = pagina;
+
+            const params = new URLSearchParams({ nivel: _nivel, ctanombre });
+            if (_nivel === 'vinculo') params.set('vinnombre', vinnombre);
+
+            if (filtrosActivos.cuenta.length)   params.set('mcncuenta',  filtrosActivos.cuenta.join(','));
+            if (filtrosActivos.zona.length)     params.set('mcnzona',    filtrosActivos.zona.join(','));
+            if (filtrosActivos.destino.length)  params.set('mcndestino', filtrosActivos.destino.join(','));
+            if (filtrosActivos.costo.length)    params.set('mcnccosto',  filtrosActivos.costo.join(','));
+
+            try {
+                const resp = await fetch(`../obtener-registros-nivel/?${params}`);
+                const data = await resp.json();
+                if (data.error) { mostrarToast('Error: ' + data.error, 'error'); return; }
+
+                // ▼ Guardar en cache y poblar selects
+                _registrosCargados  = data.registros;
+                _registrosFiltrados = [..._registrosCargados];
+                _poblarSelectsFiltros(_registrosCargados);
+                _poblarSelectFecha(_registrosCargados);
+
+                _renderizarRegistros(_registrosFiltrados, pagina);
+            } catch(e) {
+                mostrarToast('Error al cargar registros', 'error');
+            }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           RENOMBRAR CUENTA / VÍNCULO
+        ══════════════════════════════════════════════════════════════════════ */
+        let _renombrarCtx = null;
+
+        function abrirRenombrar(nivel, ctanombre, vinnombre) {
+            _renombrarCtx = { nivel, ctanombre, vinnombre };
+
+            const esCuenta = nivel === 'cuenta';
+            document.getElementById('modalRenombrarTitulo').textContent =
+                esCuenta ? '✏️ Renombrar Cuenta' : '✏️ Renombrar Vínculo';
+            document.getElementById('renombrarLabelActual').textContent =
+                esCuenta ? 'Nombre actual de la cuenta' : 'Nombre actual del vínculo';
+            document.getElementById('renombrarLabelNuevo').textContent =
+                esCuenta ? 'Nuevo nombre de la cuenta' : 'Nuevo nombre del vínculo';
+            document.getElementById('renombrar-actual').value =
+                esCuenta ? ctanombre : vinnombre;
+            document.getElementById('renombrar-nuevo').value = '';
+
+            abrirModal('modalRenombrar');
+            setTimeout(() => document.getElementById('renombrar-nuevo').focus(), 150);
+        }
+
+        async function confirmarRenombrar() {
+            if (!_renombrarCtx) return;
+            const nuevo = document.getElementById('renombrar-nuevo').value.trim();
+            if (!nuevo) { mostrarToast('Ingresa el nuevo nombre', 'error'); return; }
+
+            const { nivel, ctanombre, vinnombre } = _renombrarCtx;
+            const payload = {
+                nivel,
+                ctanombre_actual: ctanombre,
+                ...(nivel === 'cuenta'
+                    ? { ctanombre_nuevo: nuevo }
+                    : { vinnombre_actual: vinnombre, vinnombre_nuevo: nuevo })
+            };
+
+            try {
+                const resp = await fetch('../renombrar-nivel/', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken(),
+                    },
+                    body: JSON.stringify(payload),
+                });
+                const data = await resp.json();
+                if (!resp.ok || data.error) {
+                    mostrarToast('Error: ' + (data.error || resp.statusText), 'error');
+                    return;
+                }
+                mostrarToast(`✅ ${data.actualizados} registros actualizados`);
+                cerrarModal('modalRenombrar');
+                cargarDatos();
+            } catch(e) {
+                mostrarToast('Error de red al renombrar', 'error');
+            }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           ELIMINAR NIVEL (cuenta completa o vínculo completo)
+        ══════════════════════════════════════════════════════════════════════ */
+        let _eliminarNivelCtx = null;
+
+        function abrirEliminarNivel(nivel, ctanombre, vinnombre) {
+            _eliminarNivelCtx = { nivel, ctanombre, vinnombre };
+
+            const esCuenta = nivel === 'cuenta';
+            const nombre   = esCuenta ? ctanombre : vinnombre;
+            const tipo     = esCuenta ? 'la cuenta' : 'el vínculo';
+
+            document.getElementById('modalEliminarNivelTitulo').textContent =
+                esCuenta ? '🗑️ Eliminar Cuenta' : '🗑️ Eliminar Vínculo';
+            document.getElementById('eliminarNivelMensaje').innerHTML =
+                `¿Eliminar todos los registros de ${tipo} <strong>"${nombre}"</strong>?`;
+            document.getElementById('eliminarNivelConteo').textContent =
+                esCuenta
+                    ? `Se eliminarán todos sus vínculos y detalles asociados.`
+                    : `Se eliminarán todos los detalles de este vínculo dentro de "${ctanombre}".`;
+
+            abrirModal('modalEliminarNivel');
+        }
+
+        async function confirmarEliminarNivel() {
+            if (!_eliminarNivelCtx) return;
+
+            const { nivel, ctanombre, vinnombre } = _eliminarNivelCtx;
+            const params = new URLSearchParams({ nivel, ctanombre });
+            if (nivel === 'vinculo') params.set('vinnombre', vinnombre);
+
+            try {
+                const resp = await fetch(`../eliminar-nivel/?${params}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRFToken': getCsrfToken() },
+                });
+                const data = await resp.json();
+                if (!resp.ok || data.error) {
+                    mostrarToast('Error: ' + (data.error || resp.statusText), 'error');
+                    return;
+                }
+                mostrarToast(`🗑️ ${data.eliminados} registros eliminados`);
+                cerrarModal('modalEliminarNivel');
+                await _actualizarTodosFiltros();
+                cargarDatos();
+            } catch(e) {
+                mostrarToast('Error de red al eliminar', 'error');
+            }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           FILTROS DINÁMICOS EN CASCADA (tabla principal)
+        ══════════════════════════════════════════════════════════════════════ */
+        function _paramsFiltrosActivos(excluir = null) {
+            const p = new URLSearchParams();
+            if (excluir !== 'cuenta'     && filtrosActivos.cuenta.length)     p.set('mcncuenta',  filtrosActivos.cuenta.join(','));
+            if (excluir !== 'zona'       && filtrosActivos.zona.length)       p.set('mcnzona',    filtrosActivos.zona.join(','));
+            if (excluir !== 'destino'    && filtrosActivos.destino.length)    p.set('mcndestino', filtrosActivos.destino.join(','));
+            if (excluir !== 'costo'      && filtrosActivos.costo.length)      p.set('mcnccosto',  filtrosActivos.costo.join(','));
+            if (excluir !== 'ctanombre'  && filtrosActivos.ctanombre.length)  p.set('ctanombre',  filtrosActivos.ctanombre.join(','));
+            return p;
+        }
+
+        async function _actualizarOpcionesFiltro(tipo) {
+            if (tipo === 'ctanombre') {
+                _actualizarOpcionesFiltroCtanombre();
+                return;
+            }
+            const campoMap = { cuenta: 'mcncuenta', zona: 'mcnzona', destino: 'mcndestino', costo: 'mcnccosto' };
+            const campo = campoMap[tipo];
+            const seleccionadosAntes = new Set(filtrosActivos[tipo]);
+
+            const params = _paramsFiltrosActivos(tipo);
+            params.set('campo', campo);
+
+            try {
+                const r = await fetch(`../obtener-valores-filtros/?${params}`);
+                const d = await r.json();
+                const nuevosValores = d.valores || [];
+                valoresFiltros[tipo] = nuevosValores;
+                renderizarOpcionesFiltro(tipo, nuevosValores, seleccionadosAntes);
+                filtrosActivos[tipo] = filtrosActivos[tipo].filter(v => nuevosValores.includes(v));
+                _actualizarTextoBoton(tipo);
+                actualizarContador(tipo);
+            } catch(e) {
+                console.error(`Error actualizando filtro ${tipo}:`, e);
+            }
+        }
+
+        async function _actualizarOpcionesFiltroCtanombre() {
+            const seleccionadosAntes = new Set(filtrosActivos.ctanombre);
+            const params = _paramsFiltrosActivos('ctanombre');
+            params.set('campo', 'ctanombre');
+            try {
+                const r = await fetch(`../obtener-valores-filtros/?${params}`);
+                const d = await r.json();
+                const valores = d.valores || [];
+                valoresFiltros.ctanombre = valores;
+                renderizarOpcionesFiltro('ctanombre', valores, seleccionadosAntes);
+                filtrosActivos.ctanombre = filtrosActivos.ctanombre.filter(v => valores.includes(v));
+                _actualizarTextoBoton('ctanombre');
+                actualizarContador('ctanombre');
+            } catch(e) {
+                console.error('Error actualizando filtro ctanombre:', e);
+            }
+        }
+
+        async function _actualizarTodosFiltros() {
+            await Promise.all(
+                ['cuenta', 'zona', 'destino', 'costo'].map(_actualizarOpcionesFiltro)
+                .concat([_actualizarOpcionesFiltroCtanombre()])
+            );
+        }
+
+        async function cargarValoresFiltros() {
+            await _actualizarTodosFiltros();
+        }
+
+        function _actualizarTextoBoton(tipo) {
+            const total = valoresFiltros[tipo].length;
+            const sel   = filtrosActivos[tipo].length;
+            document.getElementById(`${tipo}-text`).textContent =
+                (sel === 0 || sel === total) ? 'Todos' : `${sel} seleccionados`;
+        }
+
+        function renderizarOpcionesFiltro(tipo, valores, seleccionadosAntes = new Set()) {
             const container = document.getElementById(`options-${tipo}`);
             container.innerHTML = '';
-            
             valores.forEach(valor => {
                 const label = document.createElement('label');
                 label.className = 'filter-option';
-                label.innerHTML = `
-                    <input type="checkbox" value="${valor}" onchange="actualizarContador('${tipo}')">
-                    <span>${valor}</span>
-                `;
+                const checked = seleccionadosAntes.has(valor) ? 'checked' : '';
+                label.innerHTML = `<input type="checkbox" value="${valor}" ${checked} onchange="actualizarContador('${tipo}')"><span>${valor}</span>`;
                 container.appendChild(label);
             });
         }
 
+        async function aplicarFiltro(tipo) {
+            filtrosActivos[tipo] = Array.from(
+                document.querySelectorAll(`#options-${tipo} input[type="checkbox"]:checked`)
+            ).map(cb => cb.value);
+
+            _actualizarTextoBoton(tipo);
+            document.getElementById(`filter-${tipo}`).classList.remove('show');
+            await _actualizarTodosFiltros();
+            cargarDatos(true);
+        }
+
+        async function limpiarFiltro(tipo) {
+            filtrosActivos[tipo] = [];
+            document.querySelectorAll(`#options-${tipo} input[type="checkbox"]`).forEach(cb => cb.checked = false);
+            document.getElementById(`${tipo}-text`).textContent = 'Todos';
+            document.getElementById(`filter-${tipo}`).classList.remove('show');
+            await _actualizarTodosFiltros();
+            cargarDatos(true);
+        }
+
         function toggleFilter(tipo) {
-            // Cerrar otros filtros
-            ['cuenta', 'zona', 'destino', 'costo'].forEach(t => {
-                if (t !== tipo) {
-                    document.getElementById(`filter-${t}`).classList.remove('show');
-                }
+            ['cuenta','zona','destino','costo','ctanombre'].forEach(t => {
+                if (t !== tipo) document.getElementById(`filter-${t}`).classList.remove('show');
             });
-            
-            const panel = document.getElementById(`filter-${tipo}`);
-            panel.classList.toggle('show');
+            document.getElementById(`filter-${tipo}`).classList.toggle('show');
         }
 
         function filtrarOpciones(tipo) {
             const busqueda = document.getElementById(`search-${tipo}`).value.toLowerCase();
-            const opciones = document.querySelectorAll(`#options-${tipo} .filter-option`);
-            
-            opciones.forEach(opcion => {
-                const texto = opcion.textContent.toLowerCase();
-                opcion.style.display = texto.includes(busqueda) ? '' : 'none';
+            document.querySelectorAll(`#options-${tipo} .filter-option`).forEach(op => {
+                op.style.display = op.textContent.toLowerCase().includes(busqueda) ? '' : 'none';
             });
         }
 
         function seleccionarTodos(tipo, checked) {
-            const checkboxes = document.querySelectorAll(`#options-${tipo} input[type="checkbox"]`);
-            checkboxes.forEach(cb => {
-                if (cb.parentElement.style.display !== 'none') {
-                    cb.checked = checked;
-                }
+            document.querySelectorAll(`#options-${tipo} input[type="checkbox"]`).forEach(cb => {
+                if (cb.parentElement.style.display !== 'none') cb.checked = checked;
             });
             actualizarContador(tipo);
         }
 
         function actualizarContador(tipo) {
-            const checkboxes = document.querySelectorAll(`#options-${tipo} input[type="checkbox"]:checked`);
-            const selectAll = document.querySelector(`#filter-${tipo} .select-all`);
-            const total = document.querySelectorAll(`#options-${tipo} input[type="checkbox"]`).length;
-            
-            selectAll.checked = checkboxes.length === total;
-            selectAll.indeterminate = checkboxes.length > 0 && checkboxes.length < total;
+            const checked = document.querySelectorAll(`#options-${tipo} input[type="checkbox"]:checked`);
+            const total   = document.querySelectorAll(`#options-${tipo} input[type="checkbox"]`).length;
+            const sa = document.querySelector(`#filter-${tipo} .select-all`);
+            sa.checked = checked.length === total;
+            sa.indeterminate = checked.length > 0 && checked.length < total;
         }
 
-        function aplicarFiltro(tipo) {
-            const checkboxes = document.querySelectorAll(`#options-${tipo} input[type="checkbox"]:checked`);
-            filtrosActivos[tipo] = Array.from(checkboxes).map(cb => cb.value);
-            
-            const texto = filtrosActivos[tipo].length === 0 || filtrosActivos[tipo].length === valoresFiltros[tipo].length
-                ? 'Todos'
-                : `${filtrosActivos[tipo].length} seleccionados`;
-            
-            document.getElementById(`${tipo}-text`).textContent = texto;
-            document.getElementById(`filter-${tipo}`).classList.remove('show');
-            
-            cargarDatos();
-        }
-
-        function limpiarFiltro(tipo) {
-            filtrosActivos[tipo] = [];
-            const checkboxes = document.querySelectorAll(`#options-${tipo} input[type="checkbox"]`);
-            checkboxes.forEach(cb => cb.checked = false);
-            document.getElementById(`${tipo}-text`).textContent = 'Todos';
-            document.getElementById(`filter-${tipo}`).classList.remove('show');
-            
-            cargarDatos();
-        }
-
+        /* ══════════════════════════════════════════════════════════════════════
+           CARGA DE DATOS
+        ══════════════════════════════════════════════════════════════════════ */
         function construirURLConFiltros() {
-            let url = `../obtener-tabla-dinamica-flexible/?group_by=ctanombre,vinnombre,mcndetalle`;
-            
-            if (filtrosActivos.cuenta.length > 0 && filtrosActivos.cuenta.length < valoresFiltros.cuenta.length) {
+            let url = `../obtener-tabla-dinamica-flexible/?group_by=ctanombre,vinnombre,mcndetalle,mcncuenta`;
+            if (filtrosActivos.cuenta.length    && filtrosActivos.cuenta.length    < valoresFiltros.cuenta.length)
                 url += `&mcncuenta=${filtrosActivos.cuenta.join(',')}`;
-            }
-            if (filtrosActivos.zona.length > 0 && filtrosActivos.zona.length < valoresFiltros.zona.length) {
+            if (filtrosActivos.zona.length      && filtrosActivos.zona.length      < valoresFiltros.zona.length)
                 url += `&mcnzona=${filtrosActivos.zona.join(',')}`;
-            }
-            if (filtrosActivos.destino.length > 0 && filtrosActivos.destino.length < valoresFiltros.destino.length) {
+            if (filtrosActivos.destino.length   && filtrosActivos.destino.length   < valoresFiltros.destino.length)
                 url += `&mcndestino=${filtrosActivos.destino.join(',')}`;
-            }
-            if (filtrosActivos.costo.length > 0 && filtrosActivos.costo.length < valoresFiltros.costo.length) {
+            if (filtrosActivos.costo.length     && filtrosActivos.costo.length     < valoresFiltros.costo.length)
                 url += `&mcnccosto=${filtrosActivos.costo.join(',')}`;
-            }
-            
+            if (filtrosActivos.ctanombre.length && filtrosActivos.ctanombre.length < valoresFiltros.ctanombre.length)
+                url += `&ctanombre=${filtrosActivos.ctanombre.join(',')}`;
             return url;
         }
 
-        function cargarDatos() {
-            const url = construirURLConFiltros();
-            
+        function cargarDatos(colapsar = false) {
             document.getElementById('loading').style.display = 'block';
-            
-            fetch(url)
-                .then(response => response.json())
+            fetch(construirURLConFiltros())
+                .then(r => r.json())
                 .then(data => {
                     document.getElementById('loading').style.display = 'none';
-                    
-                    if (data.error) {
-                        alert('Error: ' + data.error);
-                        return;
-                    }
-                    
+                    if (data.error) { alert('Error: ' + data.error); return; }
                     datosGlobales = data.data;
-                    procesarYMostrarDatos(data.data);
-                    calcularEstadisticas(data.data);
+                    procesarYMostrarDatos(datosGlobales, colapsar);
+                    calcularEstadisticas(datosGlobales);
                 })
-                .catch(error => {
+                .catch(e => {
                     document.getElementById('loading').style.display = 'none';
-                    console.error('Error:', error);
-                    alert('Error al cargar los datos: ' + error.message);
+                    alert('Error al cargar los datos: ' + e.message);
                 });
         }
 
-        function procesarYMostrarDatos(datos) {
+        /* ══════════════════════════════════════════════════════════════════════
+           RENDERIZADO DE LA TABLA
+        ══════════════════════════════════════════════════════════════════════ */
+        function procesarYMostrarDatos(datos, colapsar = false) {
             const jerarquia = {};
-            
             datos.forEach(row => {
-                const cuenta = row.ctanombre || 'SIN CUENTA';
-                const vinculo = row.vinnombre || 'SIN VINCULO';
+                const cuenta  = row.ctanombre  || 'SIN CUENTA';
+                const vinculo = row.vinnombre  || 'SIN VINCULO';
                 const detalle = row.mcndetalle || 'SIN DETALLE';
-                
-                if (!jerarquia[cuenta]) {
-                    jerarquia[cuenta] = {
-                        totales: inicializarTotales(),
-                        vinculos: {}
+                const mcncuenta = row.mcncuenta || '';
+
+                if (!jerarquia[cuenta])
+                    jerarquia[cuenta] = { totales: inicializarTotales(), vinculos: {}, mcncuenta };
+                if (mcncuenta && !jerarquia[cuenta].mcncuentas)
+                    jerarquia[cuenta].mcncuentas = new Set();
+                if (mcncuenta) jerarquia[cuenta].mcncuentas.add(mcncuenta);
+
+                if (!jerarquia[cuenta].vinculos[vinculo])
+                    jerarquia[cuenta].vinculos[vinculo] = { totales: inicializarTotales(), detalles: {}, mcncuentas: new Set() };
+                if (mcncuenta) jerarquia[cuenta].vinculos[vinculo].mcncuentas.add(mcncuenta);
+
+                if (!jerarquia[cuenta].vinculos[vinculo].detalles[detalle])
+                    jerarquia[cuenta].vinculos[vinculo].detalles[detalle] = {
+                        ...inicializarTotales(),
+                        mcncuenta
                     };
-                }
-                
-                if (!jerarquia[cuenta].vinculos[vinculo]) {
-                    jerarquia[cuenta].vinculos[vinculo] = {
-                        totales: inicializarTotales(),
-                        detalles: {}
-                    };
-                }
-                
-                if (!jerarquia[cuenta].vinculos[vinculo].detalles[detalle]) {
-                    jerarquia[cuenta].vinculos[vinculo].detalles[detalle] = inicializarTotales();
-                }
-                
+
                 MESES.forEach(mes => {
-                    const valor = row[mes] || 0;
-                    jerarquia[cuenta].totales[mes] += valor;
-                    jerarquia[cuenta].vinculos[vinculo].totales[mes] += valor;
-                    jerarquia[cuenta].vinculos[vinculo].detalles[detalle][mes] += valor;
-                    
-                    jerarquia[cuenta].totales.total += valor;
-                    jerarquia[cuenta].vinculos[vinculo].totales.total += valor;
-                    jerarquia[cuenta].vinculos[vinculo].detalles[detalle].total += valor;
+                    const v = row[mes] || 0;
+                    jerarquia[cuenta].totales[mes] += v;
+                    jerarquia[cuenta].vinculos[vinculo].totales[mes] += v;
+                    jerarquia[cuenta].vinculos[vinculo].detalles[detalle][mes] += v;
+                    jerarquia[cuenta].totales.total += v;
+                    jerarquia[cuenta].vinculos[vinculo].totales.total += v;
+                    jerarquia[cuenta].vinculos[vinculo].detalles[detalle].total += v;
                 });
             });
-            
             renderizarTabla(jerarquia);
+            jerarquiaGlobal = jerarquia;
+            if (colapsar) colapsarTodo();
         }
 
         function inicializarTotales() {
-            const totales = { total: 0 };
-            MESES.forEach(mes => totales[mes] = 0);
-            return totales;
+            const t = { total: 0 };
+            MESES.forEach(m => t[m] = 0);
+            return t;
         }
 
         function renderizarTabla(jerarquia) {
             const tbody = document.getElementById('tablaBody');
             tbody.innerHTML = '';
-            
             const totalesGenerales = inicializarTotales();
             let cuentaIndex = 0;
-            
+
             Object.keys(jerarquia).sort().forEach(cuenta => {
                 cuentaIndex++;
                 const cuentaData = jerarquia[cuenta];
                 const cuentaId = `cuenta-${cuentaIndex}`;
-                
-                MESES.forEach(mes => {
-                    totalesGenerales[mes] += cuentaData.totales[mes];
-                });
+                MESES.forEach(m => totalesGenerales[m] += cuentaData.totales[m]);
                 totalesGenerales.total += cuentaData.totales.total;
-                
+
+                const ctaEsc = cuenta.replace(/'/g, "\\'");
+
+                const mcncuentaCuenta = cuentaData.mcncuentas
+                    ? [...cuentaData.mcncuentas].sort().join(', ')
+                    : '';
                 const trCuenta = document.createElement('tr');
                 trCuenta.className = 'row-cuenta';
                 trCuenta.innerHTML = `
+                    <td class="mcncuenta-cell">${mcncuentaCuenta}</td>
                     <td class="label-cell">
                         <span class="toggle-btn" onclick="toggleNivel('${cuentaId}')">−</span>
                         ${cuenta}
                     </td>
-                    ${generarCeldasNumericas(cuentaData.totales)}
-                `;
+                    ${generarCeldasNumericas(cuentaData.totales, { nivel:'cuenta', cuenta, vinculo:'', detalle:'' })}
+                    <td class="action-cell">
+                        <button class="btn-nivel-view"   title="Ver registros"
+                            onclick="verRegistrosNivel('cuenta','${ctaEsc}','')">⋯</button>
+                        <button class="btn-nivel-edit"   title="Renombrar cuenta"
+                            onclick="abrirRenombrar('cuenta','${ctaEsc}','')">✎</button>
+                        <button class="btn-nivel-delete" title="Eliminar cuenta completa"
+                            onclick="abrirEliminarNivel('cuenta','${ctaEsc}','')">🗑</button>
+                    </td>`;
                 tbody.appendChild(trCuenta);
-                
+
                 let vinculoIndex = 0;
                 Object.keys(cuentaData.vinculos).sort().forEach(vinculo => {
                     vinculoIndex++;
                     const vinculoData = cuentaData.vinculos[vinculo];
                     const vinculoId = `${cuentaId}-vinculo-${vinculoIndex}`;
-                    
+                    const vinEsc = vinculo.replace(/'/g, "\\'");
+
+                    const mcncuentaVinculo = vinculoData.mcncuentas
+                        ? [...vinculoData.mcncuentas].sort().join(', ')
+                        : '';
                     const trVinculo = document.createElement('tr');
                     trVinculo.className = `row-vinculo nivel-${cuentaId}`;
                     trVinculo.innerHTML = `
+                        <td class="mcncuenta-cell">${mcncuentaVinculo}</td>
                         <td class="label-cell">
                             <span class="toggle-btn" onclick="toggleNivel('${vinculoId}')">−</span>
                             ${vinculo}
                         </td>
-                        ${generarCeldasNumericas(vinculoData.totales)}
-                    `;
+                        ${generarCeldasNumericas(vinculoData.totales, { nivel:'vinculo', cuenta, vinculo, detalle:'' })}
+                        <td class="action-cell">
+                            <button class="btn-nivel-view"   title="Ver registros"
+                                onclick="verRegistrosNivel('vinculo','${ctaEsc}','${vinEsc}')">⋯</button>
+                            <button class="btn-nivel-edit"   title="Renombrar vínculo"
+                                onclick="abrirRenombrar('vinculo','${ctaEsc}','${vinEsc}')">✎</button>
+                            <button class="btn-nivel-delete" title="Eliminar vínculo completo"
+                                onclick="abrirEliminarNivel('vinculo','${ctaEsc}','${vinEsc}')">🗑</button>
+                        </td>`;
                     tbody.appendChild(trVinculo);
-                    
+
                     Object.keys(vinculoData.detalles).sort().forEach(detalle => {
                         const detalleData = vinculoData.detalles[detalle];
-                        
+                        const detEsc      = detalle.replace(/'/g, "\\'");
+                        const mcncuenta = detalleData.mcncuenta || '';
+
                         const trDetalle = document.createElement('tr');
                         trDetalle.className = `row-detalle nivel-${vinculoId}`;
                         trDetalle.innerHTML = `
+                            <td class="mcncuenta-cell">${mcncuenta}</td>
                             <td class="label-cell">${detalle}</td>
-                            ${generarCeldasNumericas(detalleData)}
-                        `;
+                            ${generarCeldasNumericas(detalleData, { nivel:'detalle', cuenta, vinculo, detalle })}
+                            <td class="action-cell">
+                                <button class="btn-row-view" title="Ver y gestionar registros"
+                                    onclick="verRegistrosDetalle('${ctaEsc}','${vinEsc}','${detEsc}')">⋯</button>
+                            </td>`;
                         tbody.appendChild(trDetalle);
                     });
                 });
             });
-            
+
             const trTotal = document.createElement('tr');
             trTotal.className = 'row-total-general';
             trTotal.innerHTML = `
+                <td class="mcncuenta-cell"></td>
                 <td class="label-cell">Total general</td>
                 ${generarCeldasNumericas(totalesGenerales)}
-            `;
+                <td></td>`;
             tbody.appendChild(trTotal);
         }
 
-        function generarCeldasNumericas(totales) {
+        function generarCeldasNumericas(totales, nivelInfo) {
             let html = '';
-            MESES.forEach(mes => {
-                const valor = totales[mes];
-                const clase = valor > 0 ? 'positive' : valor < 0 ? 'negative' : '';
-                html += `<td class="number-cell ${clase}">${formatearNumero(valor)}</td>`;
+            MESES.forEach((mes, idx) => {
+                const v = totales[mes];
+                const c = v > 0 ? 'positive' : v < 0 ? 'negative' : '';
+                if (nivelInfo) {
+                    const di = encodeURIComponent(JSON.stringify(nivelInfo));
+                    html += `<td class="number-cell ${c} editable"
+                        data-mes="${mes}"
+                        data-valor="${v}"
+                        data-nivel-info="${di}"
+                        ondblclick="iniciarEdicionCelda(this)"
+                    >${formatearNumero(v)}</td>`;
+                } else {
+                    html += `<td class="number-cell ${c}">${formatearNumero(v)}</td>`;
+                }
             });
-            const total = totales.total;
-            const claseTotal = total > 0 ? 'positive' : total < 0 ? 'negative' : '';
-            html += `<td class="number-cell total-column ${claseTotal}">${formatearNumero(total)}</td>`;
+            const t = totales.total;
+            const ct = t > 0 ? 'positive' : t < 0 ? 'negative' : '';
+            html += `<td class="number-cell total-column ${ct}">${formatearNumero(t)}</td>`;
             return html;
         }
 
         function toggleNivel(nivelId) {
             const elementos = document.querySelectorAll(`.nivel-${nivelId}`);
             const btn = event.target;
-            
             elementos.forEach(el => {
-                if (el.classList.contains('hidden')) {
-                    el.classList.remove('hidden');
-                    btn.textContent = '−';
-                } else {
-                    el.classList.add('hidden');
-                    btn.textContent = '+';
-                }
+                if (el.classList.contains('hidden')) { el.classList.remove('hidden'); btn.textContent = '−'; }
+                else { el.classList.add('hidden'); btn.textContent = '+'; }
             });
         }
 
         function expandirTodo() {
-            document.querySelectorAll('[class*="nivel-"]').forEach(el => {
-                el.classList.remove('hidden');
-            });
-            document.querySelectorAll('.toggle-btn').forEach(btn => {
-                btn.textContent = '−';
-            });
+            document.querySelectorAll('tr[class*="nivel-"]').forEach(el => el.classList.remove('hidden'));
+            document.querySelectorAll('.toggle-btn').forEach(btn => btn.textContent = '−');
         }
 
         function colapsarTodo() {
-            document.querySelectorAll('[class*="nivel-"]').forEach(el => {
-                el.classList.add('hidden');
-            });
-            document.querySelectorAll('.toggle-btn').forEach(btn => {
-                btn.textContent = '+';
-            });
+            document.querySelectorAll('tr[class*="nivel-"]').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.toggle-btn').forEach(btn => btn.textContent = '+');
         }
 
         function calcularEstadisticas(datos) {
             const cuentasUnicas = new Set(datos.map(d => d.ctanombre)).size;
-            const totalAnual = datos.reduce((sum, row) => sum + (row.total || 0), 0);
-            const promedioMensual = totalAnual / 12;
-
+            const totalAnual = datos.reduce((s,r) => s + (r.total||0), 0);
             document.getElementById('totalCuentas').textContent = cuentasUnicas;
             document.getElementById('totalAnual').textContent = '$' + formatearNumero(totalAnual);
-            document.getElementById('promedioMensual').textContent = '$' + formatearNumero(promedioMensual);
+            document.getElementById('promedioMensual').textContent = '$' + formatearNumero(totalAnual/12);
         }
 
         function exportarExcel() {
-            if (datosGlobales.length === 0) {
-                alert('Primero debe cargar los datos');
-                return;
-            }
-
+            if (datosGlobales.length === 0) { alert('Primero debe cargar los datos'); return; }
             const rows = [];
             const tabla = document.getElementById('tablaDinamica');
-            
             const headers = [];
-            tabla.querySelectorAll('thead th').forEach(th => {
-                headers.push(th.textContent);
-            });
+            tabla.querySelectorAll('thead th').forEach(th => headers.push(th.textContent));
             rows.push(headers);
-            
             tabla.querySelectorAll('tbody tr:not(.hidden)').forEach(tr => {
                 const row = [];
-                tr.querySelectorAll('td').forEach(td => {
-                    let text = td.textContent.trim();
-                    text = text.replace(/[−+]/, '').trim();
-                    row.push(text);
-                });
+                tr.querySelectorAll('td').forEach(td => row.push(td.textContent.trim().replace(/[−+]/,'')));
                 rows.push(row);
             });
-            
-            const csv = rows.map(row => row.join(';')).join('\n');
-            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `tabla_dinamica_${new Date().toISOString().split('T')[0]}.csv`;
-            link.click();
+            const csv = rows.map(r => r.join(';')).join('\n');
+            const blob = new Blob(['\ufeff'+csv], { type:'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `tabla_dinamica_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
         }
 
-        // Cerrar filtros al hacer click fuera
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.filter-dropdown')) {
-                document.querySelectorAll('.filter-panel').forEach(panel => {
-                    panel.classList.remove('show');
+        /* ══════════════════════════════════════════════════════════════════════
+           REFERENCIA GLOBAL A LA JERARQUÍA
+        ══════════════════════════════════════════════════════════════════════ */
+        let jerarquiaGlobal = {};
+
+        /* ══════════════════════════════════════════════════════════════════════
+           EDICIÓN INLINE — DOBLE CLIC EN CELDA DE MES
+        ══════════════════════════════════════════════════════════════════════ */
+        let _celdaActiva = null;
+
+        function iniciarEdicionCelda(td) {
+            if (_celdaActiva && _celdaActiva !== td) cancelarEdicionCelda();
+
+            const valorActual = parseFloat(td.dataset.valor) || 0;
+            _celdaActiva = td;
+            td.classList.add('editing');
+
+            const input = document.createElement('input');
+            input.type  = 'text';
+            input.className = 'cell-input';
+            input.value = valorActual === 0 ? '' : String(valorActual);
+            td.textContent = '';
+            td.appendChild(input);
+            input.focus();
+            input.select();
+
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter')  { e.preventDefault(); procesarEdicionCelda(td, input); }
+                if (e.key === 'Escape') { e.preventDefault(); cancelarEdicionCelda(); }
+            });
+            input.addEventListener('blur', () => {
+                setTimeout(() => { if (_celdaActiva === td) cancelarEdicionCelda(); }, 120);
+            });
+        }
+
+        function cancelarEdicionCelda() {
+            if (!_celdaActiva) return;
+            const td = _celdaActiva;
+            _celdaActiva = null;
+            td.classList.remove('editing');
+            const v = parseFloat(td.dataset.valor) || 0;
+            td.textContent = formatearNumero(v);
+            const c = v > 0 ? 'positive' : v < 0 ? 'negative' : '';
+            td.className = `number-cell ${c} editable`;
+        }
+
+        function procesarEdicionCelda(td, input) {
+            const rawText  = input.value.replace(/[^\d.,-]/g, '').replace(',', '.');
+            const nuevoVal = parseFloat(rawText);
+            if (isNaN(nuevoVal)) { cancelarEdicionCelda(); return; }
+
+            const mes       = td.dataset.mes;
+            const nivelInfo = JSON.parse(decodeURIComponent(td.dataset.nivelInfo));
+            const valAnterior = parseFloat(td.dataset.valor) || 0;
+
+            if (nuevoVal === valAnterior) { cancelarEdicionCelda(); return; }
+
+            const distribucion = calcularDistribucion(nivelInfo, mes, nuevoVal);
+            if (!distribucion) { cancelarEdicionCelda(); return; }
+
+            cancelarEdicionCelda();
+            mostrarModalDistribucion(nivelInfo, mes, valAnterior, nuevoVal, distribucion);
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           CÁLCULO DE DISTRIBUCIÓN PROPORCIONAL
+        ══════════════════════════════════════════════════════════════════════ */
+        function calcularDistribucion(nivelInfo, mes, nuevoTotal) {
+            const { nivel, cuenta, vinculo, detalle } = nivelInfo;
+            const cuentaData = jerarquiaGlobal[cuenta];
+            if (!cuentaData) return null;
+
+            let detallesList = [];
+
+            if (nivel === 'cuenta') {
+                Object.keys(cuentaData.vinculos).forEach(vin => {
+                    Object.keys(cuentaData.vinculos[vin].detalles).forEach(det => {
+                        detallesList.push({
+                            cuenta, vinculo: vin, detalle: det,
+                            valorAnterior: cuentaData.vinculos[vin].detalles[det][mes] || 0
+                        });
+                    });
                 });
+            } else if (nivel === 'vinculo') {
+                const vinData = cuentaData.vinculos[vinculo];
+                if (!vinData) return null;
+                Object.keys(vinData.detalles).forEach(det => {
+                    detallesList.push({
+                        cuenta, vinculo, detalle: det,
+                        valorAnterior: vinData.detalles[det][mes] || 0
+                    });
+                });
+            } else {
+                detallesList.push({ cuenta, vinculo, detalle, valorAnterior: cuentaData.vinculos[vinculo]?.detalles[detalle]?.[mes] || 0 });
             }
+
+            const totalAnterior = detallesList.reduce((s, d) => s + d.valorAnterior, 0);
+
+            return detallesList.map(d => {
+                let proporcion, valorNuevo;
+                if (totalAnterior === 0) {
+                    proporcion = detallesList.length > 0 ? 1 / detallesList.length : 0;
+                    valorNuevo = Math.round(nuevoTotal * proporcion);
+                } else {
+                    proporcion = d.valorAnterior / totalAnterior;
+                    valorNuevo = Math.round(nuevoTotal * proporcion);
+                }
+                return { ...d, proporcion, valorNuevo };
+            });
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           MODAL DE DISTRIBUCIÓN
+        ══════════════════════════════════════════════════════════════════════ */
+        let _distribucionPendiente = null;
+
+        function mostrarModalDistribucion(nivelInfo, mes, valAnterior, nuevoTotal, items) {
+            _distribucionPendiente = { nivelInfo, mes, nuevoTotal, items };
+
+            const mesLabel = mes.charAt(0).toUpperCase() + mes.slice(1);
+            const fmt = n => formatearNumero(n);
+
+            let body = `
+            <div class="dist-summary">
+                <div class="ds-item">
+                    <span class="ds-label">Nivel editado</span>
+                    <span class="ds-value">
+                        <span class="nivel-badge ${nivelInfo.nivel}">${nivelInfo.nivel}</span>
+                        ${nivelInfo.nivel === 'cuenta' ? nivelInfo.cuenta
+                          : nivelInfo.nivel === 'vinculo' ? nivelInfo.vinculo
+                          : nivelInfo.detalle}
+                    </span>
+                </div>
+                <div class="ds-item">
+                    <span class="ds-label">Mes</span>
+                    <span class="ds-value">${mesLabel}</span>
+                </div>
+                <div class="ds-item">
+                    <span class="ds-label">Valor anterior</span>
+                    <span class="ds-value">${fmt(valAnterior)}</span>
+                </div>
+                <div class="ds-item">
+                    <span class="ds-label">Valor nuevo</span>
+                    <span class="ds-value new">${fmt(nuevoTotal)}</span>
+                </div>
+                <div class="ds-item">
+                    <span class="ds-label">Registros a afectar</span>
+                    <span class="ds-value">${items.length}</span>
+                </div>
+            </div>
+            <div style="overflow-x:auto;max-height:340px;overflow-y:auto;">
+            <table class="dist-table">
+                <thead>
+                    <tr>
+                        <th>Cuenta</th><th>Vínculo</th><th>Detalle</th>
+                        <th class="num">Valor anterior</th>
+                        <th class="num">Proporción</th>
+                        <th class="num">Valor nuevo</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            items.forEach(it => {
+                body += `<tr>
+                    <td>${it.cuenta}</td><td>${it.vinculo}</td><td>${it.detalle}</td>
+                    <td class="num col-ant">${fmt(it.valorAnterior)}</td>
+                    <td class="num col-prop">${(it.proporcion * 100).toFixed(1)}%</td>
+                    <td class="num col-nuevo">${fmt(it.valorNuevo)}</td>
+                </tr>`;
+            });
+
+            body += `</tbody></table></div>
+            <p style="font-size:.78rem;color:#9ca3af;margin-top:10px;">
+                ⚠️ Esta operación actualizará los valores de <strong>débito y crédito</strong> de los registros
+                en la base de datos de forma proporcional. Los redondeos pueden generar diferencias de ±1 en el total.
+            </p>`;
+
+            document.getElementById('modalDistribucionBody').innerHTML = body;
+            abrirModal('modalDistribucion');
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           CONFIRMAR Y GUARDAR DISTRIBUCIÓN
+        ══════════════════════════════════════════════════════════════════════ */
+        async function confirmarDistribucion() {
+            if (!_distribucionPendiente) return;
+            const { nivelInfo, mes, nuevoTotal, items } = _distribucionPendiente;
+
+            const body = document.getElementById('modalDistribucionBody');
+            body.insertAdjacentHTML('beforeend',
+                `<div class="saving-overlay" id="savingOverlay">
+                    <div class="mini-spinner"></div> Guardando cambios en la base de datos...
+                </div>`);
+            document.querySelector('#modalDistribucion .btn-save').disabled = true;
+
+            let errores = 0;
+            for (const item of items) {
+                try {
+                    const ok = await _actualizarMesEnBD(item.cuenta, item.vinculo, item.detalle, mes, item.valorNuevo, item.valorAnterior);
+                    if (!ok) errores++;
+                } catch(e) {
+                    errores++;
+                }
+            }
+
+            if (errores > 0) {
+                mostrarToast(`⚠️ ${errores} registros no pudieron guardarse`, 'error');
+            } else {
+                mostrarToast('✅ Redistribución aplicada correctamente');
+            }
+
+            _aplicarDistribucionEnJerarquia(items, mes);
+            cerrarModal('modalDistribucion');
+            document.querySelector('#modalDistribucion .btn-save').disabled = false;
+            _distribucionPendiente = null;
+            renderizarTabla(jerarquiaGlobal);
+            calcularEstadisticas(datosGlobales);
+        }
+
+        async function _actualizarMesEnBD(cuenta, vinculo, detalle, mes, valorNuevo, valorAnterior) {
+            const params = new URLSearchParams({ ctanombre: cuenta, vinnombre: vinculo, mcndetalle: detalle });
+            const resp = await fetch(`../obtener-registros-detalle/?${params}`);
+            const data = await resp.json();
+            if (data.error || !data.registros) return false;
+
+            const MESES_NUM = { enero:1, febrero:2, marzo:3, abril:4, mayo:5, junio:6,
+                                julio:7, agosto:8, septiembre:9, octubre:10, noviembre:11, diciembre:12 };
+            const numMes = MESES_NUM[mes];
+
+            const registrosMes = data.registros.filter(r => {
+                if (!r.mcnfecha) return false;
+                const n = parseInt(r.mcnfecha, 10);
+                if (isNaN(n)) return false;
+                const f = new Date(Date.UTC(1899, 11, 30) + n * 86400000);
+                return f.getUTCMonth() + 1 === numMes;
+            });
+
+            if (registrosMes.length === 0) return true;
+
+            const saldoTotal = registrosMes.reduce((s, r) => s + (r.mcnvaldebi||0) - (r.mcnvalcred||0), 0);
+            let acumulado = 0;
+
+            for (let i = 0; i < registrosMes.length; i++) {
+                const reg = registrosMes[i];
+                const saldoReg = (reg.mcnvaldebi||0) - (reg.mcnvalcred||0);
+                let nuevoSaldo;
+                if (i === registrosMes.length - 1) {
+                    nuevoSaldo = valorNuevo - acumulado;
+                } else {
+                    const prop = saldoTotal !== 0 ? saldoReg / saldoTotal : 1 / registrosMes.length;
+                    nuevoSaldo = Math.round(valorNuevo * prop);
+                    acumulado += nuevoSaldo;
+                }
+
+                let nuevoDebi = reg.mcnvaldebi || 0;
+                let nuevoCred = reg.mcnvalcred || 0;
+
+                if (reg.mcnvalcred === 0 || reg.mcnvalcred === null) {
+                    nuevoDebi = nuevoSaldo; nuevoCred = 0;
+                } else if (reg.mcnvaldebi === 0 || reg.mcnvaldebi === null) {
+                    nuevoDebi = 0; nuevoCred = -nuevoSaldo;
+                } else {
+                    const ratioDebi = reg.mcnvaldebi / (reg.mcnvaldebi + reg.mcnvalcred);
+                    nuevoDebi = Math.round(nuevoSaldo > 0 ? nuevoSaldo / (1 - ratioDebi) * ratioDebi : 0);
+                    nuevoCred = nuevoDebi - nuevoSaldo;
+                }
+
+                const putResp = await fetch(`../editar-registro/${reg.id}/`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+                    body: JSON.stringify({ mcnvaldebi: nuevoDebi, mcnvalcred: nuevoCred }),
+                });
+                if (!putResp.ok) return false;
+            }
+            return true;
+        }
+
+        function _aplicarDistribucionEnJerarquia(items, mes) {
+            items.forEach(({ cuenta, vinculo, detalle, valorNuevo, valorAnterior }) => {
+                const diff = valorNuevo - valorAnterior;
+                const cd = jerarquiaGlobal[cuenta];
+                if (!cd) return;
+                const vd = cd.vinculos[vinculo];
+                if (!vd) return;
+                const dd = vd.detalles[detalle];
+                if (!dd) return;
+
+                dd[mes] = valorNuevo;
+                dd.total = dd.total + diff;
+
+                vd.totales[mes] = Object.values(vd.detalles).reduce((s, d) => s + (d[mes]||0), 0);
+                vd.totales.total = MESES.reduce((s, m) => s + (vd.totales[m]||0), 0);
+
+                cd.totales[mes] = Object.values(cd.vinculos).reduce((s, v) => s + (v.totales[mes]||0), 0);
+                cd.totales.total = MESES.reduce((s, m) => s + (cd.totales[m]||0), 0);
+            });
+        }
+
+        /* Cerrar filtros al click fuera */
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.filter-dropdown'))
+                document.querySelectorAll('.filter-panel').forEach(p => p.classList.remove('show'));
         });
 
-        // Inicializar
-        window.addEventListener('load', function() {
-            cargarValoresFiltros().then(() => {
-                cargarDatos();
-            });
+        /* Init */
+        window.addEventListener('load', () => {
+            cargarValoresFiltros();
         });
     </script>
 </body>

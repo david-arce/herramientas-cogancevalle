@@ -6,7 +6,7 @@ from pyexpat.errors import messages
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 import pandas as pd
-from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoBolsaConsumibles, PresupuestoBolsaConsumiblesAux, PresupuestoAuxilioTBCKIT, PresupuestoAuxilioTCBKITAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado, PresupuestoServiciosTecnicos, PresupuestoServiciosTecnicosAux, PresupuestoServiciosTecnicosAprobado, PresupuestoLogistica, PresupuestoLogisticaAux, PresupuestoLogisticaAprobado, PresupuestoGestionRiesgos, PresupuestoGestionRiesgosAux, PresupuestoGestionRiesgosAprobado, PresupuestoGH, PresupuestoGHAux, PresupuestoGHAprobado, PresupuestoAlmacenTulua, PresupuestoAlmacenTuluaAux, PresupuestoAlmacenTuluaAprobado, PresupuestoAlmacenBuga, PresupuestoAlmacenBugaAux, PresupuestoAlmacenBugaAprobado, PresupuestoAlmacenCartago, PresupuestoAlmacenCartagoAux, PresupuestoAlmacenCartagoAprobado, PresupuestoAlmacenCali, PresupuestoAlmacenCaliAux, PresupuestoAlmacenCaliAprobado, PresupuestoComunicaciones, PresupuestoComunicacionesAux, PresupuestoComunicacionesAprobado, PresupuestoComercialCostos, PresupuestoComercialCostosAux, PresupuestoComercialCostosAprobado, PresupuestoContabilidad, PresupuestoContabilidadAux, PresupuestoContabilidadAprobado, PresupuestoGerencia, PresupuestoGerenciaAux, PresupuestoGerenciaAprobado, Cuenta5, Cuenta5Base, PresupuestoCentroSegLineaCostos, PresupuestoCentroSegLineaVentas, ConsolidadoTotalBase
+from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, ComentarioComparativo, Cuenta4Base, Cuenta4Presupuestado, OrdenCuenta, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoBolsaConsumibles, PresupuestoBolsaConsumiblesAux, PresupuestoAuxilioTBCKIT, PresupuestoAuxilioTCBKITAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado, PresupuestoServiciosTecnicos, PresupuestoServiciosTecnicosAux, PresupuestoServiciosTecnicosAprobado, PresupuestoLogistica, PresupuestoLogisticaAux, PresupuestoLogisticaAprobado, PresupuestoGestionRiesgos, PresupuestoGestionRiesgosAux, PresupuestoGestionRiesgosAprobado, PresupuestoGH, PresupuestoGHAux, PresupuestoGHAprobado, PresupuestoAlmacenTulua, PresupuestoAlmacenTuluaAux, PresupuestoAlmacenTuluaAprobado, PresupuestoAlmacenBuga, PresupuestoAlmacenBugaAux, PresupuestoAlmacenBugaAprobado, PresupuestoAlmacenCartago, PresupuestoAlmacenCartagoAux, PresupuestoAlmacenCartagoAprobado, PresupuestoAlmacenCali, PresupuestoAlmacenCaliAux, PresupuestoAlmacenCaliAprobado, PresupuestoComunicaciones, PresupuestoComunicacionesAux, PresupuestoComunicacionesAprobado, PresupuestoComercialCostos, PresupuestoComercialCostosAux, PresupuestoComercialCostosAprobado, PresupuestoContabilidad, PresupuestoContabilidadAux, PresupuestoContabilidadAprobado, PresupuestoGerencia, PresupuestoGerenciaAux, PresupuestoGerenciaAprobado, Cuenta5, Cuenta5Base, PresupuestoCentroSegLineaCostos, PresupuestoCentroSegLineaVentas, ConsolidadoTotalBase, Cuenta5Presupuestado
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.db.models.functions import Concat
 from django.db.models import Sum, Max, Q
@@ -19,7 +19,7 @@ from django.db import models
 from django.core.paginator import Paginator
 import calendar
 from django.db.models.functions import ExtractMonth, ExtractYear
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_GET, require_POST
 
 def exportar_excel_nomina(request):
     # Obtener datos de cada tabla
@@ -7299,3321 +7299,389 @@ def seleccion_cuentas_contables(request):
     cuentas_dict = dict(zip(cuentas, nom_cuentas))
     return JsonResponse({"cuentas": cuentas, "nom_cuentas": nom_cuentas, "cuentas_dict": cuentas_dict}, safe=False)
 
-# -PRESUPUESTO TECNOLOGIA--------------------------------
+
+# ---------------------------------------------------------------------------
+# Configuración centralizada por sede
+# ---------------------------------------------------------------------------
+ 
+FECHA_LIMITE_DEFAULT = datetime.date(2025, 10, 30)
+ 
+def _fecha_limite_auxiliar(config):
+    return config.get("fecha_limite_auxiliar", FECHA_LIMITE_DEFAULT)
+ 
+def _fecha_limite_aprobado(config):
+    return config.get("fecha_limite_aprobado", FECHA_LIMITE_DEFAULT)
+ 
+# Campos de negocio compartidos por los 3 modelos (temp/oficial/aprobado)
+# de cada sede. Se define una sola vez para no repetir la lista 3+ veces.
+CAMPOS_PRESUPUESTO = [
+    "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta",
+    "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor",
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+    "total", "comentario",
+]
+MESES = CAMPOS_PRESUPUESTO[9:21]
+CAMPOS_BASE_PLANTILLA = [c for c in CAMPOS_PRESUPUESTO if c not in ("total", "comentario")]
+CAMPOS_NUMERICOS = ["cuenta", "sede_distribucion"] + MESES + ["total"]
+SEDE_CONFIG = {
+    "almacen-tulua": {
+        "label": "Almacén Tuluá",
+        "usuarios_permitidos": {"admin", "JEFEALMACENTULUA", "DBENITEZ"},
+        "responsable_filtro": "JEFE ALMACEN TULUA",
+        "model_oficial": PresupuestoAlmacenTulua,
+        "model_aprobado": PresupuestoAlmacenTuluaAprobado,
+        "model_temp": PresupuestoAlmacenTuluaAux,
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),  
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
+    },
+    "almacen-buga": {
+        "label": "Almacén Buga",
+        "usuarios_permitidos": {"admin", "JEFEALMACENBUGA", "FDUQUE"},
+        "responsable_filtro": "JEFE ALMACEN BUGA",
+        "model_oficial": PresupuestoAlmacenBuga,
+        "model_aprobado": PresupuestoAlmacenBugaAprobado,
+        "model_temp": PresupuestoAlmacenBugaAux,
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),  
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
+    },
+    "almacen-cartago": {
+        "label": "Almacén Cartago",
+        "usuarios_permitidos": {"admin", "JEFEALMACENCARTAGO", "CHINCAPI"},
+        "responsable_filtro": "JEFE ALMACEN CARTAGO",
+        "model_oficial": PresupuestoAlmacenCartago,
+        "model_aprobado": PresupuestoAlmacenCartagoAprobado,
+        "model_temp": PresupuestoAlmacenCartagoAux,
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
+    },
+    "almacen-cali": {
+        "label": "Almacén Cali",
+        "usuarios_permitidos": {"admin", "JEFEALMACENCALI", "LAMAYA"},
+        "responsable_filtro": "JEFE ALMACEN CALI",
+        "model_oficial": PresupuestoAlmacenCali,
+        "model_aprobado": PresupuestoAlmacenCaliAprobado,
+        "model_temp": PresupuestoAlmacenCaliAux,
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
+    },
+    "comunicaciones": {
+        "label": "Comunicaciones y Mercadeo",
+        "usuarios_permitidos": {"admin", "COMUNICACIONES"},
+        "responsable_filtro": "CARLOS USMAN",
+        "model_oficial": PresupuestoComunicaciones,
+        "model_aprobado": PresupuestoComunicacionesAprobado,
+        "model_temp": PresupuestoComunicacionesAux,
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 8),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
+    },
+    "comercial-costos": {
+        "label": "Comercial y Costos",
+        "usuarios_permitidos": {"admin", "COMERCIALCOSTOS", "EVALENCIA"},
+        "responsable_filtro": "EVALENCIA",
+        "model_oficial": PresupuestoComercialCostos,
+        "model_aprobado": PresupuestoComercialCostosAprobado,
+        "model_temp": PresupuestoComercialCostosAux,
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 8),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
+    },
+    "contabilidad": {
+        "label": "Contabilidad",
+        "usuarios_permitidos": {"admin", "CONTABILIDAD"},
+        "responsable_filtro": "CONTABILIDAD",
+        "model_oficial": PresupuestoContabilidad,
+        "model_aprobado": PresupuestoContabilidadAprobado,
+        "model_temp": PresupuestoContabilidadAux,
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 8),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
+    },
+    "gerencia": {
+        "label": "Gerencia",
+        "usuarios_permitidos": {"admin", "GERENCIA"},
+        "responsable_filtro": "GERENCIA",
+        "model_oficial": PresupuestoGerencia,
+        "model_aprobado": PresupuestoGerenciaAprobado,
+        "model_temp": PresupuestoGerenciaAux,
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 8),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
+    },
+    "gestion-humana": {
+        "label": "Gestión Humana",
+        "usuarios_permitidos": {"admin", "GESTIONHUMANA"},
+        "responsable_filtro": "MARTA GH",
+        "model_oficial": PresupuestoGH,
+        "model_aprobado": PresupuestoGHAprobado,
+        "model_temp": PresupuestoGHAux,
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
+    },
+    "gestion-riesgos": {
+        "label": "Gestión de Riesgos",
+        "usuarios_permitidos": {"admin", "GESTIONRIESGOS"},
+        "responsable_filtro": "LINA RICARDO",
+        "model_oficial": PresupuestoGestionRiesgos,
+        "model_aprobado": PresupuestoGestionRiesgosAprobado,
+        "model_temp": PresupuestoGestionRiesgosAux,
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
+    },
+    "logistica": {
+        "label": "Logística",
+        "usuarios_permitidos": {"admin", "PLOZANO"},
+        "responsable_filtro": "PILAR LOZANO",
+        "model_oficial": PresupuestoLogistica,
+        "model_aprobado": PresupuestoLogisticaAprobado,
+        "model_temp": PresupuestoLogisticaAux,
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
+    },
+    "servicios-tecnicos": {
+        "label": "Servicios Técnicos",
+        "usuarios_permitidos": {"admin", "SERVICIOSTECNICOS"},
+        "responsable_filtro": "JORGE GUERRERO",
+        "model_oficial": PresupuestoServiciosTecnicos,
+        "model_aprobado": PresupuestoServiciosTecnicosAprobado,
+        "model_temp": PresupuestoServiciosTecnicosAux,
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
+    },
+    "salud-ocupacional": {
+        "label": "Salud Ocupacional",
+        "usuarios_permitidos": {"admin", "SALUDOCUPACIONAL"},
+        "responsable_filtro": "SALUD OCUPACIONAL",
+        "model_oficial": PresupuestoOcupacional,
+        "model_aprobado": PresupuestoOcupacionalAprobado,
+        "model_temp": PresupuestoOcupacionalAux,
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
+    },
+    "tecnologia": {
+        "label": "Tecnología",
+        "usuarios_permitidos": {"admin", "TECNOLOGIA"},
+        "responsable_filtro": "DIEGO CANO",
+        "model_oficial": PresupuestoTecnologia,
+        "model_aprobado": PresupuestotecnologiaAprobado,
+        "model_temp": PresupuestoTecnologiaAux,
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
+    },
+}
+ 
+def _config_sede(sede):
+    """Devuelve la configuración de la sede o None si no existe."""
+    return SEDE_CONFIG.get(sede)
+ 
+def _usuario_autorizado(request, config):
+    return request.user.username in config["usuarios_permitidos"]
+ 
+def _defaults_desde_temp(temp_obj, version, fecha):
+    """Construye el dict `defaults` para update_or_create a partir de un
+    registro temporal. Se reutiliza para la tabla oficial y la aprobada,
+    en vez de escribir el mismo dict de 19 campos dos veces."""
+    data = {campo: getattr(temp_obj, campo) for campo in CAMPOS_PRESUPUESTO}
+    data["version"] = version
+    data["fecha"] = fecha
+    return data
+# FIN DE CONFIGURACIÓN CENTRALIZADA POR SEDE---------------------------------------
+
+# ---------------------------------------------------------------------------
+# Vistas genéricas (una sola implementación para todas las sedes)
+# ---------------------------------------------------------------------------
 @login_required
-def presupuesto_tecnologia(request):
-    usuarios_permitidos = ['admin', 'TECNOLOGIA']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permiso para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoTecnologia.objects
+def presupuesto_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return HttpResponseForbidden("⛔ Sede no configurada.")
+    if not _usuario_autorizado(request, config):
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+ 
+    versiones = list(
+        config["model_oficial"].objects
         .values_list("version", flat=True)
         .distinct()
         .order_by("version")
     )
     ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_tecnologia.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_tecnologia(request):
-    version = request.GET.get("version")  # 🔥 versión recibida
-    qs = PresupuestoTecnologia.objects.all()
+    return render(request, "presupuesto_general/presupuesto_sede_readonly.html", {
+        "sede": sede,
+        "sede_label": config["label"],
+        "modo": "proyectado",
+        "versiones": versiones,
+        "ultima_version": ultima_version,
+    })
+ 
+ 
+def obtener_presupuesto_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return JsonResponse({"error": "Sede no configurada"}, status=404)
+ 
+    version = request.GET.get("version")
+    qs = config["model_oficial"].objects.all()
     if version:
         qs = qs.filter(version=version)
-
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_tecnologia(request):
-    # obtener la última versión aprobada
-    versiones = (
-        PresupuestotecnologiaAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
+    return JsonResponse({"data": list(qs.values())}, safe=False)
+  
+def presupuesto_aprobado_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return HttpResponseForbidden("⛔ Sede no configurada.")
+ 
+    versiones = config["model_aprobado"].objects.values_list("version", flat=True).distinct()
     ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_aprobado_tecnologia.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_tecnologia(request):
-    # siempre filtrar por la última versión
-    versiones = (
-        PresupuestotecnologiaAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
+    return render(request, "presupuesto_general/presupuesto_sede_readonly.html", {
+        "sede": sede,
+        "sede_label": config["label"],
+        "modo": "aprobado",
+        "ultima_version": ultima_version,
+    })
+ 
+def obtener_presupuesto_aprobado_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return JsonResponse({"error": "Sede no configurada"}, status=404)
+ 
+    versiones = config["model_aprobado"].objects.values_list("version", flat=True).distinct()
     ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestotecnologiaAprobado.objects.filter(version=ultima_version)
-    tecnologia_aprobado = list(qs.values())
-    return JsonResponse({"data": tecnologia_aprobado}, safe=False)
-
-def tabla_auxiliar_tecnologia(request):
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-
-    # 🚫 Si ya pasó la fecha, negar acceso
-    if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado desde el "
-                                     f"{fecha_limite.strftime('%d/%m/%Y')}")
-
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_tecnologia.html")
-
-def subir_presupuesto_tecnologia(request):
-    if request.method == "POST":
-        temporales = PresupuestoTecnologiaAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-
-        # 📌 Obtener versión global (tomando la última registrada en la tabla principal)
-        ultima_version = PresupuestoTecnologia.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
-
-        for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoTecnologia.objects.update_or_create(
-                id=temp.id,  
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestotecnologiaAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto de tecnología actualizado ✅ (versión {nueva_version})"
-        })
-
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_tecnologia_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoTecnologiaAux(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                # Limpiar la tabla antes de guardar
-                PresupuestoTecnologiaAux.objects.all().delete()
-                PresupuestoTecnologiaAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_tecnologia_temp(request):
-    data = list(PresupuestoTecnologiaAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_tecnologia_base(request):
-    # limpio tabla auxiliar de tecnología antes de recalcular
-    PresupuestoTecnologiaAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'DIEGO CANO'
-    base_data = base_data.filter(responsable__iexact="DIEGO CANO")
-    
-    for row in base_data:
-        PresupuestoTecnologiaAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"], 
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
-        )
-    
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_tecnologia(request):
-    if request.method == "POST":
-        PresupuestoTecnologia.objects.all().delete()
-        # 📌 Fecha límite (cámbiala según lo que necesites)
-        fecha_limite = datetime.date(2025, 10, 30) 
-        # borrar también la tabla aprobada si la fecha limite no ha pasado
-        if timezone.now().date() <= fecha_limite:
-            PresupuestotecnologiaAprobado.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de tecnología eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-#--PRESUPUESTO OCUPACIONAL-----------------------------
+    qs = config["model_aprobado"].objects.filter(version=ultima_version)
+    return JsonResponse({"data": list(qs.values())}, safe=False)
+ 
 @login_required
-def presupuesto_ocupacional(request):
-    usuarios_permitidos = ['admin', 'SALUDOCUPACIONAL']
-    if request.user.username not in usuarios_permitidos:
+def tabla_auxiliar_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return HttpResponseForbidden("⛔ Sede no configurada.")
+    if not _usuario_autorizado(request, config):
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoOcupacional.objects
-        .values_list("version", flat=True)
-        .distinct()
-        .order_by("version")
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_ocupacional.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_ocupacional(request):
-    version = request.GET.get("version")  # 🔥 versión recibida
-    qs = PresupuestoOcupacional.objects.all()
-    if version:
-        qs = qs.filter(version=version)
-
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_ocupacional(request):
-    # 🔹 obtener última versión disponible
-    versiones = (
-        PresupuestoOcupacionalAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_aprobado_ocupacional.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_ocupacional(request):
-    # 🔥 siempre filtrar por la última versión
-    versiones = (
-        PresupuestoOcupacionalAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoOcupacionalAprobado.objects.filter(version=ultima_version)
-
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def tabla_auxiliar_ocupacional(request):
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-
-    # 🚫 Si ya pasó la fecha, negar acceso
+ 
+    fecha_limite = _fecha_limite_auxiliar(config)
+    hoy = timezone.now().date()
     if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
-                                     f"{fecha_limite.strftime('%d/%m/%Y')}")
-
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_ocupacional.html")
-
-def subir_presupuesto_ocupacional(request):
-    if request.method == "POST":
-        temporales = PresupuestoOcupacionalAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-
-        # 📌 Obtener versión global (tomando la última registrada en la tabla principal)
-        ultima_version = PresupuestoOcupacional.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
-
-        for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoOcupacional.objects.update_or_create(
-                id=temp.id,  
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoOcupacionalAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,  
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,    
-            "msg": f"Presupuesto ocupacional actualizado ✅ (versión {nueva_version})"
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_ocupacional_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoOcupacionalAux(**row_filtrado))
-
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                PresupuestoOcupacionalAux.objects.all().delete()
-                PresupuestoOcupacionalAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_ocupacional_temp(request):
-    data = list(PresupuestoOcupacionalAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_ocupacional_base(request):
-    # limpio tabla auxiliar de ocupacional antes de recalcular
-    PresupuestoOcupacionalAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'LUIS FERNANDO VARGAS'
-    base_data = base_data.filter(responsable__iexact="WILLIAM")
-    
-    for row in base_data:
-        PresupuestoOcupacionalAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"], 
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
+        return HttpResponseForbidden(
+            "⛔ El acceso a esta vista está bloqueado después del "
+            f"{fecha_limite.strftime('%d/%m/%Y')}"
         )
-    
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_ocupacional(request):
-    if request.method == "POST":
-        PresupuestoOcupacional.objects.all().delete()
-        # 📌 Fecha límite (cámbiala según lo que necesites)
-        fecha_limite = datetime.date(2025, 10, 30) 
-        # borrar también la tabla aprobada si la fecha limite no ha pasado
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoOcupacionalAprobado.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto ocupacional eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-#----PRESUPUESTO SERVICIOS TECNICOS-----------------------------
+    return render(request, "presupuesto_general/aux_presupuesto_almacen_sede.html", {
+        "sede": sede,
+        "sede_label": config["label"],
+    })
+ 
+def obtener_temp_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return JsonResponse({"error": "Sede no configurada"}, status=404)
+    return JsonResponse(list(config["model_temp"].objects.values()), safe=False)
+ 
 @login_required
-def presupuesto_servicios_tecnicos(request):
-    usuarios_permitidos = ['admin', 'SERVICIOSTECNICOS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoServiciosTecnicos.objects
-        .values_list("version", flat=True)
-        .distinct()
-        .order_by("version")
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_servicios_tecnicos.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_servicios_tecnicos(request):
-    version = request.GET.get("version")  # 🔥 versión recibida
-    qs = PresupuestoServiciosTecnicos.objects.all()
-    if version:
-        qs = qs.filter(version=version)
-
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_servicios_tecnicos(request):
-    # 🔹 obtener última versión disponible
-    versiones = (
-        PresupuestoServiciosTecnicosAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_aprobado_servicios_tecnicos.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_servicios_tecnicos(request):
-    # 🔥 siempre filtrar por la última versión
-    versiones = (
-        PresupuestoServiciosTecnicosAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoServiciosTecnicosAprobado.objects.filter(version=ultima_version)
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def tabla_auxiliar_servicios_tecnicos(request):
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-
-    # 🚫 Si ya pasó la fecha, negar acceso
-    if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
-                                     f"{fecha_limite.strftime('%d/%m/%Y')}")
-
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_servicios_tecnicos.html")
-
-def subir_presupuesto_servicios_tecnicos(request):
-    if request.method == "POST":
-        temporales = PresupuestoServiciosTecnicosAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-
-        # 📌 Obtener versión global (tomando la última registrada en la tabla principal)
-        ultima_version = PresupuestoServiciosTecnicos.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
-
-        for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoServiciosTecnicos.objects.update_or_create(
-                id=temp.id,  
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoServiciosTecnicosAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto servicios técnicos actualizado ✅ (versión {nueva_version})"
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_servicios_tecnicos_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoServiciosTecnicosAux(**row_filtrado))
-
-            with transaction.atomic():
-                PresupuestoServiciosTecnicosAux.objects.all().delete()
-                PresupuestoServiciosTecnicosAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_servicios_tecnicos_temp(request):
-    data = list(PresupuestoServiciosTecnicosAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_servicios_tecnicos_base(request):
-    # limpio tabla auxiliar de servicios técnicos antes de recalcular
-    PresupuestoServiciosTecnicosAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'LUIS FERNANDO VARGAS'
-    base_data = base_data.filter(responsable__iexact="JORGE GUERRERO")
-    
-    for row in base_data:
-        PresupuestoServiciosTecnicosAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"], 
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
-        )
-    
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_servicios_tecnicos(request):
-    if request.method == "POST":
-        version = request.POST.get("version")  # 🔥 versión enviada desde el frontend
-
-        if not version:
-            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
-
-        # borrar solo la versión seleccionada
-        PresupuestoServiciosTecnicos.objects.filter(version=version).delete()
-
-        # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 30)
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoServiciosTecnicosAprobado.objects.filter(version=version).delete()
-
-        return JsonResponse({"status": "ok", "message": f"Presupuesto versión {version} eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-
-#-----PRESUPUESTO LOGISTICA-----------------------------
+def guardar_temp_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return JsonResponse({"status": "error", "message": "Sede no configurada"}, status=404)
+    if not _usuario_autorizado(request, config):
+        return JsonResponse({"status": "error", "message": "Sin permisos"}, status=403)
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+ 
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        model_temp = config["model_temp"]
+        registros = []
+        for row in data:
+            row_filtrado = {campo: row.get(campo) for campo in CAMPOS_PRESUPUESTO}
+            for campo in CAMPOS_NUMERICOS:
+                if row_filtrado.get(campo) in (None, ""):
+                    row_filtrado[campo] = 0
+            registros.append(model_temp(**row_filtrado))
+ 
+        with transaction.atomic():
+            model_temp.objects.all().delete()
+            model_temp.objects.bulk_create(registros)
+ 
+        return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+ 
 @login_required
-def presupuesto_logistica(request):
-    usuarios_permitidos = ['admin', 'PLOZANO']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoLogistica.objects
-        .values_list("version", flat=True)
-        .distinct()
-        .order_by("version")
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_logistica.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_logistica(request):
-    version = request.GET.get("version")  # 🔥 versión recibida
-    qs = PresupuestoLogistica.objects.all()
-    if version:
-        qs = qs.filter(version=version)
-
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_logistica(request):
-    # 🔹 obtener última versión disponible
-    versiones = (
-        PresupuestoLogisticaAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_aprobado_logistica.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_logistica(request):
-    # 🔥 siempre filtrar por la última versión
-    versiones = (
-        PresupuestoLogisticaAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoLogisticaAprobado.objects.filter(version=ultima_version)
-    logistica_aprobado = list(qs.values())
-    return JsonResponse({"data": logistica_aprobado}, safe=False)
-
-def tabla_auxiliar_logistica(request):
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 17)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-    # 🚫 Si ya pasó la fecha, negar acceso
-    if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
-                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_logistica.html")
-
-def subir_presupuesto_logistica(request):
-    if request.method == "POST":
-        temporales = PresupuestoLogisticaAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-        # 📌 Obtener versión global (tomando la última registrada en la tabla 
-        ultima_version = PresupuestoLogistica.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
-        for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoLogistica.objects.update_or_create(
-                id=temp.id,
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,  
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoLogisticaAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,  
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto de logística actualizado ✅ (versión {nueva_version})"
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_logistica_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-                registros.append(PresupuestoLogisticaAux(**row_filtrado))
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                # limpio toda la tabla auxiliar antes de insertar
-                PresupuestoLogisticaAux.objects.all().delete()
-                PresupuestoLogisticaAux.objects.bulk_create(registros)
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_logistica_temp(request):
-    data = list(PresupuestoLogisticaAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_logistica_base(request):
-    # limpio tabla auxiliar de logística antes de recalcular
-    PresupuestoLogisticaAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'LUIS FERNANDO VARGAS'
-    base_data = base_data.filter(responsable__iexact="PILAR LOZANO")
-    
-    for row in base_data:
-        PresupuestoLogisticaAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"], 
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
-        )
-    
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_logistica(request):
-    if request.method == "POST":
-        version = request.POST.get("version")  # 🔥 versión enviada desde el frontend
-
-        if not version:
-            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
-
-        # borrar solo la versión seleccionada
-        PresupuestoLogistica.objects.filter(version=version).delete()
-
-        # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 30)
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoLogisticaAprobado.objects.filter(version=version).delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de logística eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-
-#---------PRESUPUESTO GESTION DE RIESGOS-----------------------------
+def cargar_base_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return JsonResponse({"status": "error", "message": "Sede no configurada"}, status=404)
+    if not _usuario_autorizado(request, config):
+        return JsonResponse({"status": "error", "message": "Sin permisos"}, status=403)
+ 
+    model_temp = config["model_temp"]
+    base_qs = Plantillagastos2025.objects.filter(
+        responsable__iexact=config["responsable_filtro"]
+    ).values(*CAMPOS_BASE_PLANTILLA)
+ 
+    nuevos = []
+    for row in base_qs:
+        fila = dict(row)
+        fila["total"] = sum(fila[m] for m in MESES)
+        fila["comentario"] = ""
+        nuevos.append(model_temp(**fila))
+ 
+    with transaction.atomic():
+        model_temp.objects.all().delete()
+        model_temp.objects.bulk_create(nuevos)
+ 
+    return JsonResponse({"status": "ok", "msg": f"{len(nuevos)} filas cargadas desde plantilla 📂"})
+ 
 @login_required
-def presupuesto_gestion_riesgos(request):
-    usuarios_permitidos = ['admin', 'GESTIONRIESGOS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoGestionRiesgos.objects
-        .values_list("version", flat=True)
-        .distinct()
-        .order_by("version")
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_gestion_riesgos.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_gestion_riesgos(request):
-    version = request.GET.get("version")  # 🔥 versión recibida
-    qs = PresupuestoGestionRiesgos.objects.all()
-    if version:
-        qs = qs.filter(version=version)
-
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_gestion_riesgos(request):
-    # 🔹 obtener última versión disponible
-    versiones = (
-        PresupuestoGestionRiesgosAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_aprobado_gestion_riesgos.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_gestion_riesgos(request):
-    # 🔥 siempre filtrar por la última versión
-    versiones = (
-        PresupuestoGestionRiesgosAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoGestionRiesgosAprobado.objects.filter(version=ultima_version)
-    gestion_riesgos_aprobado = list(qs.values())
-    return JsonResponse({"data": gestion_riesgos_aprobado}, safe=False)
-
-def tabla_auxiliar_gestion_riesgos(request):
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-    # 🚫 Si ya pasó la fecha, negar acceso
-    if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
-                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_gestion_riesgos.html")
-
-def subir_presupuesto_gestion_riesgos(request):
-    if request.method == "POST":
-        temporales = PresupuestoGestionRiesgosAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-        # 📌 Obtener versión global (tomando la última registrada en la tabla 
-        ultima_version = PresupuestoGestionRiesgos.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
+def subir_presupuesto_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return JsonResponse({"success": False, "msg": "Sede no configurada"}, status=404)
+    if not _usuario_autorizado(request, config):
+        return JsonResponse({"success": False, "msg": "Sin permisos"}, status=403)
+    if request.method != "POST":
+        return JsonResponse({"success": False, "msg": "Método no permitido"}, status=405)
+ 
+    model_temp = config["model_temp"]
+    model_oficial = config["model_oficial"]
+    model_aprobado = config["model_aprobado"]
+ 
+    temporales = model_temp.objects.all()
+    if not temporales.exists():
+        return JsonResponse({"success": False, "msg": "No hay datos temporales para subir ❌"}, status=400)
+ 
+    fecha_hoy = timezone.now().date()
+    fecha_limite_aprobado = _fecha_limite_aprobado(config)
+    ultima_version = model_oficial.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
+    nueva_version = ultima_version + 1
+ 
+    with transaction.atomic():
         for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoGestionRiesgos.objects.update_or_create(
-                id=temp.id,
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,  
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoGestionRiesgosAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,  
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto de gestion de riesgos actualizado ✅ (versión {nueva_version})"
-        })
+            defaults = _defaults_desde_temp(temp, nueva_version, fecha_hoy)
+            model_oficial.objects.update_or_create(id=temp.id, defaults=defaults)
+            if fecha_hoy <= fecha_limite_aprobado:
+                model_aprobado.objects.update_or_create(id=temp.id, defaults=defaults)
+ 
     return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_gestion_riesgos_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-                registros.append(PresupuestoGestionRiesgosAux(**row_filtrado))
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                # limpio toda la tabla auxiliar antes de insertar
-                PresupuestoGestionRiesgosAux.objects.all().delete()
-                PresupuestoGestionRiesgosAux.objects.bulk_create(registros)
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_gestion_riesgos_temp(request):
-    data = list(PresupuestoGestionRiesgosAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_gestion_riesgos_base(request):
-    # limpio tabla auxiliar de gestion de riesgos antes de recalcular
-    PresupuestoGestionRiesgosAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'LUIS FERNANDO VARGAS'
-    base_data = base_data.filter(responsable__iexact="LINA RICARDO")
-    
-    for row in base_data:
-        PresupuestoGestionRiesgosAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"], 
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
-        )
-    
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_gestion_riesgos(request):
-    if request.method == "POST":
-        version = request.POST.get("version")  # 🔥 versión enviada desde el frontend
-
-        if not version:
-            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
-
-        # borrar solo la versión seleccionada
-        PresupuestoGestionRiesgos.objects.filter(version=version).delete()
-
-        # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 30)
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoGestionRiesgosAprobado.objects.filter(version=version).delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de gestión de riesgos eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-
-#--------PRESUPUESTO GH------------------
+        "success": True,
+        "msg": f"Presupuesto de {config['label']} actualizado ✅ (versión {nueva_version})",
+    })
+ 
 @login_required
-def presupuesto_gh(request):
-    usuarios_permitidos = ['admin', 'GESTIONHUMANA']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoGH.objects
-        .values_list("version", flat=True)
-        .distinct()
-        .order_by("version")
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_GH.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_gh(request):
-    version = request.GET.get("version")  #🔥 versión recibida
-    qs = PresupuestoGH.objects.all()
-    if version:
-        qs = qs.filter(version=version)
-    
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_gh(request):
-    # 🔹 obtener última versión disponible
-    versiones = (
-        PresupuestoGHAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_aprobado_GH.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_gh(request):
-    # 🔥 siempre filtrar por la última versión
-    versiones = (
-        PresupuestoGHAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoGHAprobado.objects.filter(version=ultima_version)
-    gh_aprobado = list(qs.values())
-    return JsonResponse({"data": gh_aprobado}, safe=False)
-
-def tabla_auxiliar_gh(request):
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-    # 🚫 Si ya pasó la fecha, negar acceso
-    if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado despueś del "
-                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_GH.html")
-
-def subir_presupuesto_gh(request):
-    if request.method == "POST":
-        temporales = PresupuestoGHAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-        # 📌 Obtener versión global (tomando la última registrada en la tabla
-        ultima_version = PresupuestoGH.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
-        for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoGH.objects.update_or_create(
-                id=temp.id,
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,  
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoGHAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,  
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto de GH actualizado ✅ (versión {nueva_version})"
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-
-def guardar_gh_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-                registros.append(PresupuestoGHAux(**row_filtrado))
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                # limpio toda la tabla auxiliar antes de insertar
-                PresupuestoGHAux.objects.all().delete()
-                PresupuestoGHAux.objects.bulk_create(registros)
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_gh_temp(request):
-    data = list(PresupuestoGHAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_gh_base(request):
-    # limpio tabla auxiliar de gh antes de recalcular
-    PresupuestoGHAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'LUIS FERNANDO VARGAS'
-    base_data = base_data.filter(responsable__iexact="MARTA GH")
-    
-    for row in base_data:
-        PresupuestoGHAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"], 
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
-        )
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_gh(request):
-    if request.method == "POST":
-        version = request.POST.get("version")  # 🔥 versión
-        if not version:
-            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
-        # borrar solo la versión seleccionada
-        PresupuestoGH.objects.filter(version=version).delete()
-        # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 23)
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoGHAprobado.objects.filter(version=version).delete()
-        return JsonResponse({"status": "ok", "message": f"Presupuesto de GH versión {version} eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-
-#-------------PRESUPUESTO ALMACEN TULUA----------------
-@login_required
-def presupuesto_almacen_tulua(request):
-    usuarios_permitidos = ['admin', 'JEFEALMACENTULUA', 'DBENITEZ']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoAlmacenTulua.objects
-        .values_list("version", flat=True)
-        .distinct()
-        .order_by("version")
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_almacen_tulua.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_almacen_tulua(request):
-    version = request.GET.get("version")  #🔥 versión 
-    qs = PresupuestoAlmacenTulua.objects.all()
-    if version:
-        qs = qs.filter(version=version)
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_almacen_tulua(request):
-    # 🔹 obtener última versión disponible
-    versiones = (
-        PresupuestoAlmacenTuluaAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_aprobado_almacen_tulua.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_almacen_tulua(request):
-    # 🔥 siempre filtrar por la última versión
-    versiones = (
-        PresupuestoAlmacenTuluaAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoAlmacenTuluaAprobado.objects.filter(version=ultima_version)
-    almacen_tulua_aprobado = list(qs.values())
-    return JsonResponse({"data": almacen_tulua_aprobado}, safe=False)   
-
-def tabla_auxiliar_almacen_tulua(request):
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-    # 🚫 Si ya pasó la fecha, negar acceso
-    if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
-                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_almacen_tulua.html")
-
-def subir_presupuesto_almacen_tulua(request):
-    if request.method == "POST":
-        temporales = PresupuestoAlmacenTuluaAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-        # 📌 Obtener versión global (tomando la última registrada en la tabla 
-        ultima_version = PresupuestoAlmacenTulua.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
-        for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoAlmacenTulua.objects.update_or_create(
-                id=temp.id,
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,  
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoAlmacenTuluaAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,  
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto de almacén Tuluá actualizado ✅ (versión {nueva_version})"
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_almacen_tulua_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-                registros.append(PresupuestoAlmacenTuluaAux(**row_filtrado))
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                # limpio toda la tabla auxiliar antes de insertar
-                PresupuestoAlmacenTuluaAux.objects.all().delete()
-                PresupuestoAlmacenTuluaAux.objects.bulk_create(registros)
-                
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_almacen_tulua_temp(request):
-    data = list(PresupuestoAlmacenTuluaAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_almacen_tulua_base(request):
-    # limpio tabla auxiliar de almacen tulua antes de recalcular
-    PresupuestoAlmacenTuluaAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'JEFE ALMACEN TULUA'
-    base_data = base_data.filter(responsable__iexact="JEFE ALMACEN TULUA")
-    for row in base_data:
-        PresupuestoAlmacenTuluaAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"],
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
-        )
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_almacen_tulua(request):
-    if request.method == "POST":
-        version = request.POST.get("version")  # 🔥 versión enviada desde el frontend
-
-        if not version:
-            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
-        # borrar solo la versión seleccionada
-        PresupuestoAlmacenTulua.objects.filter(version=version).delete()
-        # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 30)
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoAlmacenTuluaAprobado.objects.filter(version=version).delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de almacén Tuluá eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-
-#-------------PRESUPUESTO ALMACEN BUGA----------------
-@login_required
-def presupuesto_almacen_buga(request):
-    usuarios_permitidos = ['admin', 'JEFEALMACENBUGA', 'FDUQUE']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoAlmacenBuga.objects
-        .values_list("version", flat=True)
-        .distinct()
-        .order_by("version")
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_almacen_buga.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_almacen_buga(request):
-    version = request.GET.get("version")  #🔥 versión 
-    qs = PresupuestoAlmacenBuga.objects.all()
-    if version:
-        qs = qs.filter(version=version)
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_almacen_buga(request):
-    # obtener última version disponible
-    versiones = (
-        PresupuestoAlmacenBugaAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    
-    return render(request, "presupuesto_general/presupuesto_aprobado_almacen_buga.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_almacen_buga(request):
-    # filtrar por la última versión
-    versiones = (
-        PresupuestoAlmacenBugaAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoAlmacenBugaAprobado.objects.filter(version=ultima_version)
-    data = list(qs.values())
-    
-    return JsonResponse({"data": data}, safe=False)
-
-def tabla_auxiliar_almacen_buga(request):
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-    # 🚫 Si ya pasó la fecha, negar acceso
-    if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
-                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_almacen_buga.html")
-
-def subir_presupuesto_almacen_buga(request):
-    if request.method == "POST":
-        temporales = PresupuestoAlmacenBugaAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-        # 📌 Obtener versión global (tomando la última registrada en la tabla 
-        ultima_version = PresupuestoAlmacenBuga.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
-        for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoAlmacenBuga.objects.update_or_create(
-                id=temp.id,
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,  
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoAlmacenBugaAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,  
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto de almacén Buga actualizado ✅ (versión {nueva_version})"
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_almacen_buga_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-                registros.append(PresupuestoAlmacenBugaAux(**row_filtrado))
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                # limpio toda la tabla auxiliar antes de insertar
-                PresupuestoAlmacenBugaAux.objects.all().delete()
-                PresupuestoAlmacenBugaAux.objects.bulk_create(registros)
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_almacen_buga_temp(request):
-    data = list(PresupuestoAlmacenBugaAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_almacen_buga_base(request):
-    # limpio tabla auxiliar de almacen buga antes de recalcular
-    PresupuestoAlmacenBugaAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'JEFE ALMACEN BUGA'
-    base_data = base_data.filter(responsable__iexact="JEFE ALMACEN BUGA")
-    
-    for row in base_data:
-        PresupuestoAlmacenBugaAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"], 
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
-        )
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_almacen_buga(request):
-    if request.method == "POST":
-        version = request.POST.get("version")  # 🔥 versión enviada desde el frontend
-
-        if not version:
-            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
-        # borrar solo la versión seleccionada
-        PresupuestoAlmacenBuga.objects.filter(version=version).delete()
-        # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 30)
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoAlmacenBugaAprobado.objects.filter(version=version).delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de almacén Buga eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-#--------PRESUPUESTO ALMACEN CARTAGO----------------
-@login_required
-def presupuesto_almacen_cartago(request):
-    usuarios_permitidos = ['admin', 'JEFEALMACENCARTAGO', 'CHINCAPI']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoAlmacenCartago.objects
-        .values_list("version", flat=True)
-        .distinct()
-        .order_by("version")
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_almacen_cartago.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_almacen_cartago(request):
-    version = request.GET.get("version")  #🔥 versión 
-    qs = PresupuestoAlmacenCartago.objects.all()
-    if version:
-        qs = qs.filter(version=version)
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_almacen_cartago(request):
-    # obtener última version disponible
-    versiones = (
-        PresupuestoAlmacenCartagoAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    
-    return render(request, "presupuesto_general/presupuesto_aprobado_almacen_cartago.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_almacen_cartago(request):
-    # filtrar por la última versión
-    versiones = (
-        PresupuestoAlmacenCartagoAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoAlmacenCartagoAprobado.objects.filter(version=ultima_version)
-    data = list(qs.values())
-    
-    return JsonResponse({"data": data}, safe=False)
-
-def tabla_auxiliar_almacen_cartago(request):
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-    # 🚫 Si ya pasó la fecha, negar acceso
-    if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
-                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_almacen_cartago.html")
-
-def subir_presupuesto_almacen_cartago(request):
-    if request.method == "POST":
-        temporales = PresupuestoAlmacenCartagoAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-        # 📌 Obtener versión global (tomando la última registrada en la tabla 
-        ultima_version = PresupuestoAlmacenCartago.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
-        for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoAlmacenCartago.objects.update_or_create(
-                id=temp.id,
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,  
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoAlmacenCartagoAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,  
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto de almacén Cartago actualizado ✅ (versión {nueva_version})"
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_almacen_cartago_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-                registros.append(PresupuestoAlmacenCartagoAux(**row_filtrado))
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                # limpio toda la tabla auxiliar antes de insertar
-                PresupuestoAlmacenCartagoAux.objects.all().delete()
-                PresupuestoAlmacenCartagoAux.objects.bulk_create(registros)
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_almacen_cartago_temp(request):
-    data = list(PresupuestoAlmacenCartagoAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_almacen_cartago_base(request):
-    # limpio tabla auxiliar de almacen cartago antes de recalcular
-    PresupuestoAlmacenCartagoAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'JEFE ALMACEN CARTAGO'
-    base_data = base_data.filter(responsable__iexact="CLAUDIA H")
-    
-    for row in base_data:
-        PresupuestoAlmacenCartagoAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"], 
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
-        )
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_almacen_cartago(request):
-    if request.method == "POST":
-        version = request.POST.get("version")  # 🔥 versión enviada desde el frontend
-
-        if not version:
-            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
-        # borrar solo la versión seleccionada
-        PresupuestoAlmacenCartago.objects.filter(version=version).delete()
-        # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 30)
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoAlmacenCartagoAprobado.objects.filter(version=version).delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de almacén Cartago eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-#----------PRESUPUESTO ALMACEN CALI----------------
-@login_required
-def presupuesto_almacen_cali(request):
-    usuarios_permitidos = ['admin', 'JEFEALMACENCALI', 'LAMAYA']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoAlmacenCali.objects
-        .values_list("version", flat=True)
-        .distinct()
-        .order_by("version")
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_almacen_cali.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_almacen_cali(request):
-    version = request.GET.get("version")  #🔥 versión 
-    qs = PresupuestoAlmacenCali.objects.all()
-    if version:
-        qs = qs.filter(version=version)
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_almacen_cali(request):
-    # obtener última version disponible
-    versiones = (
-        PresupuestoAlmacenCaliAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    
-    return render(request, "presupuesto_general/presupuesto_aprobado_almacen_cali.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_almacen_cali(request):
-    # filtrar por la última versión
-    versiones = (
-        PresupuestoAlmacenCaliAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoAlmacenCaliAprobado.objects.filter(version=ultima_version)
-    data = list(qs.values())
-    
-    return JsonResponse({"data": data}, safe=False)
-
-def tabla_auxiliar_almacen_cali(request):
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 15)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-    # 🚫 Si ya pasó la fecha, negar acceso
-    if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
-                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_almacen_cali.html")
-
-def subir_presupuesto_almacen_cali(request):
-    if request.method == "POST":
-        temporales = PresupuestoAlmacenCaliAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-        # 📌 Obtener versión global (tomando la última registrada en la tabla 
-        ultima_version = PresupuestoAlmacenCali.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
-        for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoAlmacenCali.objects.update_or_create(
-                id=temp.id,
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,  
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoAlmacenCaliAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,  
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto de almacén Cali actualizado ✅ (versión {nueva_version})"
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_almacen_cali_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-                registros.append(PresupuestoAlmacenCaliAux(**row_filtrado))
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                # limpio toda la tabla auxiliar antes de insertar
-                PresupuestoAlmacenCaliAux.objects.all().delete()
-                PresupuestoAlmacenCaliAux.objects.bulk_create(registros)
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_almacen_cali_temp(request):
-    data = list(PresupuestoAlmacenCaliAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_almacen_cali_base(request):
-    # limpio tabla auxiliar de almacen cali antes de recalcular
-    PresupuestoAlmacenCaliAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'JEFE ALMACEN CALI'
-    base_data = base_data.filter(responsable__iexact="JEFE ALMACEN CALI")
-    
-    for row in base_data:
-        PresupuestoAlmacenCaliAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"], 
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
-        )
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_almacen_cali(request):
-    if request.method == "POST":
-        version = request.POST.get("version")  # 🔥 versión enviada desde el frontend
-
-        if not version:
-            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
-        # borrar solo la versión seleccionada
-        PresupuestoAlmacenCali.objects.filter(version=version).delete()
-        # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 30)
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoAlmacenCaliAprobado.objects.filter(version=version).delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de almacén Cali eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-#-----------------PRESUPUESTO COMUNICACIONES-------------------
-@login_required
-def presupuesto_comunicaciones(request):
-    usuarios_permitidos = ['admin', 'COMUNICACIONES']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoComunicaciones.objects
-        .values_list("version", flat=True)
-        .distinct()
-        .order_by("version")
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_comunicaciones.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_comunicaciones(request):
-    version = request.GET.get("version")  #🔥 versión 
-    qs = PresupuestoComunicaciones.objects.all()
-    if version:
-        qs = qs.filter(version=version)
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_comunicaciones(request):
-    # obtener última version disponible
-    versiones = (
-        PresupuestoComunicacionesAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    
-    return render(request, "presupuesto_general/presupuesto_aprobado_comunicaciones.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_comunicaciones(request):
-    # filtrar por la última versión
-    versiones = (
-        PresupuestoComunicacionesAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoComunicacionesAprobado.objects.filter(version=ultima_version)
-    data = list(qs.values())
-    
-    return JsonResponse({"data": data}, safe=False)
-
-def tabla_auxiliar_comunicaciones(request):
-    usuarios_permitidos = ['admin', 'COMUNICACIONES']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 8)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-    # 🚫 Si ya pasó la fecha, negar acceso
-    if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
-                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_comunicaciones.html")
-
-def subir_presupuesto_comunicaciones(request):
-    if request.method == "POST":
-        temporales = PresupuestoComunicacionesAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-        # 📌 Obtener versión global (tomando la última registrada en la tabla 
-        ultima_version = PresupuestoComunicaciones.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
-        for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoComunicaciones.objects.update_or_create(
-                id=temp.id,
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,  
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoComunicacionesAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,  
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto de comunicaciones actualizado ✅ (versión {nueva_version})"
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_comunicaciones_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-                registros.append(PresupuestoComunicacionesAux(**row_filtrado))
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                # limpio toda la tabla auxiliar antes de insertar
-                PresupuestoComunicacionesAux.objects.all().delete()
-                PresupuestoComunicacionesAux.objects.bulk_create(registros)
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_comunicaciones_temp(request):
-    data = list(PresupuestoComunicacionesAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_comunicaciones_base(request):
-    # limpio tabla auxiliar de comunicaciones antes de recalcular
-    PresupuestoComunicacionesAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'JEFE COMUNICACIONES'
-    base_data = base_data.filter(responsable__iexact="CARLOS USMAN")
-    
-    for row in base_data:
-        PresupuestoComunicacionesAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"], 
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
-        )
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_comunicaciones(request):
-    if request.method == "POST":
-        version = request.POST.get("version")  # 🔥 versión enviada desde el frontend
-
-        if not version:
-            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
-        # borrar solo la versión seleccionada
-        PresupuestoComunicaciones.objects.filter(version=version).delete()
-        # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 30)
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoComunicacionesAprobado.objects.filter(version=version).delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de comunicaciones eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-#---------------PRESUPUESTO COMERCIAL COSTOS-------------------
-@login_required
-def presupuesto_comercial_costos(request):
-    usuarios_permitidos = ['admin', 'COMERCIALCOSTOS', 'EVALENCIA', 'SCORTES']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoComercialCostos.objects
-        .values_list("version", flat=True)
-        .distinct()
-        .order_by("version")
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_comercial_costos.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_comercial_costos(request):
-    version = request.GET.get("version")  #🔥 versión 
-    qs = PresupuestoComercialCostos.objects.all()
-    if version:
-        qs = qs.filter(version=version)
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_comercial_costos(request):
-    # obtener última version disponible
-    versiones = (
-        PresupuestoComercialCostosAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    
-    return render(request, "presupuesto_general/presupuesto_aprobado_comercial_costos.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_comercial_costos(request):
-    # filtrar por la última versión
-    versiones = (
-        PresupuestoComercialCostosAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoComercialCostosAprobado.objects.filter(version=ultima_version)
-    data = list(qs.values())
-    
-    return JsonResponse({"data": data}, safe=False)
-
-def tabla_auxiliar_comercial_costos(request):
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 8)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-    # 🚫 Si ya pasó la fecha, negar acceso
-    if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
-                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_comercial_costos.html")
-
-def subir_presupuesto_comercial_costos(request):
-    if request.method == "POST":
-        temporales = PresupuestoComercialCostosAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-        # 📌 Obtener versión global (tomando la última registrada en la tabla 
-        ultima_version = PresupuestoComercialCostos.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
-        for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoComercialCostos.objects.update_or_create(
-                id=temp.id,
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,  
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoComercialCostosAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,  
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto de comercial costos actualizado ✅ (versión {nueva_version})"
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_comercial_costos_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-                registros.append(PresupuestoComercialCostosAux(**row_filtrado))
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                # limpio toda la tabla auxiliar antes de insertar
-                PresupuestoComercialCostosAux.objects.all().delete()
-                PresupuestoComercialCostosAux.objects.bulk_create(registros)
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_comercial_costos_temp(request):
-    data = list(PresupuestoComercialCostosAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_comercial_costos_base(request):
-    # limpio tabla auxiliar de comercial costos antes de recalcular
-    PresupuestoComercialCostosAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'JEFE COMERCIAL COSTOS'
-    base_data = base_data.filter(
-    Q(responsable__iexact="COMERCIALES") |
-    Q(responsable__iexact="GERARDO y EDUAR")
-)
-    
-    for row in base_data:
-        PresupuestoComercialCostosAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"], 
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
-        )
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_comercial_costos(request):
-    if request.method == "POST":
-        version = request.POST.get("version")  # 🔥 versión enviada desde el frontend
-
-        if not version:
-            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
-        # borrar solo la versión seleccionada
-        PresupuestoComercialCostos.objects.filter(version=version).delete()
-        # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 30)
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoComercialCostosAprobado.objects.filter(version=version).delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de comercial costos eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-#--------------PRESUPUESTO CONTABILIDAD-------------------
-@login_required
-def presupuesto_contabilidad(request):
-    usuarios_permitidos = ['admin', 'CONTABILIDAD']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoContabilidad.objects
-        .values_list("version", flat=True)
-        .distinct()
-        .order_by("version")
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_contabilidad.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_contabilidad(request):
-    version = request.GET.get("version")  #🔥 versión 
-    qs = PresupuestoContabilidad.objects.all()
-    if version:
-        qs = qs.filter(version=version)
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_contabilidad(request):
-    # obtener última version disponible
-    versiones = (
-        PresupuestoContabilidadAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    
-    return render(request, "presupuesto_general/presupuesto_aprobado_contabilidad.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_contabilidad(request):
-    # filtrar por la última versión
-    versiones = (
-        PresupuestoContabilidadAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoContabilidadAprobado.objects.filter(version=ultima_version)
-    data = list(qs.values())
-    
-    return JsonResponse({"data": data}, safe=False)
-
-def tabla_auxiliar_contabilidad(request):
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 22)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-    # 🚫 Si ya pasó la fecha, negar acceso
-    if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
-                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_contabilidad.html")
-
-def subir_presupuesto_contabilidad(request):
-    if request.method == "POST":
-        temporales = PresupuestoContabilidadAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-        # 📌 Obtener versión global (tomando la última registrada en la tabla 
-        ultima_version = PresupuestoContabilidad.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
-        for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoContabilidad.objects.update_or_create(
-                id=temp.id,
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,  
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoContabilidadAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto de contabilidad actualizado ✅ (versión {nueva_version})"
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_contabilidad_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-                registros.append(PresupuestoContabilidadAux(**row_filtrado))
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                # limpio toda la tabla auxiliar antes de insertar
-                PresupuestoContabilidadAux.objects.all().delete()
-                PresupuestoContabilidadAux.objects.bulk_create(registros)
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_contabilidad_temp(request):
-    data = list(PresupuestoContabilidadAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_contabilidad_base(request):
-    # limpio tabla auxiliar de contabilidad antes de recalcular
-    PresupuestoContabilidadAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'JEFE CONTABILIDAD'
-    base_data = base_data.filter(responsable__iexact="CONTABILIDAD")
-    
-    for row in base_data:
-        PresupuestoContabilidadAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"], 
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
-        )
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_contabilidad(request):
-    if request.method == "POST":
-        version = request.POST.get("version")  # 🔥 versión enviada desde el frontend
-
-        if not version:
-            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
-        # borrar solo la versión seleccionada
-        PresupuestoContabilidad.objects.filter(version=version).delete()
-        # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 30)
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoContabilidadAprobado.objects.filter(version=version).delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de contabilidad eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-#-------------PRESUPUESTO GERENCIA---------------------------
-@login_required
-def presupuesto_gerencia(request):
-    usuarios_permitidos = ['admin', 'GERENCIA']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    # 🔹 obtener versiones disponibles
-    versiones = (
-        PresupuestoGerencia.objects
-        .values_list("version", flat=True)
-        .distinct()
-        .order_by("version")
-    )
-    ultima_version = max(versiones) if versiones else 1
-    return render(request, "presupuesto_general/presupuesto_gerencia.html", {"versiones": versiones, "ultima_version": ultima_version})
-
-def obtener_presupuesto_gerencia(request):
-    version = request.GET.get("version")  #🔥 versión 
-    qs = PresupuestoGerencia.objects.all()
-    if version:
-        qs = qs.filter(version=version)
-    data = list(qs.values())
-    return JsonResponse({"data": data}, safe=False)
-
-def presupuesto_aprobado_gerencia(request):
-    # obtener última version disponible
-    versiones = (
-        PresupuestoGerenciaAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    
-    return render(request, "presupuesto_general/presupuesto_aprobado_gerencia.html", {"ultima_version": ultima_version})
-
-def obtener_presupuesto_aprobado_gerencia(request):
-    # filtrar por la última versión
-    versiones = (
-        PresupuestoGerenciaAprobado.objects
-        .values_list("version", flat=True)
-        .distinct()
-    )
-    ultima_version = max(versiones) if versiones else 1
-    qs = PresupuestoGerenciaAprobado.objects.filter(version=ultima_version)
-    data = list(qs.values())
-    
-    return JsonResponse({"data": data}, safe=False)
-
-def tabla_auxiliar_gerencia(request):
-    # 📌 Definir fecha límite
-    fecha_limite = datetime.date(2025, 10, 16)  # <-- cámbiala según lo que necesites
-    hoy = datetime.date.today()
-    # 🚫 Si ya pasó la fecha, negar acceso
-    if hoy > fecha_limite:
-        return HttpResponseForbidden("⛔ El acceso a esta vista está bloqueado después del "
-                                        f"{fecha_limite.strftime('%d/%m/%Y')}")
-    # ✅ Si aún no llega la fecha, mostrar vista normal
-    return render(request, "presupuesto_general/aux_presupuesto_gerencia.html")
-
-def subir_presupuesto_gerencia(request):
-    if request.method == "POST":
-        temporales = PresupuestoGerenciaAux.objects.all()
-        fecha_limite = datetime.date(2025, 10, 30)
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # 📌 Fecha actual
-        fecha_hoy = timezone.now().date()
-        # 📌 Obtener versión global (tomando la última registrada en la tabla 
-        ultima_version = PresupuestoGerencia.objects.aggregate(max_ver=models.Max("version"))["max_ver"] or 0
-        nueva_version = ultima_version + 1
-        for temp in temporales:
-            # --- Guardar en tabla principal ---
-            obj, created = PresupuestoGerencia.objects.update_or_create(
-                id=temp.id,
-                defaults={
-                    "centro_tra": temp.centro_tra,
-                    "nombre_cen": temp.nombre_cen,
-                    "codcosto": temp.codcosto,
-                    "responsable": temp.responsable,
-                    "cuenta": temp.cuenta,  
-                    "cuenta_mayor": temp.cuenta_mayor,
-                    "detalle_cuenta": temp.detalle_cuenta,
-                    "sede_distribucion": temp.sede_distribucion,
-                    "proveedor": temp.proveedor,
-                    "enero": temp.enero,
-                    "febrero": temp.febrero,
-                    "marzo": temp.marzo,
-                    "abril": temp.abril,
-                    "mayo": temp.mayo,
-                    "junio": temp.junio,
-                    "julio": temp.julio,
-                    "agosto": temp.agosto,
-                    "septiembre": temp.septiembre,
-                    "octubre": temp.octubre,
-                    "noviembre": temp.noviembre,
-                    "diciembre": temp.diciembre,
-                    "total": temp.total,
-                    "comentario": temp.comentario,
-                    "version": nueva_version,
-                    "fecha": fecha_hoy,
-                }
-            )
-            # --- Guardar en tabla aprobada si aplica ---
-            if fecha_hoy <= fecha_limite:
-                PresupuestoGerenciaAprobado.objects.update_or_create(
-                    id=temp.id,
-                    defaults={
-                        "centro_tra": temp.centro_tra,
-                        "nombre_cen": temp.nombre_cen,
-                        "codcosto": temp.codcosto,
-                        "responsable": temp.responsable,
-                        "cuenta": temp.cuenta,
-                        "cuenta_mayor": temp.cuenta_mayor,
-                        "detalle_cuenta": temp.detalle_cuenta,
-                        "sede_distribucion": temp.sede_distribucion,
-                        "proveedor": temp.proveedor,
-                        "enero": temp.enero,
-                        "febrero": temp.febrero,
-                        "marzo": temp.marzo,
-                        "abril": temp.abril,
-                        "mayo": temp.mayo,
-                        "junio": temp.junio,
-                        "julio": temp.julio,
-                        "agosto": temp.agosto,
-                        "septiembre": temp.septiembre,
-                        "octubre": temp.octubre,
-                        "noviembre": temp.noviembre,
-                        "diciembre": temp.diciembre,
-                        "total": temp.total,
-                        "comentario": temp.comentario,
-                        "version": nueva_version,   
-                        "fecha": fecha_hoy,
-                    }
-                )
-        return JsonResponse({
-            "success": True,
-            "msg": f"Presupuesto de gerencia actualizado ✅ (versión {nueva_version})"
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_gerencia_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total", "comentario"
-            }
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo","junio", "julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-                registros.append(PresupuestoGerenciaAux(**row_filtrado))
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                # limpio toda la tabla auxiliar antes de insertar
-                PresupuestoGerenciaAux.objects.all().delete()
-                PresupuestoGerenciaAux.objects.bulk_create(registros)
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_gerencia_temp(request):
-    data = list(PresupuestoGerenciaAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_gerencia_base(request):
-    # limpio tabla auxiliar de gerencia antes de recalcular
-    PresupuestoGerenciaAux.objects.all().delete()
-    base_data = Plantillagastos2025.objects.values(
-       "centro_tra", "nombre_cen", "codcosto", "responsable", "cuenta", "cuenta_mayor", "detalle_cuenta", "sede_distribucion", "proveedor", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    )
-    # filtrar por responsable = 'GERENCIA'
-    base_data = base_data.filter(responsable__iexact="GERENCIA")
-    
-    for row in base_data:
-        PresupuestoGerenciaAux.objects.create(
-            centro_tra=row["centro_tra"],
-            nombre_cen=row["nombre_cen"],
-            codcosto=row["codcosto"],
-            responsable=row["responsable"],
-            cuenta=row["cuenta"],
-            cuenta_mayor=row["cuenta_mayor"],
-            detalle_cuenta=row["detalle_cuenta"],
-            sede_distribucion=row["sede_distribucion"],
-            proveedor=row["proveedor"],
-            enero=row["enero"],
-            febrero=row["febrero"],
-            marzo=row["marzo"],
-            abril=row["abril"],
-            mayo=row["mayo"],
-            junio=row["junio"],
-            julio=row["julio"], 
-            agosto=row["agosto"],
-            septiembre=row["septiembre"],
-            octubre=row["octubre"],
-            noviembre=row["noviembre"],
-            diciembre=row["diciembre"],
-            total=row["enero"] + row["febrero"] + row["marzo"] + row["abril"] + row["mayo"] + row["junio"] + row["julio"] + row["agosto"] + row["septiembre"] + row["octubre"] + row["noviembre"] + row["diciembre"],
-            comentario = ""
-        )
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_gerencia(request):
-    if request.method == "POST":
-        version = request.POST.get("version")  # 🔥 versión enviada desde el frontend
-
-        if not version:
-            return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
-        # borrar solo la versión seleccionada
-        PresupuestoGerencia.objects.filter(version=version).delete()
-        # 📌 Fecha límite
-        fecha_limite = datetime.date(2025, 10, 30)
-        if timezone.now().date() <= fecha_limite:
-            PresupuestoGerenciaAprobado.objects.filter(version=version).delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de gerencia eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+def borrar_presupuesto_sede(request, sede):
+    config = _config_sede(sede)
+    if not config:
+        return JsonResponse({"status": "error", "message": "Sede no configurada"}, status=404)
+    if not _usuario_autorizado(request, config):
+        return JsonResponse({"status": "error", "message": "Sin permisos"}, status=403)
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+ 
+    version = request.POST.get("version")
+    if not version:
+        return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
+ 
+    config["model_oficial"].objects.filter(version=version).delete()
+    if timezone.now().date() <= _fecha_limite_aprobado(config):
+        config["model_aprobado"].objects.filter(version=version).delete()
+ 
+    return JsonResponse({"status": "ok", "message": f"Presupuesto de {config['label']} eliminado"})
+ 
 
 
 #--------------------PRESUPUESTO CONSOLIDADO-----------------------
@@ -10738,13 +7806,6 @@ def guardar_presupuesto_consolidado(request, area):
     
 
 #---------------------Obtener, editar y guardar cuanta 5--------------
-@login_required
-def cuenta5(request):
-    usuarios_permitidos = ['admin', 'NICOLAS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuesto_consolidado/cuenta5.html")
-
 def excel_serial_to_date(serial):
     if serial is None:
         return None
@@ -10753,6 +7814,13 @@ def excel_serial_to_date(serial):
         return (base_date + datetime.timedelta(days=int(serial))).date().isoformat()
     except Exception:
         return None
+
+@login_required
+def cuenta5(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuesto_consolidado/cuenta5_base.html")
 
 @csrf_exempt
 def obtener_cuenta5_base(request):
@@ -10774,7 +7842,7 @@ def obtener_cuenta5_base(request):
         # 🔹 Convertir fecha Excel a fecha normal
         for row in data:
             row['mcnfecha'] = excel_serial_to_date(row.get('mcnfecha'))
-        print(data)
+        
         return JsonResponse({
             'draw': draw,
             'recordsTotal': total,
@@ -10786,80 +7854,6 @@ def obtener_cuenta5_base(request):
         print(f"❌ Error en obtener_cuenta5_base: {e}")
         return JsonResponse({'error': str(e)}, status=500) 
     
-def cargar_cuenta5_base(request):
-    # limpio tabla cuenta 5 antes de recalcular
-    Cuenta5Base.objects.all().delete()
-    base_data = Cuenta5.objects.values("mcncuenta", "mcnfecha", "mcntipodoc", "mcnnumedoc", "mcnvincula", "vinnombre", "mcnvaldebi", "mcnvalcred", "saldonew", "mcnsucurs", "mcnccosto", "mcndestino", "mcndetalle", "mcnzona", "cconombre", "dnonombre", "zonnombre", "mcnempresa", "mcnclase", "mcnvinkey", "tpreg", "ctanombre", "docdetalle", "infdetalle")
-    for row in base_data:   
-        Cuenta5Base.objects.create(
-            mcncuenta=row["mcncuenta"],
-            mcnfecha=row["mcnfecha"],
-            mcntipodoc=row["mcntipodoc"],
-            mcnnumedoc=row["mcnnumedoc"],
-            mcnvincula=row["mcnvincula"],
-            vinnombre=row["vinnombre"],
-            mcnvaldebi=row["mcnvaldebi"],
-            mcnvalcred=row["mcnvalcred"],
-            saldonew=row["saldonew"],
-            mcnsucurs=row["mcnsucurs"],
-            mcnccosto=row["mcnccosto"],
-            mcndestino=row["mcndestino"],
-            mcndetalle=row["mcndetalle"],
-            mcnzona=row["mcnzona"],
-            cconombre=row["cconombre"],
-            dnonombre=row["dnonombre"],
-            zonnombre=row["zonnombre"],
-            mcnempresa=row["mcnempresa"],
-            mcnclase=row["mcnclase"],
-            mcnvinkey=row["mcnvinkey"],
-            tpreg=row["tpreg"],
-            ctanombre=row["ctanombre"],
-            docdetalle=row["docdetalle"],
-            infdetalle=row["infdetalle"],
-        )
-    return JsonResponse({"status": "ok", "msg": f"{base_data.count()} filas cargadas desde la base ✅"})
-
-def guardar_cuenta5(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            registros = []
-            for row in data:
-                registros.append(Cuenta5Base(
-                    mcncuenta=row.get("mcncuenta"),
-                    mcnfecha=row.get("mcnfecha"),
-                    mcntipodoc=row.get("mcntipodoc"),
-                    mcnnumedoc=row.get("mcnnumedoc"),
-                    mcnvincula=row.get("mcnvincula"),
-                    vinnombre=row.get("vinnombre"),
-                    mcnvaldebi=row.get("mcnvaldebi") or 0,
-                    mcnvalcred=row.get("mcnvalcred") or 0,
-                    saldonew=row.get("saldonew") or 0,
-                    mcnsucurs=row.get("mcnsucurs"),
-                    mcncosto=row.get("mcncosto"),
-                    mcndestino=row.get("mcndestino"),
-                    mcndetalle=row.get("mcndetalle"),
-                    mcnzona=row.get("mcnzona"),
-                    cconombre=row.get("cconombre"),
-                    dnonombre=row.get("dnonombre"),
-                    zonnombre=row.get("zonnombre"),
-                    mcnempresa=row.get("mcnempresa"),
-                    mcnclase=row.get("mcnclase"),
-                    mcnvinkey=row.get("mcnvinkey"),
-                    tpreg=row.get("tpreg"),
-                    ctanombre=row.get("ctanombre"),
-                    docdetalle=row.get("docdetalle"),
-                    infdetalle=row.get("infdetalle"),
-                ))
-            # ✅ Transacción atómica → si algo falla, no se borra nada
-            with transaction.atomic():
-                Cuenta5Base.objects.all().delete()
-                Cuenta5Base.objects.bulk_create(registros)
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
 @csrf_exempt
 def subir_excel_cuenta5(request):
     if request.method == "POST":
@@ -10886,1094 +7880,766 @@ def borrar_cuenta5_base(request):
         return JsonResponse({"status": "ok", "message": "Datos de cuenta 5 eliminados"})
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
+# SUBIR Y BORRAR CUENTA 5 PRESUPUESTADO -------------------------------
 @login_required
-def consolidado_tulua(request):
+def cuenta5_presupuestado(request):
     usuarios_permitidos = ['admin', 'NICOLAS']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuesto_consolidado/consolidado_tulua.html")
+    return render(request, "presupuestado/cuenta5_presupuestado.html")
 
-@login_required
-def consolidado_buga(request):
-    usuarios_permitidos = ['admin', 'NICOLAS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuesto_consolidado/consolidado_buga.html")
-
-@login_required
-def consolidado_cartago(request):
-    usuarios_permitidos = ['admin', 'NICOLAS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuesto_consolidado/consolidado_cartago.html")
-
-@login_required
-def consolidado_cali(request):
-    usuarios_permitidos = ['admin', 'NICOLAS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuesto_consolidado/consolidado_cali.html")
-
-@login_required
-def consolidado_total_base(request):
-    usuarios_permitidos = ['admin', 'NICOLAS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuesto_consolidado/consolidado_total_base.html")
-
-# retornar cuentas contables
-def obtener_consolidado_tulua(request):
+@csrf_exempt
+def obtener_cuenta5_presupuestado(request):
     try:
-        params = request.POST or request.GET
+        params = request.POST or request.GET  # funciona con ambos métodos
         draw = int(params.get('draw') or 1)
+        start = int(params.get('start') or 0)
+        length = int(params.get('length') or 50)
 
-        queryset = Cuenta5Base.objects.filter(
-            zonnombre__icontains='TULUA'
-        ).values(
-            'zonnombre',
-            'mcncuenta',
-            'mcnccosto',
-            'mcnfecha',
-            'mcnvaldebi',
-            'mcnvalcred'
-        )
+        queryset = Cuenta5Presupuestado.objects.all()
+        total = queryset.count()
 
-        consolidado = defaultdict(lambda: {
-            'total_debito': 0,
-            'total_credito': 0
-        })
-        # 🔹 1. Convertir fecha y consolidar
-        for row in queryset:
-            fecha = excel_serial_to_date(row['mcnfecha'])
-            if not fecha:
-                continue
-            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
-            
-            MESES_ES = {
-                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
-                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
-                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
-            }
+        paginator = Paginator(queryset, length)
+        page_number = start // length + 1
+        page = paginator.get_page(page_number)
 
-            mes = MESES_ES[fecha.month]
-            cuenta = row['mcncuenta'] or 'SIN CUENTA'
-            costo = row['mcnccosto'] or 'SIN COSTO'
-            zona = row['zonnombre'] or 'SIN ZONA'
-            key = (mes, cuenta, costo, zona)
-            consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
-            consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
+        data = list(page.object_list.values())
 
-        # 🔹 2. Obtener nombres de cuentas
-        cuentas_qs = Cuenta5Base.objects.values(
-            'mcncuenta',
-            'ctanombre'
-        ).distinct()
-        cuentas_dict = {
-            c['mcncuenta']: c['ctanombre']
-            for c in cuentas_qs
-        }
-
-        # 🔹 3. Pivotar: agrupar por cuenta-costo y crear columnas por mes
-        pivot_data = defaultdict(lambda: {
-            'mcncuenta': '',
-            'mcnccosto': '',
-            'ctanombre': ''
-        })
+        # 🔹 Convertir fecha Excel a fecha normal
+        for row in data:
+            row['mcnfecha'] = excel_serial_to_date(row.get('mcnfecha'))
         
-        meses_unicos = set()
-        
-        for (mes, cuenta, costo, zona) in consolidado.keys():
-            key = (cuenta, costo)
-            meses_unicos.add(mes)
-            
-            total_debito = consolidado[(mes, cuenta, costo, zona)]['total_debito']
-            total_credito = consolidado[(mes, cuenta, costo, zona)]['total_credito']
-            saldo = total_debito - total_credito
-            
-            pivot_data[key]['mcncuenta'] = cuenta
-            pivot_data[key]['mcnccosto'] = costo
-            pivot_data[key]['ctanombre'] = cuentas_dict.get(cuenta, 'SIN NOMBRE')
-            pivot_data[key]['zonnombre'] = zona
-            pivot_data[key][mes] = round(saldo)
-
-        # 🔹 4. Convertir a lista ordenada
-        data = []
-        for key in sorted(pivot_data.keys()):
-            row = pivot_data[key]
-            # Asegurar que todos los meses existan en cada fila (con 0 si no hay datos)
-            for mes in meses_unicos:
-                if mes not in row:
-                    row[mes] = 0
-            data.append(row)
         return JsonResponse({
+            'draw': draw,
+            'recordsTotal': total,
+            'recordsFiltered': total,
             'data': data
         })
-        
 
     except Exception as e:
-        print(f"❌ Error en obtener_consolidado_tulua: {e}")
-        return JsonResponse({'error': str(e)}, status=500)
-
-def obtener_consolidado_buga(request):
-    try:
-        params = request.POST or request.GET
-        draw = int(params.get('draw') or 1)
-
-        queryset = Cuenta5Base.objects.filter(
-            zonnombre__icontains='BUGA'
-        ).values(
-            'zonnombre',
-            'mcncuenta',
-            'mcnccosto',
-            'mcnfecha',
-            'mcnvaldebi',
-            'mcnvalcred'
-        )
-
-        consolidado = defaultdict(lambda: {
-            'total_debito': 0,
-            'total_credito': 0
-        })
-        # 🔹 1. Convertir fecha y consolidar
-        for row in queryset:
-            fecha = excel_serial_to_date(row['mcnfecha'])
-            if not fecha:
-                continue
-            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
-            
-            MESES_ES = {
-                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
-                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
-                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
-            }
-
-            mes = MESES_ES[fecha.month]
-            cuenta = row['mcncuenta'] or 'SIN CUENTA'
-            costo = row['mcnccosto'] or 'SIN COSTO'
-            zona = row['zonnombre'] or 'SIN ZONA'
-            key = (mes, cuenta, costo, zona)
-            consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
-            consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
-
-        # 🔹 2. Obtener nombres de cuentas
-        cuentas_qs = Cuenta5Base.objects.values(
-            'mcncuenta',
-            'ctanombre'
-        ).distinct()
-        cuentas_dict = {
-            c['mcncuenta']: c['ctanombre']
-            for c in cuentas_qs
-        }
-
-        # 🔹 3. Pivotar: agrupar por cuenta-costo y crear columnas por mes
-        pivot_data = defaultdict(lambda: {
-            'mcncuenta': '',
-            'mcnccosto': '',
-            'ctanombre': ''
-        })
-        
-        meses_unicos = set()
-        
-        for (mes, cuenta, costo, zona) in consolidado.keys():
-            key = (cuenta, costo)
-            meses_unicos.add(mes)
-            
-            total_debito = consolidado[(mes, cuenta, costo, zona)]['total_debito']
-            total_credito = consolidado[(mes, cuenta, costo, zona)]['total_credito']
-            saldo = total_debito - total_credito
-            
-            pivot_data[key]['mcncuenta'] = cuenta
-            pivot_data[key]['mcnccosto'] = costo
-            pivot_data[key]['ctanombre'] = cuentas_dict.get(cuenta, 'SIN NOMBRE')
-            pivot_data[key]['zonnombre'] = zona
-            pivot_data[key][mes] = round(saldo)
-
-        # 🔹 4. Convertir a lista ordenada
-        data = []
-        for key in sorted(pivot_data.keys()):
-            row = pivot_data[key]
-            # Asegurar que todos los meses existan en cada fila (con 0 si no hay datos)
-            for mes in meses_unicos:
-                if mes not in row:
-                    row[mes] = 0
-            data.append(row)
-        return JsonResponse({
-            'data': data
-        })
-        
-    except Exception as e:
-        print(f"❌ Error en obtener_consolidado_buga: {e}")
-        return JsonResponse({'error': str(e)}, status=500)
-
-def obtener_consolidado_cartago(request):
-    try:
-        params = request.POST or request.GET
-        draw = int(params.get('draw') or 1)
-
-        queryset = Cuenta5Base.objects.filter(
-            zonnombre__icontains='CARTAGO'
-        ).values(
-            'zonnombre',
-            'mcncuenta',
-            'mcnccosto',
-            'mcnfecha',
-            'mcnvaldebi',
-            'mcnvalcred'
-        )
-
-        consolidado = defaultdict(lambda: {
-            'total_debito': 0,
-            'total_credito': 0
-        })
-        # 🔹 1. Convertir fecha y consolidar
-        for row in queryset:
-            fecha = excel_serial_to_date(row['mcnfecha'])
-            if not fecha:
-                continue
-            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
-            
-            MESES_ES = {
-                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
-                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
-                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
-            }
-
-            mes = MESES_ES[fecha.month]
-            cuenta = row['mcncuenta'] or 'SIN CUENTA'
-            costo = row['mcnccosto'] or 'SIN COSTO'
-            zona = row['zonnombre'] or 'SIN ZONA'
-            key = (mes, cuenta, costo, zona)
-            consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
-            consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
-
-        # 🔹 2. Obtener nombres de cuentas
-        cuentas_qs = Cuenta5Base.objects.values(
-            'mcncuenta',
-            'ctanombre'
-        ).distinct()
-        cuentas_dict = {
-            c['mcncuenta']: c['ctanombre']
-            for c in cuentas_qs
-        }
-
-        # 🔹 3. Pivotar: agrupar por cuenta-costo y crear columnas por mes
-        pivot_data = defaultdict(lambda: {
-            'mcncuenta': '',
-            'mcnccosto': '',
-            'ctanombre': ''
-        })
-        
-        meses_unicos = set()
-        
-        for (mes, cuenta, costo, zona) in consolidado.keys():
-            key = (cuenta, costo)
-            meses_unicos.add(mes)
-            
-            total_debito = consolidado[(mes, cuenta, costo, zona)]['total_debito']
-            total_credito = consolidado[(mes, cuenta, costo, zona)]['total_credito']
-            saldo = total_debito - total_credito
-            
-            pivot_data[key]['mcncuenta'] = cuenta
-            pivot_data[key]['mcnccosto'] = costo
-            pivot_data[key]['ctanombre'] = cuentas_dict.get(cuenta, 'SIN NOMBRE')
-            pivot_data[key]['zonnombre'] = zona
-            pivot_data[key][mes] = round(saldo)
-
-        # 🔹 4. Convertir a lista ordenada
-        data = []
-        for key in sorted(pivot_data.keys()):
-            row = pivot_data[key]
-            # Asegurar que todos los meses existan en cada fila (con 0 si no hay datos)
-            for mes in meses_unicos:
-                if mes not in row:
-                    row[mes] = 0
-            data.append(row)
-        return JsonResponse({
-            'data': data
-        })
-        
-    except Exception as e:
-        print(f"❌ Error en obtener_consolidado_cartago: {e}")
-        return JsonResponse({'error': str(e)}, status=500)
-
-def obtener_consolidado_cali(request):
-    try:
-        params = request.POST or request.GET
-        draw = int(params.get('draw') or 1)
-
-        queryset = Cuenta5Base.objects.filter(
-            zonnombre__icontains='CALI'
-        ).values(
-            'zonnombre',
-            'mcncuenta',
-            'mcnccosto',
-            'mcnfecha',
-            'mcnvaldebi',
-            'mcnvalcred'
-        )
-
-        consolidado = defaultdict(lambda: {
-            'total_debito': 0,
-            'total_credito': 0
-        })
-        # 🔹 1. Convertir fecha y consolidar
-        for row in queryset:
-            fecha = excel_serial_to_date(row['mcnfecha'])
-            if not fecha:
-                continue
-            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
-            
-            MESES_ES = {
-                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
-                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
-                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
-            }
-
-            mes = MESES_ES[fecha.month]
-            cuenta = row['mcncuenta'] or 'SIN CUENTA'
-            costo = row['mcnccosto'] or 'SIN COSTO'
-            zona = row['zonnombre'] or 'SIN ZONA'
-            key = (mes, cuenta, costo, zona)
-            consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
-            consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
-
-        # 🔹 2. Obtener nombres de cuentas
-        cuentas_qs = Cuenta5Base.objects.values(
-            'mcncuenta',
-            'ctanombre'
-        ).distinct()
-        cuentas_dict = {
-            c['mcncuenta']: c['ctanombre']
-            for c in cuentas_qs
-        }
-
-        # 🔹 3. Pivotar: agrupar por cuenta-costo y crear columnas por mes
-        pivot_data = defaultdict(lambda: {
-            'mcncuenta': '',
-            'mcnccosto': '',
-            'ctanombre': ''
-        })
-        
-        meses_unicos = set()
-        
-        for (mes, cuenta, costo, zona) in consolidado.keys():
-            key = (cuenta, costo)
-            meses_unicos.add(mes)
-            
-            total_debito = consolidado[(mes, cuenta, costo, zona)]['total_debito']
-            total_credito = consolidado[(mes, cuenta, costo, zona)]['total_credito']
-            saldo = total_debito - total_credito
-            
-            pivot_data[key]['mcncuenta'] = cuenta
-            pivot_data[key]['mcnccosto'] = costo
-            pivot_data[key]['ctanombre'] = cuentas_dict.get(cuenta, 'SIN NOMBRE')
-            pivot_data[key]['zonnombre'] = zona
-            pivot_data[key][mes] = round(saldo)
-
-        # 🔹 4. Convertir a lista ordenada
-        data = []
-        for key in sorted(pivot_data.keys()):
-            row = pivot_data[key]
-            # Asegurar que todos los meses existan en cada fila (con 0 si no hay datos)
-            for mes in meses_unicos:
-                if mes not in row:
-                    row[mes] = 0
-            data.append(row)
-        return JsonResponse({
-            'data': data
-        })
-        
-    except Exception as e:
-        print(f"❌ Error en obtener_consolidado_cali: {e}")
-        return JsonResponse({'error': str(e)}, status=500)
-
-# def obtener_consolidado_total_base(request):
-#     try:
-#         params = request.POST or request.GET
-#         draw = int(params.get('draw') or 1)
-
-#         queryset = Cuenta5Base.objects.values(
-#             'mcncuenta',
-#             'mcnccosto',
-#             'mcnfecha',
-#             'mcnvaldebi',
-#             'mcnvalcred'
-#         )
-
-#         consolidado = defaultdict(lambda: {
-#             'total_debito': 0,
-#             'total_credito': 0
-#         })
-        
-#         # 🔹 1. Convertir fecha y consolidar
-#         for row in queryset:
-#             fecha = excel_serial_to_date(row['mcnfecha'])
-#             if not fecha:
-#                 continue
-#             fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
-            
-#             MESES_ES = {
-#                 1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
-#                 5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
-#                 9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
-#             }
-
-#             mes = MESES_ES[fecha.month]
-#             cuenta = row['mcncuenta'] or 'SIN CUENTA'
-#             costo = row['mcnccosto'] or 'SIN COSTO'
-#             # 🔹 Agrupar cuentas que comienzan con '541001'
-#             if cuenta.startswith('541001'):
-#                 cuenta = '541001'
-            
-#             # 🔹 Agrupar cuentas específicas 'Tasas Bomberil-otras'
-#             tasasBomberil_otras = ['54100207', '54100208', '54100209', '54100210']
-#             # agrupar cuentas de la 541009 y 541033 Adecuación e Instalaciones-Reparac locat
-#             adecuacion_instalaciones = ['541009', '541033', '54103301', '54103302']
-#             # agrupar cuentas 541015 - 541016 Utiles - Papelería- Fotocopias
-#             papelaria_fotocopias = ['541015', '541016']
-#             # agrupar cuentas 511015 - 511016 Papelería y Utiles de Oficina
-#             papeleria_utiles_oficina = ['511015', '511016']
-#             if cuenta in tasasBomberil_otras:
-#                 cuenta = '54100207_54100210'
-#             if cuenta in adecuacion_instalaciones:
-#                 cuenta = '541009_541033'
-#             if cuenta in papelaria_fotocopias:
-#                 cuenta = '541015_541016'
-#             if cuenta in papeleria_utiles_oficina:
-#                 cuenta = '511015_511016'
-#             # agrupar cuentas 541003 Arrendamientos
-#             if cuenta.startswith('541003'):
-#                 cuenta = '541003'
-            
-#             # agrupar cuentas 541005 Seguros
-#             if cuenta.startswith('541005'):
-#                 cuenta = '541005'
-                
-#             # agrupar cuentas 541006 Mantenimiento y Reparaciónes
-#             if cuenta.startswith('541006'):
-#                 cuenta = '541006'
-            
-#             # agrupar cuentas 541024 Gastos Legales
-#             if cuenta.startswith('541024'):
-#                 cuenta = '541024'
-            
-#             # agrupar cuentas 541027 Gastos de Viaje
-#             if cuenta.startswith('541027'):
-#                 cuenta = '541027'
-            
-#             # agrupar cuentas 5415 Depreciación
-#             if cuenta.startswith('5415'):
-#                 cuenta = '5415'
-                
-#             # agrupar cuentas 5405 Gastos de Personal
-#             if costo == '020201':
-#                 cuenta = '5405'
-            
-#             key = (mes, cuenta, costo)
-#             consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
-#             consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
-
-#         # 🔹 2. Obtener nombres de cuentas
-#         cuentas_qs = Cuenta5Base.objects.values(
-#             'mcncuenta',
-#             'ctanombre'
-#         ).distinct()
-#         cuentas_dict = {
-#             c['mcncuenta']: c['ctanombre']
-#             for c in cuentas_qs
-#         }
-
-#         # 🔹 3. Pivotar: agrupar por cuenta-costo y crear columnas por mes
-#         pivot_data = defaultdict(lambda: {
-#             'mcncuenta': '',
-#             'mcnccosto': '',
-#             'ctanombre': ''
-#         })
-        
-#         meses_unicos = set()
-        
-#         for (mes, cuenta, costo) in consolidado.keys():
-#             key = (cuenta, costo)
-#             meses_unicos.add(mes)
-            
-#             total_debito = consolidado[(mes, cuenta, costo)]['total_debito']
-#             total_credito = consolidado[(mes, cuenta, costo)]['total_credito']
-#             saldo = total_debito - total_credito
-            
-#             pivot_data[key]['mcncuenta'] = cuenta
-#             pivot_data[key]['mcnccosto'] = costo
-#             # 🔹 Asignar nombre especial para cuentas '541001'
-#             if cuenta == '541001':
-#                 pivot_data[key]['ctanombre'] = 'Honorarios'
-#             elif cuenta == '54100207_54100210':
-#                 pivot_data[key]['ctanombre'] = 'Tasas Bomberil-otras'
-#             elif cuenta == '541003':
-#                 pivot_data[key]['ctanombre'] = 'Arrendamientos'
-#             elif cuenta == '541005':
-#                 pivot_data[key]['ctanombre'] = 'Seguros'
-#             elif cuenta == '541006':
-#                 pivot_data[key]['ctanombre'] = 'Mantenimiento y Reparaciónes'
-#             elif cuenta == '541009_541033':
-#                 pivot_data[key]['ctanombre'] = 'Adecuación e Instalaciones-Reparac locat'
-#             elif cuenta == '541015_541016':
-#                 pivot_data[key]['ctanombre'] = 'Utiles - Papelería- Fotocopias'
-#             elif cuenta == '541024':
-#                 pivot_data[key]['ctanombre'] = 'Gastos Legales'
-#             elif cuenta == '541027':
-#                 pivot_data[key]['ctanombre'] = 'Gastos de Viaje'
-#             elif cuenta == '5415':
-#                 pivot_data[key]['ctanombre'] = 'Depreciación'
-#             elif cuenta == '511015_511016':
-#                 pivot_data[key]['ctanombre'] = 'Papelería y Utiles de Oficina'
-#             elif cuenta == '5405':
-#                 pivot_data[key]['ctanombre'] = 'Gastos de Personal'
-#             else:
-#                 pivot_data[key]['ctanombre'] = cuentas_dict.get(cuenta, 'SIN NOMBRE')
-            
-#             pivot_data[key][mes] = round(saldo)
-
-#         # 🔹 4. Convertir a lista ordenada
-#         data = []
-#         for key in sorted(pivot_data.keys()):
-#             row = pivot_data[key]
-#             total_anual = 0
-#             # Asegurar que todos los meses existan en cada fila (con 0 si no hay datos)
-#             for mes in meses_unicos:
-#                 if mes not in row:
-#                     row[mes] = 0
-#                 else:
-#                     total_anual += row[mes]
-#             row['total_anual'] = total_anual
-#             data.append(row)
-#         return JsonResponse({
-#             'data': data
-#         })
-#     except Exception as e:
-#         print(f"❌ Error en obtener_consolidado_total: {e}")
-#         return JsonResponse({'error': str(e)}, status=500)
-
-@require_http_methods(["POST"])
-def guardar_fila_consolidado(request):
-    """
-    Guarda o actualiza una fila del consolidado.
-    Recibe datos pivotados (meses en horizontal) y los guarda como registros individuales por mes.
-    """
-    try:
-        data = json.loads(request.body)
-        nueva_data = data.get('nueva_data')
-        old_data = data.get('old_data')
-        
-        if not nueva_data:
-            return JsonResponse({
-                'success': False,
-                'error': 'No se recibieron datos'
-            }, status=400)
-        
-        # Validaciones
-        if not nueva_data.get('mcncuenta') or not nueva_data.get('mcnccosto'):
-            return JsonResponse({
-                'success': False,
-                'error': 'Cuenta y Centro de Costo son obligatorios'
-            }, status=400)
-        
-        # tomar año de la cuenta 5 
-        queryset = Cuenta5Base.objects.values(
-                'mcncuenta',
-                'mcnccosto',
-                'mcnfecha',
-            )
-        year = 0
-        for row in queryset:
-            fecha = excel_serial_to_date(row['mcnfecha'])
-            if not fecha:
-                continue
-            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
-            year = fecha.year
-        # Mapeo de meses
-        meses_mapping = {
-            'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
-            'mayo': 5, 'junio': 6, 'julio': 7, 'agosto': 8,
-            'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
-        }
-        
-        with transaction.atomic():
-            # Si hay datos antiguos, eliminar los registros correspondientes
-            if old_data and old_data.get('mcncuenta') and old_data.get('mcnccosto'):
-                ConsolidadoTotalBase.objects.filter(
-                    mcncuenta=old_data['mcncuenta'],
-                    mcnccosto=old_data['mcnccosto'],
-                    mcnfecha__year=year
-                ).delete()
-            
-            # Crear nuevos registros para cada mes
-            registros_nuevos = []
-            total_anual = nueva_data.get('total', 0)
-            
-            for mes_nombre, mes_num in meses_mapping.items():
-                valor_mes = nueva_data.get(mes_nombre, 0)
-                
-                # Solo crear registro si hay valor o si es una fila nueva
-                if valor_mes != 0 or not old_data:
-                    fecha = datetime.date(year, mes_num, 1)
-                    
-                    registros_nuevos.append(
-                        ConsolidadoTotalBase(
-                            mcncuenta=nueva_data['mcncuenta'],
-                            mcnccosto=nueva_data['mcnccosto'],
-                            ctanombre=nueva_data.get('ctanombre', ''),
-                            mcnfecha=fecha,
-                            valor = valor_mes,
-                            total_anual=total_anual
-                        )
-                    )
-            
-            # Guardar todos los registros
-            if registros_nuevos:
-                ConsolidadoTotalBase.objects.bulk_create(registros_nuevos)
-            
-            return JsonResponse({
-                'success': True,
-                'mensaje': f'✅ Fila guardada correctamente. {len(registros_nuevos)} registros creados.',
-                'registros_creados': len(registros_nuevos)
-            })
-            
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': 'Error al procesar datos JSON'
-        }, status=400)
-    except Exception as e:
-        print(f"❌ Error en guardar_fila_consolidado: {e}")
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
-
-
-@require_http_methods(["POST"])
-def eliminar_fila_consolidado(request):
-    """
-    Elimina todos los registros asociados a una cuenta y centro de costo
-    """
-    try:
-        data = json.loads(request.body)
-        mcncuenta = data.get('mcncuenta')
-        
-        if not mcncuenta:
-            return JsonResponse({
-                'success': False,
-                'error': 'Cuenta es obligatoria'
-            }, status=400)
-        
-        year = datetime.datetime.now().year
-        
-        with transaction.atomic():
-            # Eliminar todos los registros de esa cuenta/costo
-            registros_eliminados = ConsolidadoTotalBase.objects.filter(
-                mcncuenta=mcncuenta,
-                mcnfecha__year=year
-            ).delete()
-            
-            num_eliminados = registros_eliminados[0] if registros_eliminados else 0
-            
-            return JsonResponse({
-                'success': True,
-                'mensaje': f'✅ Fila eliminada correctamente. {num_eliminados} registros eliminados.',
-                'registros_eliminados': num_eliminados
-            })
-            
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': 'Error al procesar datos JSON'
-        }, status=400)
-    except Exception as e:
-        print(f"❌ Error en eliminar_fila_consolidado: {e}")
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
-
-def calcular_consolidado():
-    """
-    Realiza todos los cálculos de consolidación y retorna los resultados
-    sin guardar en base de datos
-    """
-    try:
-        queryset = Cuenta5Base.objects.values(
-            'mcncuenta',
-            'mcnccosto',
-            'mcnfecha',
-            'mcnvaldebi',
-            'mcnvalcred'
-        )
-
-        consolidado = defaultdict(lambda: {
-            'total_debito': 0,
-            'total_credito': 0
-        })
-        
-        MESES_ES = {
-            1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
-            5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
-            9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
-        }
-        year = 0
-        
-        # 1. Convertir fecha y consolidar
-        for row in queryset:
-            fecha = excel_serial_to_date(row['mcnfecha'])
-            if not fecha:
-                continue
-            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
-
-            mes = MESES_ES[fecha.month]
-            year = fecha.year
-            cuenta = row['mcncuenta'] or 'SIN CUENTA'
-            costo = row['mcnccosto'] or 'SIN COSTO'
-            
-            # Aplicar agrupaciones de cuentas
-            if cuenta.startswith('541001'):
-                cuenta = '541001'
-            
-            tasasBomberil_otras = ['54100207', '54100208', '54100209', '54100210']
-            adecuacion_instalaciones = ['541009', '541033', '54103301', '54103302']
-            papelaria_fotocopias = ['541015', '541016']
-            papeleria_utiles_oficina = ['511015', '511016']
-            gastos_fondos_sociales = ['51109501', '51109502']
-            
-            if cuenta in tasasBomberil_otras:
-                cuenta = '54100207_54100210'
-            if cuenta in adecuacion_instalaciones:
-                cuenta = '541009_541033'
-            if cuenta in papelaria_fotocopias:
-                cuenta = '541015_541016'
-            if cuenta in papeleria_utiles_oficina:
-                cuenta = '511015_511016'
-            if cuenta in gastos_fondos_sociales:
-                cuenta = '51109501_51109502'
-                
-            if cuenta.startswith('541003'):
-                cuenta = '541003'
-            if cuenta.startswith('541005'):
-                cuenta = '541005'
-            if cuenta.startswith('541006'):
-                cuenta = '541006'
-            if cuenta.startswith('541024'):
-                cuenta = '541024'
-            if cuenta.startswith('541027'):
-                cuenta = '541027'
-            if cuenta.startswith('5415'):
-                cuenta = '5415'
-            if costo == '020201':
-                cuenta = '5405'
-            
-            # gastos de administración
-            if costo == '0101':
-                cuenta = '5105'
-            
-            key = (mes, cuenta, costo)
-            consolidado[key]['total_debito'] += row['mcnvaldebi'] or 0
-            consolidado[key]['total_credito'] += row['mcnvalcred'] or 0
-        
-        # 2. Eliminar registros con cuentas que inicien con 5405 después de la agrupación
-        costos_a_eliminar = ['020302', '020402', '020301']
-        cuentas_a_eliminar = ['51109501']
-        keys_to_remove = [
-            key for key in consolidado.keys()
-            if (key[1].startswith('5405') and key[1]!='5405') or (key[2] in costos_a_eliminar) or (key[1] in cuentas_a_eliminar)
-        ]
-        for key in keys_to_remove:
-            del consolidado[key]
-        
-        # 3. Obtener nombres de cuentas
-        cuentas_qs = Cuenta5Base.objects.values(
-            'mcncuenta',
-            'ctanombre'
-        ).distinct()
-        cuentas_dict = {
-            c['mcncuenta']: c['ctanombre']
-            for c in cuentas_qs
-        }
-
-        # 4. Preparar datos para retornar
-        registros_por_cuenta_costo = defaultdict(lambda: {
-            'mcncuenta': '',
-            'mcnccosto': '',
-            'ctanombre': '',
-            'meses': {}
-        })
-        
-        for (mes, cuenta, costo) in consolidado.keys():
-            key = (cuenta, costo)
-            
-            total_debito = consolidado[(mes, cuenta, costo)]['total_debito']
-            total_credito = consolidado[(mes, cuenta, costo)]['total_credito']
-            saldo = total_debito - total_credito
-            
-            registros_por_cuenta_costo[key]['mcncuenta'] = cuenta
-            registros_por_cuenta_costo[key]['mcnccosto'] = costo
-            
-            # Asignar nombre especial para cuentas agrupadas
-            nombres_especiales = {
-                '541001': 'Honorarios',
-                '54100207_54100210': 'Tasas Bomberil-otras',
-                '541003': 'Arrendamientos',
-                '541005': 'Seguros',
-                '541006': 'Mantenimiento y Reparaciónes',
-                '541009_541033': 'Adecuación e Instalaciones-Reparac locat',
-                '541015_541016': 'Utiles - Papelería- Fotocopias',
-                '541024': 'Gastos Legales',
-                '541027': 'Gastos de Viaje',
-                '5415': 'Depreciación',
-                '511015_511016': 'Papelería y Utiles de Oficina',
-                '5405': 'Gastos de Personal',
-                '5105': 'Gastos de Personal',
-                '51109501_51109502': 'Gastos de Fondos Sociales'
-            }
-            
-            registros_por_cuenta_costo[key]['ctanombre'] = nombres_especiales.get(
-                cuenta, 
-                cuentas_dict.get(cuenta, 'SIN NOMBRE')
-            )
-            
-            registros_por_cuenta_costo[key]['meses'][mes] = round(saldo)
-        
-        return {
-            'success': True,
-            'data': registros_por_cuenta_costo
-        }
-        
-    except Exception as e:
-        print(f"❌ Error en calcular_consolidado: {e}")
-        return {
-            'success': False,
-            'error': str(e)
-        }
-
-def obtener_consolidado_total_base(request):
-    """
-    Vista que retorna datos pivoteados con meses en horizontal
-    Llama a la función de cálculo en lugar de consultar la base de datos
-    """
-    # Obtener datos calculados
-    resultado_calculo = calcular_consolidado()
-    
-    if not resultado_calculo['success']:
-        return JsonResponse({
-            'error': resultado_calculo.get('error', 'Error al calcular consolidado')
-        }, status=500)
-    
-    registros_por_cuenta_costo = resultado_calculo['data']
-    
-    # Estructurar datos para pivot
-    pivot_data = defaultdict(lambda: {
-        'mcncuenta': '',
-        'ctanombre': '',
-        'enero': 0,
-        'febrero': 0,
-        'marzo': 0,
-        'abril': 0,
-        'mayo': 0,
-        'junio': 0,
-        'julio': 0,
-        'agosto': 0,
-        'septiembre': 0,
-        'octubre': 0,
-        'noviembre': 0,
-        'diciembre': 0,
-        'total': 0
-    })
-    
-    # Mapeo de nombres de mes a nombres en minúscula
-    meses_map = {
-        'Enero': 'enero',
-        'Febrero': 'febrero',
-        'Marzo': 'marzo',
-        'Abril': 'abril',
-        'Mayo': 'mayo',
-        'Junio': 'junio',
-        'Julio': 'julio',
-        'Agosto': 'agosto',
-        'Septiembre': 'septiembre',
-        'Octubre': 'octubre',
-        'Noviembre': 'noviembre',
-        'Diciembre': 'diciembre'
-    }
-    
-    # Llenar el pivot
-    for key, row in registros_por_cuenta_costo.items():
-        pivot_key = f"{row['mcncuenta']}_{row['mcnccosto']}"
-        
-        pivot_data[pivot_key]['mcncuenta'] = row['mcncuenta']
-        pivot_data[pivot_key]['mcnccosto'] = row['mcnccosto']
-        pivot_data[pivot_key]['ctanombre'] = row['ctanombre']
-        
-        # Recorrer los meses del registro
-        for mes, valor in row['meses'].items():
-            mes_nombre = meses_map.get(mes)
-            if mes_nombre:
-                pivot_data[pivot_key][mes_nombre] = valor
-                pivot_data[pivot_key]['total'] += valor
-    
-    # Convertir a lista para JSON
-    result = list(pivot_data.values())
-    
-    orden_personalizado = [
-        '1',
-        '2',
-        '41750201',	        # Descuentos otorgados x pto pago 
-        '613522',	        # COSTO DE VENTAS 
-        '4240900101',	        # Descuentos x Pto Pago Proveed 
-        '4240909502',	        # Bonificación de Proveedores 
-        '5405',                     # 1º - Gastos de Personal
-        '541001',                   # 2º - Honorarios
-        '54100201',                 # Impto. Industria y Comercio
-        '54100202',	                # Impto Predial
-        '54100204',	                # Impuesto a las ventas (I.VA)
-        '54100205',	                # Impuesto al consumo
-        '54100206',	                # Avisos y Tableros
-        '54100207_54100210',        # Tasas Bomberil-otras
-        '541003',               # 3º - Arrendamientos
-        '541005',               # 4º - Seguros
-        '541006',               # 5º - Mantenimiento y Reparaciónes
-        '541009_541033',        # 6º - Adecuación e Instalaciones-Reparac locat
-        '541010',	            # Aseo y elementos
-        '541011',	            # Casino y Restaurante
-        '54101201',	            # Acueducto y Alcantarillado
-        '54101202',	            # Energía Eléctrica
-        '54101203',	            # Teléfono
-        '54101204',	            # Servicio de Gas
-        '541013',	            # Correo Portes y Cables
-        '541014',	            # Transporte, Fletes y Acarreos
-        '541015_541016',        # 8º - Utiles - Papelería- Fotocopias
-        '541018',	            # Publicidad y Propaganda
-        '541023',	            # Gastos Reuniones  y Conferencias
-        '541024',               # 10º - Gastos Legales
-        '541027',               # 11º - Gastos de Viaje
-        '541029',	            # Vigilancia privada
-        '541032',	            # Libros, Suscripciones y Revistas
-        '541035',	            # Procesamiento Electrónico 
-        '54109501',	            # Cargue y Descargue
-        '54109502',	            # Combustible y Lubricantes
-        '54109503',	            # Envases y Empaques
-        '54109504',	            # Taxis y Buses
-        '54109505',	            # Estampillas
-        '54109506',	            # Parqueaderos
-        '54109507',	            # Obsequios
-        '54109508',	            # Atenciones Sociales
-        '54109509',	            # Inventarios Dados de Baja 
-        '54109510',	            # Ajustes Múltiplos de 1000
-        '5415',                 # 12º - Depreciación
-        '542005',	            # Amortización de intangibles
-        '54100203',	            # impuesto derechos ins
-        '54100211',             # pro-deporte
-        # gastos de administración
-        '5105',	        # Gastos de Personal
-        '511001',	    # Honorarios
-        '511002',	    # Impuestos
-        '511003',	    # Arrendamientos
-        '511005',	    # Seguros
-        '511006',	    # Mantenimiento y Reparaciones
-        '511009',	    # Reparaciones Locativas
-        '511010',	    # Aseo y elementos
-        '511011',	    # Casino y Restaurante
-        '511012',	    # Servicios Públicos
-        '511013',	    # Correo
-        '511015_511016',	    # Papelería y Utiles de Oficina
-        '511018',	    # Publicidad y Propaganda
-        '511019',	    # Contribuciones y afiliaciones
-        '511020',	    # Gastos de Asamblea
-        '511021',	    # Gastos Directivos
-        '511022',	    # Gastos de Comités
-        '511023',	    # Reuniones y Conferencias
-        '511024',	    # Gastos Legales
-        '511026',	    # Gastos de Representación
-        '511027',	    # Gastos de Viajes
-        '511031',	    # Cuotas de Sostenimiento
-        '511033',	    # Adecuación e Instalación
-        '511035',	    # Procesamiento Electrónico 
-        '51109502',	    # Gastos de Fondos Sociales
-        '511512',	    # Deterioro de Inventario
-        '511534',	    # Deterioro de Cartera
-        '51109501_51109502', #   Gastos de Fondos Sociales
-    ]
-    
-    # Función de ordenamiento personalizada
-    def orden_cuenta(item):
-        cuenta = item['mcncuenta'] or ''
-        
+        print(f"❌ Error en obtener_cuenta5_base: {e}")
+        return JsonResponse({'error': str(e)}, status=500) 
+  
+@csrf_exempt
+def subir_excel_cuenta5_presupuestado(request):
+    if request.method == "POST":
         try:
-            indice = orden_personalizado.index(cuenta)
-            return indice
-        except ValueError:
-            return len(orden_personalizado)
-    
-    # Aplicar ordenamiento
-    result.sort(key=orden_cuenta)
-    
-    return JsonResponse({
-        'data': result,
-        'recordsTotal': len(result),
-        'recordsFiltered': len(result)
-    })
+            data = json.loads(request.body)
+            registros = data.get("registros", [])
+            insertados = 0
 
+            with transaction.atomic():
+                for r in registros:
+                    Cuenta5Presupuestado.objects.create(**r)
+                    insertados += 1
+
+            return JsonResponse({"status": "ok", "insertados": insertados})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    else:
+        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+@csrf_exempt
+def borrar_cuenta5_presupuestado(request):
+    if request.method == "POST":
+        Cuenta5Presupuestado.objects.all().delete()
+        return JsonResponse({"status": "ok", "message": "Datos de cuenta 5 eliminados"})
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+ 
+ 
+# CUENTA 4-----------------------------------
+@login_required
+def cuenta4(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuesto_consolidado/cuenta4_base.html")
+
+@csrf_exempt
+def obtener_cuenta4_base(request):
+    try:
+        params = request.POST or request.GET  # funciona con ambos métodos
+        draw = int(params.get('draw') or 1)
+        start = int(params.get('start') or 0)
+        length = int(params.get('length') or 50)
+
+        queryset = Cuenta4Base.objects.all()
+        total = queryset.count()
+
+        paginator = Paginator(queryset, length)
+        page_number = start // length + 1
+        page = paginator.get_page(page_number)
+
+        data = list(page.object_list.values())
+
+        # 🔹 Convertir fecha Excel a fecha normal
+        for row in data:
+            row['mcnfecha'] = excel_serial_to_date(row.get('mcnfecha'))
+        
+        return JsonResponse({
+            'draw': draw,
+            'recordsTotal': total,
+            'recordsFiltered': total,
+            'data': data
+        })
+
+    except Exception as e:
+        print(f"❌ Error en obtener_cuenta4_base: {e}")
+        return JsonResponse({'error': str(e)}, status=500) 
+    
+@csrf_exempt
+def subir_excel_cuenta4(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            registros = data.get("registros", [])
+            insertados = 0
+
+            with transaction.atomic():
+                for r in registros:
+                    Cuenta4Base.objects.create(**r)
+                    insertados += 1
+
+            return JsonResponse({"status": "ok", "insertados": insertados})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    else:
+        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+@csrf_exempt
+def borrar_cuenta4_base(request):
+    if request.method == "POST":
+        Cuenta4Base.objects.all().delete()
+        return JsonResponse({"status": "ok", "message": "Datos de cuenta 4 eliminados"})
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+# SUBIR Y BORRAR CUENTA 5 PRESUPUESTADO -------------------------------
+@login_required
+def cuenta4_presupuestado(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuestado/cuenta4_presupuestado.html")
+
+@csrf_exempt
+def obtener_cuenta4_presupuestado(request):
+    try:
+        params = request.POST or request.GET  # funciona con ambos métodos
+        draw = int(params.get('draw') or 1)
+        start = int(params.get('start') or 0)
+        length = int(params.get('length') or 50)
+
+        queryset = Cuenta4Presupuestado.objects.all()
+        total = queryset.count()
+
+        paginator = Paginator(queryset, length)
+        page_number = start // length + 1
+        page = paginator.get_page(page_number)
+
+        data = list(page.object_list.values())
+
+        # 🔹 Convertir fecha Excel a fecha normal
+        for row in data:
+            row['mcnfecha'] = excel_serial_to_date(row.get('mcnfecha'))
+        
+        return JsonResponse({
+            'draw': draw,
+            'recordsTotal': total,
+            'recordsFiltered': total,
+            'data': data
+        })
+
+    except Exception as e:
+        print(f"❌ Error en obtener_cuenta4_base: {e}")
+        return JsonResponse({'error': str(e)}, status=500) 
+  
+@csrf_exempt
+def subir_excel_cuenta4_presupuestado(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            registros = data.get("registros", [])
+            insertados = 0
+
+            with transaction.atomic():
+                for r in registros:
+                    Cuenta4Presupuestado.objects.create(**r)
+                    insertados += 1
+
+            return JsonResponse({"status": "ok", "insertados": insertados})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    else:
+        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+@csrf_exempt
+def borrar_cuenta4_presupuestado(request):
+    if request.method == "POST":
+        Cuenta4Presupuestado.objects.all().delete()
+        return JsonResponse({"status": "ok", "message": "Datos de cuenta 4 eliminados"})
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+  
+
+# NOTA: añadir a los imports del views.py
+from itertools import chain
+
+# ══════════════════════════════════════════════════════════════════
+#  CONFIGURACIÓN COMPARTIDA  (a nivel de módulo: se construye una
+#  sola vez, no en cada request)
+# ══════════════════════════════════════════════════════════════════
+
+MESES_ES = {
+    1: 'Enero',      2: 'Febrero',  3: 'Marzo',     4: 'Abril',
+    5: 'Mayo',       6: 'Junio',    7: 'Julio',     8: 'Agosto',
+    9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre',
+}
+MESES_COLS = list(MESES_ES.values())
+
+# sede -> zona contable + nombre en ConsolidadoTotalBase
+SEDE_CONFIG_CONSOLIDADO = {
+    'cali':    {'zona': ['004', 4], 'nombre': 'CALI'},
+    'tulua':   {'zona': ['001', 1], 'nombre': 'TULUA'},
+    'buga':    {'zona': ['002', 2], 'nombre': 'BUGA'},
+    'cartago': {'zona': ['003', 3], 'nombre': 'CARTAGO'},
+    'total':   None,                       # None → sin filtro, todas las sedes
+}
+
+# Alias para no romper el front ni las URLs actuales
+ALIAS_SEDE = {
+    'consolidado':   'total',
+    'presupuestado': 'total',
+    'total_base':    'total',
+}
+
+# origen -> modelos de detalle. Las cuentas 5x y las 4x viven en tablas
+# distintas. El mismo string se usa para filtrar ConsolidadoTotalBase.origen
+ORIGENES = {
+    'ejecutado': {
+        'cuenta5': Cuenta5Base,
+        'cuenta4': Cuenta4Base,
+    },
+    'presupuestado': {
+        'cuenta5': Cuenta5Presupuestado,
+        'cuenta4': Cuenta4Presupuestado,
+    },
+}
+
+# Campos que necesita el motor de ambas tablas de detalle
+CAMPOS_DETALLE = ('mcncuenta', 'mcnccosto', 'mcnfecha',
+                  'mcnvaldebi', 'mcnvalcred', 'mcndestino')
+
+CUENTAS_OMITIR = ['521020']
+
+ASISTENCIA_TECNICA = {
+    "AT-00004", "AT-00008", "AT-00010", "AT-00013", "AT-00014",
+    "AT-00015", "AT-00016", "AT-00019", "AT-00020", "AT-00021",
+    "AT-00022", "AT-00023", "AT-00024", "AT-00026", "AT-00028",
+    "AT-00029", "AT-00030", "AT-00032", "VT-00025", "AT-00003",
+}
+ASISTENCIA_TECNICA_PROPIA    = {'AT-00001', 'AT-00002', 'AT-00005'}
+ASISTENCIA_TECNICA_CONVENIOS = {'AT-00003', 'AT-00004', 'AT-00006'}
+
+# destino -> cuentas que se agrupan en él (se invierte a lookup O(1))
+_GRUPOS = {
+    '54100207_54100211': ['54100207', '54100208', '54100209', '54100210', '54100211'],
+    '541009_541033':     ['541009', '541033', '54103301', '54103302'],
+    '541015_541016':     ['541015', '541016'],
+    '511015_511016':     ['511015', '511016'],
+    '51109501_51109502': ['51109501', '51109502'],
+}
+AGRUPACIONES_EXACTAS = {c: destino for destino, cuentas in _GRUPOS.items() for c in cuentas}
+
+PREFIJOS_AGRUPADOS = ('5230', '541003', '541005', '541006', '541024', '541027', '5415')
+
+NOMBRES_ESPECIALES = {
+    '541001': 'Honorarios', '54100207_54100211': 'Tasas Bomberil-otras',
+    '541003': 'Arrendamientos', '541005': 'Seguros',
+    '541006': 'Mantenimiento y Reparaciónes',
+    '541009_541033': 'Adecuación e Instalaciones-Reparac locat',
+    '541015_541016': 'Utiles - Papelería- Fotocopias',
+    '541024': 'Gastos Legales', '541027': 'Gastos de Viaje',
+    '5415': 'Depreciación', '511015_511016': 'Papelería y Utiles de Oficina',
+    '5405': 'Gastos de Personal', '5105': 'Gastos de Personal',
+    '51109501_51109502': 'Gastos de Fondos Sociales',
+    '5': 'Proyecto de Aftosa', '6': 'Asistencia Técnica Propia',
+    '7': 'Asistencia Técnica Convenios',
+    '8': 'Asistencia Técnica Otros - Capacitaciones',
+    '5230': 'Gastos no Operacionales-IVA obsequios',
+    '521015': 'Gastos Contribución 4 x1000', '615035': 'Intereses',
+    'AT-00003': 'Convenio Elanco', 'AT-00004': 'Apoyo ciclo aftosa Virbac',
+    'AT-00005': 'Convenio Proalba-Santa Lucía', 'AT-00007': 'Convenio Tecnoquímicas',
+    'AT-00008': 'Seminario ambiental',
+    'AT-00010': 'Jornada de actualización en reproducción',
+    'AT-00013': 'Curso de gestión empresarial', 'AT-00014': 'Curso de mayordomía',
+    'AT-00015': 'Ecografo Bovino', 'AT-00016': 'Curso de Inseminación',
+    'AT-00019': 'Brucelosis-Tuberculosis', 'AT-00020': 'Programa ambiental',
+    'AT-00021': 'Chequeo reproductivo', 'AT-00022': 'Curso de Bromatología',
+    'AT-00023': 'Capacitación software ganadero', 'AT-00024': 'Atencion urgencias',
+    'AT-00026': 'Taller atención básica equipos de ordeño',
+    'AT-00028': 'Mantenimiento equipo técnico-Diplomado',
+    'AT-00029': 'Taller en bienestar y sanidad bovina',
+    'AT-00030': 'Seminario productividad láctea',
+    'AT-00032': 'Servicio de imágenes con dron',
+    'VT-00025': 'Convenio Tecnoquímicas', '41659505': 'Proyecto de Aftosa',
+    '41659501': 'Patrocinio de eventos', '420560': 'Venta PPE (moto)',
+}
+
+
+# ══════════════════════════════════════════════════════════════════
+#  HELPERS
+# ══════════════════════════════════════════════════════════════════
+
+def normalizar_sede(sede):
+    """Devuelve la clave canónica de SEDE_CONFIG_CONSOLIDADO o None si es inválida."""
+    sede = (sede or 'total').lower()
+    sede = ALIAS_SEDE.get(sede, sede)
+    return sede if sede in SEDE_CONFIG_CONSOLIDADO else None
+
+
+def filtros_sede(sede):
+    """(filtro_detalle, filtro_consolidado) para la sede indicada."""
+    cfg = SEDE_CONFIG_CONSOLIDADO[sede]
+    if cfg is None:
+        return {}, {}
+    return {'mcnzona__in': cfg['zona']}, {'sede__icontains': cfg['nombre']}
+
+
+def aplicar_agrupaciones(cuenta, costo):
+    if cuenta.startswith('4'):
+        return cuenta
+
+    if costo.startswith('02040'):                         cuenta = '5'
+    if costo == '020201' and cuenta.startswith('5405'):   cuenta = '5405'
+    if costo == '0101':                                   cuenta = '5105'
+    if cuenta.startswith('541001'):                       cuenta = '541001'
+
+    if cuenta in AGRUPACIONES_EXACTAS:
+        return AGRUPACIONES_EXACTAS[cuenta]
+
+    for prefijo in PREFIJOS_AGRUPADOS:
+        if cuenta.startswith(prefijo):
+            return prefijo
+
+    return cuenta
+
+
+def _mes_desde_serial(valor):
+    """Fecha en serial Excel (Cuenta5*) -> nombre de mes, o None."""
+    fecha = excel_serial_to_date(valor)
+    if not fecha:
+        return None
+    return MESES_ES[datetime.datetime.strptime(fecha, '%Y-%m-%d').date().month]
+
+
+def _mes_desde_fecha(valor):
+    """Fecha date o str (ConsolidadoTotalBase) -> nombre de mes, o None."""
+    if not valor:
+        return None
+    if isinstance(valor, str):
+        valor = datetime.datetime.strptime(valor, '%Y-%m-%d').date()
+    return MESES_ES[valor.month]
+
+
+def _nombres_cuentas(*modelos):
+    """Diccionario cuenta -> nombre, tomando el primero no vacío."""
+    cuentas_dict = {}
+    fuentes = list(modelos) + [ConsolidadoTotalBase]
+    for modelo in fuentes:
+        for c in modelo.objects.values('mcncuenta', 'ctanombre').distinct():
+            cta, nom = c['mcncuenta'], (c['ctanombre'] or '').strip()
+            if cta and nom and cta not in cuentas_dict:
+                cuentas_dict[cta] = nom
+    return cuentas_dict
+
+
+# ══════════════════════════════════════════════════════════════════
+#  MOTOR ÚNICO DE CÁLCULO
+# ══════════════════════════════════════════════════════════════════
+
+def calcular_movimientos(origen='ejecutado', sede='total'):
+    """
+    Motor único para ejecutado y presupuestado.
+
+    origen: 'ejecutado' | 'presupuestado'
+    sede:   'cali' | 'tulua' | 'buga' | 'cartago' | 'total'
+    """
+    try:
+        modelos = ORIGENES[origen]
+        sede = normalizar_sede(sede)
+        if sede is None:
+            raise ValueError('Sede inválida')
+
+        filtro_detalle, filtro_consolidado = filtros_sede(sede)
+
+        # Cuentas 5x (y cualquier otra que no empiece por 4)
+        queryset_5 = (
+            modelos['cuenta5'].objects
+            .filter(**filtro_detalle)
+            .exclude(mcncuenta__in=CUENTAS_OMITIR)
+            .values(*CAMPOS_DETALLE)
+        )
+
+        # Cuentas 4x desde su propia tabla
+        queryset_4 = (
+            modelos['cuenta4'].objects
+            .filter(**filtro_detalle, mcncuenta__startswith='4')
+            .values(*CAMPOS_DETALLE)
+        )
+
+        queryset_consolidado = (
+            ConsolidadoTotalBase.objects
+            .filter(**filtro_consolidado, origen=origen)
+            .values('mcncuenta', 'mcnccosto', 'mcnfecha', 'valor')
+        )
+
+        consolidado = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
+
+        # ── detalle (cuentas 5 + cuentas 4) ───────────────────────
+        for row in chain(queryset_5, queryset_4):
+            mes = _mes_desde_serial(row['mcnfecha'])
+            if not mes:
+                continue
+
+            cuenta  = row['mcncuenta'] or 'SIN CUENTA'
+            costo   = row['mcnccosto'] or 'SIN COSTO'
+            destino = row['mcndestino'] or 'SIN DESTINO'
+            destino_norm = destino.strip().upper()
+
+            if cuenta.startswith('4'):
+                # Ingresos AT se agrupan por destino; el resto por cuenta
+                if destino_norm in ASISTENCIA_TECNICA:
+                    cuenta = destino_norm
+            else:
+                cuenta = aplicar_agrupaciones(cuenta, costo)
+                if destino_norm in ASISTENCIA_TECNICA_PROPIA:
+                    cuenta = '6'
+                elif destino_norm in ASISTENCIA_TECNICA_CONVENIOS:
+                    cuenta = '7'
+                elif costo.startswith('0203'):
+                    cuenta = '8'
+
+            acc = consolidado[(mes, cuenta, costo, destino)]
+            acc['total_debito']  += row['mcnvaldebi'] or 0
+            acc['total_credito'] += row['mcnvalcred'] or 0
+
+        # ── ConsolidadoTotalBase ──────────────────────────────────
+        for row in queryset_consolidado:
+            mes = _mes_desde_fecha(row['mcnfecha'])
+            if not mes:
+                continue
+            costo  = row['mcnccosto'] or 'SIN COSTO'
+            cuenta = aplicar_agrupaciones(row['mcncuenta'] or 'SIN CUENTA', costo)
+            consolidado[(mes, cuenta, costo, 'SIN DESTINO')]['total_valor'] += row['valor'] or 0
+
+        # ── armado de registros ───────────────────────────────────
+        cuentas_dict = _nombres_cuentas(modelos['cuenta5'], modelos['cuenta4'])
+        registros = defaultdict(lambda: {'mcncuenta': '', 'ctanombre': '', 'meses': {}})
+
+        for (mes, cuenta, _costo, _destino), vals in consolidado.items():
+            if cuenta in ASISTENCIA_TECNICA or cuenta.startswith('4'):
+                saldo = vals['total_credito'] - vals['total_debito'] + vals['total_valor']
+            else:
+                saldo = vals['total_debito'] - vals['total_credito'] + vals['total_valor']
+
+            reg = registros[cuenta]
+            reg['mcncuenta'] = cuenta
+            reg['ctanombre'] = NOMBRES_ESPECIALES.get(
+                cuenta, cuentas_dict.get(cuenta, 'SIN NOMBRE')
+            ).capitalize()
+            reg['meses'][mes] = round(reg['meses'].get(mes, 0) + saldo)
+
+        return {'success': True, 'data': registros}
+
+    except Exception as e:
+        print(f"❌ Error en calcular_movimientos({origen}, {sede}): {e}")
+        return {'success': False, 'error': str(e)}
+
+
+# Wrappers por compatibilidad (si los llamas desde otros módulos)
+def calcular_consolidado(sede='total'):
+    return calcular_movimientos('ejecutado', sede)
+
+
+def calcular_presupuestado(sede='total'):
+    return calcular_movimientos('presupuestado', sede)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  VISTA GENÉRICA
+# ══════════════════════════════════════════════════════════════════
+
+def _responder_movimientos(request, origen):
+    sede = normalizar_sede(request.GET.get('sede'))
+    if sede is None:
+        return JsonResponse({'error': f"Sede inválida: {request.GET.get('sede')}"}, status=400)
+
+    resultado = calcular_movimientos(origen, sede)
+    if not resultado['success']:
+        return JsonResponse({'error': resultado.get('error', 'Error')}, status=500)
+
+    ORDEN_PERSONALIZADO = obtener_orden_cuentas('total' if sede == 'total' else 'sede')
+    NOMBRES = nombres_personalizados()
+
+    filas = []
+    for row in resultado['data'].values():
+        if row['mcncuenta'] not in ORDEN_PERSONALIZADO:
+            continue
+        entry = {
+            'mcncuenta': row['mcncuenta'],
+            'ctanombre': NOMBRES.get(row['mcncuenta'], row['ctanombre']),
+            **{m: 0 for m in MESES_COLS},
+            'total': 0,
+        }
+        for mes, valor in row['meses'].items():
+            if mes in entry:
+                entry[mes] = valor
+                entry['total'] += valor
+        filas.append(entry)
+
+    filas.sort(key=lambda item: ORDEN_PERSONALIZADO.index(item['mcncuenta']))
+
+    return JsonResponse({'data': filas,
+                         'recordsTotal': len(filas),
+                         'recordsFiltered': len(filas)})
+
+
+def obtener_consolidado(request):
+    """?sede=cali|tulua|buga|cartago|total   (default: total)"""
+    return _responder_movimientos(request, 'ejecutado')
+
+
+def obtener_presupuestado(request):
+    """?sede=cali|tulua|buga|cartago|total   (default: total)"""
+    return _responder_movimientos(request, 'presupuestado')
+
+
+# ═══════════════════════════════════════════════════════════════
+#  ORDEN PERSONALIZADO DE CUENTAS
+# ═══════════════════════════════════════════════════════════════
+
+# Listas actuales del código: solo se usan como semilla / fallback.
+ORDEN_TOTAL_FALLBACK = [
+    '1','2','41750201','613522','4240900101','4240909502',
+    '5405','541001','54100201','54100202','54100204','54100205','54100206',
+    '54100207_54100211','541003','541005','541006','541009_541033',
+    '541010','541011','54101201','54101202','54101203','54101204',
+    '541013','541014','541015_541016','541018','541023','541024','541027',
+    '541029','541032','541035','54109501','54109502','54109503','54109504',
+    '54109505','54109506','54109507','54109508','54109509','54109510',
+    '5415','542005','54100203','54100211',
+    '5105','511001','511002','511003','511005','511006','511009','511010',
+    '511011','511012','511013','511015_511016','511018','511019','511020',
+    '511021','511022','511023','511024','511026','511027','511031','511033',
+    '511035','51109502','51109501_51109502','511512','511534',
+    '521005','521015','521020','3','615035',
+    'AT-00004','AT-00005','AT-00007','AT-00008','AT-00010','AT-00013',
+    'AT-00014','AT-00015','AT-00016','AT-00019','AT-00020','AT-00021',
+    'AT-00022','AT-00023','AT-00024','AT-00026','AT-00028','AT-00029',
+    'AT-00030','AT-00032','VT-00001','VT-00025','AT-00003',
+    '41659505','41659501','422004','422507','422529','4240900202','420560',
+    '4240900301','4240900401','4240909501','4240909503','4240909901','41750105',
+    '5','6','7','8','5230',
+]
+ORDEN_SEDE_FALLBACK = ORDEN_TOTAL_FALLBACK[:ORDEN_TOTAL_FALLBACK.index('542005') + 1]
+
+
+def obtener_orden_cuentas(ambito='total'):
+    """Lista ordenada de códigos de cuenta. ambito: 'total' | 'sede'."""
+    qs = OrdenCuenta.objects.all()
+    qs = qs.filter(visible_sede=True) if ambito == 'sede' else qs.filter(visible_total=True)
+    orden = list(qs.order_by('orden', 'id').values_list('mcncuenta', flat=True))
+    if orden:
+        return orden
+    return ORDEN_SEDE_FALLBACK if ambito == 'sede' else ORDEN_TOTAL_FALLBACK
+
+
+def nombres_personalizados():
+    """{ mcncuenta: ctanombre } solo para las que tengan nombre definido."""
+    return {
+        c: n for c, n in OrdenCuenta.objects.exclude(ctanombre='')
+                                            .values_list('mcncuenta', 'ctanombre')
+    }
+
+
+def _cuentas_detectadas():
+    """Cuentas que realmente pueden aparecer en las tablas, ya agrupadas."""
+    detectadas = {}
+    for fn, arg in ((calcular_consolidado, 'consolidado'),
+                    (calcular_presupuestado, 'presupuestado')):
+        res = fn(arg)
+        if res.get('success'):
+            for cta, row in res['data'].items():
+                if cta and cta not in detectadas:
+                    detectadas[cta] = row.get('ctanombre') or ''
+    return detectadas
+
+
+@login_required
+def ajustes_orden_cuentas(request):
+    if request.user.username not in ['admin', 'NICOLAS']:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, 'ajustes/orden_cuentas.html')
+
+
+@require_GET
+def listar_orden_cuentas(request):
+    data = list(
+        OrdenCuenta.objects.order_by('orden', 'id')
+        .values('id', 'mcncuenta', 'ctanombre', 'orden', 'visible_total', 'visible_sede')
+    )
+    return JsonResponse({'success': True, 'data': data, 'total': len(data)})
+
+
+@login_required
+@require_POST
+def sincronizar_orden_cuentas(request):
+    """Crea las cuentas que aún no estén en la tabla (al final de la lista).
+    Si la tabla está vacía, la siembra con el orden que hay hoy en el código."""
+    try:
+        detectadas = _cuentas_detectadas()
+        existentes = set(OrdenCuenta.objects.values_list('mcncuenta', flat=True))
+        creadas = 0
+
+        with transaction.atomic():
+            if not existentes:
+                en_sede = set(ORDEN_SEDE_FALLBACK)
+                OrdenCuenta.objects.bulk_create([
+                    OrdenCuenta(
+                        mcncuenta=cta,
+                        ctanombre=detectadas.get(cta, ''),
+                        orden=(i + 1) * 10,
+                        visible_total=True,
+                        visible_sede=cta in en_sede,
+                    ) for i, cta in enumerate(ORDEN_TOTAL_FALLBACK)
+                ])
+                creadas = len(ORDEN_TOTAL_FALLBACK)
+                existentes = set(ORDEN_TOTAL_FALLBACK)
+
+            ultimo = OrdenCuenta.objects.aggregate(m=models.Max('orden'))['m'] or 0
+            nuevas = []
+            for cta, nombre in detectadas.items():
+                if cta not in existentes:
+                    ultimo += 10
+                    nuevas.append(OrdenCuenta(
+                        mcncuenta=cta, ctanombre=nombre, orden=ultimo,
+                        visible_total=True, visible_sede=False,
+                    ))
+            OrdenCuenta.objects.bulk_create(nuevas)
+            creadas += len(nuevas)
+
+        return JsonResponse({
+            'success': True, 'creadas': creadas,
+            'total': OrdenCuenta.objects.count(),
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def guardar_orden_cuentas(request):
+    """Recibe la lista completa en el orden final:
+       { "cuentas": [ {mcncuenta, ctanombre, visible_total, visible_sede}, ... ] }"""
+    try:
+        body = json.loads(request.body)
+        filas = body.get('cuentas', [])
+        if not filas:
+            return JsonResponse({'success': False, 'error': 'Sin cuentas'}, status=400)
+
+        with transaction.atomic():
+            for i, f in enumerate(filas):
+                cta = str(f.get('mcncuenta', '') or '').strip()
+                if not cta:
+                    continue
+                OrdenCuenta.objects.update_or_create(
+                    mcncuenta=cta,
+                    defaults={
+                        'orden': (i + 1) * 10,
+                        'ctanombre': str(f.get('ctanombre', '') or '').strip(),
+                        'visible_total': bool(f.get('visible_total', True)),
+                        'visible_sede': bool(f.get('visible_sede', False)),
+                    },
+                )
+        return JsonResponse({'success': True, 'guardadas': len(filas)})
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'JSON inválido'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def eliminar_orden_cuenta(request):
+    try:
+        pk = json.loads(request.body).get('id')
+        OrdenCuenta.objects.filter(pk=pk).delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+# ══════════════════════════════════════════════════════════════════
+#  VISTA GENÉRICA — reemplaza todas las obtener_presupuestado_*
+# ══════════════════════════════════════════════════════════════════
+
+
+# FIN CALCULAR Y OBTENER PRESUPUESTADO -----------------
+# CONSOLIDADO GENERAL
+@login_required
+def consolidado_general(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuesto_consolidado/consolidado_general.html")
+
+# PRESUPUESTO GENERAL
+@login_required
+def presupuestado_general(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuestado/presupuestado_general.html")
+
+# TABLA DINÁMICA FLEXIBLE
+@login_required
 def obtener_tabla_dinamica_flexible(request):
     """
-    Versión flexible que permite especificar los campos de agrupación
-    vía parámetros GET
-    
-    Parámetros:
-    - group_by: campos separados por coma (ej: "ctanombre,vinnombre,mcndetalle")
-    - order_by: campo para ordenar (opcional)
-    - filtros: mcncuenta, mcnzona, mcndestino, mcncosto (valores separados por coma)
+    ▼ Ahora también filtra por ctanombre si se envía en los parámetros GET.
     """
     try:
-        # Obtener parámetros de agrupación
         group_by_param = request.GET.get('group_by', 'ctanombre,vinnombre,mcndetalle')
         campos_agrupacion = [campo.strip() for campo in group_by_param.split(',')]
-        
-        # Validar campos
-        campos_validos = ['ctanombre', 'vinnombre', 'mcndetalle']
+ 
+        campos_validos = ['ctanombre', 'vinnombre', 'mcndetalle', 'mcncuenta']
         campos_agrupacion = [c for c in campos_agrupacion if c in campos_validos]
-        
+ 
         if not campos_agrupacion:
-            return JsonResponse({
-                'error': 'No se especificaron campos válidos para agrupar'
-            }, status=400)
-        
-        # Campos base que siempre necesitamos
+            return JsonResponse({'error': 'No se especificaron campos válidos para agrupar'}, status=400)
+ 
         campos_select = list(set(campos_agrupacion + [
             'mcnfecha', 'mcnvaldebi', 'mcnvalcred',
             'mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto'
         ]))
-        
-        # Obtener datos
-        queryset = Cuenta5Base.objects.values(*campos_select)
-        
-        # Aplicar filtros si existen
-        filtro_cuenta = request.GET.get('mcncuenta', '')
-        filtro_zona = request.GET.get('mcnzona', '')
-        filtro_destino = request.GET.get('mcndestino', '')
-        filtro_costo = request.GET.get('mcnccosto', '')
-        
+ 
+        queryset = Cuenta5Presupuestado.objects.values(*campos_select)
+ 
+        filtro_cuenta    = request.GET.get('mcncuenta',  '')
+        filtro_zona      = request.GET.get('mcnzona',    '')
+        filtro_destino   = request.GET.get('mcndestino', '')
+        filtro_costo     = request.GET.get('mcnccosto',  '')
+        filtro_ctanombre = request.GET.get('ctanombre',  '')   # ▼ nuevo
+ 
         if filtro_cuenta:
-            cuentas = [c.strip() for c in filtro_cuenta.split(',')]
-            queryset = queryset.filter(mcncuenta__in=cuentas)
-        
+            queryset = queryset.filter(mcncuenta__in=[c.strip() for c in filtro_cuenta.split(',')])
         if filtro_zona:
-            zonas = [z.strip() for z in filtro_zona.split(',')]
-            queryset = queryset.filter(mcnzona__in=zonas)
-        
+            queryset = queryset.filter(mcnzona__in=[z.strip() for z in filtro_zona.split(',')])
         if filtro_destino:
-            destinos = [d.strip() for d in filtro_destino.split(',')]
-            queryset = queryset.filter(mcndestino__in=destinos)
-        
+            queryset = queryset.filter(mcndestino__in=[d.strip() for d in filtro_destino.split(',')])
         if filtro_costo:
-            costos = [c.strip() for c in filtro_costo.split(',')]
-            queryset = queryset.filter(mcncosto__in=costos)
-            
-        # Estructura para consolidar
+            queryset = queryset.filter(mcnccosto__in=[c.strip() for c in filtro_costo.split(',')])
+        # ▼ Filtrar por ctanombre si viene en el request
+        if filtro_ctanombre:
+            queryset = queryset.filter(ctanombre__in=[c.strip() for c in filtro_ctanombre.split(',')])
+ 
         tabla_dinamica = defaultdict(lambda: {
             **{campo: '' for campo in campos_agrupacion},
             'enero': 0, 'febrero': 0, 'marzo': 0, 'abril': 0,
@@ -11981,86 +8647,622 @@ def obtener_tabla_dinamica_flexible(request):
             'septiembre': 0, 'octubre': 0, 'noviembre': 0, 'diciembre': 0,
             'total': 0
         })
-        
+ 
         MESES_ES = {
             1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril',
             5: 'mayo', 6: 'junio', 7: 'julio', 8: 'agosto',
             9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre'
         }
-        
-        # Procesar registros
+ 
         for row in queryset:
-            # Convertir fecha
             fecha = excel_serial_to_date(row['mcnfecha'])
             if not fecha:
                 continue
             fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
             mes = MESES_ES[fecha.month]
-            
-            # Crear clave de agrupación
+ 
             key_values = []
             for campo in campos_agrupacion:
                 valor = row.get(campo) or f'SIN_{campo.upper()}'
                 key_values.append(valor)
             key = tuple(key_values)
-            
-            # Calcular saldo
+ 
             saldo = (row['mcnvaldebi'] or 0) - (row['mcnvalcred'] or 0)
-            
-            # Actualizar valores
+ 
             for i, campo in enumerate(campos_agrupacion):
                 tabla_dinamica[key][campo] = key_values[i]
-            
+ 
             tabla_dinamica[key][mes] += saldo
             tabla_dinamica[key]['total'] += saldo
-        
-        # Redondear valores
+ 
         for key in tabla_dinamica:
             for mes in MESES_ES.values():
                 tabla_dinamica[key][mes] = round(tabla_dinamica[key][mes])
             tabla_dinamica[key]['total'] = round(tabla_dinamica[key]['total'])
-        
-        # Convertir a lista y ordenar
+ 
         result = list(tabla_dinamica.values())
         result.sort(key=lambda x: tuple(x[campo] for campo in campos_agrupacion))
-        
+ 
         return JsonResponse({
             'data': result,
             'recordsTotal': len(result),
             'recordsFiltered': len(result),
             'grouped_by': campos_agrupacion
         })
-        
+ 
     except Exception as e:
         print(f"❌ Error en obtener_tabla_dinamica_flexible: {e}")
-        return JsonResponse({
-            'error': str(e)
-        }, status=500)
+        return JsonResponse({'error': str(e)}, status=500)
 
 def obtener_valores_filtros(request):
     """
-    Endpoint para obtener los valores únicos de cada campo de filtro
+    Retorna valores únicos disponibles para cada campo de filtro,
+    teniendo en cuenta los filtros activos en los demás campos (filtrado en cascada).
+    Ahora soporta también el campo ctanombre.
     """
     try:
         campo = request.GET.get('campo', '')
-        
-        campos_validos = ['mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto']
-        
+        # ▼ ctanombre agregado a campos válidos
+        campos_validos = ['mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto', 'ctanombre']
+ 
         if campo not in campos_validos:
             return JsonResponse({'error': 'Campo no válido'}, status=400)
-        
-        # Obtener valores únicos
-        valores = Cuenta5Base.objects.values_list(campo, flat=True).distinct().order_by(campo)
-        valores = [v for v in valores if v]  # Eliminar valores nulos
-        
-        return JsonResponse({
-            'valores': list(valores)
-        })
-        
+ 
+        queryset = Cuenta5Presupuestado.objects.all()
+ 
+        # Aplicar los filtros de los OTROS campos (no del campo que se consulta)
+        filtro_cuenta   = request.GET.get('mcncuenta',  '')
+        filtro_zona     = request.GET.get('mcnzona',    '')
+        filtro_destino  = request.GET.get('mcndestino', '')
+        filtro_costo    = request.GET.get('mcnccosto',  '')
+        filtro_ctanombre = request.GET.get('ctanombre', '')   # ▼ nuevo
+ 
+        if filtro_cuenta and campo != 'mcncuenta':
+            queryset = queryset.filter(mcncuenta__in=[c.strip() for c in filtro_cuenta.split(',')])
+        if filtro_zona and campo != 'mcnzona':
+            queryset = queryset.filter(mcnzona__in=[z.strip() for z in filtro_zona.split(',')])
+        if filtro_destino and campo != 'mcndestino':
+            queryset = queryset.filter(mcndestino__in=[d.strip() for d in filtro_destino.split(',')])
+        if filtro_costo and campo != 'mcnccosto':
+            queryset = queryset.filter(mcnccosto__in=[c.strip() for c in filtro_costo.split(',')])
+        # ▼ Aplicar filtro ctanombre en cascada (solo si no es el campo que se consulta)
+        if filtro_ctanombre and campo != 'ctanombre':
+            queryset = queryset.filter(ctanombre__in=[c.strip() for c in filtro_ctanombre.split(',')])
+ 
+        valores = (
+            queryset
+            .values_list(campo, flat=True)
+            .distinct()
+            .order_by(campo)
+        )
+        valores = [v for v in valores if v]
+ 
+        return JsonResponse({'valores': list(valores)})
+ 
     except Exception as e:
         print(f"❌ Error en obtener_valores_filtros: {e}")
         return JsonResponse({'error': str(e)}, status=500)
-
+ 
 def tabla_dinamica_view(request):
     return render(request, 'presupuesto_consolidado/tabla_dinamica.html')
 
+@require_http_methods(["GET"])
+def obtener_registros_detalle(request):
+    try:
+        ctanombre  = request.GET.get('ctanombre', '')
+        vinnombre  = request.GET.get('vinnombre', '')
+        mcndetalle = request.GET.get('mcndetalle', '')
+
+        if not ctanombre or not vinnombre or not mcndetalle:
+            return JsonResponse({'error': 'Faltan parámetros obligatorios'}, status=400)
+
+        queryset = Cuenta5Presupuestado.objects.filter(
+            ctanombre=ctanombre,
+            vinnombre=vinnombre,
+            mcndetalle=mcndetalle,
+        )
+
+        # ✅ Soportar múltiples valores separados por coma
+        for campo, param in [
+            ('mcncuenta',  'mcncuenta'),
+            ('mcnzona',    'mcnzona'),
+            ('mcndestino', 'mcndestino'),
+            ('mcnccosto',  'mcnccosto'),
+        ]:
+            valor = request.GET.get(param, '')
+            if valor:
+                valores = [v.strip() for v in valor.split(',')]
+                queryset = queryset.filter(**{f'{campo}__in': valores})
+
+        registros = []
+        for obj in queryset:
+            registros.append({
+                'id':         obj.pk,
+                'mcnfecha':   obj.mcnfecha,
+                'mcndetalle': obj.mcndetalle,
+                'mcnvaldebi': float(obj.mcnvaldebi or 0),
+                'mcnvalcred': float(obj.mcnvalcred or 0),
+                'mcncuenta':  obj.mcncuenta,
+                'mcnzona':    obj.mcnzona,
+                'mcndestino': obj.mcndestino,
+                'mcnccosto':  obj.mcnccosto,
+                'ctanombre':  obj.ctanombre,
+                'vinnombre':  obj.vinnombre,
+            })
+
+        return JsonResponse({'registros': registros, 'total': len(registros)})
+
+    except Exception as e:
+        print(f"❌ Error en obtener_registros_detalle: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["PUT", "PATCH"])
+def editar_registro(request, registro_id):
+    """
+    Edita un registro individual de Cuenta5Base.
+    Body JSON con los campos a actualizar.
+    """
+    try:
+        obj = Cuenta5Presupuestado.objects.get(pk=registro_id)
+    except Cuenta5Presupuestado.DoesNotExist:
+        return JsonResponse({'error': 'Registro no encontrado'}, status=404)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    # Campos editables
+    campos_editables = [
+        'mcnfecha', 'mcndetalle', 'mcnvaldebi', 'mcnvalcred',
+        'mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto',
+        'ctanombre', 'vinnombre',
+    ]
+
+    for campo in campos_editables:
+        if campo in body:
+            setattr(obj, campo, body[campo])
+
+    obj.save()
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Registro {registro_id} actualizado correctamente',
+        'id': obj.pk,
+    })
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def eliminar_registro(request, registro_id):
+    """
+    Elimina un registro individual de Cuenta5Base.
+    """
+    try:
+        obj = Cuenta5Presupuestado.objects.get(pk=registro_id)
+    except Cuenta5Presupuestado.DoesNotExist:
+        return JsonResponse({'error': 'Registro no encontrado'}, status=404)
+
+    obj.delete()
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Registro {registro_id} eliminado correctamente',
+    })
+
+@require_http_methods(["GET"])
+def obtener_registros_nivel(request):
+    try:
+        nivel     = request.GET.get('nivel', '')
+        ctanombre = request.GET.get('ctanombre', '')
+
+        if not nivel or not ctanombre:
+            return JsonResponse({'error': 'Faltan parámetros obligatorios'}, status=400)
+
+        queryset = Cuenta5Presupuestado.objects.filter(ctanombre=ctanombre)
+
+        if nivel == 'vinculo':
+            vinnombre = request.GET.get('vinnombre', '')
+            if not vinnombre:
+                return JsonResponse({'error': 'Falta vinnombre'}, status=400)
+            queryset = queryset.filter(vinnombre=vinnombre)
+
+        # ✅ Soportar múltiples valores separados por coma
+        for campo, param in [
+            ('mcncuenta',  'mcncuenta'),
+            ('mcnzona',    'mcnzona'),
+            ('mcndestino', 'mcndestino'),
+            ('mcnccosto',  'mcnccosto'),
+        ]:
+            valor = request.GET.get(param, '')
+            if valor:
+                valores = [v.strip() for v in valor.split(',')]
+                queryset = queryset.filter(**{f'{campo}__in': valores})
+
+        registros = []
+        for obj in queryset:
+            registros.append({
+                'id':         obj.pk,
+                'mcnfecha':   obj.mcnfecha,
+                'mcndetalle': obj.mcndetalle,
+                'mcnvaldebi': float(obj.mcnvaldebi or 0),
+                'mcnvalcred': float(obj.mcnvalcred or 0),
+                'mcncuenta':  obj.mcncuenta,
+                'mcnzona':    obj.mcnzona,
+                'mcndestino': obj.mcndestino,
+                'mcnccosto':  obj.mcnccosto,
+                'ctanombre':  obj.ctanombre,
+                'vinnombre':  obj.vinnombre,
+            })
+
+        return JsonResponse({'registros': registros, 'total': len(registros)})
+
+    except Exception as e:
+        print(f"❌ Error en obtener_registros_nivel: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["PUT", "PATCH"])
+def renombrar_nivel(request):
+    """
+    Renombra en masa ctanombre o vinnombre en todos los registros que coincidan.
+    Body JSON:
+    - nivel: 'cuenta' o 'vinculo'
+    - ctanombre_actual: valor actual
+    - vinnombre_actual: valor actual (solo si nivel='vinculo')
+    - ctanombre_nuevo: nuevo valor (solo si nivel='cuenta')
+    - vinnombre_nuevo: nuevo valor (solo si nivel='vinculo')
+    """
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    nivel          = body.get('nivel', '')
+    ctanombre_actual = body.get('ctanombre_actual', '')
+
+    if not nivel or not ctanombre_actual:
+        return JsonResponse({'error': 'Faltan parámetros'}, status=400)
+
+    try:
+        if nivel == 'cuenta':
+            nuevo = body.get('ctanombre_nuevo', '').strip()
+            if not nuevo:
+                return JsonResponse({'error': 'Falta ctanombre_nuevo'}, status=400)
+            count = Cuenta5Presupuestado.objects.filter(ctanombre=ctanombre_actual).update(ctanombre=nuevo)
+            return JsonResponse({'success': True, 'actualizados': count, 'nuevo': nuevo})
+
+        elif nivel == 'vinculo':
+            vinnombre_actual = body.get('vinnombre_actual', '')
+            nuevo = body.get('vinnombre_nuevo', '').strip()
+            if not vinnombre_actual or not nuevo:
+                return JsonResponse({'error': 'Faltan vinnombre_actual o vinnombre_nuevo'}, status=400)
+            count = Cuenta5Presupuestado.objects.filter(
+                ctanombre=ctanombre_actual,
+                vinnombre=vinnombre_actual
+            ).update(vinnombre=nuevo)
+            return JsonResponse({'success': True, 'actualizados': count, 'nuevo': nuevo})
+
+        else:
+            return JsonResponse({'error': 'Nivel inválido'}, status=400)
+
+    except Exception as e:
+        print(f"❌ Error en renombrar_nivel: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+    
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def eliminar_nivel(request):
+    """
+    Elimina en masa todos los registros de un nivel jerárquico.
+    Parámetros GET:
+    - nivel: 'cuenta' o 'vinculo'
+    - ctanombre: requerido siempre
+    - vinnombre: requerido si nivel='vinculo'
+    """
+    try:
+        nivel     = request.GET.get('nivel', '')
+        ctanombre = request.GET.get('ctanombre', '')
+
+        if not nivel or not ctanombre:
+            return JsonResponse({'error': 'Faltan parámetros'}, status=400)
+
+        queryset = Cuenta5Presupuestado.objects.filter(ctanombre=ctanombre)
+
+        if nivel == 'vinculo':
+            vinnombre = request.GET.get('vinnombre', '')
+            if not vinnombre:
+                return JsonResponse({'error': 'Falta vinnombre'}, status=400)
+            queryset = queryset.filter(vinnombre=vinnombre)
+        elif nivel != 'cuenta':
+            return JsonResponse({'error': 'Nivel inválido'}, status=400)
+
+        count, _ = queryset.delete()
+        return JsonResponse({'success': True, 'eliminados': count})
+
+    except Exception as e:
+        print(f"❌ Error en eliminar_nivel: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+# ─────────────────────────────────────────────────────────────
+# Opciones válidas
+# ─────────────────────────────────────────────────────────────
+SEDES_VALIDAS   = {'tulua', 'buga', 'cartago', 'cali', ''}
+ORIGENES_VALIDOS = {'ejecutado', 'presupuestado', ''}
+
+
+# ─────────────────────────────────────────────────────────────
+# GET /presupuesto/consolidado-base/carga/
+# Renderiza el template de carga
+# ─────────────────────────────────────────────────────────────
+def vista_carga_consolidado_base(request):
+    return render(request, 'presupuesto_consolidado/carga_consolidado_base.html')
+
+
+# ─────────────────────────────────────────────────────────────
+# POST /presupuesto/cargar_consolidado_total_base/
+# Recibe lista de registros y hace upsert (insert or update)
+# ─────────────────────────────────────────────────────────────
+@require_POST
+def cargar_consolidado_total_base(request):
+    try:
+        body     = json.loads(request.body)
+        registros = body.get('registros', [])
+
+        if not registros:
+            return JsonResponse({'success': False, 'error': 'Sin registros'}, status=400)
+
+        # ── Validar sede y origen a nivel de lote ──────────────
+        sede   = str(body.get('sede',   '') or '').strip().lower()
+        origen = str(body.get('origen', '') or '').strip().lower()
+
+        if sede not in SEDES_VALIDAS:
+            return JsonResponse(
+                {'success': False, 'error': f"Sede inválida. Opciones: {', '.join(sorted(SEDES_VALIDAS))}"},
+                status=400,
+            )
+        if origen not in ORIGENES_VALIDOS:
+            return JsonResponse(
+                {'success': False, 'error': f"Origen inválido. Opciones: {', '.join(sorted(ORIGENES_VALIDOS))}"},
+                status=400,
+            )
+
+        insertados  = 0
+        actualizados = 0
+
+        for r in registros:
+            # Normalizar fecha
+            fecha_raw = r.get('mcnfecha')
+            if not fecha_raw:
+                continue
+            try:
+                fecha = datetime.datetime.strptime(str(fecha_raw).strip(), '%Y-%m-%d').date()
+            except ValueError:
+                continue
+
+            mcncuenta   = str(r.get('mcncuenta',  '') or '').strip()
+            mcnccosto   = str(r.get('mcnccosto',  '0') or '0').strip()
+            ctanombre   = str(r.get('ctanombre',  '') or '').strip()
+            valor       = _to_bigint(r.get('valor'))
+            total_anual = _to_bigint(r.get('total_anual'))
+
+            if not mcncuenta:
+                continue
+
+            # Upsert: clave única = (mcncuenta, mcnccosto, mcnfecha, sede, origen)
+            obj, created = ConsolidadoTotalBase.objects.update_or_create(
+                mcncuenta=mcncuenta,
+                mcnccosto=mcnccosto,
+                mcnfecha=fecha,
+                sede=sede,
+                origen=origen,
+                defaults={
+                    'ctanombre':   ctanombre,
+                    'valor':       valor,
+                    'total_anual': total_anual,
+                },
+            )
+            if created:
+                insertados += 1
+            else:
+                actualizados += 1
+
+        return JsonResponse({
+            'success':     True,
+            'insertados':  insertados,
+            'actualizados': actualizados,
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'JSON inválido'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+# ─────────────────────────────────────────────────────────────
+# GET /presupuesto/obtener_consolidado_total_base_raw/
+# Devuelve todos los registros en bruto para el historial
+# ─────────────────────────────────────────────────────────────
+@require_GET
+def obtener_consolidado_total_base_raw(request):
+    try:
+        # Filtros opcionales por sede y/o origen vía query params
+        sede   = request.GET.get('sede',   '').strip().lower() or None
+        origen = request.GET.get('origen', '').strip().lower() or None
+
+        qs = ConsolidadoTotalBase.objects.all()
+        if sede:
+            qs = qs.filter(sede=sede)
+        if origen:
+            qs = qs.filter(origen=origen)
+
+        qs = qs.order_by('mcncuenta', 'mcnfecha').values(
+            'id', 'mcncuenta', 'mcnccosto', 'ctanombre',
+            'mcnfecha', 'valor', 'total_anual', 'sede', 'origen',
+        )
+
+        data = [
+            {
+                'id':          row['id'],
+                'mcncuenta':   row['mcncuenta']   or '',
+                'mcnccosto':   row['mcnccosto']   or '',
+                'ctanombre':   row['ctanombre']   or '',
+                'mcnfecha':    str(row['mcnfecha']) if row['mcnfecha'] else '',
+                'valor':       row['valor'],
+                'total_anual': row['total_anual'],
+                'sede':        row['sede']        or '',
+                'origen':      row['origen']      or '',
+            }
+            for row in qs
+        ]
+        return JsonResponse({'success': True, 'data': data})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+# ─────────────────────────────────────────────────────────────
+# POST /presupuesto/borrar_consolidado_total_base/
+# Acepta filtros opcionales sede y/o origen; sin filtros borra todo
+# ─────────────────────────────────────────────────────────────
+@require_POST
+def borrar_consolidado_total_base(request):
+    try:
+        body   = json.loads(request.body) if request.body else {}
+        sede   = str(body.get('sede',   '') or '').strip().lower() or None
+        origen = str(body.get('origen', '') or '').strip().lower() or None
+
+        qs = ConsolidadoTotalBase.objects.all()
+        if sede:
+            if sede not in SEDES_VALIDAS:
+                return JsonResponse(
+                    {'success': False, 'error': f"Sede inválida. Opciones: {', '.join(sorted(SEDES_VALIDAS))}"},
+                    status=400,
+                )
+            qs = qs.filter(sede=sede)
+        if origen:
+            if origen not in ORIGENES_VALIDOS:
+                return JsonResponse(
+                    {'success': False, 'error': f"Origen inválido. Opciones: {', '.join(sorted(ORIGENES_VALIDOS))}"},
+                    status=400,
+                )
+            qs = qs.filter(origen=origen)
+
+        eliminados, _ = qs.delete()
+        return JsonResponse({'success': True, 'eliminados': eliminados})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+# ─────────────────────────────────────────────────────────────
+# POST /presupuesto/eliminar_fila_consolidado_total_base/
+# ─────────────────────────────────────────────────────────────
+@require_POST
+def eliminar_fila_consolidado_total_base(request):
+    try:
+        body = json.loads(request.body)
+        pk   = body.get('id')
+        if not pk:
+            return JsonResponse({'success': False, 'error': 'id requerido'}, status=400)
+        eliminados, _ = ConsolidadoTotalBase.objects.filter(pk=pk).delete()
+        if not eliminados:
+            return JsonResponse({'success': False, 'error': 'Registro no encontrado'}, status=404)
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+# ─────────────────────────────────────────────────────────────
+# Utilidad interna
+# ─────────────────────────────────────────────────────────────
+def _to_bigint(value):
+    if value is None or value == '':
+        return None
+    try:
+        return int(float(str(value).replace('.', '').replace(',', '.')))
+    except (ValueError, TypeError):
+        return None
+
+# ---------------------------------------------------------------------------
+# AÑADIR A views.py
+# ---------------------------------------------------------------------------
+# Requiere que arriba del archivo ya existan (si no, añadirlos):
+#   from django.views.decorators.http import require_GET, require_POST
+#   from .models import ComentarioComparativo   (o el import equivalente
+#       si tu archivo usa "from .models import *")
+# ---------------------------------------------------------------------------
+
+SEDES_COMPARATIVO = {'tulua', 'buga', 'cartago', 'cali', 'consolidado'}
+
+
+@login_required
+def comparativo_general(request):
+    """
+    Página única de comparativo: pestañas para las 4 sedes + el total,
+    con columna de comentarios editable y guardado automático.
+    """
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "comparativo/comparativo_general.html")
+
+
+@require_GET
+def obtener_comentarios_comparativo(request, sede):
+    """
+    Devuelve todos los comentarios guardados para una sede, como un
+    diccionario { fila_key: comentario }.
+    """
+    sede = (sede or '').strip().lower()
+    if sede not in SEDES_COMPARATIVO:
+        return JsonResponse({'error': f'Sede inválida: {sede}'}, status=400)
+
+    data = {
+        c.fila_key: (c.comentario or '')
+        for c in ComentarioComparativo.objects.filter(sede=sede)
+    }
+    return JsonResponse({'data': data})
+
+
+@login_required
+@require_POST
+def guardar_comentario_comparativo(request):
+    """
+    Crea o actualiza el comentario de una fila específica dentro de una sede.
+    Body JSON esperado:
+        {
+            "sede": "tulua",
+            "fila_key": "541001",
+            "comentario": "texto libre...",
+            "mcncuenta": "541001",       (opcional, solo referencia)
+            "ctanombre": "Honorarios"    (opcional, solo referencia)
+        }
+    """
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'JSON inválido'}, status=400)
+
+    sede = str(body.get('sede', '')).strip().lower()
+    fila_key = str(body.get('fila_key', '')).strip()
+    comentario = body.get('comentario', '') or ''
+    mcncuenta = str(body.get('mcncuenta', '') or '')
+    ctanombre = str(body.get('ctanombre', '') or '')
+
+    if sede not in SEDES_COMPARATIVO:
+        return JsonResponse({'success': False, 'error': f'Sede inválida: {sede}'}, status=400)
+    if not fila_key:
+        return JsonResponse({'success': False, 'error': 'fila_key es obligatorio'}, status=400)
+
+    usuario = request.user.username if request.user.is_authenticated else ''
+
+    obj, _ = ComentarioComparativo.objects.update_or_create(
+        sede=sede,
+        fila_key=fila_key,
+        defaults={
+            'comentario': comentario,
+            'mcncuenta': mcncuenta,
+            'ctanombre': ctanombre,
+            'actualizado_por': usuario,
+        },
+    )
+    return JsonResponse({'success': True, 'fila_key': fila_key, 'comentario': obj.comentario})

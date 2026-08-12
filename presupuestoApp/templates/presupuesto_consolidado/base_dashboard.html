@@ -5,131 +5,287 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dashboard - Aplicación de Presupuesto</title>
-  
-  <!-- Google Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdn.datatables.net/2.3.6/css/dataTables.dataTables.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/columncontrol/1.1.1/css/columnControl.dataTables.min.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/4.0.5/css/fixedHeader.dataTables.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-  <!-- DataTables Buttons CSS -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
   <link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
-  {% block css%}{% endblock %}
+  {% block css %}{% endblock %}
 </head>
 <body>
-  <div class="app-container">
+  <div class="app-container" id="appContainer">
+
+    <!-- ══════════════════════════════════════
+         SIDEBAR
+    ══════════════════════════════════════ -->
     <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
-      <div class="logo" tabindex="0">PRESUPUESTO</div>
+
+      <!-- Cabecera del sidebar: hamburguesa + logo -->
+      <div class="sidebar-header">
+        <button class="hamburger" id="sidebarToggle" aria-label="Colapsar barra lateral">
+          <span class="material-icons">menu</span>
+        </button>
+        <span class="logo">PRESUPUESTO</span>
+      </div>
+
       <nav class="sidebar-nav" role="navigation" aria-label="Menú principal">
-        <a href="{% url 'dashboardPresupuesto'%}" class="{% if request.resolver_match.url_name == 'dashboardPresupuesto' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">note_alt</span><span class="text">Presupuestos</span></a>
-        {% comment %} botón para exportar a excel {% endcomment %}
-        <a href="{% url 'exportar_excel_presupuestos' %}" tabindex="0" ><span class="material-icons" aria-hidden="true">file_download</span><span class="text">Exportar a Excel Presupuestos Aprobados</span></a>
-        <a href="{% url 'exportar_nomina_vertical' %}" tabindex="0" ><span class="material-icons" aria-hidden="true">file_download</span><span class="text">Exportar a Excel Presupuesto Nomina</span></a>
-        <a href="{% url 'cuenta5' %}" class="{% if request.resolver_match.url_name == 'cuenta5' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Cuenta 5</span></a>
-        <a href="{% url 'consolidado_tulua' %}" class="{% if request.resolver_match.url_name == 'consolidado_tulua' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado tulua</span></a>
-        <a href="{% url 'consolidado_buga' %}" class="{% if request.resolver_match.url_name == 'consolidado_buga' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado buga</span></a>
-        <a href="{% url 'consolidado_cartago' %}" class="{% if request.resolver_match.url_name == 'consolidado_cartago' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado cartago</span></a>
-        <a href="{% url 'consolidado_cali' %}" class="{% if request.resolver_match.url_name == 'consolidado_cali' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado cali</span></a>
-        <a href="{% url 'consolidado_total_base' %}" class="{% if request.resolver_match.url_name == 'consolidado_total_base' %}active{% endif %}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Consolidado total base</span></a>
+
+        <!-- Presupuestos -->
+        <a href="{% url 'dashboardPresupuesto' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'dashboardPresupuesto' %}active{% endif %}">
+          <span class="material-icons nav-icon">note_alt</span>
+          <span class="nav-text">Presupuestos</span>
+        </a>
+
+        <!-- Exportar -->
+        <a href="{% url 'exportar_excel_presupuestos' %}" class="nav-link">
+          <span class="material-icons nav-icon">file_download</span>
+          <span class="nav-text">Exportar Presupuestos Aprobados</span>
+        </a>
+
+        <a href="{% url 'exportar_nomina_vertical' %}" class="nav-link">
+          <span class="material-icons nav-icon">file_download</span>
+          <span class="nav-text">Exportar Presupuesto Nómina</span>
+        </a>
+        <a href="{% url 'vista_carga_consolidado_base' %}" class="nav-link nav-child
+            {% if request.resolver_match.url_name == 'vista_carga_consolidado_base' %}active{% endif %}">
+          <span class="material-icons nav-icon">folder</span>
+          <span class="nav-text">Carga Consolidado Base</span>
+        </a>
+        <a href="{% url 'tabla_dinamica' %}" class="nav-link nav-child
+            {% if request.resolver_match.url_name == 'tabla_dinamica' %}active{% endif %}">
+          <span class="material-icons nav-icon">folder</span>
+          <span class="nav-text">Tabla dinamica</span>
+        </a>
+        <!-- ── Grupo desplegable: EJECUTADO ──
+             NOTA: las listas "*_active" ahora usan delimitador "|" en ambos extremos
+             y la comprobación compara "|valor|" contra la cadena completa, para
+             evitar falsos positivos por coincidencia de subcadena (p.ej. "cuenta5"
+             siendo subcadena de "cuenta5_presupuestado"). -->
+        {% with ejecutado_active="|cuenta5|consolidado_tulua|consolidado_buga|consolidado_cartago|consolidado_cali|consolidado_total_base|cargar_consolidado_total_base|vista_carga_consolidado_base|" %}
+        {% with is_open="|"|add:request.resolver_match.url_name|add:"|" %}
+        <div class="nav-group {% if is_open in ejecutado_active %}open{% endif %}" id="grupoEjecutado">
+
+          <button class="nav-group-toggle" aria-expanded="false" aria-controls="ejecutadoMenu"
+                  id="ejecutadoToggle">
+            <span class="material-icons nav-icon">assessment</span>
+            <span class="nav-text">Ejecutado</span>
+            <span class="material-icons nav-chevron">expand_more</span>
+          </button>
+
+          <div class="nav-group-menu" id="ejecutadoMenu" role="menu">
+            <a href="{% url 'cuenta5' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'cuenta5' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Cuenta 5</span>
+            </a>
+            <a href="{% url 'cuenta4' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'cuenta4' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Cuenta 4</span>
+            </a>
+            <a href="{% url 'consolidado_general' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'consolidado_general' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Consolidado General</span>
+            </a>
+          </div>
+        </div>
+        {% endwith %}
+        {% endwith %}
+
+        <!-- ── Grupo desplegable: PRESUPUESTADO ──
+             Textos normalizados a Title Case (antes iban en minúscula,
+             inconsistente con el grupo Ejecutado). -->
+        {% with presupuestado_active="|cuenta5_presupuestado|presupuestado_tulua|presupuestado_buga|presupuestado_cartago|presupuestado_cali|presupuestado_total_base|" %}
+        {% with is_open_p="|"|add:request.resolver_match.url_name|add:"|" %}
+        <div class="nav-group {% if is_open_p in presupuestado_active %}open{% endif %}" id="grupoPresupuestado">
+
+          <button class="nav-group-toggle" aria-expanded="false" aria-controls="presupuestadoMenu"
+                  id="presupuestadoToggle">
+            <span class="material-icons nav-icon">bar_chart</span>
+            <span class="nav-text">Presupuestado</span>
+            <span class="material-icons nav-chevron">expand_more</span>
+          </button>
+
+          <div class="nav-group-menu" id="presupuestadoMenu" role="menu">
+            <a href="{% url 'cuenta5_presupuestado' %}" class="nav-link nav-child
+              {% if request.resolver_match.url_name == 'cuenta5_presupuestado' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Cuenta 5 Presupuestado</span>
+            </a>
+            <a href="{% url 'cuenta4_presupuestado' %}" class="nav-link nav-child
+              {% if request.resolver_match.url_name == 'cuenta4_presupuestado' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Cuenta 4 Presupuestado</span>
+            </a>
+            </a>
+            <a href="{% url 'presupuestado_general' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'presupuestado_general' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Presupuestado general</span>
+            </a>
+          </div>
+
+        </div>
+        {% endwith %}
+        {% endwith %}
+
+        <!-- ── Grupo desplegable: COMPARATIVOS ──
+             Nuevo. Sigue el mismo patrón de sedes que Ejecutado y Presupuestado.
+             "Comparativo tulua" venía suelto fuera de cualquier grupo pero con
+             clase nav-child (pensada para vivir dentro de nav-group-menu); se
+             movió aquí. Los demás sedes quedan comentados como plantilla: solo
+             descoméntalos cuando existan las vistas/url_names correspondientes
+             (comparativo_buga, comparativo_cartago, comparativo_cali). -->
+        {% with comparativos_active="|comparativo_tulua|comparativo_buga|comparativo_cartago|comparativo_cali|" %}
+        {% with is_open_c="|"|add:request.resolver_match.url_name|add:"|" %}
+        <div class="nav-group {% if is_open_c in comparativos_active %}open{% endif %}" id="grupoComparativos">
+
+          <button class="nav-group-toggle" aria-expanded="false" aria-controls="comparativosMenu"
+                  id="comparativosToggle">
+            <span class="material-icons nav-icon">compare_arrows</span>
+            <span class="nav-text">Comparativos</span>
+            <span class="material-icons nav-chevron">expand_more</span>
+          </button>
+
+          <div class="nav-group-menu" id="comparativosMenu" role="menu">
+            <a href="{% url 'comparativo_general' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'comparativo_general' %}active{% endif %}">
+              <span class="material-icons nav-icon">folder</span>
+              <span class="nav-text">Comparativo general</span>
+            </a>
+          </div>
+
+        </div>
+        {% endwith %}
+        {% endwith %}
+        <a href="{% url 'ajustes_orden_cuentas' %}"
+          class="nav-link {% if request.resolver_match.url_name == 'ajustes_orden_cuentas' %}active{% endif %}">
+          <span class="material-icons nav-icon">settings</span>
+          <span class="nav-text">Ajustes · Orden de cuentas</span>
+        </a>
       </nav>
-      <button aria-label="Colapsar barra lateral" class="sidebar-toggle desktop" id="sidebarToggle">
-        <span class="material-icons" aria-hidden="true">chevron_left</span>
-      </button>
     </aside>
 
+    <!-- ══════════════════════════════════════
+         MAIN
+    ══════════════════════════════════════ -->
     <main class="main-content" id="main" tabindex="-1">
       <header class="app-header">
-        <div class="breadcrumb" aria-label="Ruta actual de navegación">Dashboard / Notas</div>
-        {% comment %} <div class="search-container">
-          <input type="search" placeholder="Buscar usuarios..." aria-label="Buscar notas" id="searchInput" />
-          <span class="material-icons search-icon" aria-hidden="true">search</span>
-        </div> {% endcomment %}
+        <div class="breadcrumb" aria-label="Ruta actual de navegación">Dashboard</div>
         <div class="user-profile" tabindex="0" aria-label="Perfil de usuario">
-          <span class="material-icons" aria-hidden="true">account_circle</span>
+          <span class="material-icons">account_circle</span>
           <span class="user-name">Nicolas</span>
         </div>
       </header>
-      
+
       {% block content %}{% endblock %}
-      
     </main>
   </div>
-  
-   <!-- Botón menú móvil -->
-  <button aria-label="Abrir menú lateral" class="sidebar-toggle" id="sidebarToggleMobile"
-    style="display:none; position: fixed; top:16px; left:16px; z-index:1100; background:#3f51b5; color:#fff; border:none; width:44px; height:44px; border-radius:50%; box-shadow:0 8px 20px rgba(63,81,181,0.4);">
-    <span class="material-icons" aria-hidden="true">menu</span>
-  </button>
 
-  <script src="https://cdn.datatables.net/2.3.6/js/dataTables.js"></script>
-  <script src="https://cdn.datatables.net/fixedheader/4.0.5/js/dataTables.fixedHeader.js"></script>
-  <script src="https://cdn.datatables.net/fixedheader/4.0.5/js/fixedHeader.dataTables.js"></script>
-  <script src="https://cdn.datatables.net/columncontrol/1.1.1/js/dataTables.columnControl.min.js"></script>
-  <script src="https://cdn.datatables.net/columncontrol/1.1.1/js/columnControl.dataTables.js"></script>
+  <!-- Overlay para mobile -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
   <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        const sidebar = document.getElementById('sidebar');
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        const sidebarToggleMobile = document.getElementById('sidebarToggleMobile');
-        const mqMobile = window.matchMedia("(max-width: 639px)");
+  (() => {
+    const sidebar    = document.getElementById('sidebar');
+    const container  = document.getElementById('appContainer');
+    const toggle     = document.getElementById('sidebarToggle');
+    const overlay    = document.getElementById('sidebarOverlay');
+    const MOBILE_BP  = 768;
 
-        // ===== Toggle desktop =====
-        sidebarToggle.addEventListener('click', () => {
-          sidebar.classList.toggle('collapsed');
-          document.querySelector('.app-container').classList.toggle('collapsed'); 
-          const icon = sidebarToggle.querySelector('.material-icons');
-          icon.textContent = sidebar.classList.contains('collapsed') ? 'chevron_right' : 'chevron_left';
-      
-        });
+    /* ── Helpers de estado ── */
+    function isMobile() { return window.innerWidth < MOBILE_BP; }
+    function isCollapsed() { return container.classList.contains('collapsed'); }
 
-        // ===== Toggle mobile =====
-        function toggleMobileSidebar() {
-          sidebar.classList.toggle('visible');
-          sidebarToggleMobile.style.display = sidebar.classList.contains('visible') ? 'none' : 'block';
+    /* ── Colapsar / expandir (escritorio) ── */
+    function toggleCollapse() {
+      container.classList.toggle('collapsed');
+      // Cerrar submenu cuando se colapsa para evitar desbordamientos
+      if (isCollapsed()) closeAllGroups();
+    }
+
+    /* ── Abrir / cerrar (mobile) ── */
+    function openMobile()  {
+      sidebar.classList.add('open');
+      overlay.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeMobile() {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    /* ── Click en hamburguesa ── */
+    toggle.addEventListener('click', () => {
+      if (isMobile()) {
+        sidebar.classList.contains('open') ? closeMobile() : openMobile();
+      } else {
+        toggleCollapse();
+      }
+    });
+
+    /* ── Click en overlay mobile ── */
+    overlay.addEventListener('click', closeMobile);
+
+    /* ── Resize: limpiar estados cruzados ── */
+    let lastMobile = isMobile();
+    window.addEventListener('resize', () => {
+      const nowMobile = isMobile();
+      if (nowMobile !== lastMobile) {
+        lastMobile = nowMobile;
+        if (nowMobile) {
+          // Pasamos a mobile: quitar collapsed, cerrar si estaba abierto
+          container.classList.remove('collapsed');
+          closeMobile();
+        } else {
+          // Pasamos a desktop: cerrar overlay mobile
+          closeMobile();
         }
-        sidebarToggleMobile.addEventListener('click', toggleMobileSidebar);
+      }
+    });
 
-        // ===== Responsive handler =====
-        function handleResponsive() {
-          if (mqMobile.matches) {
-            sidebar.classList.remove('collapsed');
-            sidebar.style.width = '240px';
-            sidebarToggleMobile.style.display = 'block';
-            sidebarToggle.style.display = 'none';
-          } else {
-            sidebar.classList.remove('visible');
-            sidebarToggleMobile.style.display = 'none';
-            sidebarToggle.style.display = 'flex';
-            sidebar.style.width = sidebar.classList.contains('collapsed') ? '64px' : '280px';
-          }
-        }
-        window.addEventListener('resize', handleResponsive);
-        handleResponsive();
-
-        // ===== Keyboard accessibility =====
-        const navLinks = document.querySelectorAll('nav.sidebar-nav a');
-        navLinks.forEach(link => {
-          link.addEventListener('keydown', e => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              link.click();
-            }
-          });
-        });
-
-        // ===== Focus main al navegar =====
-        const mainContent = document.getElementById('main');
-        navLinks.forEach(link => {
-          link.addEventListener('click', () => {
-            setTimeout(() => mainContent.focus(), 100);
-          });
-        });
-
-        
+    /* ══════════════════════════════════════
+       SUBMENÚ DESPLEGABLE
+    ══════════════════════════════════════ */
+    function closeAllGroups(except) {
+      document.querySelectorAll('.nav-group').forEach(g => {
+        if (g === except) return;
+        g.classList.remove('open');
+        const btn = g.querySelector('.nav-group-toggle');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
       });
-  </script>
+    }
 
+    document.querySelectorAll('.nav-group-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Si el sidebar está colapsado en desktop, expandirlo primero
+        if (!isMobile() && isCollapsed()) {
+          container.classList.remove('collapsed');
+        }
+        const group = btn.closest('.nav-group');
+        const isOpen = group.classList.contains('open');
+        closeAllGroups(group);
+        group.classList.toggle('open', !isOpen);
+        btn.setAttribute('aria-expanded', String(!isOpen));
+      });
+    });
+
+    /* Abrir grupo si hay un hijo activo al cargar */
+    document.querySelectorAll('.nav-group').forEach(group => {
+      if (group.querySelector('.nav-link.active')) {
+        group.classList.add('open');
+        const btn = group.querySelector('.nav-group-toggle');
+        if (btn) btn.setAttribute('aria-expanded', 'true');
+      }
+    });
+
+    /* ── Accesibilidad teclado nav ── */
+    document.querySelectorAll('.sidebar-nav a, .nav-group-toggle').forEach(el => {
+      el.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+      });
+    });
+  })();
+  </script>
 </body>
 </html>
-

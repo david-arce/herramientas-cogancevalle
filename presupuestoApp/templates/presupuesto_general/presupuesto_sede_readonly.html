@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="csrf-token" content="{{ csrf_token }}">
+<title>Presupuesto {{ sede_label }} — {% if modo == "proyectado" %}Proyectado{% else %}Aprobado{% endif %}</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+    :root {
+        --color-primario: #1F3A93;
+        --color-borde: #d7d9dc;
+        --color-fondo-header: #f8f9fa;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; margin: 16px; }
+    h2 { margin-bottom: 12px; }
+
+    .toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-bottom: 15px; }
+    .toolbar-group {
+        display: flex; align-items: center; gap: 8px; padding: 8px;
+        border: 1px solid var(--color-borde); border-radius: 6px; background: var(--color-fondo-header);
+    }
+    .toolbar-group button, .toolbar-group select { font-size: 14px; }
+    .toolbar-group button {
+        margin: 2px; padding: 6px 14px; border: none; border-radius: 6px;
+        cursor: pointer; background: #5e5e5e; color: #fff; transition: all .2s ease;
+    }
+    .toolbar-group button:hover { background: #8b8b8b; color: #111; }
+    .btn-aprobado { background: #198754 !important; }
+    .btn-aprobado:hover { background: #146c43 !important; color: #fff !important; }
+    .btn-danger { background: #d9534f !important; }
+    .btn-danger:hover { background: #c9302c !important; color: #fff !important; }
+    #versionSelect { padding: 6px 10px; border: 1px solid #ced4da; border-radius: 6px; }
+
+    #gridContainer { overflow: auto; max-width: 100%; height: 70vh; border: 1px solid var(--color-borde); }
+    table.grid { border-collapse: collapse; width: 100%; font-size: 13px; }
+    table.grid th, table.grid td {
+        border: 1px solid var(--color-borde); padding: 5px 10px; white-space: nowrap; text-align: left;
+    }
+    table.grid thead th { background: var(--color-primario); color: #fff; position: sticky; top: 0; z-index: 2; }
+    td.numeric { text-align: right; }
+    #gridBody tr:nth-child(even) { background: #fafafa; }
+    #gridBody tr:hover { background: #eef2fb; }
+
+    .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 12px; }
+    .toast { min-width: 320px; max-width: 480px; padding: 14px 22px; border-radius: 10px; color: #fff;
+        font-size: 15px; box-shadow: 0 4px 12px rgba(0,0,0,.2); opacity: 0; transform: translateX(100%);
+        transition: all .4s ease-in-out; }
+    .toast.show { opacity: 1; transform: translateX(0); }
+    .toast.success { background: #28a745; }
+    .toast.error { background: #dc3545; }
+
+    .modal { display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,.6); }
+    .modal-content { background: #fff; margin: 15% auto; padding: 20px; border-radius: 10px; width: 400px; text-align: center; }
+    .modal-header { font-size: 18px; margin-bottom: 15px; }
+    .modal-footer { margin-top: 20px; display: flex; justify-content: space-around; }
+    .modal-footer button { padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; }
+    .btn-cancel { background: #ccc; }
+    .btn-confirm { background: #d9534f; color: #fff; }
+</style>
+</head>
+<body>
+<h2>Presupuesto {{ sede_label }} — {% if modo == "proyectado" %}Proyectado{% else %}Aprobado{% endif %}</h2>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="toolbar">
+    <div style="display:flex; flex-wrap:wrap; gap:12px;">
+        {% if modo == "proyectado" %}
+        <div class="toolbar-group">
+            <label for="versionSelect"><b>Versión:</b></label>
+            <select id="versionSelect">
+                {% for v in versiones %}
+                    <option value="{{ v }}" {% if v == ultima_version %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+            <button id="borrarBtn" class="btn-danger" title="Elimina la versión seleccionada">🗑️ Borrar versión</button>
+        </div>
+        {% endif %}
+        <div class="toolbar-group">
+            <button id="btnAuxiliar">📝 Ir a tabla auxiliar</button>
+            {% if modo == "proyectado" %}
+                <button id="btnCambiarModo" class="btn-aprobado">✅ Ver presupuesto aprobado</button>
+            {% else %}
+                <button id="btnCambiarModo">📊 Ver tabla proyectada</button>
+            {% endif %}
+        </div>
+    </div>
+    <div class="toolbar-group">
+        <button id="exportarExcelBtn">📥 Exportar a Excel</button>
+    </div>
+</div>
+
+<div id="gridContainer">
+    <table class="grid" id="gridTable">
+        <thead><tr id="gridHeaderRow"></tr></thead>
+        <tbody id="gridBody"></tbody>
+    </table>
+</div>
+
+<!-- Modal confirmación borrar versión (solo modo proyectado) -->
+<div id="modalBorrar" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">⚠️ Confirmar eliminación</div>
+        <p>¿Eliminar la versión <b id="versionABorrar"></b> del presupuesto? Esta acción no se puede deshacer.</p>
+        <div class="modal-footer">
+            <button class="btn-cancel" data-modal="modalBorrar">Cancelar</button>
+            <button class="btn-confirm" id="confirmBorrarBtn">Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const SEDE = "{{ sede }}";
+const MODO = "{{ modo }}"; // "proyectado" | "aprobado"
+const URLS = {
+    obtenerProyectado: "{% url 'obtener_presupuesto_sede' sede=sede %}",
+    obtenerAprobado: "{% url 'obtener_presupuesto_aprobado_sede' sede=sede %}",
+    auxiliar: "{% url 'tabla_auxiliar_sede' sede=sede %}",
+    proyectado: "{% url 'presupuesto_sede' sede=sede %}",
+    aprobado: "{% url 'presupuesto_aprobado_sede' sede=sede %}",
+    borrar: "{% url 'borrar_presupuesto_sede' sede=sede %}",
+};
+
+// ---------------------------------------------------------------------
+// Config de columnas: única fuente de verdad (header, render, export),
+// igual patrón que en la grilla auxiliar editable.
+// ---------------------------------------------------------------------
+const MESES = ["enero","febrero","marzo","abril","mayo","junio",
+               "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+const COLUMNS = [
+    { key: "centro_tra", label: "Centro trabajo" },
+    { key: "nombre_cen", label: "Nombre centro" },
+    { key: "codcosto", label: "Código costo" },
+    { key: "responsable", label: "Responsable" },
+    { key: "cuenta", label: "Cuenta" },
+    { key: "cuenta_mayor", label: "Cuenta Mayor" },
+    { key: "detalle_cuenta", label: "Detalle Cuenta" },
+    { key: "sede_distribucion", label: "Sede distribucción" },
+    { key: "proveedor", label: "Proveedor" },
+    ...MESES.map(m => ({ key: m, label: m[0].toUpperCase() + m.slice(1), type: "number" })),
+    { key: "total", label: "Total", type: "number" },
+    { key: "comentario", label: "Comentario" },
+];
+
+let rows = [];
+
+function csrfToken() { return document.querySelector('meta[name="csrf-token"]').content; }
+function fmt(n) {
+    if (n === null || n === undefined || n === "" || isNaN(n)) return n ?? "";
+    return new Intl.NumberFormat('es-ES').format(n);
+}
+function showToast(message, type = "success", duration = 3000) {
+    const container = document.getElementById("toastContainer");
+    const toast = document.createElement("div");
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add("show"));
+    setTimeout(() => { toast.classList.remove("show"); setTimeout(() => toast.remove(), 400); }, duration);
+}
+function abrirModal(id) { document.getElementById(id).style.display = "block"; }
+function cerrarModal(id) { document.getElementById(id).style.display = "none"; }
+document.querySelectorAll('.btn-cancel').forEach(b => b.addEventListener('click', () => cerrarModal(b.dataset.modal)));
+
+async function apiGet(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`GET ${url} -> ${res.status}`);
+    return res.json();
+}
+
+// ---------------------------------------------------------------------
+// Render
+// ---------------------------------------------------------------------
+function renderHeader() {
+    const headerRow = document.getElementById("gridHeaderRow");
+    headerRow.innerHTML = COLUMNS.map(c => `<th>${c.label}</th>`).join("");
+}
+function render() {
+    const tbody = document.getElementById("gridBody");
+    if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="${COLUMNS.length}" style="text-align:center; padding:20px; color:#888;">No hay datos para esta versión.</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = rows.map(row => {
+        const celdas = COLUMNS.map(col => {
+            const valor = row[col.key];
+            const clase = col.type === "number" ? ' class="numeric"' : "";
+            const texto = col.type === "number" ? fmt(valor) : (valor ?? "");
+            return `<td${clase}>${texto}</td>`;
+        }).join("");
+        return `<tr>${celdas}</tr>`;
+    }).join("");
+}
+
+// ---------------------------------------------------------------------
+// Carga de datos según modo
+// ---------------------------------------------------------------------
+async function cargarDatos() {
+    try {
+        let url;
+        if (MODO === "proyectado") {
+            const version = document.getElementById("versionSelect")?.value;
+            url = URLS.obtenerProyectado + (version ? `?version=${encodeURIComponent(version)}` : "");
+        } else {
+            url = URLS.obtenerAprobado;
+        }
+        const resp = await apiGet(url);
+        rows = resp.data || [];
+        render();
+    } catch (e) {
+        showToast("Error al cargar los datos ❌", "error");
+    }
+}
+
+document.getElementById("versionSelect")?.addEventListener("change", cargarDatos);
+
+// ---------------------------------------------------------------------
+// Navegación
+// ---------------------------------------------------------------------
+document.getElementById("btnAuxiliar").addEventListener("click", () => {
+    window.location.href = URLS.auxiliar;
+});
+document.getElementById("btnCambiarModo").addEventListener("click", () => {
+    window.location.href = MODO === "proyectado" ? URLS.aprobado : URLS.proyectado;
+});
+
+// ---------------------------------------------------------------------
+// Borrar versión (solo modo proyectado)
+// ---------------------------------------------------------------------
+document.getElementById("borrarBtn")?.addEventListener("click", () => {
+    const version = document.getElementById("versionSelect").value;
+    document.getElementById("versionABorrar").textContent = version;
+    abrirModal("modalBorrar");
+});
+document.getElementById("confirmBorrarBtn")?.addEventListener("click", async () => {
+    cerrarModal("modalBorrar");
+    const version = document.getElementById("versionSelect").value;
+    try {
+        const res = await fetch(URLS.borrar, {
+            method: "POST",
+            headers: { "X-CSRFToken": csrfToken() },
+            body: new URLSearchParams({ version }),
+        });
+        const resp = await res.json();
+        if (resp.status === "ok") {
+            showToast(resp.message, "success");
+            // La versión eliminada ya no debe seguir en el <select>: se
+            // recarga la página para que el backend vuelva a calcular la
+            // lista de versiones disponibles.
+            setTimeout(() => window.location.reload(), 900);
+        } else {
+            showToast(resp.message || "Error al borrar ❌", "error");
+        }
+    } catch (e) {
+        showToast("Error al borrar ❌", "error");
+    }
+});
+
+// ---------------------------------------------------------------------
+// Exportar a Excel (SheetJS)
+// ---------------------------------------------------------------------
+document.getElementById("exportarExcelBtn").addEventListener("click", () => {
+    const encabezados = COLUMNS.map(c => c.label);
+    const datos = rows.map(r => COLUMNS.map(c => r[c.key] ?? ""));
+    const ws = XLSX.utils.aoa_to_sheet([encabezados, ...datos]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Presupuesto");
+    XLSX.writeFile(wb, `presupuesto_${SEDE}_${MODO}.xlsx`);
+});
+
+// ---------------------------------------------------------------------
+// Init
+// ---------------------------------------------------------------------
+renderHeader();
+cargarDatos();
+</script>
+</body>
+</html>

@@ -1,102 +1,102 @@
 {% extends 'presupuesto_consolidado/base_dashboard.html' %}
 {% load static %}
 {% block content %}
-<section aria-label="Resumen de datos" class="dashboard-summary">        
-    <a href="{% url 'presupuesto_consolidado' 'almacen-buga' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="foldersLabel" role="region" style="background:#009688;">
+<section aria-label="Resumen de datos" class="dashboard-summary">
+    <a href="{% url 'presupuesto_sede' 'almacen-buga' %}" target="_blank" rel="noopener noreferrer">
+        <article class="card" tabindex="0" aria-labelledby="lblAlmacenBuga" role="region" style="background:#009688;">
         <span class="material-icons card-icon" aria-hidden="true">folder_open</span>
-        <h3 id="foldersLabel" class="card-title">Almacen Buga</h3>
+        <h3 id="lblAlmacenBuga" class="card-title">Almacen Buga</h3>
         <p class="card-number">Haz clic para ver el presupuesto</p>
         </article>
     </a>
-    <a href="{% url 'presupuesto_consolidado' 'almacen-cali' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="notesLabel" role="region" style="background:#2196f3;">
+    <a href="{% url 'presupuesto_sede' 'almacen-cali' %}" target="_blank" rel="noopener noreferrer">
+        <article class="card" tabindex="0" aria-labelledby="lblAlmacenCali" role="region" style="background:#2196f3;">
         <span class="material-icons card-icon" aria-hidden="true">note_alt</span>
-        <h3 id="notesLabel" class="card-title">Almacen Cali</h3>
+        <h3 id="lblAlmacenCali" class="card-title">Almacen Cali</h3>
         <p class="card-number">Haz clic para ver el presupuesto</p>
         </article>
     </a>
-    <a href="{% url 'presupuesto_consolidado' 'almacen-cartago' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="tagsLabel" role="region" style="background:#ff5722;">
+    <a href="{% url 'presupuesto_sede' 'almacen-cartago' %}" target="_blank" rel="noopener noreferrer">
+        <article class="card" tabindex="0" aria-labelledby="lblAlmacenCartago" role="region" style="background:#ff5722;">
         <span class="material-icons card-icon" aria-hidden="true">label</span>
-        <h3 id="tagsLabel" class="card-title">Almacen Cartago</h3>
+        <h3 id="lblAlmacenCartago" class="card-title">Almacen Cartago</h3>
         <p class="card-number">Haz clic para ver el presupuesto</p>
         </article>
     </a>
-    <a href="{% url 'presupuesto_consolidado' 'almacen-tulua' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#673ab7;">
+    <a href="{% url 'presupuesto_sede' 'almacen-tulua' %}" target="_blank" rel="noopener noreferrer">
+        <article class="card" tabindex="0" aria-labelledby="lblAlmacenTulua" role="region" style="background:#673ab7;">
         <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="usersLabel" class="card-title">Almacen Tulua</h3>
+        <h3 id="lblAlmacenTulua" class="card-title">Almacen Tulua</h3>
         <p class="card-number">Haz clic para ver el presupuesto</p>
         </article>
     </a>
-    <a href="{% url 'presupuesto_consolidado' 'comercial-costos' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#e91e63;">
+    <a href="{% url 'presupuesto_sede' 'comercial-costos' %}" target="_blank" rel="noopener noreferrer">
+        <article class="card" tabindex="0" aria-labelledby="lblComercial" role="region" style="background:#e91e63;">
         <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="usersLabel" class="card-title">Comercial</h3>
+        <h3 id="lblComercial" class="card-title">Comercial</h3>
         <p class="card-number">Haz clic para ver el presupuesto</p>
         </article>
     </a>
-    <a href="{% url 'presupuesto_consolidado' 'comunicaciones' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#ff9800;">
+    <a href="{% url 'presupuesto_sede' 'comunicaciones' %}" target="_blank" rel="noopener noreferrer">
+        <article class="card" tabindex="0" aria-labelledby="lblComunicaciones" role="region" style="background:#ff9800;">
         <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="usersLabel" class="card-title">Comunicaciones</h3>
+        <h3 id="lblComunicaciones" class="card-title">Comunicaciones</h3>
         <p class="card-number">Haz clic para ver el presupuesto</p>
         </article>
     </a>
-    <a href="{% url 'presupuesto_consolidado' 'contabilidad' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#4caf50;">
+    <a href="{% url 'presupuesto_sede' 'contabilidad' %}" target="_blank" rel="noopener noreferrer">
+        <article class="card" tabindex="0" aria-labelledby="lblContabilidad" role="region" style="background:#4caf50;">
         <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="usersLabel" class="card-title">Contabilidad</h3>
+        <h3 id="lblContabilidad" class="card-title">Contabilidad</h3>
         <p class="card-number">Haz clic para ver el presupuesto</p>
         </article>
     </a>
-    <a href="{% url 'presupuesto_consolidado' 'gerencia' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#795548;">
+    <a href="{% url 'presupuesto_sede' 'gerencia' %}" target="_blank" rel="noopener noreferrer">
+        <article class="card" tabindex="0" aria-labelledby="lblGerencia" role="region" style="background:#795548;">
         <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="usersLabel" class="card-title">Gerencia</h3>
+        <h3 id="lblGerencia" class="card-title">Gerencia</h3>
         <p class="card-number">Haz clic para ver el presupuesto</p>
         </article>
     </a>
-    <a href="{% url 'presupuesto_consolidado' 'gestion-riesgos' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#9c27b0;">
+    <a href="{% url 'presupuesto_sede' 'gestion-riesgos' %}" target="_blank" rel="noopener noreferrer">
+        <article class="card" tabindex="0" aria-labelledby="lblGestionRiesgos" role="region" style="background:#9c27b0;">
         <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="usersLabel" class="card-title">Gestión de riesgos</h3>
+        <h3 id="lblGestionRiesgos" class="card-title">Gestión de riesgos</h3>
         <p class="card-number">Haz clic para ver el presupuesto</p>
         </article>
     </a>
-    <a href="{% url 'presupuesto_consolidado' 'gh' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#f44336;">
+    <a href="{% url 'presupuesto_sede' 'gh' %}" target="_blank" rel="noopener noreferrer">
+        <article class="card" tabindex="0" aria-labelledby="lblGestionHumana" role="region" style="background:#f44336;">
         <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="usersLabel" class="card-title">Gestión humana</h3>
+        <h3 id="lblGestionHumana" class="card-title">Gestión humana</h3>
         <p class="card-number">Haz clic para ver el presupuesto</p>
         </article>
     </a>
-    <a href="{% url 'presupuesto_consolidado' 'logistica' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#607d8b;">
+    <a href="{% url 'presupuesto_sede' 'logistica' %}" target="_blank" rel="noopener noreferrer">
+        <article class="card" tabindex="0" aria-labelledby="lblLogistica" role="region" style="background:#607d8b;">
         <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="usersLabel" class="card-title">Logística</h3>
+        <h3 id="lblLogistica" class="card-title">Logística</h3>
         <p class="card-number">Haz clic para ver el presupuesto</p>
         </article>
     </a>
-    <a href="{% url 'presupuesto_consolidado' 'ocupacional' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#3f51b5;">
+    <a href="{% url 'presupuesto_sede' 'ocupacional' %}" target="_blank" rel="noopener noreferrer">
+        <article class="card" tabindex="0" aria-labelledby="lblOcupacional" role="region" style="background:#3f51b5;">
         <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="usersLabel" class="card-title">Salud ocupacional</h3>
+        <h3 id="lblOcupacional" class="card-title">Salud ocupacional</h3>
         <p class="card-number">Haz clic para ver el presupuesto</p>
         </article>
     </a>
-    <a href="{% url 'presupuesto_consolidado' 'servicios-tecnicos' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="usersLabel" role="region" style="background:#2196f3;">
+    <a href="{% url 'presupuesto_sede' 'servicios-tecnicos' %}" target="_blank" rel="noopener noreferrer">
+        <article class="card" tabindex="0" aria-labelledby="lblServiciosTecnicos" role="region" style="background:#2196f3;">
         <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="usersLabel" class="card-title">Servicios técnicos</h3>
+        <h3 id="lblServiciosTecnicos" class="card-title">Servicios técnicos</h3>
         <p class="card-number">Haz clic para ver el presupuesto</p>
         </article>
     </a>
-    <a href="{% url 'presupuesto_consolidado' 'tecnologia' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="totalNotesLabel" role="region">
+    <a href="{% url 'presupuesto_sede' 'tecnologia' %}" target="_blank" rel="noopener noreferrer">
+        <article class="card" tabindex="0" aria-labelledby="lblTecnologia" role="region">
         <span class="material-icons card-icon" aria-hidden="true">note</span>
-        <h3 id="totalNotesLabel" class="card-title">Tecnología</h3>
+        <h3 id="lblTecnologia" class="card-title">Tecnología</h3>
         <p class="card-number">Haz clic para ver el presupuesto</p>
         </article>
     </a>

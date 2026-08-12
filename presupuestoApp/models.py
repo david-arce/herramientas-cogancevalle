@@ -2612,7 +2612,7 @@ class Cuenta5Base(models.Model):
     mcnfecha = models.FloatField(db_column='MCNFECHA', blank=True, null=True)  # Field name made lowercase.
     mcntipodoc = models.CharField(db_column='MCNTIPODOC', blank=True, null=True)  # Field name made lowercase.
     mcnnumedoc = models.BigIntegerField(db_column='MCNNUMEDOC', blank=True, null=True)  # Field name made lowercase.
-    mcnvincula = models.FloatField(db_column='MCNVINCULA', blank=True, null=True)  # Field name made lowercase.
+    mcnvincula = models.CharField(db_column='MCNVINCULA', blank=True, null=True)  # Field name made lowercase.
     vinnombre = models.CharField(db_column='VINNOMBRE', blank=True, null=True)  # Field name made lowercase.
     mcnsucvin = models.CharField(db_column='MCNSUCVIN', blank=True, null=True)  # Field name made lowercase.
     saldoant = models.BigIntegerField(db_column='SALDOANT', blank=True, null=True)  # Field name made lowercase.
@@ -2645,7 +2645,146 @@ class ConsolidadoTotalBase(models.Model):
     mcnfecha = models.DateField(blank=True, null=True)
     valor = models.BigIntegerField(blank=True, null=True)
     total_anual = models.BigIntegerField(blank=True, null=True)
+    sede = models.CharField(blank=True, null=True)
+    origen = models.CharField(blank=True, null=True)
     
     class Meta:
         db_table = 'consolidado_total_base'
-    
+        
+#-------Cuenta 5 presupuestado-------------
+class Cuenta5Presupuestado(models.Model):
+    mcncuenta = models.CharField(db_column='MCNCUENTA', blank=True, null=True)  # Field name made lowercase.
+    mcnfecha = models.FloatField(db_column='MCNFECHA', blank=True, null=True)  # Field name made lowercase.
+    mcntipodoc = models.CharField(db_column='MCNTIPODOC', blank=True, null=True)  # Field name made lowercase.
+    mcnnumedoc = models.BigIntegerField(db_column='MCNNUMEDOC', blank=True, null=True)  # Field name made lowercase.
+    mcnvincula = models.CharField(db_column='MCNVINCULA', blank=True, null=True)  # Field name made lowercase.
+    vinnombre = models.CharField(db_column='VINNOMBRE', blank=True, null=True)  # Field name made lowercase.
+    mcnsucvin = models.CharField(db_column='MCNSUCVIN', blank=True, null=True)  # Field name made lowercase.
+    saldoant = models.BigIntegerField(db_column='SALDOANT', blank=True, null=True)  # Field name made lowercase.
+    mcnvaldebi = models.FloatField(db_column='MCNVALDEBI', blank=True, null=True)  # Field name made lowercase.
+    mcnvalcred = models.FloatField(db_column='MCNVALCRED', blank=True, null=True)  # Field name made lowercase.
+    saldonew = models.FloatField(db_column='SALDONEW', blank=True, null=True)  # Field name made lowercase.
+    mcnsucurs = models.CharField(db_column='MCNSUCURS', blank=True, null=True)  # Field name made lowercase.
+    mcnccosto = models.CharField(db_column='MCNCCOSTO', blank=True, null=True)  # Field name made lowercase.
+    mcndestino = models.CharField(db_column='MCNDESTINO', blank=True, null=True)  # Field name made lowercase.
+    mcndetalle = models.CharField(db_column='MCNDETALLE', blank=True, null=True)  # Field name made lowercase.
+    mcnzona = models.CharField(db_column='MCNZONA', blank=True, null=True)  # Field name made lowercase.
+    cconombre = models.CharField(db_column='CCONOMBRE', blank=True, null=True)  # Field name made lowercase.
+    dnonombre = models.CharField(db_column='DNONOMBRE', blank=True, null=True)  # Field name made lowercase.
+    zonnombre = models.CharField(db_column='ZONNOMBRE', blank=True, null=True)  # Field name made lowercase.
+    mcnempresa = models.CharField(db_column='MCNEMPRESA', blank=True, null=True)  # Field name made lowercase.
+    mcnclase = models.CharField(db_column='MCNCLASE', blank=True, null=True)  # Field name made lowercase.
+    mcnvinkey = models.CharField(db_column='MCNVINKEY', blank=True, null=True)  # Field name made lowercase.
+    tpreg = models.BigIntegerField(db_column='TPREG', blank=True, null=True)  # Field name made lowercase.
+    ctanombre = models.CharField(db_column='CTANOMBRE', blank=True, null=True)  # Field name made lowercase.
+    docdetalle = models.CharField(db_column='DOCDETALLE', blank=True, null=True)  # Field name made lowercase.
+    infdetalle = models.CharField(db_column='INFDETALLE', blank=True, null=True)  # Field name made lowercase.
+
+    class Meta:
+        db_table = 'cuenta_5_presupuestado'
+
+#-------Cuenta 4 base-------------
+class Cuenta4Base(models.Model):
+    mcncuenta = models.CharField(db_column='MCNCUENTA', blank=True, null=True)  # Field name made lowercase.
+    mcnfecha = models.FloatField(db_column='MCNFECHA', blank=True, null=True)  # Field name made lowercase.
+    mcntipodoc = models.CharField(db_column='MCNTIPODOC', blank=True, null=True)  # Field name made lowercase.
+    mcnnumedoc = models.BigIntegerField(db_column='MCNNUMEDOC', blank=True, null=True)  # Field name made lowercase.
+    mcnvincula = models.CharField(db_column='MCNVINCULA', blank=True, null=True)  # Field name made lowercase.
+    vinnombre = models.CharField(db_column='VINNOMBRE', blank=True, null=True)  # Field name made lowercase.
+    mcnsucvin = models.CharField(db_column='MCNSUCVIN', blank=True, null=True)  # Field name made lowercase.
+    saldoant = models.BigIntegerField(db_column='SALDOANT', blank=True, null=True)  # Field name made lowercase.
+    mcnvaldebi = models.FloatField(db_column='MCNVALDEBI', blank=True, null=True)  # Field name made lowercase.
+    mcnvalcred = models.FloatField(db_column='MCNVALCRED', blank=True, null=True)  # Field name made lowercase.
+    saldonew = models.FloatField(db_column='SALDONEW', blank=True, null=True)  # Field name made lowercase.
+    mcnsucurs = models.CharField(db_column='MCNSUCURS', blank=True, null=True)  # Field name made lowercase.
+    mcnccosto = models.CharField(db_column='MCNCCOSTO', blank=True, null=True)  # Field name made lowercase.
+    mcndestino = models.CharField(db_column='MCNDESTINO', blank=True, null=True)  # Field name made lowercase.
+    mcndetalle = models.CharField(db_column='MCNDETALLE', blank=True, null=True)  # Field name made lowercase.
+    mcnzona = models.CharField(db_column='MCNZONA', blank=True, null=True)  # Field name made lowercase.
+    cconombre = models.CharField(db_column='CCONOMBRE', blank=True, null=True)  # Field name made lowercase.
+    dnonombre = models.CharField(db_column='DNONOMBRE', blank=True, null=True)  # Field name made lowercase.
+    zonnombre = models.CharField(db_column='ZONNOMBRE', blank=True, null=True)  # Field name made lowercase.
+    mcnempresa = models.CharField(db_column='MCNEMPRESA', blank=True, null=True)  # Field name made lowercase.
+    mcnclase = models.CharField(db_column='MCNCLASE', blank=True, null=True)  # Field name made lowercase.
+    mcnvinkey = models.CharField(db_column='MCNVINKEY', blank=True, null=True)  # Field name made lowercase.
+    tpreg = models.BigIntegerField(db_column='TPREG', blank=True, null=True)  # Field name made lowercase.
+    ctanombre = models.CharField(db_column='CTANOMBRE', blank=True, null=True)  # Field name made lowercase.
+    docdetalle = models.CharField(db_column='DOCDETALLE', blank=True, null=True)  # Field name made lowercase.
+    infdetalle = models.CharField(db_column='INFDETALLE', blank=True, null=True)  # Field name made lowercase.
+
+    class Meta:
+        db_table = 'cuenta_4_base'
+        
+#-------Cuenta 4 presupuestado-------------
+class Cuenta4Presupuestado(models.Model):
+    mcncuenta = models.CharField(db_column='MCNCUENTA', blank=True, null=True)  # Field name made lowercase.
+    mcnfecha = models.FloatField(db_column='MCNFECHA', blank=True, null=True)  # Field name made lowercase.
+    mcntipodoc = models.CharField(db_column='MCNTIPODOC', blank=True, null=True)  # Field name made lowercase.
+    mcnnumedoc = models.BigIntegerField(db_column='MCNNUMEDOC', blank=True, null=True)  # Field name made lowercase.
+    mcnvincula = models.CharField(db_column='MCNVINCULA', blank=True, null=True)  # Field name made lowercase.
+    vinnombre = models.CharField(db_column='VINNOMBRE', blank=True, null=True)  # Field name made lowercase.
+    mcnsucvin = models.CharField(db_column='MCNSUCVIN', blank=True, null=True)  # Field name made lowercase.
+    saldoant = models.BigIntegerField(db_column='SALDOANT', blank=True, null=True)  # Field name made lowercase.
+    mcnvaldebi = models.FloatField(db_column='MCNVALDEBI', blank=True, null=True)  # Field name made lowercase.
+    mcnvalcred = models.FloatField(db_column='MCNVALCRED', blank=True, null=True)  # Field name made lowercase.
+    saldonew = models.FloatField(db_column='SALDONEW', blank=True, null=True)  # Field name made lowercase.
+    mcnsucurs = models.CharField(db_column='MCNSUCURS', blank=True, null=True)  # Field name made lowercase.
+    mcnccosto = models.CharField(db_column='MCNCCOSTO', blank=True, null=True)  # Field name made lowercase.
+    mcndestino = models.CharField(db_column='MCNDESTINO', blank=True, null=True)  # Field name made lowercase.
+    mcndetalle = models.CharField(db_column='MCNDETALLE', blank=True, null=True)  # Field name made lowercase.
+    mcnzona = models.CharField(db_column='MCNZONA', blank=True, null=True)  # Field name made lowercase.
+    cconombre = models.CharField(db_column='CCONOMBRE', blank=True, null=True)  # Field name made lowercase.
+    dnonombre = models.CharField(db_column='DNONOMBRE', blank=True, null=True)  # Field name made lowercase.
+    zonnombre = models.CharField(db_column='ZONNOMBRE', blank=True, null=True)  # Field name made lowercase.
+    mcnempresa = models.CharField(db_column='MCNEMPRESA', blank=True, null=True)  # Field name made lowercase.
+    mcnclase = models.CharField(db_column='MCNCLASE', blank=True, null=True)  # Field name made lowercase.
+    mcnvinkey = models.CharField(db_column='MCNVINKEY', blank=True, null=True)  # Field name made lowercase.
+    tpreg = models.BigIntegerField(db_column='TPREG', blank=True, null=True)  # Field name made lowercase.
+    ctanombre = models.CharField(db_column='CTANOMBRE', blank=True, null=True)  # Field name made lowercase.
+    docdetalle = models.CharField(db_column='DOCDETALLE', blank=True, null=True)  # Field name made lowercase.
+    infdetalle = models.CharField(db_column='INFDETALLE', blank=True, null=True)  # Field name made lowercase.
+
+    class Meta:
+        db_table = 'cuenta_4_presupuestado'
+
+# ---------------------------------------------------------------------------
+# Un comentario por (sede, fila). "fila_key" identifica la fila:
+#   - Para una cuenta normal: el código de cuenta (mcncuenta), ej. "541001"
+#   - Para una fila calculada (VENTAS NETAS, Margen Bruto, etc.): el
+#     identificador interno que ya usa el JS del comparativo (tipoTotal),
+#     ej. "VentasNetas", "54", "MargenBruto", "PctUtilidadOperacional", etc.
+# Esto permite comentar tanto cuentas puntuales como los totales calculados.
+
+class ComentarioComparativo(models.Model):
+    sede = models.CharField(max_length=30)          # tulua | buga | cartago | cali | consolidado
+    fila_key = models.CharField(max_length=50)       # código de cuenta o identificador de total
+    mcncuenta = models.CharField(max_length=50, blank=True, null=True)
+    ctanombre = models.CharField(max_length=255, blank=True, null=True)
+    comentario = models.TextField(blank=True, null=True)
+    actualizado_por = models.CharField(max_length=150, blank=True, null=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'comparativo_comentarios'
+        unique_together = ('sede', 'fila_key')
+
+    def __str__(self):
+        return f"{self.sede} / {self.fila_key}"
+
+# tabla para definir el orden y nombre personalizado de las cuentas en las tablas de Consolidado / Presupuestado / Comparativo
+class OrdenCuenta(models.Model):
+    """Orden y nombre personalizado de las cuentas en las tablas
+    de Consolidado / Presupuestado / Comparativo."""
+    mcncuenta     = models.CharField(max_length=60, unique=True)
+    ctanombre     = models.CharField(max_length=255, blank=True, default='')
+    orden         = models.PositiveIntegerField(default=0, db_index=True)
+    visible_total = models.BooleanField(default=True)   # vista "Total Base" / consolidado
+    visible_sede  = models.BooleanField(default=False)  # vistas por sede
+
+    class Meta:
+        ordering = ['orden', 'id']
+        verbose_name = 'Orden de cuenta'
+        verbose_name_plural = 'Orden de cuentas'
+
+    def __str__(self):
+        return f'{self.orden:05d} · {self.mcncuenta} — {self.ctanombre}'
