@@ -10,7 +10,7 @@
     :root {
         --color-primario: #1F3A93;
         --color-borde: #d7d9dc;
-        --color-fila-activa: #b6b6b6;
+        --color-fila-activa: #eef1f8;
         --color-celda-edit: #fff8d6;
         --color-fondo-header: #f8f9fa;
     }
@@ -48,26 +48,58 @@
     #autoSaveStatus.error .dot { background: #dc3545; }
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
 
-    #gridContainer { overflow: auto; max-width: 100%; height: 65vh; border: 1px solid var(--color-borde); position: relative; }
-    table.grid { border-collapse: collapse; width: 100%; font-size: 13px; }
+    #gridContainer {
+        overflow: auto; max-width: 100%; height: 65vh;
+        border: 1px solid var(--color-borde); position: relative;
+    }
+    table.grid { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; }
     table.grid th, table.grid td {
-        border: 1px solid var(--color-borde); padding: 4px 8px; white-space: nowrap; text-align: left;
+        border-right: 1px solid var(--color-borde); border-bottom: 1px solid var(--color-borde);
+        padding: 4px 8px; white-space: nowrap; text-align: left;
     }
     table.grid thead th {
-        background: var(--color-primario); color: #fff; position: sticky; top: 0; z-index: 2;
+        background: var(--color-primario); color: #fff; position: sticky; top: 0; z-index: 3;
+        border-bottom: 1px solid var(--color-primario);
     }
+    /* Encabezado de la columna del rango seleccionado, como en Excel */
+    table.grid thead th.col-activa { background: #16296b; }
     td.editable { background: #fdfdfd; cursor: cell; }
-    td.locked { background: #eee; color: #777; cursor: not-allowed; }
-    td.numeric { text-align: right; }
-    td.selected { outline: 2px solid var(--color-primario); outline-offset: -1px; }
+    td.locked { background: #eee; color: #777; cursor: cell; }
+    td.numeric { text-align: right; font-variant-numeric: tabular-nums; }
     td.editing { background: var(--color-celda-edit); padding: 0; }
     td.editing input, td.editing select {
         width: 100%; height: 100%; border: none; outline: none; padding: 4px 8px;
         font-size: 13px; background: transparent; box-sizing: border-box;
     }
-    tr.fila-activa td:not(.editing) { background: var(--color-fila-activa); }
+    tr.fila-activa td:not(.editing):not(.locked) { background: var(--color-fila-activa); }
     tr.blink td { animation: blink 0.8s ease-in-out 3; }
     @keyframes blink { 0%,100% { background: #d0ffb5; } 50% { background: #fff; } }
+
+    /* --- Capas de selección estilo Excel ---------------------------------
+       Se dibujan como overlays absolutos dentro de #gridContainer en vez de
+       pintar clase por clase: así arrastrar sobre miles de celdas no obliga
+       a recorrer el DOM en cada movimiento del mouse. */
+    .overlay-sel, .overlay-relleno, .overlay-copia {
+        position: absolute; pointer-events: none; display: none; z-index: 2;
+    }
+    .overlay-sel { border: 2px solid var(--color-primario); background: rgba(31,58,147,.10); }
+    .overlay-relleno { border: 2px dashed var(--color-primario); background: rgba(31,58,147,.04); }
+    .overlay-copia { border: 2px dashed #2b8a3e; background: rgba(43,138,62,.06); }
+    .fill-handle {
+        position: absolute; right: -5px; bottom: -5px; width: 10px; height: 10px;
+        background: var(--color-primario); border: 1px solid #fff; cursor: crosshair;
+        pointer-events: auto; z-index: 4;
+    }
+    body.arrastrando { user-select: none; }
+    body.arrastrando * { cursor: crosshair !important; }
+
+    #barraEstado {
+        display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
+        font-size: 12px; color: #444; padding: 6px 10px; margin-top: 6px;
+        background: var(--color-fondo-header); border: 1px solid var(--color-borde); border-radius: 6px;
+    }
+    #barraEstado b { color: #111; font-weight: 600; }
+    #barraEstado .hint { margin-left: auto; color: #777; }
 
     .resize-handle { height: 10px; background: #ccc; cursor: ns-resize; text-align: center; color: #555; user-select: none; }
     .fab { position: fixed; bottom: 15px; left: 15px; background: #007bff; color: #fff; border: none;
@@ -95,6 +127,14 @@
     .btn-confirm { background: #d9534f; color: #fff; }
     .btn-confirm-upload { background: #007bff; color: #fff; }
     .manual-modal iframe { width: 100%; height: 100%; border: none; }
+
+    table.atajos { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+    table.atajos td { padding: 5px 8px; border-bottom: 1px solid #eee; }
+    table.atajos td:first-child { white-space: nowrap; font-family: ui-monospace, Consolas, monospace; color: var(--color-primario); }
+
+    @media (prefers-reduced-motion: reduce) {
+        * { animation: none !important; transition: none !important; }
+    }
 </style>
 </head>
 <body>
@@ -118,6 +158,8 @@
         <button id="calcularIPCBtn" title="Aplica el IPC a las filas seleccionadas">📈 Calcular IPC</button>
     </div>
     <div class="toolbar-group">
+        <button id="deshacerBtn" title="Deshacer (Ctrl+Z)">↩️ Deshacer</button>
+        <button id="rehacerBtn" title="Rehacer (Ctrl+Y)">↪️ Rehacer</button>
         <button id="agregarFilaBtn">➕ Agregar fila</button>
         <button id="exportarExcelBtn">📥 Exportar a Excel</button>
         <button id="verManualBtn">📘 Ver manual de cuentas</button>
@@ -126,6 +168,7 @@
         <button id="descargarPlantillaBtn">📥 Descargar plantilla</button>
         <button id="importarPlantillaBtn">📤 Importar plantilla</button>
         <input type="file" id="importarPlantillaInput" accept=".xlsx" style="display:none">
+        <button id="verAtajosBtn" title="Atajos de teclado y mouse">⌨️ Atajos</button>
     </div>
 </div>
 
@@ -134,8 +177,21 @@
         <thead><tr id="gridHeaderRow"></tr></thead>
         <tbody id="gridBody"></tbody>
     </table>
+    <!-- Overlays de selección (deben ir dentro del contenedor que hace scroll) -->
+    <div class="overlay-copia" id="overlayCopia"></div>
+    <div class="overlay-relleno" id="overlayRelleno"></div>
+    <div class="overlay-sel" id="overlaySel"><div class="fill-handle" id="fillHandle" title="Arrastra para rellenar. Doble clic: rellena hasta el final de los datos."></div></div>
 </div>
 <div class="resize-handle" id="resizeHandle">⬍</div>
+
+<div id="barraEstado">
+    <span id="estadoCelda">—</span>
+    <span id="estadoRecuento"></span>
+    <span id="estadoSuma"></span>
+    <span id="estadoPromedio"></span>
+    <span class="hint">Arrastra el cuadrito azul de la esquina para rellenar · Ctrl+C / Ctrl+V · Ctrl+Z</span>
+</div>
+
 <button class="fab" id="expandBtn">Expandir</button>
 <div class="toast-container" id="toastContainer"></div>
 
@@ -143,7 +199,7 @@
 <div id="modalEliminar" class="modal">
     <div class="modal-content">
         <div class="modal-header">⚠️ Confirmar eliminación</div>
-        <p>¿Estás seguro de eliminar esta fila?</p>
+        <p id="textoEliminar">¿Estás seguro de eliminar esta fila?</p>
         <div class="modal-footer">
             <button class="btn-cancel" data-modal="modalEliminar">Cancelar</button>
             <button class="btn-confirm" id="confirmEliminarBtn">Eliminar</button>
@@ -178,7 +234,7 @@
 </div>
 <div id="modalImportErrores" class="modal">
     <div class="modal-content" style="width:600px; max-width:90%; text-align:left;">
-        <div class="modal-header" style="text-align:center;">⚠️ Filas omitidas al importar</div>
+        <div class="modal-header" style="text-align:center;">⚠️ La plantilla tiene errores — no se importó ningún dato</div>
         <div style="max-height:320px; overflow:auto; margin-top:10px;">
             <table class="grid" style="width:100%; font-size:12px;">
                 <thead>
@@ -207,6 +263,30 @@
         </div>
     </div>
 </div>
+<div id="modalAtajos" class="modal">
+    <div class="modal-content" style="width:620px; max-width:92%; text-align:left;">
+        <div class="modal-header" style="text-align:center;">⌨️ La tabla funciona como Excel</div>
+        <table class="atajos">
+            <tr><td>Clic y arrastrar</td><td>Selecciona un rango de celdas</td></tr>
+            <tr><td>Arrastrar el cuadrito azul</td><td>Rellena hacia abajo, arriba, izquierda o derecha (copia o continúa la serie)</td></tr>
+            <tr><td>Doble clic en el cuadrito</td><td>Rellena hacia abajo hasta donde llegan los datos</td></tr>
+            <tr><td>Ctrl + arrastrar cuadrito</td><td>Invierte el comportamiento: copia en vez de serie (y viceversa)</td></tr>
+            <tr><td>Shift + clic / Shift + flechas</td><td>Extiende la selección</td></tr>
+            <tr><td>Ctrl + flechas</td><td>Salta al borde de los datos</td></tr>
+            <tr><td>Ctrl + C / Ctrl + X / Ctrl + V</td><td>Copiar, cortar y pegar rangos (también desde y hacia Excel)</td></tr>
+            <tr><td>Ctrl + Z / Ctrl + Y</td><td>Deshacer y rehacer</td></tr>
+            <tr><td>Ctrl + D / Ctrl + R</td><td>Rellenar hacia abajo / hacia la derecha dentro de la selección</td></tr>
+            <tr><td>Ctrl + A</td><td>Seleccionar toda la tabla</td></tr>
+            <tr><td>Escribir, F2 o doble clic</td><td>Edita la celda</td></tr>
+            <tr><td>Alt + ↓</td><td>Abre la lista desplegable de la celda</td></tr>
+            <tr><td>Enter / Tab</td><td>Confirma y se mueve abajo / a la derecha</td></tr>
+            <tr><td>Supr</td><td>Borra el contenido de todo el rango seleccionado</td></tr>
+        </table>
+        <div class="modal-footer" style="justify-content:center;">
+            <button class="btn-cancel" data-modal="modalAtajos">Cerrar</button>
+        </div>
+    </div>
+</div>
 <script>
 const SEDE = "{{ sede }}";
 const URLS = {
@@ -220,8 +300,7 @@ const URLS = {
 
 // ---------------------------------------------------------------------
 // Config de columnas: UNA sola fuente de verdad para header, celdas,
-// validación, export y cálculo de total (evita repetir cada columna
-// en 4 lugares distintos como pasaba antes).
+// validación, export y cálculo de total.
 // ---------------------------------------------------------------------
 const MESES = ["enero","febrero","marzo","abril","mayo","junio",
                "julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -238,6 +317,11 @@ const COLUMNS = [
     { key: "comentario", label: "Comentario", type: "text" },
 ];
 
+// Índices de las columnas que son "datos" (todas menos check y acciones).
+// La selección tipo Excel se mueve solo dentro de este rango.
+const COL_INI = COLUMNS.findIndex(c => c.type !== "check" && c.type !== "acciones");
+const COL_FIN = COLUMNS.length - 1;
+
 const OPCIONES_NOMBRE_CENTRO = {
     "ALMACEN TULUA":    { codigoCosto: "020202", centro: "001" },
     "ALMACEN BUGA":     { codigoCosto: "020200", centro: "002" },
@@ -251,8 +335,10 @@ const EXCLUIR_CUENTAS = ["51","52","5105","5110","54","541001","541003","541006"
 
 let mapaCuentaMayor = {};
 let rows = [];               // datos de la grilla
-let activeCell = null;       // { rowIndex, colKey, td }
-let editingInput = null;
+// Filas en blanco que se agregan debajo de los datos al exportar, para que
+// las listas desplegables y la autosuma queden disponibles más allá de las
+// filas ya registradas.
+const EXPORT_FILAS_EXTRA = 200;
 
 // ---------------------------------------------------------------------
 // Utilidades
@@ -267,6 +353,55 @@ function fmt(n) {
 function recalcularTotal(row) {
     row.total = MESES.reduce((acc, m) => acc + (parseFloat(row[m]) || 0), 0);
 }
+// Convierte un número de columna (1-based) a su letra de Excel (1->A, 27->AA...)
+function colLetter(n) {
+    let s = "";
+    while (n > 0) {
+        const m = (n - 1) % 26;
+        s = String.fromCharCode(65 + m) + s;
+        n = Math.floor((n - 1) / 26);
+    }
+    return s;
+}
+// Interpreta un texto como número aceptando lo que suele venir de Excel:
+// separadores de miles (1.234.567 o 1,234,567), signo y espacios.
+function parseNumero(valor) {
+    if (typeof valor === "number") return Number.isFinite(valor) ? Math.round(valor) : 0;
+    let t = String(valor ?? "").trim();
+    if (t === "") return 0;
+    const negativo = /^\(.*\)$/.test(t) || t.startsWith("-");
+    t = t.replace(/[^0-9]/g, "");
+    if (t === "") return 0;
+    const n = parseInt(t, 10);
+    return negativo ? -n : n;
+}
+function validarValorEntero(valorCrudo) {
+    if (valorCrudo === "" || valorCrudo === null || valorCrudo === undefined) {
+        return { valido: true, valor: 0 };
+    }
+    if (typeof valorCrudo === "number") {
+        if (!Number.isFinite(valorCrudo) || !Number.isInteger(valorCrudo)) {
+            return { valido: false, valor: 0 };
+        }
+        return { valido: true, valor: valorCrudo };
+    }
+    const texto = String(valorCrudo).trim();
+    if (texto === "") return { valido: true, valor: 0 };
+    if (!/^-?\d+$/.test(texto)) return { valido: false, valor: 0 };
+    return { valido: true, valor: parseInt(texto, 10) };
+}
+async function bloquearFilaEncabezado(hoja) {
+    const totalCols = hoja.columnCount;
+    hoja.getRow(1).eachCell({ includeEmpty: true }, cell => {
+        cell.protection = { locked: true };
+    });
+    for (let r = 2; r <= hoja.rowCount; r++) {
+        for (let c = 1; c <= totalCols; c++) {
+            hoja.getCell(r, c).protection = { locked: false };
+        }
+    }
+    await hoja.protect("", { selectLockedCells: true, selectUnlockedCells: true });
+}
 function showToast(message, type = "success", duration = 3000, persistent = false) {
     const container = document.getElementById("toastContainer");
     const toast = document.createElement("div");
@@ -277,9 +412,27 @@ function showToast(message, type = "success", duration = 3000, persistent = fals
     if (persistent) { toast.dataset.persistent = "1"; return toast; }
     setTimeout(() => { toast.classList.remove("show"); setTimeout(() => toast.remove(), 400); }, duration);
 }
-function abrirModal(id) { document.getElementById(id).style.display = "block"; }
-function cerrarModal(id) { document.getElementById(id).style.display = "none"; }
+// Contador de modales abiertos: mientras haya uno abierto, la grilla ignora
+// los atajos de teclado (antes cualquier tecla se filtraba a la tabla).
+let modalesAbiertos = 0;
+function abrirModal(id) { document.getElementById(id).style.display = "block"; modalesAbiertos++; }
+function cerrarModal(id) {
+    const el = document.getElementById(id);
+    if (el.style.display === "block") modalesAbiertos = Math.max(0, modalesAbiertos - 1);
+    el.style.display = "none";
+}
 document.querySelectorAll('.btn-cancel').forEach(b => b.addEventListener('click', () => cerrarModal(b.dataset.modal)));
+
+function escaparHtml(texto) {
+    const div = document.createElement("div");
+    div.textContent = String(texto ?? "");
+    return div.innerHTML;
+}
+// Para valores que van dentro de un atributo (value="…"): escaparHtml no
+// convierte las comillas, así que un texto con " rompía el input.
+function escaparAttr(texto) {
+    return escaparHtml(texto).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
 
 async function apiGet(url) {
     const res = await fetch(url);
@@ -300,15 +453,10 @@ async function apiPost(url, body, isJson = true) {
 // ---------------------------------------------------------------------
 // Guardado automático
 // ---------------------------------------------------------------------
-// En vez de un botón "Guardar cambios", cada modificación confirmada
-// (editar celda, agregar/duplicar/eliminar fila, aplicar IPC, pegar datos)
-// programa un guardado. Se usa "debounce" para no disparar una petición
-// por cada tecla: si llegan varios cambios seguidos, solo se guarda una
-// vez, poco después del último cambio.
 const AUTOSAVE_DEBOUNCE_MS = 800;
 let autoSaveTimer = null;
-let autoSaveEnCurso = false;
-let autoSaveDatosPendientes = false; // hubo cambios mientras se guardaba
+let autoSaveEnCurso = null;          // Promise del guardado en vuelo (o null)
+let autoSaveDatosPendientes = false;
 
 const autoSaveStatusEl = document.getElementById("autoSaveStatus");
 const autoSaveStatusTextEl = document.getElementById("autoSaveStatusText");
@@ -322,47 +470,87 @@ function setAutoSaveStatus(estado, texto) {
 function programarGuardadoAutomatico() {
     setAutoSaveStatus("saving", "Cambios sin guardar…");
     clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(ejecutarGuardadoAutomatico, AUTOSAVE_DEBOUNCE_MS);
+    autoSaveTimer = setTimeout(() => { autoSaveTimer = null; ejecutarGuardadoAutomatico(); }, AUTOSAVE_DEBOUNCE_MS);
 }
 
-async function ejecutarGuardadoAutomatico() {
+function ejecutarGuardadoAutomatico() {
     if (autoSaveEnCurso) {
-        // ya hay un guardado en curso: cuando termine, se vuelve a programar
+        // Ya hay un guardado en vuelo: se reprograma al terminar.
         autoSaveDatosPendientes = true;
-        return;
+        return autoSaveEnCurso;
     }
-    autoSaveEnCurso = true;
     setAutoSaveStatus("saving", "Guardando…");
-    try {
-        const payload = rows.map(r => { const { _checked, ...resto } = r; return resto; });
-        const resp = await apiPost(URLS.guardarTemp, payload);
-        if (resp.status === "ok") {
-            setAutoSaveStatus("saved", "Todo guardado");
-        } else {
+    autoSaveEnCurso = (async () => {
+        try {
+            const payload = rows.map(r => { const { _checked, ...resto } = r; return resto; });
+            const resp = await apiPost(URLS.guardarTemp, payload);
+            if (resp.status === "ok") {
+                setAutoSaveStatus("saved", "Todo guardado");
+            } else {
+                setAutoSaveStatus("error", "Error al guardar ❌");
+                showToast(resp.message || "Error al guardar ❌", "error");
+            }
+        } catch (e) {
             setAutoSaveStatus("error", "Error al guardar ❌");
-            showToast(resp.message || "Error al guardar ❌", "error");
+            showToast("Error al guardar ❌", "error");
+        } finally {
+            autoSaveEnCurso = null;
+            if (autoSaveDatosPendientes) {
+                autoSaveDatosPendientes = false;
+                programarGuardadoAutomatico();
+            }
         }
-    } catch (e) {
-        setAutoSaveStatus("error", "Error al guardar ❌");
-        showToast("Error al guardar ❌", "error");
-    } finally {
-        autoSaveEnCurso = false;
-        if (autoSaveDatosPendientes) {
-            autoSaveDatosPendientes = false;
-            programarGuardadoAutomatico();
-        }
-    }
+    })();
+    return autoSaveEnCurso;
 }
 
-// Si el usuario intenta cerrar/recargar la pestaña con un guardado
-// pendiente o en curso, se le advierte (los cambios ya están en camino,
-// pero puede que aún no hayan llegado al servidor).
+// Fuerza que todo lo pendiente llegue al servidor (se usa antes de subir).
+async function vaciarColaDeGuardado() {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = null;
+    if (autoSaveEnCurso) await autoSaveEnCurso;
+    autoSaveDatosPendientes = false;
+    await ejecutarGuardadoAutomatico();
+}
+
 window.addEventListener("beforeunload", (e) => {
     if (autoSaveTimer || autoSaveEnCurso) {
         e.preventDefault();
         e.returnValue = "";
     }
 });
+
+// ---------------------------------------------------------------------
+// Historial: deshacer / rehacer (Ctrl+Z / Ctrl+Y)
+// ---------------------------------------------------------------------
+const HISTORIAL_MAX = 60;
+let pilaDeshacer = [];
+let pilaRehacer = [];
+
+function instantanea() {
+    pilaDeshacer.push(JSON.stringify(rows));
+    if (pilaDeshacer.length > HISTORIAL_MAX) pilaDeshacer.shift();
+    pilaRehacer.length = 0;
+    actualizarBotonesHistorial();
+}
+function restaurar(desde, hacia) {
+    if (desde.length === 0) return;
+    hacia.push(JSON.stringify(rows));
+    rows = JSON.parse(desde.pop());
+    rows.forEach(r => { if (r._checked === undefined) r._checked = false; });
+    limitarSeleccion();
+    render();
+    actualizarBotonesHistorial();
+    programarGuardadoAutomatico();
+}
+function deshacer() { restaurar(pilaDeshacer, pilaRehacer); }
+function rehacer() { restaurar(pilaRehacer, pilaDeshacer); }
+function actualizarBotonesHistorial() {
+    document.getElementById("deshacerBtn").disabled = pilaDeshacer.length === 0;
+    document.getElementById("rehacerBtn").disabled = pilaRehacer.length === 0;
+}
+document.getElementById("deshacerBtn").addEventListener("click", deshacer);
+document.getElementById("rehacerBtn").addEventListener("click", rehacer);
 
 // ---------------------------------------------------------------------
 // Carga inicial
@@ -377,17 +565,19 @@ async function cargarDatos() {
     rows = await apiGet(URLS.obtenerTemp);
     rows.forEach(r => { r._checked = false; });
     render();
+    if (rows.length) seleccionar(0, COL_INI);
     setAutoSaveStatus("saved", "Todo guardado");
 }
 
 // ---------------------------------------------------------------------
-// Render de la grilla (header + filas) a partir de COLUMNS + rows
+// Render de la grilla
 // ---------------------------------------------------------------------
 function renderHeader() {
     const headerRow = document.getElementById("gridHeaderRow");
     headerRow.innerHTML = "";
-    COLUMNS.forEach(col => {
+    COLUMNS.forEach((col, ci) => {
         const th = document.createElement("th");
+        th.dataset.colIndex = ci;
         if (col.key === "_check") {
             th.innerHTML = `<input type="checkbox" id="checkAllIPC" title="Seleccionar todo">`;
         } else {
@@ -399,22 +589,24 @@ function renderHeader() {
 
 function render() {
     const tbody = document.getElementById("gridBody");
-    tbody.innerHTML = "";
+    const frag = document.createDocumentFragment();
     rows.forEach((row, rowIndex) => {
         const tr = document.createElement("tr");
         tr.dataset.rowIndex = rowIndex;
-        COLUMNS.forEach(col => {
-            tr.appendChild(renderCell(row, rowIndex, col));
-        });
-        tbody.appendChild(tr);
+        COLUMNS.forEach((col, ci) => tr.appendChild(renderCell(row, rowIndex, col, ci)));
+        frag.appendChild(tr);
     });
+    tbody.innerHTML = "";
+    tbody.appendChild(frag);
     syncCheckAllState();
+    pintarSeleccion();
 }
 
-function renderCell(row, rowIndex, col) {
+function renderCell(row, rowIndex, col, colIdx) {
     const td = document.createElement("td");
     td.dataset.rowIndex = rowIndex;
     td.dataset.colKey = col.key;
+    td.dataset.colIndex = colIdx;
 
     if (col.key === "_check") {
         td.innerHTML = `<input type="checkbox" class="row-check" ${row._checked ? "checked" : ""}>`;
@@ -425,287 +617,884 @@ function renderCell(row, rowIndex, col) {
         return td;
     }
 
-    const locked = !!col.locked;
-    td.classList.add(locked ? "locked" : "editable");
+    td.classList.add(col.locked ? "locked" : "editable");
     if (col.type === "number") td.classList.add("numeric");
-
-    let value = row[col.key];
-    td.textContent = col.type === "number" ? fmt(value) : (value ?? "");
+    td.textContent = col.type === "number" ? fmt(row[col.key]) : (row[col.key] ?? "");
     return td;
+}
+
+// Repinta solo una fila (evita reconstruir toda la tabla en cada edición,
+// que era lo que hacía perder el scroll y la selección).
+function pintarFila(rowIndex) {
+    const row = rows[rowIndex];
+    if (!row) return;
+    COLUMNS.forEach((col, ci) => {
+        const td = tdDe(rowIndex, ci);
+        if (!td || td.classList.contains("editing")) return;
+        if (col.type === "check") {
+            const cb = td.querySelector("input");
+            if (cb) cb.checked = !!row._checked;
+            return;
+        }
+        if (col.type === "acciones") return;
+        td.textContent = col.type === "number" ? fmt(row[col.key]) : (row[col.key] ?? "");
+    });
 }
 
 function syncCheckAllState() {
     const total = rows.length;
     const marcados = rows.filter(r => r._checked).length;
     const checkAll = document.getElementById("checkAllIPC");
-    checkAll.checked = marcados > 0 && marcados === total;
+    if (!checkAll) return;
+    checkAll.checked = total > 0 && marcados === total;
     checkAll.indeterminate = marcados > 0 && marcados < total;
 }
 
 // ---------------------------------------------------------------------
-// Selección de fila / celda activa
+// Modelo de selección tipo Excel
+//   sel = { r1, c1, r2, c2 }  →  (r1,c1) es el ancla (celda activa)
 // ---------------------------------------------------------------------
-function marcarFilaActiva(tr) {
-    document.querySelectorAll("#gridBody tr.fila-activa").forEach(r => r.classList.remove("fila-activa"));
-    if (tr) tr.classList.add("fila-activa");
-}
-function marcarCeldaActiva(td) {
-    document.querySelectorAll("#gridBody td.selected").forEach(c => c.classList.remove("selected"));
-    if (td) td.classList.add("selected");
-}
+let sel = null;
+let editingInput = null;
+let editando = null;         // { rowIndex, colKey, td }
+let rangoCopiado = null;     // { r0, c0, r1, c1, cortar }
 
-// ---------------------------------------------------------------------
-// Edición estilo Excel: click selecciona, escribir/Enter/F2 edita,
-// flechas/Tab navegan, Escape cancela.
-// ---------------------------------------------------------------------
-function colIndex(key) { return COLUMNS.findIndex(c => c.key === key); }
-
-function moverA(rowIndex, colKey) {
-    if (rowIndex < 0 || rowIndex >= rows.length) return;
-    const col = COLUMNS.find(c => c.key === colKey);
-    if (!col || col.locked || col.type === "check" || col.type === "acciones") return;
-    const td = document.querySelector(`#gridBody td[data-row-index="${rowIndex}"][data-col-key="${colKey}"]`);
-    if (!td) return;
-    seleccionarCelda(td);
-    td.scrollIntoView({ block: "nearest", inline: "nearest" });
+function tdDe(r, c) {
+    return document.querySelector(`#gridBody td[data-row-index="${r}"][data-col-index="${c}"]`);
+}
+function rangoNormalizado(s = sel) {
+    if (!s) return null;
+    return {
+        r0: Math.min(s.r1, s.r2), r1: Math.max(s.r1, s.r2),
+        c0: Math.min(s.c1, s.c2), c1: Math.max(s.c1, s.c2),
+    };
+}
+function clampFila(r) { return Math.max(0, Math.min(rows.length - 1, r)); }
+function clampCol(c) { return Math.max(COL_INI, Math.min(COL_FIN, c)); }
+function limitarSeleccion() {
+    if (!sel) return;
+    if (rows.length === 0) { sel = null; return; }
+    sel = { r1: clampFila(sel.r1), c1: clampCol(sel.c1), r2: clampFila(sel.r2), c2: clampCol(sel.c2) };
 }
 
-function seleccionarCelda(td) {
-    const colKey = td.dataset.colKey;
-    const col = COLUMNS.find(c => c.key === colKey);
-    // Columnas de checkbox/acciones no son celdas de datos: no se seleccionan
-    if (!col || col.type === "check" || col.type === "acciones") return;
+function seleccionar(r, c, extender = false) {
+    if (rows.length === 0) return;
+    r = clampFila(r); c = clampCol(c);
+    if (!extender || !sel) sel = { r1: r, c1: c, r2: r, c2: c };
+    else { sel.r2 = r; sel.c2 = c; }
+    pintarSeleccion();
+    const td = tdDe(sel.r2, sel.c2);
+    if (td) td.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
 
-    // Si había otra celda en edición, se CONFIRMA (no se descarta) el valor
-    // antes de moverse — así el usuario no pierde lo que acaba de escribir
-    // o seleccionar en un <select> al hacer clic en otra celda.
-    if (editingInput && activeCell && activeCell.td !== td) {
-        cerrarEdicion(false);
+function posicionarOverlay(el, r0, c0, r1, c1) {
+    const a = tdDe(r0, c0), b = tdDe(r1, c1);
+    if (!a || !b) { el.style.display = "none"; return; }
+    el.style.display = "block";
+    el.style.left = a.offsetLeft + "px";
+    el.style.top = a.offsetTop + "px";
+    el.style.width = (b.offsetLeft + b.offsetWidth - a.offsetLeft) + "px";
+    el.style.height = (b.offsetTop + b.offsetHeight - a.offsetTop) + "px";
+}
+
+function pintarSeleccion() {
+    const ov = document.getElementById("overlaySel");
+    if (!sel || rows.length === 0) {
+        ov.style.display = "none";
+        pintarCopiado();
+        actualizarBarraEstado();
+        return;
     }
+    const { r0, r1, c0, c1 } = rangoNormalizado();
+    posicionarOverlay(ov, r0, c0, r1, c1);
 
-    const rowIndex = parseInt(td.dataset.rowIndex, 10);
-    activeCell = { rowIndex, colKey, td };
-    marcarCeldaActiva(td);
-    marcarFilaActiva(td.closest("tr"));
+    // Fila activa y encabezados de las columnas del rango
+    document.querySelectorAll("#gridBody tr.fila-activa").forEach(t => t.classList.remove("fila-activa"));
+    const tr = document.querySelector(`#gridBody tr[data-row-index="${sel.r1}"]`);
+    if (tr) tr.classList.add("fila-activa");
+    document.querySelectorAll("#gridHeaderRow th").forEach(th => {
+        const i = parseInt(th.dataset.colIndex, 10);
+        th.classList.toggle("col-activa", i >= c0 && i <= c1);
+    });
+
+    pintarCopiado();
+    actualizarBarraEstado();
 }
 
-function iniciarEdicion(td, valorInicial = null) {
-    if (!td || !td.classList.contains("editable")) return;
-    const rowIndex = parseInt(td.dataset.rowIndex, 10);
-    const colKey = td.dataset.colKey;
+function pintarCopiado() {
+    const ov = document.getElementById("overlayCopia");
+    if (!rangoCopiado) { ov.style.display = "none"; return; }
+    posicionarOverlay(ov, rangoCopiado.r0, rangoCopiado.c0, rangoCopiado.r1, rangoCopiado.c1);
+}
+
+function actualizarBarraEstado() {
+    const celdaEl = document.getElementById("estadoCelda");
+    const recEl = document.getElementById("estadoRecuento");
+    const sumEl = document.getElementById("estadoSuma");
+    const promEl = document.getElementById("estadoPromedio");
+    if (!sel) { celdaEl.textContent = "—"; recEl.textContent = sumEl.textContent = promEl.textContent = ""; return; }
+
+    const { r0, r1, c0, c1 } = rangoNormalizado();
+    const filas = r1 - r0 + 1, cols = c1 - c0 + 1;
+    const ref = `${COLUMNS[sel.c1].label} · fila ${sel.r1 + 1}`;
+    celdaEl.innerHTML = `<b>${escaparHtml(ref)}</b>` + (filas * cols > 1 ? ` (${filas}×${cols})` : "");
+
+    let n = 0, suma = 0;
+    for (let r = r0; r <= r1; r++) {
+        for (let c = c0; c <= c1; c++) {
+            if (COLUMNS[c].type !== "number") continue;
+            const v = parseFloat(rows[r][COLUMNS[c].key]);
+            if (!isNaN(v)) { n++; suma += v; }
+        }
+    }
+    recEl.textContent = n ? `Recuento: ${n}` : "";
+    sumEl.innerHTML = n ? `Suma: <b>${fmt(suma)}</b>` : "";
+    promEl.textContent = n ? `Promedio: ${fmt(Math.round(suma / n))}` : "";
+}
+
+// Reposicionar overlays si cambia el tamaño de la ventana o del contenedor
+window.addEventListener("resize", pintarSeleccion);
+
+// ---------------------------------------------------------------------
+// Lectura / escritura de una celda (única puerta de entrada a los datos)
+// ---------------------------------------------------------------------
+function valorTextoCelda(row, col) {
+    if (col.key === "cuenta_mayor") {
+        return row.cuenta ? `${row.cuenta} - ${row.cuenta_mayor || ""}` : (row.cuenta_mayor || "");
+    }
+    if (col.type === "number") return row[col.key] ?? 0;
+    return row[col.key] ?? "";
+}
+
+// Escribe un valor respetando las reglas de negocio (códigos de costo,
+// centro de trabajo, recálculo del total). Devuelve true si escribió.
+function aplicarValor(row, colKey, valor) {
     const col = COLUMNS.find(c => c.key === colKey);
-    const row = rows[rowIndex];
+    if (!col || col.locked || col.type === "check" || col.type === "acciones") return false;
+
+    if (colKey === "cuenta_mayor") {
+        const crudo = String(valor ?? "").trim();
+        if (crudo === "") { row.cuenta = ""; row.cuenta_mayor = ""; return true; }
+        let codigo = crudo.split(" - ")[0].trim();
+        if (mapaCuentaMayor[codigo] === undefined) {
+            // Pudo haberse pegado el nombre de la cuenta en vez del código
+            const porNombre = Object.keys(mapaCuentaMayor)
+                .find(k => String(mapaCuentaMayor[k] || "").toUpperCase() === crudo.toUpperCase());
+            if (!porNombre) return false;
+            codigo = porNombre;
+        }
+        row.cuenta = codigo;
+        row.cuenta_mayor = mapaCuentaMayor[codigo] || "";
+        if (["510531", "51059503"].includes(codigo)) row.codcosto = "0101";
+        if (["540531", "54059503"].includes(codigo)) row.codcosto = "020201";
+        return true;
+    }
+    if (colKey === "nombre_cen") {
+        const crudo = String(valor ?? "").trim();
+        if (crudo === "") { row.nombre_cen = ""; row.codcosto = ""; row.centro_tra = ""; return true; }
+        const clave = Object.keys(OPCIONES_NOMBRE_CENTRO)
+            .find(k => k.toUpperCase() === crudo.toUpperCase());
+        if (!clave) return false;
+        row.nombre_cen = clave;
+        row.codcosto = OPCIONES_NOMBRE_CENTRO[clave].codigoCosto;
+        row.centro_tra = OPCIONES_NOMBRE_CENTRO[clave].centro;
+        return true;
+    }
+    if (col.type === "number") {
+        row[colKey] = parseNumero(valor);
+        if (MESES.includes(colKey)) recalcularTotal(row);
+        return true;
+    }
+    row[colKey] = String(valor ?? "").toUpperCase();
+    return true;
+}
+
+// ---------------------------------------------------------------------
+// Edición de celda
+// ---------------------------------------------------------------------
+// Coloca el cursor de texto en el carácter más cercano a la coordenada X del
+// clic, midiendo el ancho real del texto con la misma fuente del input.
+// Respeta la alineación (las columnas de meses van alineadas a la derecha).
+function posicionarCursorPorX(input, clientX) {
+    const texto = input.value;
+    if (!texto) return;
+    const rect = input.getBoundingClientRect();
+    const cs = getComputedStyle(input);
+    const ctx = posicionarCursorPorX._ctx ||
+        (posicionarCursorPorX._ctx = document.createElement("canvas").getContext("2d"));
+    ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+
+    const anchoTexto = ctx.measureText(texto).width;
+    const padIzq = parseFloat(cs.paddingLeft) || 0;
+    const padDer = parseFloat(cs.paddingRight) || 0;
+    let origen;
+    if (cs.textAlign === "right" || cs.textAlign === "end") origen = rect.right - padDer - anchoTexto;
+    else if (cs.textAlign === "center") origen = rect.left + (rect.width - anchoTexto) / 2;
+    else origen = rect.left + padIzq;
+
+    const x = clientX - origen + input.scrollLeft;
+    let idx = texto.length;
+    for (let i = 0; i < texto.length; i++) {
+        const izq = ctx.measureText(texto.slice(0, i)).width;
+        const der = ctx.measureText(texto.slice(0, i + 1)).width;
+        if (x < (izq + der) / 2) { idx = i; break; }
+    }
+    input.setSelectionRange(idx, idx);
+}
+
+function iniciarEdicion(r, c, valorInicial = null, clickX = null) {
+    const col = COLUMNS[c];
+    const td = tdDe(r, c);
+    if (!td || !col || col.locked || col.type === "check" || col.type === "acciones") return;
+    const row = rows[r];
     td.classList.add("editing");
+    editando = { rowIndex: r, colKey: col.key, colIdx: c, td };
+
+    const esSelect = col.type === "select-cuenta" || col.type === "select-centro";
 
     if (col.type === "select-cuenta") {
-        td.innerHTML = renderSelectCuentaMayor(row, valorInicial ?? row.cuenta);
+        td.innerHTML = renderSelectCuentaMayor(row);
     } else if (col.type === "select-centro") {
-        td.innerHTML = renderSelectNombreCentro(valorInicial ?? row.nombre_cen);
+        td.innerHTML = renderSelectNombreCentro();
     } else {
-        const val = valorInicial ?? row[colKey] ?? "";
-        td.innerHTML = `<input type="text" value="${String(val).replace(/"/g,'&quot;')}">`;
+        const val = valorInicial ?? (col.type === "number" ? (row[col.key] ?? "") : (row[col.key] ?? ""));
+        td.innerHTML = `<input type="text" value="${escaparAttr(val)}">`;
     }
 
     const input = td.querySelector("input, select");
 
-    // 🔧 Aseguramos el valor seleccionado directamente por DOM (más confiable
-    // que depender del atributo "selected" armado como string). El setter
-    // .value de un <select> hace la coerción string/number automáticamente,
-    // así que aunque row.cuenta llegue como number, esto sí selecciona bien.
-    if (input.tagName === "SELECT") {
-        const valorActual = valorInicial ?? (colKey === "cuenta_mayor" ? row.cuenta : row.nombre_cen);
-        if (valorActual !== null && valorActual !== undefined) {
-            input.value = String(valorActual);
+    if (esSelect) {
+        // El valor actual se fija por DOM: el setter .value hace la coerción
+        // string/number, así que funciona aunque row.cuenta venga como number.
+        const actual = col.key === "cuenta_mayor" ? row.cuenta : row.nombre_cen;
+        if (actual !== null && actual !== undefined && actual !== "") input.value = String(actual);
+        // Si se empezó a editar escribiendo una letra, se salta a la primera
+        // opción que empiece por esa letra (igual que Excel).
+        if (valorInicial) {
+            const letra = String(valorInicial).toUpperCase();
+            const op = Array.from(input.options).find(o => o.text.toUpperCase().startsWith(letra));
+            if (op) input.value = op.value;
         }
     }
 
     input.focus();
-    if (input.tagName === "INPUT") input.select();
     editingInput = input;
 
-    if (col.type === "number") {
-        input.addEventListener("input", () => { input.value = input.value.replace(/[^0-9]/g, ""); });
-    } else if (input.tagName === "INPUT") {
-        input.addEventListener("input", () => { input.value = input.value.toUpperCase(); });
+    // Cursor como en Excel: nunca se resalta todo el contenido.
+    //  - Doble clic  -> el cursor queda donde se hizo clic.
+    //  - Escribir/F2 -> el cursor queda al final de lo que hay escrito.
+    if (input.tagName === "INPUT") {
+        if (clickX !== null && valorInicial === null) posicionarCursorPorX(input, clickX);
+        else input.setSelectionRange(input.value.length, input.value.length);
     }
 
-    input.addEventListener("keydown", (e) => manejarTeclaEnEdicion(e, td));
+    if (col.type === "number") {
+        // Se permite el signo menos al inicio (antes se borraba y no se podían
+        // registrar valores negativos, pese a que la importación sí los acepta).
+        // Solo se reasigna .value si hubo caracteres inválidos, y se recoloca
+        // el cursor: asignar .value siempre lo mandaba al final del texto.
+        input.addEventListener("input", () => {
+            const antes = input.value;
+            const pos = input.selectionStart;
+            const neg = antes.trim().startsWith("-");
+            const limpio = (neg ? "-" : "") + antes.replace(/[^0-9]/g, "");
+            if (limpio === antes) return;
+            input.value = limpio;
+            const nuevo = Math.max(0, pos - (antes.length - limpio.length));
+            input.setSelectionRange(nuevo, nuevo);
+        });
+    } else if (input.tagName === "INPUT") {
+        input.addEventListener("input", () => {
+            const mayus = input.value.toUpperCase();
+            if (mayus === input.value) return;
+            const pos = input.selectionStart, fin = input.selectionEnd;
+            input.value = mayus;
+            input.setSelectionRange(pos, fin);
+        });
+    }
+
+    input.addEventListener("keydown", manejarTeclaEnEdicion);
+    input.addEventListener("blur", () => { if (editingInput === input) cerrarEdicion(false); });
     if (input.tagName === "SELECT") {
-        input.addEventListener("change", () => cerrarEdicion(false, input.value));
+        input.addEventListener("change", () => cerrarEdicion(false));
+        if (typeof input.showPicker === "function") { try { input.showPicker(); } catch (_) {} }
     }
 }
 
-function renderSelectCuentaMayor(row, valorActual) {
+function renderSelectCuentaMayor(row) {
     let opciones = Object.keys(mapaCuentaMayor);
     const esAdmin = (row.nombre_cen || "").toUpperCase() === "ADMINISTRACIÓN";
     opciones = opciones.filter(o => esAdmin ? o.startsWith("51") : !o.startsWith("51"));
     opciones = opciones.filter(o => !EXCLUIR_CUENTAS.includes(o));
-    // 🔧 Normalizar a string: row.cuenta llega como number (BigIntegerField
-    // del backend), pero Object.keys(mapaCuentaMayor) siempre son strings.
-    // Comparar con === entre number y string nunca coincide.
-    const valorActualStr = (valorActual !== null && valorActual !== undefined) ? String(valorActual) : "";
 
-    // Defensivo: si el código guardado no está en las opciones filtradas
-    // (por ejemplo datos legados que no cumplen la regla esAdmin/EXCLUIR),
-    // lo agregamos igual para no perderlo silenciosamente.
-    if (valorActualStr && !opciones.includes(valorActualStr) && mapaCuentaMayor[valorActualStr] !== undefined) {
-        opciones.push(valorActualStr);
+    // row.cuenta llega como number desde el backend; las claves del mapa son
+    // strings, así que se normaliza antes de comparar.
+    const actual = (row.cuenta !== null && row.cuenta !== undefined) ? String(row.cuenta) : "";
+    if (actual && !opciones.includes(actual) && mapaCuentaMayor[actual] !== undefined) {
+        opciones.push(actual); // dato legado: no se pierde silenciosamente
     }
     opciones.sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
-    return `<select>` + opciones.map(o =>
-        `<option value="${o}" ${o === valorActual ? "selected" : ""}>${o} - ${mapaCuentaMayor[o] || ""}</option>`
+    return `<select><option value=""></option>` + opciones.map(o =>
+        `<option value="${escaparAttr(o)}">${escaparHtml(o)} - ${escaparHtml(mapaCuentaMayor[o] || "")}</option>`
     ).join("") + `</select>`;
 }
-function renderSelectNombreCentro(valorActual) {
-    return `<select>` + Object.keys(OPCIONES_NOMBRE_CENTRO).map(o =>
-        `<option value="${o}" ${o === valorActual ? "selected" : ""}>${o}</option>`
+function renderSelectNombreCentro() {
+    return `<select><option value=""></option>` + Object.keys(OPCIONES_NOMBRE_CENTRO).map(o =>
+        `<option value="${escaparAttr(o)}">${escaparHtml(o)}</option>`
     ).join("") + `</select>`;
 }
 
-function cerrarEdicion(cancelar = false, valorForzado = null) {
-    if (!activeCell || !editingInput) { editingInput = null; return; }
-    const { rowIndex, colKey, td } = activeCell;
-    const col = COLUMNS.find(c => c.key === colKey);
-    const row = rows[rowIndex];
+function cerrarEdicion(cancelar = false) {
+    if (!editando || !editingInput) { editingInput = null; editando = null; return; }
+    const { rowIndex, colKey, td } = editando;
+    const input = editingInput;
+    editingInput = null;
+    editando = null;
+
     let huboCambio = false;
-
     if (!cancelar) {
-        const nuevoValor = valorForzado ?? editingInput.value;
-        if (colKey === "cuenta_mayor") {
-            row.cuenta_mayor = mapaCuentaMayor[nuevoValor] || "";
-            row.cuenta = nuevoValor;
-            if (["510531", "51059503"].includes(nuevoValor)) row.codcosto = "0101";
-            if (["540531", "54059503"].includes(nuevoValor)) row.codcosto = "020201";
-        } else if (colKey === "nombre_cen") {
-            row.nombre_cen = nuevoValor;
-            row.codcosto = OPCIONES_NOMBRE_CENTRO[nuevoValor]?.codigoCosto || "";
-            row.centro_tra = OPCIONES_NOMBRE_CENTRO[nuevoValor]?.centro || "";
-        } else if (col.type === "number") {
-            row[colKey] = parseFloat(nuevoValor) || 0;
-            recalcularTotal(row);
+        const antes = JSON.stringify(rows[rowIndex]);
+        instantanea();
+        const ok = aplicarValor(rows[rowIndex], colKey, input.value);
+        if (!ok || JSON.stringify(rows[rowIndex]) === antes) {
+            pilaDeshacer.pop();                      // no cambió nada: no ensuciar el historial
+            actualizarBotonesHistorial();
+            if (!ok && input.value !== "") showToast("Ese valor no es válido para la columna ❌", "error");
         } else {
-            row[colKey] = nuevoValor;
+            huboCambio = true;
         }
-        huboCambio = true;
     }
 
     td.classList.remove("editing");
-    editingInput = null;
-    render();
-    // Re-seleccionar la misma celda tras redibujar
-    const nuevoTd = document.querySelector(`#gridBody td[data-row-index="${rowIndex}"][data-col-key="${colKey}"]`);
-    if (nuevoTd) seleccionarCelda(nuevoTd);
-
-    // 💾 Cada edición confirmada dispara el guardado automático (con debounce)
+    pintarFila(rowIndex);
+    pintarSeleccion();
     if (huboCambio) programarGuardadoAutomatico();
 }
 
-function manejarTeclaEnEdicion(e, td) {
-    const rowIndex = parseInt(td.dataset.rowIndex, 10);
-    const colIdx = colIndex(td.dataset.colKey);
-
-    if (e.key === "Escape") { cerrarEdicion(true); return; }
-    if (e.key === "Enter") { e.preventDefault(); cerrarEdicion(false); moverA(rowIndex + 1, COLUMNS[colIdx].key); return; }
+function manejarTeclaEnEdicion(e) {
+    if (!editando) return;
+    const { rowIndex, colIdx } = editando;
+    if (e.key === "Escape") { e.preventDefault(); cerrarEdicion(true); focoGrilla(); return; }
+    if (e.key === "Enter") {
+        e.preventDefault();
+        cerrarEdicion(false);
+        seleccionar(rowIndex + 1, colIdx);
+        focoGrilla();
+        return;
+    }
     if (e.key === "Tab") {
         e.preventDefault();
         cerrarEdicion(false);
-        const dir = e.shiftKey ? -1 : 1;
-        const siguiente = siguienteColumnaEditable(colIdx, dir);
-        if (siguiente) moverA(rowIndex, siguiente.key);
+        seleccionar(rowIndex, colIdx + (e.shiftKey ? -1 : 1));
+        focoGrilla();
         return;
     }
 }
 
-function siguienteColumnaEditable(desdeIdx, direccion) {
-    let i = desdeIdx + direccion;
-    while (i >= 0 && i < COLUMNS.length) {
-        const c = COLUMNS[i];
-        if (!c.locked && c.type !== "check" && c.type !== "acciones") return c;
-        i += direccion;
+function focoGrilla() { document.getElementById("gridContainer").focus({ preventScroll: true }); }
+
+// ---------------------------------------------------------------------
+// Mouse: selección por arrastre y manija de relleno
+// ---------------------------------------------------------------------
+let arrastre = null; // { tipo: "seleccion"|"relleno", base?, destino? }
+
+document.getElementById("gridBody").addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    const td = e.target.closest("td");
+    if (!td || td.dataset.colIndex === undefined) return;
+    const c = parseInt(td.dataset.colIndex, 10);
+    const r = parseInt(td.dataset.rowIndex, 10);
+    if (c < COL_INI) return;                       // columnas de check/acciones
+    if (td.classList.contains("editing")) return;  // clic dentro del editor
+
+    if (editingInput) cerrarEdicion(false);
+    e.preventDefault();
+    seleccionar(r, c, e.shiftKey);
+    if (!e.shiftKey) {
+        arrastre = { tipo: "seleccion" };
+        document.body.classList.add("arrastrando");
     }
-    return null;
+    focoGrilla();
+});
+
+document.getElementById("fillHandle").addEventListener("mousedown", (e) => {
+    if (!sel) return;
+    e.preventDefault();
+    e.stopPropagation();
+    arrastre = { tipo: "relleno", base: rangoNormalizado(), destino: rangoNormalizado(), ctrl: e.ctrlKey || e.metaKey };
+    document.body.classList.add("arrastrando");
+});
+
+document.getElementById("fillHandle").addEventListener("dblclick", (e) => {
+    e.preventDefault();
+    rellenarHastaFinDeDatos();
+});
+
+document.addEventListener("mousemove", (e) => {
+    if (!arrastre) return;
+    autoScroll(e);
+    const td = document.elementFromPoint(e.clientX, e.clientY)?.closest?.("td");
+    if (!td || td.dataset.colIndex === undefined) return;
+    const r = clampFila(parseInt(td.dataset.rowIndex, 10));
+    const c = clampCol(parseInt(td.dataset.colIndex, 10));
+
+    if (arrastre.tipo === "seleccion") {
+        if (sel.r2 === r && sel.c2 === c) return;   // nada cambió: no repintar
+        sel.r2 = r; sel.c2 = c;
+        pintarSeleccion();
+    } else {
+        const destino = calcularDestinoRelleno(arrastre.base, r, c);
+        const d = arrastre.destino;
+        if (d && d.r0 === destino.r0 && d.r1 === destino.r1 && d.c0 === destino.c0 && d.c1 === destino.c1) return;
+        arrastre.destino = destino;
+        posicionarOverlay(document.getElementById("overlayRelleno"), destino.r0, destino.c0, destino.r1, destino.c1);
+    }
+});
+
+document.addEventListener("mouseup", (e) => {
+    if (!arrastre) return;
+    const tipo = arrastre.tipo, destino = arrastre.destino, base = arrastre.base, ctrl = arrastre.ctrl || e.ctrlKey || e.metaKey;
+    arrastre = null;
+    document.body.classList.remove("arrastrando");
+    document.getElementById("overlayRelleno").style.display = "none";
+    if (tipo === "relleno" && destino) {
+        aplicarRelleno(base, destino, ctrl);
+        sel = { r1: destino.r0, c1: destino.c0, r2: destino.r1, c2: destino.c1 };
+        pintarSeleccion();
+    }
+});
+
+// El relleno se extiende en UN solo eje (el de mayor recorrido), como Excel.
+function calcularDestinoRelleno(base, r, c) {
+    const dAbajo = r - base.r1, dArriba = base.r0 - r;
+    const dDer = c - base.c1, dIzq = base.c0 - c;
+    const vert = Math.max(dAbajo, dArriba, 0);
+    const horiz = Math.max(dDer, dIzq, 0);
+    if (vert === 0 && horiz === 0) return { ...base };
+    if (vert >= horiz) {
+        return dAbajo >= dArriba
+            ? { r0: base.r0, r1: base.r1 + dAbajo, c0: base.c0, c1: base.c1 }
+            : { r0: base.r0 - dArriba, r1: base.r1, c0: base.c0, c1: base.c1 };
+    }
+    return dDer >= dIzq
+        ? { r0: base.r0, r1: base.r1, c0: base.c0, c1: base.c1 + dDer }
+        : { r0: base.r0, r1: base.r1, c0: base.c0 - dIzq, c1: base.c1 };
 }
 
-// Navegación con teclado cuando NO se está editando (celda solo seleccionada)
-document.addEventListener("keydown", (e) => {
-    if (editingInput || !activeCell) return;
-    const { rowIndex, colKey } = activeCell;
-    const colIdx = colIndex(colKey);
+function autoScroll(e) {
+    const cont = document.getElementById("gridContainer");
+    const rect = cont.getBoundingClientRect();
+    const margen = 28, paso = 22;
+    if (e.clientY > rect.bottom - margen) cont.scrollTop += paso;
+    else if (e.clientY < rect.top + margen) cont.scrollTop -= paso;
+    if (e.clientX > rect.right - margen) cont.scrollLeft += paso;
+    else if (e.clientX < rect.left + margen) cont.scrollLeft -= paso;
+}
 
-    if (e.key === "ArrowDown") { e.preventDefault(); moverA(rowIndex + 1, colKey); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); moverA(rowIndex - 1, colKey); }
-    else if (e.key === "ArrowLeft") { e.preventDefault(); const c = siguienteColumnaEditable(colIdx, -1); if (c) moverA(rowIndex, c.key); }
-    else if (e.key === "ArrowRight" || e.key === "Tab") { e.preventDefault(); const c = siguienteColumnaEditable(colIdx, 1); if (c) moverA(rowIndex, c.key); }
-    else if (e.key === "Enter" || e.key === "F2") { e.preventDefault(); iniciarEdicion(activeCell.td); }
-    else if (e.key === "Delete" || e.key === "Backspace") {
-        e.preventDefault();
-        const col = COLUMNS.find(c => c.key === colKey);
-        if (col && !col.locked) {
-            rows[rowIndex][colKey] = col.type === "number" ? 0 : "";
-            if (MESES.includes(colKey)) recalcularTotal(rows[rowIndex]);
-            render();
-            moverA(rowIndex, colKey);
-            programarGuardadoAutomatico();
+// ---------------------------------------------------------------------
+// Series de relleno (misma lógica de Excel: copiar vs. continuar la serie)
+// ---------------------------------------------------------------------
+function esNumerico(v) {
+    if (typeof v === "number") return Number.isFinite(v);
+    const t = String(v ?? "").trim();
+    return t !== "" && /^-?\d+([.,]\d+)?$/.test(t);
+}
+function aNumero(v) { return typeof v === "number" ? v : parseFloat(String(v).replace(",", ".")); }
+
+// Devuelve `cantidad` valores que continúan la serie de `base`.
+// forzarCopia = true replica los valores tal cual (lo que hacen Ctrl+D/Ctrl+R).
+function generarSerie(base, cantidad, invertirCtrl, forzarCopia = false) {
+    const salida = [];
+    if (forzarCopia) {
+        for (let i = 0; i < cantidad; i++) salida.push(base[i % base.length]);
+        return salida;
+    }
+    const todosNum = base.length > 0 && base.every(esNumerico);
+
+    if (todosNum) {
+        const nums = base.map(aNumero);
+        const incrementar = base.length > 1 ? !invertirCtrl : !!invertirCtrl;
+        if (!incrementar) {
+            for (let i = 0; i < cantidad; i++) salida.push(nums[i % nums.length]);
+            return salida;
         }
-    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
-        // escribir directo sobre la celda seleccionada (como Excel)
-        iniciarEdicion(activeCell.td, e.key === " " ? "" : e.key);
+        let paso = 1;
+        if (nums.length > 1) {
+            const diffs = nums.slice(1).map((v, i) => v - nums[i]);
+            const uniforme = diffs.every(d => d === diffs[0]);
+            paso = uniforme ? diffs[0] : pendienteRegresion(nums);
+        }
+        const ultimo = nums[nums.length - 1];
+        for (let i = 0; i < cantidad; i++) salida.push(Math.round(ultimo + paso * (i + 1)));
+        return salida;
+    }
+
+    // Texto terminado en número: "SEDE 1" → "SEDE 2" (Ctrl invierte a copiar)
+    if (base.length === 1) {
+        const texto = String(base[0] ?? "");
+        const m = texto.match(/^(.*?)(\d+)(\s*)$/);
+        const incrementar = m && !invertirCtrl;
+        for (let i = 0; i < cantidad; i++) {
+            if (incrementar) {
+                const num = String(parseInt(m[2], 10) + i + 1).padStart(m[2].length, "0");
+                salida.push(`${m[1]}${num}${m[3]}`);
+            } else salida.push(texto);
+        }
+        return salida;
+    }
+    for (let i = 0; i < cantidad; i++) salida.push(base[i % base.length]);
+    return salida;
+}
+function pendienteRegresion(nums) {
+    const n = nums.length;
+    const mediaX = (n - 1) / 2;
+    const mediaY = nums.reduce((a, b) => a + b, 0) / n;
+    let num = 0, den = 0;
+    nums.forEach((y, i) => { num += (i - mediaX) * (y - mediaY); den += (i - mediaX) ** 2; });
+    return den === 0 ? 0 : num / den;
+}
+
+function aplicarRelleno(base, destino, ctrl, forzarCopia = false) {
+    if (!base || !destino) return;
+    const hayCambio = destino.r0 !== base.r0 || destino.r1 !== base.r1 ||
+                      destino.c0 !== base.c0 || destino.c1 !== base.c1;
+    if (!hayCambio) return;
+    instantanea();
+
+    const filasTocadas = new Set();
+    let escrituras = 0, rechazos = 0;
+
+    const escribir = (r, c, valor) => {
+        const col = COLUMNS[c];
+        if (!col || col.locked) return;
+        if (aplicarValor(rows[r], col.key, valor)) { escrituras++; filasTocadas.add(r); }
+        else rechazos++;
+    };
+
+    if (destino.r1 > base.r1 || destino.r0 < base.r0) {
+        const haciaAbajo = destino.r1 > base.r1;
+        for (let c = base.c0; c <= base.c1; c++) {
+            const col = COLUMNS[c];
+            let valoresBase = [];
+            for (let r = base.r0; r <= base.r1; r++) valoresBase.push(valorTextoCelda(rows[r], col));
+            if (!haciaAbajo) valoresBase = valoresBase.slice().reverse();
+            const cantidad = haciaAbajo ? destino.r1 - base.r1 : base.r0 - destino.r0;
+            const serie = generarSerie(valoresBase, cantidad, ctrl, forzarCopia);
+            for (let i = 0; i < cantidad; i++) {
+                escribir(haciaAbajo ? base.r1 + 1 + i : base.r0 - 1 - i, c, serie[i]);
+            }
+        }
+    } else {
+        const haciaDerecha = destino.c1 > base.c1;
+        for (let r = base.r0; r <= base.r1; r++) {
+            let valoresBase = [];
+            for (let c = base.c0; c <= base.c1; c++) valoresBase.push(valorTextoCelda(rows[r], COLUMNS[c]));
+            if (!haciaDerecha) valoresBase = valoresBase.slice().reverse();
+            const cantidad = haciaDerecha ? destino.c1 - base.c1 : base.c0 - destino.c0;
+            const serie = generarSerie(valoresBase, cantidad, ctrl, forzarCopia);
+            for (let i = 0; i < cantidad; i++) {
+                escribir(r, haciaDerecha ? base.c1 + 1 + i : base.c0 - 1 - i, serie[i]);
+            }
+        }
+    }
+
+    if (escrituras === 0) {
+        pilaDeshacer.pop();
+        actualizarBotonesHistorial();
+        if (rechazos) showToast("No se pudo rellenar: los valores no aplican a esas columnas ❌", "error");
+        return;
+    }
+    filasTocadas.forEach(pintarFila);
+    if (rechazos) showToast(`Relleno aplicado. ${rechazos} celda(s) se omitieron por ser de otro tipo`, "success");
+    programarGuardadoAutomatico();
+}
+
+// Doble clic en la manija: rellena hacia abajo hasta donde llega el bloque
+// de datos vecino (misma heurística de Excel).
+function rellenarHastaFinDeDatos() {
+    if (!sel) return;
+    const base = rangoNormalizado();
+    const colRef = base.c0 > COL_INI ? base.c0 - 1 : base.c1 + 1;
+    if (colRef < COL_INI || colRef > COL_FIN) return;
+    const key = COLUMNS[colRef].key;
+    let ultima = base.r1;
+    while (ultima + 1 < rows.length) {
+        const v = rows[ultima + 1][key];
+        if (v === "" || v === null || v === undefined || v === 0) break;
+        ultima++;
+    }
+    if (ultima === base.r1) { showToast("No hay datos vecinos hasta dónde rellenar", "error"); return; }
+    const destino = { ...base, r1: ultima };
+    aplicarRelleno(base, destino, false);
+    sel = { r1: destino.r0, c1: destino.c0, r2: destino.r1, c2: destino.c1 };
+    pintarSeleccion();
+}
+
+// ---------------------------------------------------------------------
+// Copiar / cortar / pegar rangos (compatible con Excel)
+// ---------------------------------------------------------------------
+function textoDeSeleccion() {
+    const { r0, r1, c0, c1 } = rangoNormalizado();
+    const lineas = [];
+    for (let r = r0; r <= r1; r++) {
+        const celdas = [];
+        for (let c = c0; c <= c1; c++) celdas.push(valorTextoCelda(rows[r], COLUMNS[c]));
+        lineas.push(celdas.join("\t"));
+    }
+    return lineas.join("\n");
+}
+
+function eventoDeLaGrilla(e) {
+    // Solo interceptamos cuando el foco NO está en un campo ajeno a la tabla
+    // (antes, escribir en "IPC %" empezaba a editar celdas de la grilla).
+    if (modalesAbiertos > 0) return false;
+    const t = e.target;
+    if (t && t.closest && t.closest("input, select, textarea") && !t.closest("#gridBody")) return false;
+    return !!sel;
+}
+
+document.addEventListener("copy", (e) => {
+    if (!eventoDeLaGrilla(e) || editingInput) return;
+    e.preventDefault();
+    e.clipboardData.setData("text/plain", textoDeSeleccion());
+    rangoCopiado = { ...rangoNormalizado(), cortar: false };
+    pintarCopiado();
+});
+
+document.addEventListener("cut", (e) => {
+    if (!eventoDeLaGrilla(e) || editingInput) return;
+    e.preventDefault();
+    e.clipboardData.setData("text/plain", textoDeSeleccion());
+    rangoCopiado = { ...rangoNormalizado(), cortar: true };
+    pintarCopiado();
+});
+
+document.addEventListener("paste", (e) => {
+    if (!eventoDeLaGrilla(e) || editingInput) return;
+    const texto = e.clipboardData.getData("text/plain");
+    if (texto === null || texto === undefined) return;
+    e.preventDefault();
+    pegarTexto(texto);
+});
+
+function pegarTexto(texto) {
+    let bloque = texto.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").map(l => l.split("\t"));
+    while (bloque.length > 1 && bloque[bloque.length - 1].every(v => v === "")) bloque.pop();
+    if (bloque.length === 0) return;
+
+    const destino = rangoNormalizado();
+    const altoBloque = bloque.length, anchoBloque = Math.max(...bloque.map(f => f.length));
+    const altoSel = destino.r1 - destino.r0 + 1, anchoSel = destino.c1 - destino.c0 + 1;
+
+    // Como en Excel: si el destino es más grande y múltiplo del bloque, se
+    // repite el bloque para cubrirlo; si no, se pega una sola vez.
+    let filasDestino = altoBloque, colsDestino = anchoBloque;
+    if (altoSel % altoBloque === 0 && anchoSel % anchoBloque === 0 && (altoSel > altoBloque || anchoSel > anchoBloque)) {
+        filasDestino = altoSel; colsDestino = anchoSel;
+    }
+
+    instantanea();
+
+    // Si hace falta, se agregan filas nuevas al final en vez de recortar.
+    const filasNecesarias = destino.r0 + filasDestino - rows.length;
+    let filasAgregadas = 0;
+    for (let i = 0; i < filasNecesarias; i++) { rows.push(nuevaFilaVacia()); filasAgregadas++; }
+
+    let escrituras = 0, rechazos = 0;
+    for (let i = 0; i < filasDestino; i++) {
+        for (let j = 0; j < colsDestino; j++) {
+            const c = destino.c0 + j;
+            if (c > COL_FIN) continue;
+            const col = COLUMNS[c];
+            if (col.locked) continue;
+            const valor = (bloque[i % altoBloque][j % anchoBloque]) ?? "";
+            if (aplicarValor(rows[destino.r0 + i], col.key, valor)) escrituras++;
+            else rechazos++;
+        }
+    }
+
+    // Cortar: se limpia el origen (solo si sigue siendo un rango de esta tabla)
+    if (rangoCopiado && rangoCopiado.cortar) {
+        for (let r = rangoCopiado.r0; r <= rangoCopiado.r1 && r < rows.length; r++) {
+            for (let c = rangoCopiado.c0; c <= rangoCopiado.c1; c++) {
+                const dentroDestino = r >= destino.r0 && r < destino.r0 + filasDestino &&
+                                      c >= destino.c0 && c < destino.c0 + colsDestino;
+                if (dentroDestino || COLUMNS[c].locked) continue;
+                aplicarValor(rows[r], COLUMNS[c].key, COLUMNS[c].type === "number" ? 0 : "");
+            }
+        }
+        rangoCopiado = null;
+    }
+
+    if (escrituras === 0 && filasAgregadas === 0) {
+        pilaDeshacer.pop();
+        actualizarBotonesHistorial();
+        showToast("Nada que pegar: los valores no aplican a esas columnas ❌", "error");
+        return;
+    }
+
+    sel = { r1: destino.r0, c1: destino.c0,
+            r2: Math.min(rows.length - 1, destino.r0 + filasDestino - 1),
+            c2: Math.min(COL_FIN, destino.c0 + colsDestino - 1) };
+    render();
+    let msg = `Pegado: ${escrituras} celda(s)`;
+    if (filasAgregadas) msg += ` · ${filasAgregadas} fila(s) nueva(s)`;
+    if (rechazos) msg += ` · ${rechazos} omitida(s)`;
+    showToast(msg + " ✅", rechazos ? "error" : "success");
+    programarGuardadoAutomatico();
+}
+
+// ---------------------------------------------------------------------
+// Teclado sobre la grilla
+// ---------------------------------------------------------------------
+function borrarSeleccion() {
+    const { r0, r1, c0, c1 } = rangoNormalizado();
+    instantanea();
+    let cambios = 0;
+    for (let r = r0; r <= r1; r++) {
+        for (let c = c0; c <= c1; c++) {
+            const col = COLUMNS[c];
+            if (col.locked) continue;
+            if (aplicarValor(rows[r], col.key, col.type === "number" ? 0 : "")) cambios++;
+        }
+        pintarFila(r);
+    }
+    if (!cambios) { pilaDeshacer.pop(); actualizarBotonesHistorial(); return; }
+    programarGuardadoAutomatico();
+}
+
+// Ctrl+D / Ctrl+R: replica la primera fila (o columna) del rango en el resto.
+function rellenarDentroDeSeleccion(eje) {
+    const { r0, r1, c0, c1 } = rangoNormalizado();
+    if (eje === "abajo" && r1 === r0) return;
+    if (eje === "derecha" && c1 === c0) return;
+    const base = eje === "abajo"
+        ? { r0, r1: r0, c0, c1 }
+        : { r0, r1, c0, c1: c0 };
+    aplicarRelleno(base, { r0, r1, c0, c1 }, false, true); // forzarCopia
+}
+
+// Ctrl+flecha: salta al borde del bloque de datos de esa columna/fila.
+function saltarABorde(r, c, dr, dc) {
+    const key = COLUMNS[c].key;
+    const vacio = v => v === "" || v === null || v === undefined || v === 0;
+    if (dr !== 0) {
+        let i = r;
+        const partiaVacio = vacio(rows[i][key]);
+        while (i + dr >= 0 && i + dr < rows.length) {
+            const sig = vacio(rows[i + dr][key]);
+            if (partiaVacio ? !sig : sig) { if (partiaVacio) i += dr; break; }
+            i += dr;
+        }
+        return { r: i, c };
+    }
+    let j = c;
+    while (j + dc >= COL_INI && j + dc <= COL_FIN) j += dc;
+    return { r, c: j };
+}
+
+document.addEventListener("keydown", (e) => {
+    if (editingInput) return;                 // el editor maneja sus propias teclas
+    if (!eventoDeLaGrilla(e)) return;
+
+    const ctrl = e.ctrlKey || e.metaKey;
+    const { r1: r, c1: c } = sel;             // ancla = celda activa
+    const focoR = sel.r2, focoC = sel.c2;
+
+    if (ctrl && e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? rehacer() : deshacer(); return; }
+    if (ctrl && e.key.toLowerCase() === "y") { e.preventDefault(); rehacer(); return; }
+    if (ctrl && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        sel = { r1: 0, c1: COL_INI, r2: rows.length - 1, c2: COL_FIN };
+        pintarSeleccion();
+        return;
+    }
+    if (ctrl && e.key.toLowerCase() === "d") { e.preventDefault(); rellenarDentroDeSeleccion("abajo"); return; }
+    if (ctrl && e.key.toLowerCase() === "r") { e.preventDefault(); rellenarDentroDeSeleccion("derecha"); return; }
+    if (ctrl && (e.key.toLowerCase() === "c" || e.key.toLowerCase() === "x" || e.key.toLowerCase() === "v")) return; // los maneja copy/cut/paste
+
+    const mover = (nr, nc) => {
+        e.preventDefault();
+        if (e.shiftKey) seleccionar(nr, nc, true);
+        else seleccionar(nr, nc, false);
+    };
+
+    // Alt+↓ abre la lista desplegable de la celda (igual que en Excel)
+    if (e.altKey && e.key === "ArrowDown") { e.preventDefault(); iniciarEdicion(r, c); return; }
+    if (e.altKey) return;
+
+    switch (e.key) {
+        case "ArrowDown":
+            if (ctrl) { const p = saltarABorde(focoR, focoC, 1, 0); mover(p.r, p.c); }
+            else mover(e.shiftKey ? focoR + 1 : r + 1, e.shiftKey ? focoC : c);
+            return;
+        case "ArrowUp":
+            if (ctrl) { const p = saltarABorde(focoR, focoC, -1, 0); mover(p.r, p.c); }
+            else mover(e.shiftKey ? focoR - 1 : r - 1, e.shiftKey ? focoC : c);
+            return;
+        case "ArrowLeft":
+            if (ctrl) { const p = saltarABorde(focoR, focoC, 0, -1); mover(p.r, p.c); }
+            else mover(e.shiftKey ? focoR : r, e.shiftKey ? focoC - 1 : c - 1);
+            return;
+        case "ArrowRight":
+            if (ctrl) { const p = saltarABorde(focoR, focoC, 0, 1); mover(p.r, p.c); }
+            else mover(e.shiftKey ? focoR : r, e.shiftKey ? focoC + 1 : c + 1);
+            return;
+        case "Tab":
+            e.preventDefault();
+            seleccionar(r, c + (e.shiftKey ? -1 : 1));
+            return;
+        case "Enter":
+            e.preventDefault();
+            seleccionar(r + (e.shiftKey ? -1 : 1), c);
+            return;
+        case "F2":
+            e.preventDefault();
+            iniciarEdicion(r, c);
+            return;
+        case "Home":
+            mover(ctrl ? 0 : r, COL_INI);
+            return;
+        case "End":
+            mover(ctrl ? rows.length - 1 : r, COL_FIN);
+            return;
+        case "PageDown":
+            mover(e.shiftKey ? focoR + 20 : r + 20, e.shiftKey ? focoC : c);
+            return;
+        case "PageUp":
+            mover(e.shiftKey ? focoR - 20 : r - 20, e.shiftKey ? focoC : c);
+            return;
+        case "Delete":
+        case "Backspace":
+            e.preventDefault();
+            borrarSeleccion();
+            return;
+        case "Escape":
+            rangoCopiado = null;
+            pintarCopiado();
+            return;
+    }
+
+    if (!ctrl && !e.altKey && e.key.length === 1) {
+        e.preventDefault();
+        iniciarEdicion(r, c, e.key === " " ? "" : e.key);
     }
 });
 
-// Click para seleccionar / doble click (o Enter) para editar
-document.getElementById("gridBody").addEventListener("click", (e) => {
-    const td = e.target.closest("td");
-    if (!td) return;
-    if (td.dataset.colKey === undefined) return;
-    // 🔧 Si la celda ya está en edición (tiene un <input>/<select> abierto),
-    // NO volver a seleccionarla: ese clic es del usuario interactuando con
-    // el propio input/select (p. ej. abriendo la lista desplegable). Si se
-    // llamara a seleccionarCelda() aquí, se redibujaría la tabla y el
-    // <select> nativo que el navegador acaba de abrir se cerraría al instante.
-    if (td.classList.contains("editing")) return;
-    seleccionarCelda(td);
-});
+// Doble clic para editar
 document.getElementById("gridBody").addEventListener("dblclick", (e) => {
     const td = e.target.closest("td.editable");
-    if (td && !td.classList.contains("editing")) iniciarEdicion(td);
-});
-
-// Pegado tipo Excel: pega texto con tabs/saltos de línea a partir de la celda activa
-document.addEventListener("paste", (e) => {
-    if (!activeCell || editingInput) return;
-    const texto = e.clipboardData.getData("text/plain");
-    if (!texto) return;
-    e.preventDefault();
-    const filasPegadas = texto.replace(/\r/g, "").split("\n").filter(l => l.length || true);
-    const colIdxInicial = colIndex(activeCell.colKey);
-    let huboCambio = false;
-
-    filasPegadas.forEach((linea, dRow) => {
-        const destRowIndex = activeCell.rowIndex + dRow;
-        if (destRowIndex >= rows.length) return;
-        const celdas = linea.split("\t");
-        celdas.forEach((valor, dCol) => {
-            const col = COLUMNS[colIdxInicial + dCol];
-            if (!col || col.locked || col.type === "check" || col.type === "acciones") return;
-            const row = rows[destRowIndex];
-            if (col.type === "number") row[col.key] = parseFloat(valor.replace(/[^0-9.-]/g, "")) || 0;
-            else row[col.key] = valor.trim();
-            if (MESES.includes(col.key)) recalcularTotal(row);
-            huboCambio = true;
-        });
-    });
-    render();
-    if (huboCambio) programarGuardadoAutomatico();
+    if (!td || td.classList.contains("editing")) return;
+    iniciarEdicion(parseInt(td.dataset.rowIndex, 10), parseInt(td.dataset.colIndex, 10), null, e.clientX);
 });
 
 // ---------------------------------------------------------------------
-// Checkboxes IPC
+// Checkboxes IPC / acciones de fila
 // ---------------------------------------------------------------------
 document.getElementById("gridHeaderRow").addEventListener("change", (e) => {
     if (e.target.id !== "checkAllIPC") return;
     rows.forEach(r => r._checked = e.target.checked);
-    render();
+    rows.forEach((_, i) => pintarFila(i));
 });
 document.getElementById("gridBody").addEventListener("change", (e) => {
     if (!e.target.classList.contains("row-check")) return;
@@ -714,19 +1503,18 @@ document.getElementById("gridBody").addEventListener("change", (e) => {
     syncCheckAllState();
 });
 
-// ---------------------------------------------------------------------
-// Acciones de fila: duplicar / eliminar
-// ---------------------------------------------------------------------
 let filaAEliminar = null;
 document.getElementById("gridBody").addEventListener("click", (e) => {
     if (e.target.classList.contains("dupBtn")) {
         const rowIndex = parseInt(e.target.closest("td").dataset.rowIndex, 10);
+        instantanea();
         const nueva = { ...rows[rowIndex] };
         MESES.forEach(m => nueva[m] = 0);
         nueva.total = 0;
         nueva._checked = false;
         rows.splice(rowIndex + 1, 0, nueva);
         render();
+        seleccionar(rowIndex + 1, COL_INI);
         const tr = document.querySelector(`#gridBody tr[data-row-index="${rowIndex + 1}"]`);
         if (tr) { tr.classList.add("blink"); setTimeout(() => tr.classList.remove("blink"), 1800); }
         showToast("Fila duplicada 📑", "success");
@@ -734,12 +1522,15 @@ document.getElementById("gridBody").addEventListener("click", (e) => {
     }
     if (e.target.classList.contains("delBtn")) {
         filaAEliminar = parseInt(e.target.closest("td").dataset.rowIndex, 10);
+        document.getElementById("textoEliminar").textContent = "¿Estás seguro de eliminar esta fila?";
         abrirModal("modalEliminar");
     }
 });
 document.getElementById("confirmEliminarBtn").addEventListener("click", () => {
     if (filaAEliminar !== null) {
+        instantanea();
         rows.splice(filaAEliminar, 1);
+        limitarSeleccion();
         render();
         showToast("Fila eliminada ❌", "error");
         filaAEliminar = null;
@@ -751,13 +1542,18 @@ document.getElementById("confirmEliminarBtn").addEventListener("click", () => {
 // ---------------------------------------------------------------------
 // Agregar fila vacía
 // ---------------------------------------------------------------------
-document.getElementById("agregarFilaBtn").addEventListener("click", () => {
+function nuevaFilaVacia() {
     const nueva = { centro_tra: "", nombre_cen: "", codcosto: "", responsable: "",
         cuenta: "", cuenta_mayor: "", detalle_cuenta: "", sede_distribucion: "", proveedor: "",
         comentario: "", total: 0, _checked: false };
     MESES.forEach(m => nueva[m] = 0);
-    rows.push(nueva);
+    return nueva;
+}
+document.getElementById("agregarFilaBtn").addEventListener("click", () => {
+    instantanea();
+    rows.push(nuevaFilaVacia());
     render();
+    seleccionar(rows.length - 1, COL_INI);
     showToast("Fila agregada ✅", "success");
     programarGuardadoAutomatico();
 });
@@ -769,15 +1565,14 @@ document.getElementById("calcularIPCBtn").addEventListener("click", () => {
     const valor = document.getElementById("ipcInput").value;
     if (!valor || isNaN(valor)) { showToast("Debe ingresar un número válido ❌", "error"); return; }
     const factor = 1 + (parseFloat(valor) / 100);
-    let algunaSeleccionada = false;
-    rows.forEach(row => {
-        if (!row._checked) return;
-        algunaSeleccionada = true;
+    const marcadas = rows.filter(r => r._checked);
+    if (marcadas.length === 0) { showToast("Selecciona al menos una fila ❌", "error"); return; }
+    instantanea();
+    marcadas.forEach(row => {
         MESES.forEach(m => { row[m] = Math.round((parseFloat(row[m]) || 0) * factor); });
         recalcularTotal(row);
     });
-    if (!algunaSeleccionada) { showToast("Selecciona al menos una fila ❌", "error"); return; }
-    render();
+    rows.forEach((_, i) => pintarFila(i));
     showToast("IPC aplicado a filas seleccionadas 📈", "success");
     programarGuardadoAutomatico();
 });
@@ -793,9 +1588,9 @@ document.getElementById("confirmSubirBtn").addEventListener("click", async () =>
     spinner.style.display = "inline-block";
     btn.disabled = true;
     try {
-        // Aseguramos que cualquier cambio pendiente se guarde antes de subir
-        clearTimeout(autoSaveTimer);
-        if (!autoSaveEnCurso) await ejecutarGuardadoAutomatico();
+        // Se espera a que TODO lo pendiente llegue al servidor antes de subir
+        // (antes, si había un guardado en vuelo, la subida no lo esperaba).
+        await vaciarColaDeGuardado();
         const resp = await apiPost(URLS.subir, {});
         showToast(resp.msg, resp.success ? "success" : "error");
     } catch (e) {
@@ -809,26 +1604,111 @@ document.getElementById("confirmSubirBtn").addEventListener("click", async () =>
 let destinoNavegacion = null;
 document.getElementById("btnTabla").addEventListener("click", () => { destinoNavegacion = URLS.tablaPrincipal; abrirModal("modalIrTabla"); });
 document.getElementById("btnTablaAprobado").addEventListener("click", () => { destinoNavegacion = URLS.tablaAprobado; abrirModal("modalIrTabla"); });
-document.getElementById("confirmIrTablaBtn").addEventListener("click", () => { if (destinoNavegacion) window.location.href = destinoNavegacion; });
+document.getElementById("confirmIrTablaBtn").addEventListener("click", async () => {
+    if (!destinoNavegacion) return;
+    try { await vaciarColaDeGuardado(); } catch (_) {}
+    window.location.href = destinoNavegacion;
+});
 
 document.getElementById("verManualBtn").addEventListener("click", () => abrirModal("manualModal"));
 document.getElementById("cerrarManualBtn").addEventListener("click", () => cerrarModal("manualModal"));
+document.getElementById("verAtajosBtn").addEventListener("click", () => abrirModal("modalAtajos"));
 
 // ---------------------------------------------------------------------
-// Exportar a Excel (SheetJS) — reemplaza el botón excelHtml5 de DataTables
+// Exportar a Excel (ExcelJS: listas desplegables + autosuma)
 // ---------------------------------------------------------------------
-document.getElementById("exportarExcelBtn").addEventListener("click", () => {
-    const cols = COLUMNS.filter(c => c.type !== "check" && c.type !== "acciones");
-    const encabezados = cols.map(c => c.label);
-    const datos = rows.map(r => cols.map(c => r[c.key] ?? ""));
-    const ws = XLSX.utils.aoa_to_sheet([encabezados, ...datos]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Presupuesto");
-    XLSX.writeFile(wb, `presupuesto_${SEDE}_auxiliar.xlsx`);
-});
+async function exportarExcel() {
+    if (Object.keys(mapaCuentaMayor).length === 0) {
+        showToast("Las cuentas contables aún se están cargando, intenta de nuevo en un momento ⏳", "error");
+        return;
+    }
+
+    const cols = COLUMNS.filter(c => c.type !== "check" && c.type !== "acciones" && c.key !== "cuenta");
+
+    const wb = new ExcelJS.Workbook();
+    const hoja = wb.addWorksheet("Presupuesto");
+    const listas = wb.addWorksheet("Listas");
+    listas.state = "hidden";
+
+    const centros = Object.keys(OPCIONES_NOMBRE_CENTRO);
+    const cuentas = listaCuentasParaPlantilla();
+    centros.forEach((c, i) => { listas.getCell(`A${i + 1}`).value = c; });
+    cuentas.forEach((c, i) => { listas.getCell(`B${i + 1}`).value = c; });
+    wb.definedNames.add(`Listas!$A$1:$A$${centros.length}`, "ListaCentros");
+    wb.definedNames.add(`Listas!$B$1:$B$${cuentas.length}`, "ListaCuentas");
+
+    hoja.addRow(cols.map(c => c.label));
+    hoja.getRow(1).eachCell(c => {
+        c.font = { bold: true, color: { argb: "FFFFFFFF" } };
+        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F3A93" } };
+    });
+
+    const idxNombre = cols.findIndex(c => c.key === "nombre_cen") + 1;
+    const idxCuentaMayor = cols.findIndex(c => c.key === "cuenta_mayor") + 1;
+    const idxMesInicio = cols.findIndex(c => c.key === MESES[0]) + 1;
+    const idxMesFin = cols.findIndex(c => c.key === MESES[MESES.length - 1]) + 1;
+    const idxTotal = cols.findIndex(c => c.key === "total") + 1;
+
+    function aplicarListasYAutosuma(filaExcel) {
+        const numFila = filaExcel.number;
+        if (idxNombre > 0) {
+            filaExcel.getCell(idxNombre).dataValidation = {
+                type: "list", allowBlank: true, formulae: ["ListaCentros"],
+                showErrorMessage: true, errorTitle: "Valor inválido",
+                error: "Selecciona un valor de la lista desplegable.",
+            };
+        }
+        if (idxCuentaMayor > 0) {
+            filaExcel.getCell(idxCuentaMayor).dataValidation = {
+                type: "list", allowBlank: true, formulae: ["ListaCuentas"],
+                showErrorMessage: true, errorTitle: "Valor inválido",
+                error: "Selecciona un valor de la lista desplegable.",
+            };
+        }
+        if (idxTotal > 0) {
+            filaExcel.getCell(idxTotal).value = {
+                formula: `SUM(${colLetter(idxMesInicio)}${numFila}:${colLetter(idxMesFin)}${numFila})`,
+            };
+        }
+    }
+
+    rows.forEach(row => {
+        const valores = cols.map(c => {
+            if (c.key === "cuenta_mayor") {
+                return row.cuenta ? `${row.cuenta} - ${row.cuenta_mayor || ""}` : (row.cuenta_mayor || "");
+            }
+            if (c.key === "total") return null; // se llena abajo con fórmula
+            return row[c.key] ?? "";
+        });
+        aplicarListasYAutosuma(hoja.addRow(valores));
+    });
+
+    for (let j = 0; j < EXPORT_FILAS_EXTRA; j++) {
+        aplicarListasYAutosuma(hoja.addRow(new Array(cols.length).fill("")));
+    }
+
+    hoja.columns.forEach(col => { col.width = 22; });
+    await bloquearFilaEncabezado(hoja);
+
+    const buffer = await wb.xlsx.writeBuffer();
+    descargarBuffer(buffer, `presupuesto_${SEDE}_auxiliar.xlsx`);
+}
+document.getElementById("exportarExcelBtn").addEventListener("click", exportarExcel);
+
+function descargarBuffer(buffer, nombre) {
+    const blob = new Blob([buffer], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nombre;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
 
 // ---------------------------------------------------------------------
-// Redimensionar contenedor + botón expandir (igual comportamiento que antes)
+// Redimensionar contenedor + botón expandir
 // ---------------------------------------------------------------------
 (function initResize() {
     const container = document.getElementById("gridContainer");
@@ -846,7 +1726,9 @@ document.getElementById("exportarExcelBtn").addEventListener("click", () => {
         if (newHeight > 150) container.style.height = `${newHeight}px`;
     });
     document.addEventListener("mouseup", () => {
+        if (!isResizing) return;
         isResizing = false; document.body.style.cursor = ""; document.body.style.userSelect = "";
+        pintarSeleccion();
     });
 
     let expanded = false, previousHeight = container.style.height;
@@ -860,21 +1742,28 @@ document.getElementById("exportarExcelBtn").addEventListener("click", () => {
             container.style.height = previousHeight || "65vh";
             btn.textContent = "Expandir"; expanded = false;
         }
+        pintarSeleccion();
     });
 })();
 
-// Plantilla Excel para subir datos: hoja con validación de listas desplegables
+// ---------------------------------------------------------------------
+// Plantilla Excel para subir datos
+// ---------------------------------------------------------------------
 const PLANTILLA_HEADERS = [
     "Nombre asignación del gasto",
     "Cuenta Mayor",
     "Detalle Cuenta",
     ...MESES.map(m => m[0].toUpperCase() + m.slice(1)),
+    "Total",
     "Comentario",
 ];
-const PLANTILLA_FILAS_VACIAS = 200; // filas disponibles para llenar en la plantilla
+const PLANTILLA_FILAS_VACIAS = 200;
+
+const COL_MES_INICIO = 4;                               // D: primer mes (Enero)
+const COL_MES_FIN = COL_MES_INICIO + MESES.length - 1;  // O: último mes (Diciembre)
+const COL_TOTAL = COL_MES_FIN + 1;                      // P: Total
 
 function listaCuentasParaPlantilla() {
-    // Mismo criterio de exclusión que ya usas al editar una celda
     return Object.keys(mapaCuentaMayor)
         .filter(o => !EXCLUIR_CUENTAS.includes(o))
         .sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))
@@ -898,8 +1787,6 @@ async function descargarPlantillaExcel() {
     centros.forEach((c, i) => { listas.getCell(`A${i + 1}`).value = c; });
     cuentas.forEach((c, i) => { listas.getCell(`B${i + 1}`).value = c; });
 
-    // Rangos con nombre: Excel no permite validación de lista apuntando
-    // directamente a otra hoja sin un nombre definido.
     wb.definedNames.add(`Listas!$A$1:$A$${centros.length}`, "ListaCentros");
     wb.definedNames.add(`Listas!$B$1:$B$${cuentas.length}`, "ListaCuentas");
 
@@ -920,23 +1807,21 @@ async function descargarPlantillaExcel() {
             showErrorMessage: true, errorTitle: "Valor inválido",
             error: "Selecciona un valor de la lista desplegable.",
         };
+        hoja.getCell(`${colLetter(COL_TOTAL)}${i}`).value = {
+            formula: `SUM(${colLetter(COL_MES_INICIO)}${i}:${colLetter(COL_MES_FIN)}${i})`,
+        };
     }
     hoja.columns.forEach(col => { col.width = 22; });
+    await bloquearFilaEncabezado(hoja);
 
     const buffer = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: "application/octet-stream" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `plantilla_presupuesto_${SEDE}.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    descargarBuffer(buffer, `plantilla_presupuesto_${SEDE}.xlsx`);
 }
 document.getElementById("descargarPlantillaBtn").addEventListener("click", descargarPlantillaExcel);
 
-// importar plantilla 
+// ---------------------------------------------------------------------
+// Importar plantilla
+// ---------------------------------------------------------------------
 let archivoPlantillaPendiente = null;
 
 document.getElementById("importarPlantillaBtn").addEventListener("click", () => {
@@ -959,44 +1844,40 @@ document.getElementById("confirmImportBtn").addEventListener("click", async () =
     await procesarPlantillaImportada(file);
 });
 
+function encabezadosValidos(hojaExcel) {
+    const filasCrudas = XLSX.utils.sheet_to_json(hojaExcel, { header: 1, defval: "" });
+    const encabezados = (filasCrudas[0] || []).map(h => String(h).trim());
+    if (encabezados.length < PLANTILLA_HEADERS.length) return false;
+    return PLANTILLA_HEADERS.every((esperado, i) => encabezados[i] === esperado);
+}
+
 async function procesarPlantillaImportada(file) {
     const buffer = await file.arrayBuffer();
     const wbLeida = XLSX.read(buffer, { type: "array" });
     const hoja = wbLeida.Sheets[wbLeida.SheetNames[0]];
-    const filas = XLSX.utils.sheet_to_json(hoja, { defval: "" });
 
-    if (filas.length === 0) {
-        showToast("La plantilla está vacía; se conservaron los datos actuales", "error");
+    if (!encabezadosValidos(hoja)) {
+        showToast("El archivo no tiene las columnas de la plantilla (nombres, orden o cantidad de columnas distintos) ❌", "error");
         return;
     }
 
-    // ── Detección automática de formato ──────────────────────────────────
-    // Formato exportación: tiene columnas "Cuenta" (código) + "Cuenta Mayor" (label) separadas.
-    // Formato plantilla:   tiene "Cuenta Mayor" en formato "código - descripción".
-    const cabeceras = Object.keys(filas[0]);
-    const esFormatoExportacion = cabeceras.includes("Cuenta") && cabeceras.includes("Cuenta Mayor");
+    const filas = XLSX.utils.sheet_to_json(hoja, { defval: "" });
 
     const nuevasFilas = [];
-    const errores = []; // { fila, nombreCen, cuentaMayorRaw, motivo }
+    const errores = [];
 
     filas.forEach((fila, idx) => {
         const numeroFila = idx + 2;
         const nombreCen = String(fila["Nombre asignación del gasto"] || "").trim();
+        const cuentaMayorRaw = String(fila["Cuenta Mayor"] || "").trim();
+        const detalleCuenta = String(fila["Detalle Cuenta"] || "").trim();
+        const comentario = String(fila["Comentario"] || "").trim();
+        const valoresMesesCrudos = MESES.map(m => fila[m[0].toUpperCase() + m.slice(1)]);
+        const filaVacia = !nombreCen && !cuentaMayorRaw && !detalleCuenta && !comentario &&
+            valoresMesesCrudos.every(v => v === "" || v === null || v === undefined);
+        if (filaVacia) return;
 
-        let codigoCuenta, cuentaMayorRaw;
-
-        if (esFormatoExportacion) {
-            // Formato exportación: "Cuenta" trae el código, "Cuenta Mayor" el label
-            codigoCuenta   = String(fila["Cuenta"]      || "").trim();
-            cuentaMayorRaw = String(fila["Cuenta Mayor"] || "").trim();
-        } else {
-            // Formato plantilla: "Cuenta Mayor" trae "código - descripción"
-            cuentaMayorRaw = String(fila["Cuenta Mayor"] || "").trim();
-            codigoCuenta   = cuentaMayorRaw.split(" - ")[0].trim();
-        }
-
-        if (!nombreCen && !codigoCuenta) return; // fila vacía, se ignora en silencio
-
+        const codigoCuenta = cuentaMayorRaw.split(" - ")[0].trim();
         const centroValido = OPCIONES_NOMBRE_CENTRO[nombreCen];
         const cuentaValida = mapaCuentaMayor[codigoCuenta];
 
@@ -1020,43 +1901,57 @@ async function procesarPlantillaImportada(file) {
             return;
         }
 
-        const nueva = {
-            centro_tra:        centroValido.centro,
-            nombre_cen:        nombreCen,
-            codcosto:          centroValido.codigoCosto,
-            responsable:       "",
-            cuenta:            codigoCuenta,
-            cuenta_mayor:      cuentaValida,          // siempre del mapa maestro
-            detalle_cuenta:    String(fila["Detalle Cuenta"] || fila["Detalle Cuenta"] || ""),
-            sede_distribucion: "",
-            proveedor:         "",
-            comentario:        String(fila["Comentario"] || ""),
-            _checked:          false,
-        };
-        MESES.forEach(m => {
-            const label = m[0].toUpperCase() + m.slice(1);
-            nueva[m] = parseFloat(fila[label]) || 0;
+        let mesInvalido = null;
+        const valoresMeses = {};
+        MESES.forEach((m, i) => {
+            const resultado = validarValorEntero(valoresMesesCrudos[i]);
+            if (!resultado.valido && !mesInvalido) {
+                mesInvalido = m[0].toUpperCase() + m.slice(1);
+            }
+            valoresMeses[m] = resultado.valor;
         });
+        if (mesInvalido) {
+            errores.push({ fila: numeroFila, nombreCen, cuentaMayorRaw,
+                motivo: `La columna "${mesInvalido}" debe ser un número entero, sin comas ni puntos` });
+            return;
+        }
+
+        const nueva = {
+            centro_tra: centroValido.centro,
+            nombre_cen: nombreCen,
+            codcosto: centroValido.codigoCosto,
+            responsable: "",
+            cuenta: codigoCuenta,
+            cuenta_mayor: cuentaValida,
+            detalle_cuenta: detalleCuenta,
+            sede_distribucion: "",
+            proveedor: "",
+            comentario: comentario,
+            _checked: false,
+            ...valoresMeses,
+        };
         recalcularTotal(nueva);
         nuevasFilas.push(nueva);
     });
 
-    // 🔁 Reemplazo total: se descartan los datos previos solo si al menos
-    // una fila de la plantilla es válida. Si la plantilla no trae ninguna
-    // fila utilizable, se conserva lo que ya había en la tabla.
-    if (nuevasFilas.length > 0) {
-        rows = nuevasFilas;
-        render();
-        const tipoFormato = esFormatoExportacion ? "exportación" : "plantilla";
-        showToast(`Datos reemplazados (formato ${tipoFormato}): ${nuevasFilas.length} fila(s) importada(s) ✅`, "success");
-        programarGuardadoAutomatico();
-    }
-
     if (errores.length > 0) {
         mostrarModalErroresImport(errores);
-    } else if (nuevasFilas.length === 0) {
-        showToast("No se encontraron filas válidas para importar; se conservaron los datos actuales", "error");
+        showToast("La plantilla tiene errores y no se importó ningún dato ❌", "error");
+        return;
     }
+
+    if (nuevasFilas.length === 0) {
+        showToast("No se encontraron filas con datos para importar", "error");
+        return;
+    }
+
+    instantanea();   // la importación también se puede deshacer con Ctrl+Z
+    rows = nuevasFilas;
+    sel = null;
+    render();
+    seleccionar(0, COL_INI);
+    showToast(`Datos anteriores reemplazados: ${nuevasFilas.length} fila(s) importada(s) ✅`, "success");
+    programarGuardadoAutomatico();
 }
 
 function mostrarModalErroresImport(errores) {
@@ -1072,15 +1967,17 @@ function mostrarModalErroresImport(errores) {
     abrirModal("modalImportErrores");
 }
 
-function escaparHtml(texto) {
-    const div = document.createElement("div");
-    div.textContent = String(texto);
-    return div.innerHTML;
-}
 // ---------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------
+document.getElementById("gridContainer").setAttribute("tabindex", "0");
+document.getElementById("gridContainer").style.outline = "none";
+document.getElementById("gridContainer").addEventListener("scroll", () => {
+    // Los overlays viven dentro del contenedor, así que se mueven solos con
+    // el scroll; solo hace falta reubicarlos si el layout cambió de tamaño.
+}, { passive: true });
 renderHeader();
+actualizarBotonesHistorial();
 Promise.all([cargarOpcionesCuenta(), cargarDatos()]);
 </script>
 </body>

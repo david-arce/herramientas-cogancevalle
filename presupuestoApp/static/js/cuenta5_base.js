@@ -40,7 +40,7 @@ const COLUMNS = [
   { key: "mcnfecha",   label: "MCNFECHA",   num: false },
   { key: "mcntipodoc", label: "MCNTIPODOC", num: false },
   { key: "mcnnumedoc", label: "MCNNUMEDOC", num: true  },
-  { key: "mcnvincula", label: "MCNVINCULA", num: true  },
+  { key: "mcnvincula", label: "MCNVINCULA", num: false },
   { key: "vinnombre",  label: "VINNOMBRE",  num: false },
   { key: "mcnsucvin",  label: "MCNSUCVIN",  num: false },
   { key: "saldoant",   label: "SALDOANT",   num: true  },
@@ -362,6 +362,35 @@ function syncCheckAll() {
   else                          { master.checked = false; master.indeterminate = true; }
 }
 
+const CHUNK = 2000;   // ~1,2 MB por lote
+
+async function enviarPorLotes(valid, url) {
+  let total = 0;
+  const lotes = Math.ceil(valid.length / CHUNK);
+
+  for (let i = 0; i < lotes; i++) {
+    const lote = valid.slice(i * CHUNK, (i + 1) * CHUNK);
+
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+      },
+      body: JSON.stringify({ registros: lote }),
+    });
+
+    const d = await r.json();
+    if (!r.ok || d.status !== "ok") {
+      throw new Error(`Lote ${i + 1}/${lotes}: ${d.message || r.status}`);
+    }
+
+    total += d.insertados;
+    showToast(`Lote ${i + 1}/${lotes} — ${total} registros`, "success", 1200);
+  }
+  return total;
+}
+
 // ─── Enlazar todos los eventos de UI ─────────────────────────
 function bindUI() {
   bindSortHeaders();
@@ -465,7 +494,7 @@ function bindUI() {
               mcnfecha:   parseNumF(row.MCNFECHA),
               mcntipodoc: parseStr(row.MCNTIPODOC),
               mcnnumedoc: parseInt_(row.MCNNUMEDOC),
-              mcnvincula: parseNumF(row.MCNVINCULA),
+              mcnvincula: parseStr(row.MCNVINCULA),
               vinnombre:  parseStr(row.VINNOMBRE),
               mcnsucvin:  parseStr(row.MCNSUCVIN),
               saldoant:   parseInt_(row.SALDOANT),
@@ -499,24 +528,16 @@ function bindUI() {
           spinner.style.display = "none"; btn.disabled = false; return;
         }
 
-        fetch("/presupuesto/subir_excel_cuenta5/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCookie("csrftoken"),
-          },
-          body: JSON.stringify({ registros: valid }),
-        })
-          .then(r => r.json())
-          .then(d => {
-            showToast(`${d.insertados} registros cargados correctamente`, "success");
-            loadData();   // recarga completa → feedFilterValues() se llama dentro
-            spinner.style.display = "none"; btn.disabled = false;
-            e.target.value = "";
+        enviarPorLotes(valid, "/presupuesto/subir_excel_cuenta5/")
+          .then(total => {
+            showToast(`${total} registros cargados`, "success");
+            loadData();
           })
-          .catch(() => {
-            showToast("Error al subir los datos", "error");
-            spinner.style.display = "none"; btn.disabled = false;
+          .catch(err => showToast("Error: " + err.message, "error", 8000))
+          .finally(() => {
+            spinner.style.display = "none";
+            btn.disabled = false;
+            e.target.value = "";
           });
 
       } catch (err) {

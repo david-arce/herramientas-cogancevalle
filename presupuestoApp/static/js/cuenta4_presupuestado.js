@@ -1,4 +1,4 @@
-/* cuenta5.js — tabla HTML nativa, sin DataTables */
+/* cuenta4.js — tabla HTML nativa, sin DataTables */
 
 "use strict";
 
@@ -101,7 +101,7 @@ function loadData() {
   formData.append("length", 999999);
   formData.append("search[value]", "");
 
-  fetch(url_obtener_cuenta5_presupuestado, {
+  fetch(url_obtener_cuenta4_presupuestado, {
     method: "POST",
     headers: { "X-CSRFToken": getCookie("csrftoken") },
     body: formData,
@@ -296,7 +296,7 @@ function saveEdit() {
 
   // Si hay pk, persistir en BD
   if (pk) {
-    fetch(`/presupuesto/cuenta5/editar/${pk}/`, {
+    fetch(`/presupuesto/cuenta4/editar/${pk}/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -538,7 +538,7 @@ function bindUI() {
 
     // Llamar a la API si tenemos pk
     if (pendingDeleteId) {
-      fetch(`/presupuesto/cuenta5/eliminar/${pendingDeleteId}/`, {
+      fetch(`/presupuesto/cuenta4/eliminar/${pendingDeleteId}/`, {
         method: "POST",
         headers: { "X-CSRFToken": getCookie("csrftoken") },
       })
@@ -587,7 +587,7 @@ function bindUI() {
 
     // Llamar a la API bulk si hay IDs de BD
     if (ids.length > 0) {
-      fetch("/presupuesto/cuenta5/eliminar-bulk/", {
+      fetch("/presupuesto/cuenta4/eliminar-bulk/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -621,7 +621,7 @@ function bindUI() {
   document.getElementById("cancelEliminarCuenta").addEventListener("click", () => closeModal("modalEliminarCuenta"));
   document.getElementById("confirmEliminarCuenta").addEventListener("click", () => {
     closeModal("modalEliminarCuenta");
-    fetch(url_borrar_cuenta5_presupuestado, {
+    fetch(url_borrar_cuenta4_presupuestado, {
       method: "POST",
       headers: { "X-CSRFToken": getCookie("csrftoken") },
     })
@@ -723,7 +723,7 @@ function bindUI() {
           spinner.style.display = "none"; btn.disabled = false; return;
         }
 
-        enviarPorLotes(valid, "/presupuesto/subir_excel_cuenta5_presupuestado/")
+        enviarPorLotes(valid, "/presupuesto/subir_excel_cuenta4_presupuestado/")
           .then(total => {
             showToast(`${total} registros cargados`, "success");
             loadData();

@@ -26,11 +26,19 @@
 
 /* ── Layout ── */
 .ctb-wrap {
-  padding: 20px 24px 40px;
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 20px 28px 40px;
+  max-width: none;
+  width: 100%;
+  margin: 0;
   font-family: "Segoe UI", system-ui, sans-serif;
   color: var(--text);
+}
+
+/* ── Ancho completo: neutraliza wrappers centrados del base_dashboard ── */
+.container, .container-fluid, .content-wrapper,
+main.content, .page-content, .main-content {
+  max-width: 100% !important;
+  width: 100% !important;
 }
 
 /* ── Cabecera ── */
@@ -73,12 +81,12 @@
   transition: background .13s, border-color .13s;
 }
 .btn:hover { background: #f1f3f6; border-color: #aab0bb; }
-.btn-primary  { background: var(--accent); color: #fff; border-color: var(--accent); }
-.btn-primary:hover  { background: var(--accent-h); border-color: var(--accent-h); }
-.btn-danger   { background: var(--danger); color: #fff; border-color: var(--danger); }
-.btn-danger:hover   { background: #b91c1c; border-color: #b91c1c; }
-.btn-success  { background: var(--success); color: #fff; border-color: var(--success); }
-.btn-success:hover  { background: #15803d; border-color: #15803d; }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent-h); border-color: var(--accent-h); }
+.btn-danger  { background: var(--danger); color: #fff; border-color: var(--danger); }
+.btn-danger:hover { background: #b91c1c; border-color: #b91c1c; }
+.btn-success { background: var(--success); color: #fff; border-color: var(--success); }
+.btn-success:hover { background: #15803d; border-color: #15803d; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 
 /* ── Tabs ── */
@@ -159,9 +167,11 @@
   min-width: 140px;
   cursor: pointer;
 }
-.sede-origen-row select:focus {
-  outline: none;
-  border-color: var(--accent);
+.sede-origen-row select:focus { outline: none; border-color: var(--accent); }
+.sede-origen-row select:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+  background: #f0f2f5;
 }
 .sede-origen-note {
   font-size: 11px;
@@ -170,7 +180,7 @@
   padding-bottom: 2px;
 }
 
-/* ── Paste area ── */
+/* ── Hints ── */
 .paste-hint {
   font-size: 12px;
   color: var(--muted);
@@ -184,30 +194,15 @@
   font-size: 11.5px;
   color: #374151;
 }
-#pasteArea {
-  width: 100%;
-  min-height: 180px;
-  font-family: "Consolas", "Fira Mono", monospace;
-  font-size: 12px;
-  line-height: 1.6;
-  padding: 12px;
-  border: 1.5px solid var(--border2);
-  border-radius: var(--radius);
-  resize: vertical;
-  background: #fafbfc;
-  color: var(--text);
-  transition: border-color .15s;
-}
-#pasteArea:focus { outline: none; border-color: var(--accent); }
 
-/* ── Preview table ── */
+/* ── Tablas (preview / grids) ── */
 .preview-wrap {
   overflow-x: auto;
+  overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   margin-top: 12px;
-  max-height: 340px;
-  overflow-y: auto;
+  max-height: min(60vh, 700px);
 }
 .preview-table {
   width: max-content;
@@ -237,10 +232,13 @@
   color: var(--text);
 }
 .preview-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
-.preview-table tbody td.err-cell { background: #fee2e2; color: var(--danger); }
-.preview-table tbody td.ok-cell  { background: #dcfce7; color: var(--success); }
 
-/* ── Preview status ── */
+/* ── Grids de Tabla Directa más altos ── */
+#directaGridWrap, #directaBGridWrap {
+  max-height: calc(100vh - 360px);
+}
+
+/* ── Status / badges ── */
 .preview-status {
   display: flex;
   align-items: center;
@@ -258,18 +256,13 @@
   font-size: 12px;
   font-weight: 600;
 }
-.badge-ok      { background: #dcfce7; color: #15803d; }
-.badge-err     { background: #fee2e2; color: #b91c1c; }
-.badge-warn    { background: #fef3c7; color: #b45309; }
-.badge-info    { background: #dbeafe; color: #1d4ed8; }
+.badge-ok   { background: #dcfce7; color: #15803d; }
+.badge-err  { background: #fee2e2; color: #b91c1c; }
+.badge-warn { background: #fef3c7; color: #b45309; }
+.badge-info { background: #dbeafe; color: #1d4ed8; }
 
 /* ── Columnas referencia ── */
-.col-ref {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
-}
+.col-ref { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .col-pill {
   display: flex;
   align-items: center;
@@ -314,6 +307,9 @@
   font-weight: 600;
   text-transform: uppercase;
   color: var(--muted);
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 .hist-table td {
   padding: 8px 12px;
@@ -321,6 +317,91 @@
   color: var(--text);
 }
 .hist-table tr:hover td { background: #f8f9fb; }
+.hist-scroll { max-height: calc(100vh - 290px); min-height: 340px; }
+
+.hist-filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.hist-filters input[type="text"] {
+  padding: 6px 10px;
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
+  width: 220px;
+}
+
+/* ══ Filtro multi-selección estilo Excel ══ */
+.xl-filter { position: relative; display: inline-block; font-size: 13px; }
+
+.xl-filter-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 10px; min-width: 150px; max-width: 260px;
+  border: 1px solid var(--border2); border-radius: 6px;
+  background: var(--surface); color: var(--text);
+  font-size: 13px; font-family: inherit; cursor: pointer;
+  justify-content: space-between; white-space: nowrap;
+}
+.xl-filter-btn:hover { border-color: #aab0bb; }
+.xl-filter-btn .xl-btn-txt { overflow: hidden; text-overflow: ellipsis; }
+.xl-filter-btn .xl-caret { font-size: 10px; color: var(--muted); }
+.xl-filter-btn.filtered {
+  border-color: var(--accent); background: #eff6ff;
+  color: var(--accent); font-weight: 600;
+}
+.xl-filter.open .xl-filter-btn { border-color: var(--accent); }
+
+.xl-filter-panel {
+  display: none; position: absolute; top: calc(100% + 4px); left: 0;
+  z-index: 800; width: 270px;
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 8px; box-shadow: 0 8px 26px rgba(0,0,0,.16); padding: 8px;
+}
+.xl-filter.open .xl-filter-panel { display: block; }
+.xl-filter-panel.drop-left { left: auto; right: 0; }
+
+.xl-filter-search {
+  width: 100%; padding: 6px 9px;
+  border: 1px solid var(--border2); border-radius: 6px;
+  font-size: 12.5px; font-family: inherit; color: var(--text);
+}
+.xl-filter-search:focus { outline: none; border-color: var(--accent); }
+
+.xl-filter-list {
+  max-height: 240px; overflow-y: auto;
+  margin-top: 6px; padding-top: 4px; border-top: 1px solid var(--border);
+}
+.xl-filter-list::-webkit-scrollbar { width: 6px; }
+.xl-filter-list::-webkit-scrollbar-thumb { background: #c1c5ce; border-radius: 3px; }
+
+.xl-opt {
+  display: flex; align-items: center; gap: 7px;
+  padding: 4px 6px; border-radius: 5px; cursor: pointer;
+  font-size: 12.5px; color: var(--text);
+}
+.xl-opt:hover { background: #f1f3f6; }
+.xl-opt input { cursor: pointer; accent-color: var(--accent); flex: none; }
+.xl-opt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xl-opt-all { font-weight: 600; margin-top: 6px; }
+.xl-empty { padding: 10px 6px; font-size: 12px; color: var(--muted); text-align: center; }
+
+.xl-filter-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 6px; margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--border);
+  font-size: 11.5px; color: var(--muted);
+}
+.xl-filter-foot button {
+  padding: 4px 9px; font-size: 11.5px; font-family: inherit;
+  border: 1px solid var(--border2); border-radius: 5px;
+  background: var(--surface); color: var(--text); cursor: pointer;
+}
+.xl-filter-foot button:hover { background: #f1f3f6; }
 
 /* ── Toasts ── */
 #toastCtb {
@@ -362,10 +443,7 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Progress bar ── */
-.progress-wrap {
-  margin-top: 12px;
-  display: none;
-}
+.progress-wrap { margin-top: 12px; display: none; }
 .progress-wrap.active { display: block; }
 .progress-bar-bg {
   height: 6px;
@@ -386,12 +464,6 @@
 .preview-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
 .preview-wrap::-webkit-scrollbar-track { background: #f0f1f3; }
 .preview-wrap::-webkit-scrollbar-thumb { background: #c1c5ce; border-radius: 3px; }
-
-.sede-origen-row select:disabled {
-  opacity: .4;
-  cursor: not-allowed;
-  background: #f0f2f5;
-}
 </style>
 {% endblock %}
 
@@ -413,21 +485,205 @@
 
   <!-- ── Tabs ── -->
   <div class="ctb-tabs">
-    <button class="ctb-tab active" data-tab="tab-paste">✂️ Copiar / Pegar</button>
-    <button class="ctb-tab"       data-tab="tab-excel">📊 Importar Excel</button>
-    <button class="ctb-tab"       data-tab="tab-historial">📋 Historial</button>
+    <button class="ctb-tab active" data-tab="tab-directa">⌨️ Tabla Directa</button>
+    <button class="ctb-tab"        data-tab="tab-excel">📊 Importar Excel</button>
+    <button class="ctb-tab"        data-tab="tab-historial">📋 Historial</button>
   </div>
 
   <!-- ══════════════════════════════════════════════
-       TAB 1 — COPIAR / PEGAR
+       TAB 1 — TABLA DIRECTA
   ══════════════════════════════════════════════ -->
-  <div class="ctb-panel active" id="tab-paste">
+  <div class="ctb-panel active" id="tab-directa">
 
-    <!-- ── Sede y Origen (requeridos para el POST) ── -->
+    <!-- Sub-tabs internos -->
+    <div class="ctb-tabs" style="margin-bottom:16px;">
+      <button class="ctb-tab"        data-subtab="subtab-fmtA">📅 Formato A — Fecha vertical</button>
+      <button class="ctb-tab active" data-subtab="subtab-fmtB">📊 Formato B — Meses horizontales</button>
+    </div>
+
+    <!-- ══ SUB-TAB A — Formato A vertical ══ -->
+    <div class="ctb-subpanel" id="subtab-fmtA" style="display:none;">
+
+      <div class="sede-origen-row">
+        <label>
+          Sede <span style="color:var(--danger);">*</span>
+          <select id="selectSedeDirecta">
+            <option value="">— Selecciona —</option>
+            <option value="tulua">Tuluá</option>
+            <option value="buga">Buga</option>
+            <option value="cartago">Cartago</option>
+            <option value="cali">Cali</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11.5px;
+                        color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+            <input type="checkbox" id="chkSinSedeDirecta" style="cursor:pointer;accent-color:var(--accent);">
+            Sin sede (guardar vacío)
+          </label>
+        </label>
+        <label>
+          Origen <span style="color:var(--danger);">*</span>
+          <select id="selectOrigenDirecta">
+            <option value="">— Selecciona —</option>
+            <option value="ejecutado">Ejecutado</option>
+            <option value="presupuestado">Presupuestado</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11.5px;
+                        color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+            <input type="checkbox" id="chkSinOrigenDirecta" style="cursor:pointer;accent-color:var(--accent);">
+            Sin origen (guardar vacío)
+          </label>
+        </label>
+        <span class="sede-origen-note">⚠ Todos los registros se guardarán con esta sede y origen.</span>
+      </div>
+
+      <div class="ctb-card">
+        <div class="ctb-card-title">Tabla de entrada directa — Formato A</div>
+        <p class="paste-hint">
+          Pega datos desde Excel con <code>Ctrl+V</code> sobre cualquier celda, o escríbelos directamente.
+          Las columnas son fijas. Navega con <code>Tab</code>, <code>Enter</code> y las flechas.
+          La fecha debe estar en formato <code>YYYY-MM-DD</code>.
+        </p>
+
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+          <button class="btn" id="btnDirectaAddRows">➕ Agregar</button>
+          <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);">
+            <input type="number" id="directaNumRows" value="10" min="1" max="500"
+              style="width:52px;padding:3px 6px;border:1px solid var(--border2);border-radius:5px;font-size:12px;text-align:center;">
+            filas
+          </div>
+          <button class="btn" id="btnDirectaClear">✕ Limpiar tabla</button>
+          <button class="btn btn-primary" id="btnDirectaValidar">🔍 Validar</button>
+          <span style="font-size:12px;color:var(--muted);" id="directaRowCount"></span>
+          <div id="directaStatusBadges" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+        </div>
+
+        <div class="preview-wrap" id="directaGridWrap">
+          <table class="preview-table" id="directaGrid">
+            <thead>
+              <tr id="directaGridHead">
+                <th style="width:36px;min-width:36px;position:sticky;left:0;z-index:3;background:#f1f3f6;">#</th>
+              </tr>
+            </thead>
+            <tbody id="directaGridBody"></tbody>
+          </table>
+        </div>
+
+        <div class="progress-wrap" id="directaProgressWrap">
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="directaProgressFill"></div></div>
+          <div class="progress-label" id="directaProgressLabel">Preparando...</div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-success" id="btnDirectaCargar" disabled>
+            ✅ Cargar a base de datos <span id="directaValidCount"></span>
+          </button>
+          <span style="font-size:12px;color:var(--muted);">Los registros duplicados se actualizarán.</span>
+        </div>
+      </div>
+    </div><!-- /subtab-fmtA -->
+
+    <!-- ══ SUB-TAB B — Formato B horizontal ══ -->
+    <div class="ctb-subpanel active" id="subtab-fmtB">
+
+      <div class="sede-origen-row">
+        <label>
+          Sede <span style="color:var(--danger);">*</span>
+          <select id="selectSedeDirectaB">
+            <option value="">— Selecciona —</option>
+            <option value="tulua">Tuluá</option>
+            <option value="buga">Buga</option>
+            <option value="cartago">Cartago</option>
+            <option value="cali">Cali</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11.5px;
+                        color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+            <input type="checkbox" id="chkSinSedeDirectaB" style="cursor:pointer;accent-color:var(--accent);">
+            Sin sede (guardar vacío)
+          </label>
+        </label>
+        <label>
+          Origen <span style="color:var(--danger);">*</span>
+          <select id="selectOrigenDirectaB">
+            <option value="">— Selecciona —</option>
+            <option value="ejecutado">Ejecutado</option>
+            <option value="presupuestado">Presupuestado</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11.5px;
+                        color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+            <input type="checkbox" id="chkSinOrigenDirectaB" style="cursor:pointer;accent-color:var(--accent);">
+            Sin origen (guardar vacío)
+          </label>
+        </label>
+        <span class="sede-origen-note">⚠ Todos los registros se guardarán con esta sede y origen.</span>
+      </div>
+
+      <div class="ctb-card">
+        <div class="ctb-card-title">Tabla de entrada directa — Formato B</div>
+
+        <p class="paste-hint">
+          Cada fila representa una cuenta con su valor para cada mes. Pega desde Excel con <code>Ctrl+V</code>
+          sobre cualquier celda. Columnas <span style="color:var(--danger);font-weight:700;">*</span> son obligatorias.
+          Los valores numéricos pueden tener formato colombiano (<code>1.234.567</code>).
+          La columna <code>total</code> se calcula sola y no es editable.
+        </p>
+
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+          <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;font-weight:600;">
+            Año:
+            <input type="number" id="directaBAnio" value="2025" min="2000" max="2099"
+              style="width:78px;padding:4px 8px;border:1px solid var(--border2);border-radius:5px;font-size:13px;">
+          </label>
+          <span style="font-size:11px;color:var(--muted);">Cada mes se guardará como YYYY-MM-01</span>
+          <div style="flex:1;"></div>
+          <button class="btn" id="btnDirectaBAddRows">➕ Agregar</button>
+          <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);">
+            <input type="number" id="directaBNumRows" value="10" min="1" max="500"
+              style="width:52px;padding:3px 6px;border:1px solid var(--border2);border-radius:5px;font-size:12px;text-align:center;">
+            filas
+          </div>
+          <button class="btn" id="btnDirectaBClear">✕ Limpiar</button>
+          <button class="btn btn-primary" id="btnDirectaBValidar">🔍 Validar</button>
+          <span style="font-size:12px;color:var(--muted);" id="directaBRowCount"></span>
+        </div>
+
+        <div id="directaBStatusBadges" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;"></div>
+
+        <div class="preview-wrap" id="directaBGridWrap">
+          <table class="preview-table" id="directaBGrid">
+            <thead>
+              <tr id="directaBGridHead">
+                <th style="width:36px;min-width:36px;position:sticky;left:0;z-index:3;background:#f1f3f6;">#</th>
+              </tr>
+            </thead>
+            <tbody id="directaBGridBody"></tbody>
+          </table>
+        </div>
+
+        <div class="progress-wrap" id="directaBProgressWrap">
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="directaBProgressFill"></div></div>
+          <div class="progress-label" id="directaBProgressLabel">Preparando...</div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-success" id="btnDirectaBCargar" disabled>
+            ✅ Cargar a base de datos <span id="directaBValidCount"></span>
+          </button>
+          <span style="font-size:12px;color:var(--muted);">Los registros duplicados se actualizarán.</span>
+        </div>
+      </div>
+    </div><!-- /subtab-fmtB -->
+
+  </div><!-- /tab-directa -->
+
+  <!-- ══════════════════════════════════════════════
+       TAB 2 — IMPORTAR EXCEL
+  ══════════════════════════════════════════════ -->
+  <div class="ctb-panel" id="tab-excel">
+
     <div class="sede-origen-row">
       <label>
         Sede <span style="color:var(--danger);">*</span>
-        <select id="selectSedePaste">
+        <select id="selectSedeExcel">
           <option value="">— Selecciona —</option>
           <option value="tulua">Tuluá</option>
           <option value="buga">Buga</option>
@@ -436,30 +692,29 @@
         </select>
         <label style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11.5px;
                       color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
-          <input type="checkbox" id="chkSinSedePaste" style="cursor:pointer;accent-color:var(--accent);">
+          <input type="checkbox" id="chkSinSedeExcel" style="cursor:pointer;accent-color:var(--accent);">
           Sin sede (guardar vacío)
         </label>
       </label>
       <label>
         Origen <span style="color:var(--danger);">*</span>
-        <select id="selectOrigenPaste">
+        <select id="selectOrigenExcel">
           <option value="">— Selecciona —</option>
           <option value="ejecutado">Ejecutado</option>
           <option value="presupuestado">Presupuestado</option>
         </select>
         <label style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11.5px;
                       color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
-          <input type="checkbox" id="chkSinOrigenPaste" style="cursor:pointer;accent-color:var(--accent);">
+          <input type="checkbox" id="chkSinOrigenExcel" style="cursor:pointer;accent-color:var(--accent);">
           Sin origen (guardar vacío)
         </label>
       </label>
-      <span class="sede-origen-note">⚠ Todos los registros del lote se guardarán con esta sede y origen.</span>
+      <span class="sede-origen-note">⚠ Todos los registros del archivo se guardarán con esta sede y origen.</span>
     </div>
 
     <div class="ctb-card">
       <div class="ctb-card-title">Formatos aceptados</div>
 
-      <!-- Formato A -->
       <div style="margin-bottom:14px;">
         <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px;">
           📅 Formato A — Columna de fecha vertical (un registro por fila)
@@ -474,7 +729,6 @@
         </div>
       </div>
 
-      <!-- Formato B -->
       <div>
         <div style="font-size:12px;font-weight:600;color:#7c3aed;margin-bottom:6px;">
           📊 Formato B — Meses horizontales (una fila por cuenta)
@@ -486,90 +740,11 @@
           <div class="col-pill" style="border-color:#c4b5fd;">enero … diciembre</div>
           <div class="col-pill" style="border-color:#c4b5fd;"><span class="opt">opt</span> total</div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
-          <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;">
-            Año para Formato B:
-            <input type="number" id="inputAnioHorizontal" value="2025" min="2000" max="2099"
-              style="width:80px;padding:4px 8px;border:1px solid var(--border2);border-radius:5px;font-size:13px;">
-          </label>
-          <span style="font-size:11px;color:var(--muted);">Cada mes se guarda como YYYY-MM-01</span>
-        </div>
       </div>
 
       <p class="paste-hint" style="margin-top:12px;">
-        El sistema detecta el formato automáticamente según los encabezados. Separadores aceptados: <code>Tab</code> (Excel), <code>;</code> o <code>,</code>.
+        El sistema detecta el formato automáticamente según los encabezados del archivo.
       </p>
-    </div>
-
-    <div class="ctb-card">
-      <div class="ctb-card-title">Área de pegado</div>
-      <textarea id="pasteArea" placeholder="Pega aquí los datos desde Excel en cualquiera de los dos formatos…"></textarea>
-
-      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center;">
-        <button class="btn btn-primary" id="btnParsear">🔍 Previsualizar</button>
-        <button class="btn" id="btnLimpiarPaste">✕ Limpiar</button>
-        <span style="font-size:12px;color:var(--muted);" id="parseInfo"></span>
-      </div>
-
-      <!-- Preview -->
-      <div id="previewSection" style="display:none;margin-top:16px;">
-        <div class="preview-status" id="previewStatus"></div>
-        <div class="preview-wrap" id="previewWrap">
-          <table class="preview-table" id="previewTable">
-            <thead><tr id="previewHead"></tr></thead>
-            <tbody id="previewBody"></tbody>
-          </table>
-        </div>
-        <div class="progress-wrap" id="progressWrap">
-          <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
-          <div class="progress-label" id="progressLabel">Preparando...</div>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center;">
-          <button class="btn btn-success" id="btnCargarPaste" disabled>
-            ✅ Cargar a base de datos <span id="pasteCount"></span>
-          </button>
-          <span style="font-size:12px;color:var(--muted);">Los registros duplicados (misma cuenta + fecha + sede + origen) se actualizarán.</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════════
-       TAB 2 — EXCEL
-  ══════════════════════════════════════════════ -->
-  <div class="ctb-panel" id="tab-excel">
-
-    <!-- ── Sede y Origen ── -->
-    <div class="sede-origen-row">
-      <label>
-        Sede <span style="color:var(--danger);">*</span>
-        <select id="selectSedeExcel">
-          <option value="">— Selecciona —</option>
-          <option value="tulua">Tuluá</option>
-          <option value="buga">Buga</option>
-          <option value="cartago">Cartago</option>
-          <option value="cali">Cali</option>
-        </select>
-        <label style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11.5px;
-                      color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
-          <input type="checkbox" id="chkSinSedePaste" style="cursor:pointer;accent-color:var(--accent);">
-          Sin sede (guardar vacío)
-        </label>
-      </label>
-      <label>
-        Origen <span style="color:var(--danger);">*</span>
-        <select id="selectOrigenExcel">
-          <option value="">— Selecciona —</option>
-          <option value="ejecutado">Ejecutado</option>
-          <option value="presupuestado">Presupuestado</option>
-        </select>
-        <label style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11.5px;
-                      color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
-          <input type="checkbox" id="chkSinOrigenPaste" style="cursor:pointer;accent-color:var(--accent);">
-          Sin origen (guardar vacío)
-        </label>
-      </label>
-      <span class="sede-origen-note">⚠ Todos los registros del archivo se guardarán con esta sede y origen.</span>
     </div>
 
     <div class="ctb-card">
@@ -610,7 +785,7 @@
         </button>
       </div>
     </div>
-  </div>
+  </div><!-- /tab-excel -->
 
   <!-- ══════════════════════════════════════════════
        TAB 3 — HISTORIAL
@@ -618,36 +793,32 @@
   <div class="ctb-panel" id="tab-historial">
     <div class="ctb-card">
       <div class="ctb-card-title">Datos en base de datos</div>
-      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
-        <input type="text" id="histSearch" placeholder="Filtrar por cuenta o nombre..."
-          style="padding:6px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px;width:240px;">
-        <!-- Filtros sede/origen en historial -->
-        <select id="histFilterSede"
-          style="padding:6px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px;">
-          <option value="">Todas las sedes</option>
-          <option value="tulua">Tuluá</option>
-          <option value="buga">Buga</option>
-          <option value="cartago">Cartago</option>
-          <option value="cali">Cali</option>
-        </select>
-        <select id="histFilterOrigen"
-          style="padding:6px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px;">
-          <option value="">Todos los orígenes</option>
-          <option value="ejecutado">Ejecutado</option>
-          <option value="presupuestado">Presupuestado</option>
-        </select>
+
+      <div class="hist-filters">
+        <input type="text" id="histSearch" placeholder="Filtrar por cuenta o nombre...">
+
+        <div id="fltSede"></div>
+        <div id="fltOrigen"></div>
+        <div id="fltFecha"></div>
+        <div id="fltCuenta"></div>
+        <div id="fltNombre"></div>
+
         <button class="btn" id="btnRefreshHist">🔄 Actualizar</button>
-        <button class="btn btn-danger" id="btnEliminarSeleccionados" disabled style="display:flex;align-items:center;gap:6px;">
-          🗑️ Eliminar seleccionados <span id="selCount" style="background:rgba(255,255,255,.25);border-radius:10px;padding:1px 7px;font-size:11px;"></span>
+        <button class="btn" id="btnLimpiarFiltrosHist">✕ Limpiar filtros</button>
+        <button class="btn btn-danger" id="btnEliminarSeleccionados" disabled
+                style="display:flex;align-items:center;gap:6px;">
+          🗑️ Eliminar seleccionados
+          <span id="selCount" style="background:rgba(255,255,255,.25);border-radius:10px;padding:1px 7px;font-size:11px;"></span>
         </button>
         <span style="font-size:12px;color:var(--muted);" id="histCount"></span>
       </div>
-      <div class="preview-wrap" style="max-height:500px;">
+
+      <div class="preview-wrap hist-scroll">
         <table class="hist-table" id="histTable">
           <thead>
             <tr>
               <th style="width:36px;text-align:center;">
-                <input type="checkbox" id="histCheckAll" title="Seleccionar todos" style="cursor:pointer;">
+                <input type="checkbox" id="histCheckAll" title="Seleccionar todos los visibles" style="cursor:pointer;">
               </th>
               <th>Cuenta</th><th>Costo</th><th>Nombre</th>
               <th>Fecha</th><th class="num">Valor</th>
@@ -655,12 +826,12 @@
             </tr>
           </thead>
           <tbody id="histBody">
-            <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;">Cargando...</td></tr>
+            <tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px;">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
-  </div>
+  </div><!-- /tab-historial -->
 
 </div>
 
@@ -716,7 +887,7 @@ const URL_BORRAR_CTB        = "{% url 'borrar_consolidado_total_base' %}";
 const URL_ELIMINAR_FILA_CTB = "{% url 'eliminar_fila_consolidado_total_base' %}";
 const CSRF = document.querySelector('[name=csrf-token]').content;
 
-/* ── Columnas preview (no incluyen sede/origen: son a nivel de lote) ── */
+/* ── Columnas preview (sede/origen son a nivel de lote) ── */
 const COLS_ALL = ['mcncuenta','mcnccosto','ctanombre','mcnfecha','valor','total_anual'];
 const COLS_NUM = ['valor','total_anual'];
 
@@ -726,7 +897,7 @@ const MESES_MAP = {
   'julio':7,'agosto':8,'septiembre':9,'octubre':10,'noviembre':11,'diciembre':12
 };
 
-/* ── Alias de columnas Formato B → nombres internos ── */
+/* ── Alias de columnas → nombres internos ── */
 const ALIAS_MAP = {
   'cuenta':           'mcncuenta',
   'mcncuenta':        'mcncuenta',
@@ -741,19 +912,17 @@ const ALIAS_MAP = {
 };
 
 /* ── Estado ── */
-let parsedRows   = [];
-let parsedErrors = [];
-let excelRows    = [];
-let histData     = [];
+let excelRows = [];
+let histData  = [];
 
 const FMT = new Intl.NumberFormat('es-ES');
 function fmtN(v) { const n = parseFloat(v); return isNaN(n) ? '' : FMT.format(n); }
 
-// Función para habilitar/deshabilitar selects de sede/origen según checkboxes "Sin asignar"
+/* ── Checkboxes "Sin sede / Sin origen" ── */
 function bindCheckboxSinAsignar(chkId, selectId) {
   const chk = document.getElementById(chkId);
   const sel = document.getElementById(selectId);
-  if (!chk || !sel) return;   // ← guard: si no existe, no explota
+  if (!chk || !sel) return;
   chk.addEventListener('change', () => {
     sel.disabled = chk.checked;
     if (chk.checked) sel.value = '';
@@ -761,14 +930,12 @@ function bindCheckboxSinAsignar(chkId, selectId) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  bindCheckboxSinAsignar('chkSinSedePaste',   'selectSedePaste');
-  bindCheckboxSinAsignar('chkSinOrigenPaste', 'selectOrigenPaste');
   bindCheckboxSinAsignar('chkSinSedeExcel',   'selectSedeExcel');
   bindCheckboxSinAsignar('chkSinOrigenExcel', 'selectOrigenExcel');
 });
 
 /* ════════════════════════════════════════════════
-   HELPERS: leer sede / origen de los selects
+   HELPERS: sede / origen
 ════════════════════════════════════════════════ */
 function getSedeOrigen(prefix) {
   const sede   = document.getElementById(`selectSede${prefix}`).value;
@@ -783,7 +950,7 @@ function validarSedeOrigen(sede, origen, prefijo) {
   const sedeOk   = sede   || chkSede?.checked;
   const origenOk = origen || chkOrigen?.checked;
 
-  if (!sedeOk)   { toast('Selecciona una sede o marca "Sin sede"',   'warn'); return false; }
+  if (!sedeOk)   { toast('Selecciona una sede o marca "Sin sede"',    'warn'); return false; }
   if (!origenOk) { toast('Selecciona un origen o marca "Sin origen"', 'warn'); return false; }
   return true;
 }
@@ -804,9 +971,9 @@ function toast(msg, type = 'info', dur = 4000) {
 /* ════════════════════════════════════════════════
    TABS
 ════════════════════════════════════════════════ */
-document.querySelectorAll('.ctb-tab').forEach(tab => {
+document.querySelectorAll('.ctb-tab[data-tab]').forEach(tab => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.ctb-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.ctb-tab[data-tab]').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.ctb-panel').forEach(p => p.classList.remove('active'));
     tab.classList.add('active');
     document.getElementById(tab.dataset.tab).classList.add('active');
@@ -817,16 +984,6 @@ document.querySelectorAll('.ctb-tab').forEach(tab => {
 /* ════════════════════════════════════════════════
    UTILIDADES DE PARSEO
 ════════════════════════════════════════════════ */
-function detectarSeparador(texto) {
-  const primera = texto.split('\n')[0];
-  const tabs    = (primera.match(/\t/g)  || []).length;
-  const pvcomas = (primera.match(/;/g)   || []).length;
-  const comas   = (primera.match(/,/g)   || []).length;
-  if (tabs >= pvcomas && tabs >= comas) return '\t';
-  if (pvcomas >= comas) return ';';
-  return ',';
-}
-
 function normHeader(h) {
   return h.trim().toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -849,9 +1006,7 @@ function detectarFormato(headers) {
   return mesesPresentes.length >= 6 ? 'horizontal' : 'vertical';
 }
 
-/* ════════════════════════════════════════════════
-   PARSEO FORMATO A — vertical
-════════════════════════════════════════════════ */
+/* ── Formato A — vertical ── */
 function parsearVertical(headers, lineas, sep) {
   const REQUIRED = ['mcncuenta','ctanombre','mcnfecha','valor'];
   const faltantes = REQUIRED.filter(c => !headers.includes(c));
@@ -888,9 +1043,7 @@ function parsearVertical(headers, lineas, sep) {
   return { rows, errors };
 }
 
-/* ════════════════════════════════════════════════
-   PARSEO FORMATO B — meses horizontales
-════════════════════════════════════════════════ */
+/* ── Formato B — meses horizontales ── */
 function parsearHorizontal(headers, lineas, sep, anio) {
   const mesesCols = headers
     .map((h,i) => ({ mes: MESES_MAP[h], idx: i, nombre: h }))
@@ -942,31 +1095,7 @@ function parsearHorizontal(headers, lineas, sep, anio) {
 }
 
 /* ════════════════════════════════════════════════
-   PARSEO PRINCIPAL
-════════════════════════════════════════════════ */
-function parsearTexto(texto, anio) {
-  texto = texto.trim();
-  if (!texto) return { rows:[], errors:[], headers:[], formato:null };
-
-  const sep    = detectarSeparador(texto);
-  const lineas = texto.split('\n').map(l => l.replace(/\r/g,''));
-
-  const headersRaw = lineas[0].split(sep).map(normHeader);
-  const headers    = headersRaw.map(h => ALIAS_MAP[h] || h);
-  const formato    = detectarFormato(headers);
-
-  let resultado;
-  if (formato === 'horizontal') {
-    resultado = parsearHorizontal(headers, lineas, sep, anio);
-  } else {
-    resultado = parsearVertical(headers, lineas, sep);
-  }
-
-  return { ...resultado, headers, formato };
-}
-
-/* ════════════════════════════════════════════════
-   RENDERIZAR PREVIEW
+   RENDERIZAR PREVIEW (Excel)
 ════════════════════════════════════════════════ */
 function renderPreview(rows, errors, formato, headEl, bodyEl, statusEl, countEl, btnCargar) {
   statusEl.innerHTML = '';
@@ -1035,122 +1164,65 @@ function renderPreview(rows, errors, formato, headEl, bodyEl, statusEl, countEl,
 }
 
 /* ════════════════════════════════════════════════
-   BOTÓN PARSEAR
-════════════════════════════════════════════════ */
-document.getElementById('btnParsear').addEventListener('click', () => {
-  const texto = document.getElementById('pasteArea').value;
-  if (!texto.trim()) { toast('Pega datos primero', 'warn'); return; }
-
-  const anio = parseInt(document.getElementById('inputAnioHorizontal').value, 10) || 2025;
-  const { rows, errors, headers, formato } = parsearTexto(texto, anio);
-  parsedRows   = rows;
-  parsedErrors = errors;
-
-  document.getElementById('parseInfo').textContent = formato
-    ? `Formato detectado: ${formato === 'horizontal' ? 'B (meses horizontales)' : 'A (fecha vertical)'} · ${headers.length} columnas`
-    : '';
-
-  document.getElementById('previewSection').style.display = 'block';
-  renderPreview(
-    rows, errors, formato,
-    document.getElementById('previewHead'),
-    document.getElementById('previewBody'),
-    document.getElementById('previewStatus'),
-    document.getElementById('pasteCount'),
-    document.getElementById('btnCargarPaste')
-  );
-});
-
-document.getElementById('btnLimpiarPaste').addEventListener('click', () => {
-  document.getElementById('pasteArea').value = '';
-  document.getElementById('previewSection').style.display = 'none';
-  parsedRows = []; parsedErrors = [];
-  document.getElementById('parseInfo').textContent = '';
-});
-
-/* ════════════════════════════════════════════════
-   ENVIAR A BD — ahora incluye sede y origen en cada lote
+   ENVIAR A BD
 ════════════════════════════════════════════════ */
 async function enviarRegistros(rows, sede, origen, progressFill, progressLabel, progressWrap, btnEl) {
-    progressWrap.classList.add('active');
-    btnEl.disabled = true;
+  progressWrap.classList.add('active');
+  btnEl.disabled = true;
 
-    // Guardar referencia al span de conteo ANTES de tocar el botón
-    const countSpan = btnEl.querySelector('span');
+  const countSpan = btnEl.querySelector('span');
 
-    // Spinner: solo cambiar el texto del nodo texto, no innerHTML
-    while (btnEl.firstChild) btnEl.removeChild(btnEl.firstChild);
-    const spinEl = document.createElement('span');
-    spinEl.className = 'spin';
-    const loadingText = document.createTextNode(' Cargando…');
-    btnEl.appendChild(spinEl);
-    btnEl.appendChild(loadingText);
+  while (btnEl.firstChild) btnEl.removeChild(btnEl.firstChild);
+  const spinEl = document.createElement('span');
+  spinEl.className = 'spin';
+  btnEl.appendChild(spinEl);
+  btnEl.appendChild(document.createTextNode(' Cargando…'));
 
-    const BATCH = 500;
-    let insertados   = 0;
-    let actualizados = 0;
+  const BATCH = 500;
+  let insertados = 0, actualizados = 0;
 
-    for (let i = 0; i < rows.length; i += BATCH) {
-        const lote = rows.slice(i, i + BATCH);
-        const pct  = Math.round(((i + lote.length) / rows.length) * 100);
-        progressFill.style.width = pct + '%';
-        progressLabel.textContent = `Enviando ${i+1}–${Math.min(i+BATCH, rows.length)} de ${rows.length}…`;
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const lote = rows.slice(i, i + BATCH);
+    const pct  = Math.round(((i + lote.length) / rows.length) * 100);
+    progressFill.style.width = pct + '%';
+    progressLabel.textContent = `Enviando ${i+1}–${Math.min(i+BATCH, rows.length)} de ${rows.length}…`;
 
-        try {
-            const resp = await fetch(URL_CARGAR_CTB, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
-                body: JSON.stringify({ registros: lote, sede, origen }),
-            });
-            const json = await resp.json();
-            if (!resp.ok || !json.success) throw new Error(json.error || resp.statusText);
-            insertados   += json.insertados   || 0;
-            actualizados += json.actualizados || 0;
-        } catch(e) {
-            toast('Error al enviar lote: ' + e.message, 'error');
-            progressWrap.classList.remove('active');
-            // Restaurar botón con su span intacto
-            while (btnEl.firstChild) btnEl.removeChild(btnEl.firstChild);
-            const labelText = document.createTextNode('✅ Reintentar ');
-            const newSpan   = document.createElement('span');
-            newSpan.id      = countSpan?.id || '';
-            btnEl.appendChild(labelText);
-            btnEl.appendChild(newSpan);
-            btnEl.disabled = false;
-            return;
-        }
+    try {
+      const resp = await fetch(URL_CARGAR_CTB, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+        body: JSON.stringify({ registros: lote, sede, origen }),
+      });
+      const json = await resp.json();
+      if (!resp.ok || !json.success) throw new Error(json.error || resp.statusText);
+      insertados   += json.insertados   || 0;
+      actualizados += json.actualizados || 0;
+    } catch (e) {
+      toast('Error al enviar lote: ' + e.message, 'error');
+      progressWrap.classList.remove('active');
+      while (btnEl.firstChild) btnEl.removeChild(btnEl.firstChild);
+      const retrySpan = document.createElement('span');
+      retrySpan.id = countSpan?.id || '';
+      btnEl.appendChild(document.createTextNode('✅ Reintentar '));
+      btnEl.appendChild(retrySpan);
+      btnEl.disabled = false;
+      return;
     }
+  }
 
-    progressFill.style.width = '100%';
-    progressLabel.textContent = `✓ ${insertados} insertados, ${actualizados} actualizados`;
-    toast(`✅ ${insertados} insertados · ${actualizados} actualizados`, 'success');
+  progressFill.style.width = '100%';
+  progressLabel.textContent = `✓ ${insertados} insertados, ${actualizados} actualizados`;
+  toast(`✅ ${insertados} insertados · ${actualizados} actualizados`, 'success');
 
-    // Restaurar botón preservando el span con su id original
-    while (btnEl.firstChild) btnEl.removeChild(btnEl.firstChild);
-    const doneText = document.createTextNode('✅ Cargado ');
-    const restoredSpan = document.createElement('span');
-    restoredSpan.id = countSpan?.id || '';
-    btnEl.appendChild(doneText);
-    btnEl.appendChild(restoredSpan);
-    btnEl.disabled = true;
+  while (btnEl.firstChild) btnEl.removeChild(btnEl.firstChild);
+  const doneSpan = document.createElement('span');
+  doneSpan.id = countSpan?.id || '';
+  btnEl.appendChild(document.createTextNode('✅ Cargado '));
+  btnEl.appendChild(doneSpan);
+  btnEl.disabled = true;
 
-    setTimeout(() => progressWrap.classList.remove('active'), 3000);
+  setTimeout(() => progressWrap.classList.remove('active'), 3000);
 }
-
-/* ── Cargar desde Paste ── */
-document.getElementById('btnCargarPaste').addEventListener('click', () => {
-  if (!parsedRows.length) return;
-  const { sede, origen } = getSedeOrigen('Paste');
-  if (!validarSedeOrigen(sede, origen, 'Paste')) return;
-
-  enviarRegistros(
-    parsedRows, sede, origen,
-    document.getElementById('progressFill'),
-    document.getElementById('progressLabel'),
-    document.getElementById('progressWrap'),
-    document.getElementById('btnCargarPaste')
-  );
-});
 
 /* ════════════════════════════════════════════════
    EXCEL — Drop Zone
@@ -1182,10 +1254,10 @@ function procesarExcel(file) {
       const headers    = headersRaw.map(h => ALIAS_MAP[h] || h);
       const formato    = detectarFormato(headers);
 
-      let rows=[], errors=[];
+      let rows = [], errors = [];
+      const sep = '\t';
 
       if (formato === 'horizontal') {
-        const sep    = '\t';
         const lineas = [
           headersRaw.join(sep),
           ...json.map(row => Object.values(row).map(v => v ?? '').join(sep))
@@ -1204,7 +1276,6 @@ function procesarExcel(file) {
           });
           return n;
         });
-        const sep    = '\t';
         const lineas = [
           headers.join(sep),
           ...normalizado.map(row => headers.map(h => row[h] ?? '').join(sep))
@@ -1222,14 +1293,13 @@ function procesarExcel(file) {
         document.getElementById('excelCount'),
         document.getElementById('btnCargarExcel')
       );
-    } catch(e) {
+    } catch (e) {
       toast('Error leyendo Excel: ' + e.message, 'error');
     }
   };
   reader.readAsArrayBuffer(file);
 }
 
-/* ── Cargar desde Excel ── */
 document.getElementById('btnCargarExcel').addEventListener('click', () => {
   if (!excelRows.length) return;
   const { sede, origen } = getSedeOrigen('Excel');
@@ -1268,39 +1338,272 @@ document.getElementById('btnDescargarPlantilla').addEventListener('click', () =>
 });
 
 /* ════════════════════════════════════════════════
+   FILTRO MULTI-SELECCIÓN ESTILO EXCEL
+════════════════════════════════════════════════ */
+function crearFiltroExcel(hostId, label, onChange, dropLeft = false) {
+  const host = document.getElementById(hostId);
+  host.classList.add('xl-filter');
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'xl-filter-btn';
+  const btnTxt = document.createElement('span');
+  btnTxt.className = 'xl-btn-txt';
+  const caret = document.createElement('span');
+  caret.className = 'xl-caret';
+  caret.textContent = '▾';
+  btn.append(btnTxt, caret);
+
+  const panel = document.createElement('div');
+  panel.className = 'xl-filter-panel' + (dropLeft ? ' drop-left' : '');
+
+  const search = document.createElement('input');
+  search.type = 'text';
+  search.className = 'xl-filter-search';
+  search.placeholder = 'Buscar…';
+
+  const allWrap = document.createElement('label');
+  allWrap.className = 'xl-opt xl-opt-all';
+  const allChk = document.createElement('input');
+  allChk.type = 'checkbox';
+  const allTxt = document.createElement('span');
+  allTxt.textContent = '(Seleccionar todo)';
+  allWrap.append(allChk, allTxt);
+
+  const list = document.createElement('div');
+  list.className = 'xl-filter-list';
+
+  const foot = document.createElement('div');
+  foot.className = 'xl-filter-foot';
+  const footInfo = document.createElement('span');
+  const footBtns = document.createElement('div');
+  const btnNone = document.createElement('button');
+  btnNone.type = 'button';
+  btnNone.textContent = 'Ninguno';
+  const btnAll = document.createElement('button');
+  btnAll.type = 'button';
+  btnAll.textContent = 'Todos';
+  btnAll.style.marginLeft = '5px';
+  footBtns.append(btnNone, btnAll);
+  foot.append(footInfo, footBtns);
+
+  panel.append(search, allWrap, list, foot);
+  host.append(btn, panel);
+
+  let values   = [];
+  let selected = new Set();
+
+  function updateBtn() {
+    const total = values.length;
+    const n     = selected.size;
+    const todo  = n === total && total > 0;
+    btn.classList.toggle('filtered', !todo);
+
+    if (!total)       btnTxt.textContent = `${label} (sin datos)`;
+    else if (todo)    btnTxt.textContent = `${label}: todos`;
+    else if (n === 0) btnTxt.textContent = `${label}: ninguno`;
+    else if (n === 1) btnTxt.textContent = `${label}: ${[...selected][0]}`;
+    else              btnTxt.textContent = `${label}: ${n} de ${total}`;
+
+    footInfo.textContent = `${n} de ${total}`;
+  }
+
+  function visibles() {
+    const q = search.value.toLowerCase().trim();
+    return q ? values.filter(v => v.toLowerCase().includes(q)) : values;
+  }
+
+  function syncAllChk(vis) {
+    const marcados = vis.filter(v => selected.has(v)).length;
+    allChk.checked       = vis.length > 0 && marcados === vis.length;
+    allChk.indeterminate = marcados > 0 && marcados < vis.length;
+  }
+
+  function renderList() {
+    const vis = visibles();
+    while (list.firstChild) list.removeChild(list.firstChild);
+
+    if (!vis.length) {
+      const e = document.createElement('div');
+      e.className = 'xl-empty';
+      e.textContent = 'Sin coincidencias';
+      list.appendChild(e);
+      syncAllChk(vis);
+      return;
+    }
+
+    vis.slice(0, 1000).forEach(v => {
+      const row = document.createElement('label');
+      row.className = 'xl-opt';
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.checked = selected.has(v);
+      const txt = document.createElement('span');
+      txt.textContent = v;
+      txt.title = v;
+      chk.addEventListener('change', () => {
+        chk.checked ? selected.add(v) : selected.delete(v);
+        updateBtn();
+        syncAllChk(visibles());
+        onChange();
+      });
+      row.append(chk, txt);
+      list.appendChild(row);
+    });
+
+    if (vis.length > 1000) {
+      const e = document.createElement('div');
+      e.className = 'xl-empty';
+      e.textContent = `… y ${vis.length - 1000} más (usa la búsqueda)`;
+      list.appendChild(e);
+    }
+    syncAllChk(vis);
+  }
+
+  search.addEventListener('input', renderList);
+
+  allChk.addEventListener('change', () => {
+    visibles().forEach(v => allChk.checked ? selected.add(v) : selected.delete(v));
+    renderList(); updateBtn(); onChange();
+  });
+
+  btnAll.addEventListener('click', () => {
+    values.forEach(v => selected.add(v));
+    renderList(); updateBtn(); onChange();
+  });
+  btnNone.addEventListener('click', () => {
+    selected.clear();
+    renderList(); updateBtn(); onChange();
+  });
+
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const abierto = host.classList.contains('open');
+    document.querySelectorAll('.xl-filter.open').forEach(f => f.classList.remove('open'));
+    if (!abierto) {
+      host.classList.add('open');
+      search.value = '';
+      renderList();
+      search.focus();
+    }
+  });
+  panel.addEventListener('click', e => e.stopPropagation());
+
+  updateBtn();
+
+  return {
+    setOptions(nuevos) {
+      const prevValues = values;
+      const eraTodo    = prevValues.length > 0 && selected.size === prevValues.length;
+      values = nuevos;
+      if (!prevValues.length || eraTodo) {
+        selected = new Set(values);
+      } else {
+        selected = new Set(values.filter(v => selected.has(v)));
+        if (!selected.size) selected = new Set(values);
+      }
+      renderList(); updateBtn();
+    },
+    matches(v) {
+      if (!values.length) return true;
+      if (selected.size === values.length) return true;
+      return selected.has(String(v ?? '').trim());
+    },
+    reset() { selected = new Set(values); renderList(); updateBtn(); },
+    get activo() { return values.length > 0 && selected.size !== values.length; }
+  };
+}
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('.xl-filter.open').forEach(f => f.classList.remove('open'));
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.xl-filter.open').forEach(f => f.classList.remove('open'));
+  }
+});
+
+/* ════════════════════════════════════════════════
    HISTORIAL
 ════════════════════════════════════════════════ */
-function actualizarBtnEliminar() {
-    const checked = document.querySelectorAll('.hist-row-check:checked');
-    const btn = document.getElementById('btnEliminarSeleccionados');
-    const span = document.getElementById('selCount');
-    btn.disabled = checked.length === 0;
-    if (span) span.textContent = checked.length > 0 ? checked.length : '';
-}
-async function cargarHistorial() {
-  const body = document.getElementById('histBody');
-  body.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;">Cargando...</td></tr>`;
+let FLT = null;
 
-  // Leer filtros del historial
-  const sede   = document.getElementById('histFilterSede').value;
-  const origen = document.getElementById('histFilterOrigen').value;
-  const params = new URLSearchParams();
-  if (sede)   params.set('sede',   sede);
-  if (origen) params.set('origen', origen);
+function initFiltrosHist() {
+  if (FLT) return;
+  FLT = {
+    sede:   crearFiltroExcel('fltSede',   'Sede',   aplicarFiltrosHist),
+    origen: crearFiltroExcel('fltOrigen', 'Origen', aplicarFiltrosHist),
+    fecha:  crearFiltroExcel('fltFecha',  'Fecha',  aplicarFiltrosHist),
+    cuenta: crearFiltroExcel('fltCuenta', 'Cuenta', aplicarFiltrosHist),
+    nombre: crearFiltroExcel('fltNombre', 'Nombre', aplicarFiltrosHist, true),
+  };
+}
+
+function actualizarBtnEliminar() {
+  const checked = document.querySelectorAll('.hist-row-check:checked');
+  const btn  = document.getElementById('btnEliminarSeleccionados');
+  const span = document.getElementById('selCount');
+  btn.disabled = checked.length === 0;
+  if (span) span.textContent = checked.length > 0 ? checked.length : '';
+}
+
+function opcionesUnicas(data, campo) {
+  return [...new Set(
+    data.map(r => (r[campo] ?? '').toString().trim()).filter(v => v !== '')
+  )];
+}
+
+function poblarFiltrosHist(data) {
+  initFiltrosHist();
+  FLT.sede.setOptions(opcionesUnicas(data, 'sede').sort((a,b) => a.localeCompare(b,'es')));
+  FLT.origen.setOptions(opcionesUnicas(data, 'origen').sort((a,b) => a.localeCompare(b,'es')));
+  FLT.fecha.setOptions(opcionesUnicas(data, 'mcnfecha').sort());
+  FLT.cuenta.setOptions(opcionesUnicas(data, 'mcncuenta')
+    .sort((a,b) => a.localeCompare(b,'es',{ numeric:true })));
+  FLT.nombre.setOptions(opcionesUnicas(data, 'ctanombre')
+    .sort((a,b) => a.localeCompare(b,'es')));
+}
+
+function filtrarHist() {
+  const q = (document.getElementById('histSearch').value || '').toLowerCase().trim();
+  return histData.filter(r => {
+    if (!FLT.sede.matches(r.sede))        return false;
+    if (!FLT.origen.matches(r.origen))    return false;
+    if (!FLT.fecha.matches(r.mcnfecha))   return false;
+    if (!FLT.cuenta.matches(r.mcncuenta)) return false;
+    if (!FLT.nombre.matches(r.ctanombre)) return false;
+    if (q && !`${r.mcncuenta || ''} ${r.ctanombre || ''}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function aplicarFiltrosHist() {
+  const filtrados = filtrarHist();
+  renderHistorial(filtrados);
+  document.getElementById('histCount').textContent =
+    filtrados.length === histData.length
+      ? `${histData.length} registros`
+      : `${filtrados.length} de ${histData.length} registros`;
+}
+
+async function cargarHistorial() {
+  initFiltrosHist();
+  const body = document.getElementById('histBody');
+  body.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px;">Cargando...</td></tr>`;
 
   try {
-    const resp = await fetch(`${URL_OBTENER_CTB}?${params.toString()}`);
+    const resp = await fetch(URL_OBTENER_CTB);
     const json = await resp.json();
     histData   = json.data || [];
-    renderHistorial(histData);
-  } catch(e) {
-    body.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--danger);padding:24px;">Error al cargar</td></tr>`;
+    poblarFiltrosHist(histData);
+    aplicarFiltrosHist();
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--danger);padding:24px;">Error al cargar</td></tr>`;
   }
 }
 
 function renderHistorial(data) {
   const body = document.getElementById('histBody');
-  document.getElementById('histCount').textContent = `${data.length} registros`;
   document.getElementById('histCheckAll').checked = false;
   actualizarBtnEliminar();
   body.innerHTML = '';
@@ -1310,7 +1613,7 @@ function renderHistorial(data) {
     return;
   }
 
-  data.slice(0, 500).forEach(row => {
+  data.slice(0, 1000).forEach(row => {
     const tr = document.createElement('tr');
     tr.dataset.id = row.id;
     tr.innerHTML = `
@@ -1333,9 +1636,9 @@ function renderHistorial(data) {
     body.appendChild(tr);
   });
 
-  if (data.length > 500) {
+  if (data.length > 1000) {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td colspan="10" style="text-align:center;color:var(--muted);padding:8px;">… y ${data.length-500} más</td>`;
+    tr.innerHTML = `<td colspan="10" style="text-align:center;color:var(--muted);padding:8px;">… y ${data.length-1000} más (afina los filtros)</td>`;
     body.appendChild(tr);
   }
 }
@@ -1352,95 +1655,82 @@ async function eliminarFila(id, tr) {
     if (!resp.ok || !json.success) throw new Error(json.error);
     tr.remove();
     histData = histData.filter(r => r.id !== id);
-    document.getElementById('histCount').textContent = `${histData.length} registros`;
-    actualizarBtnEliminar();
+    poblarFiltrosHist(histData);
+    aplicarFiltrosHist();
     toast('Registro eliminado', 'success');
-  } catch(e) { toast('Error: ' + e.message, 'error'); }
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
-/* Seleccionar / deseleccionar todos */
 document.getElementById('histCheckAll').addEventListener('change', e => {
   document.querySelectorAll('.hist-row-check').forEach(cb => { cb.checked = e.target.checked; });
   actualizarBtnEliminar();
 });
-/* Eliminar seleccionados */
+
 document.getElementById('btnEliminarSeleccionados').addEventListener('click', async () => {
-    const checks = [...document.querySelectorAll('.hist-row-check:checked')];
-    if (!checks.length) return;
-    if (!confirm(`¿Eliminar ${checks.length} registro(s) seleccionado(s)?`)) return;
+  const checks = [...document.querySelectorAll('.hist-row-check:checked')];
+  if (!checks.length) return;
+  if (!confirm(`¿Eliminar ${checks.length} registro(s) seleccionado(s)?`)) return;
 
-    const ids = checks.map(cb => parseInt(cb.dataset.id, 10));
-    const btn = document.getElementById('btnEliminarSeleccionados');
-    const selSpan = document.getElementById('selCount');
+  const ids = checks.map(cb => parseInt(cb.dataset.id, 10));
+  const btn = document.getElementById('btnEliminarSeleccionados');
 
-    btn.disabled = true;
-    // Guardar texto original para restaurar después
-    const textoOriginal = '🗑️ Eliminar seleccionados';
-    btn.firstChild.textContent = textoOriginal.replace('🗑️ Eliminar seleccionados', '');
-    // Limpiar y poner spinner sin tocar el span
-    btn.childNodes[0].textContent = ' Eliminando… ';
-    if (selSpan) selSpan.textContent = '';
+  btn.disabled = true;
+  while (btn.firstChild) btn.removeChild(btn.firstChild);
+  const spinEl = document.createElement('span');
+  spinEl.className = 'spin';
+  btn.appendChild(spinEl);
+  btn.appendChild(document.createTextNode(' Eliminando…'));
 
-    // Forma segura: vaciar y reconstruir sin innerHTML
-    while (btn.firstChild) btn.removeChild(btn.firstChild);
-    const spinEl = document.createElement('span');
-    spinEl.className = 'spin';
-    const textEl = document.createTextNode(' Eliminando…');
-    btn.appendChild(spinEl);
-    btn.appendChild(textEl);
+  let eliminados = 0;
+  for (const id of ids) {
+    try {
+      const resp = await fetch(URL_ELIMINAR_FILA_CTB, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+        body: JSON.stringify({ id }),
+      });
+      const json = await resp.json();
+      if (resp.ok && json.success) {
+        document.querySelector(`tr[data-id="${id}"]`)?.remove();
+        histData = histData.filter(r => r.id !== id);
+        eliminados++;
+      }
+    } catch { /* continuar con los demás */ }
+  }
 
-    let eliminados = 0;
-    for (const id of ids) {
-        try {
-            const resp = await fetch(URL_ELIMINAR_FILA_CTB, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
-                body: JSON.stringify({ id }),
-            });
-            const json = await resp.json();
-            if (resp.ok && json.success) {
-                document.querySelector(`tr[data-id="${id}"]`)?.remove();
-                histData = histData.filter(r => r.id !== id);
-                eliminados++;
-            }
-        } catch { /* continuar con los demás */ }
-    }
+  document.getElementById('histCheckAll').checked = false;
+  poblarFiltrosHist(histData);
+  aplicarFiltrosHist();
 
-    document.getElementById('histCount').textContent = `${histData.length} registros`;
-    document.getElementById('histCheckAll').checked = false;
+  while (btn.firstChild) btn.removeChild(btn.firstChild);
+  const newSpan = document.createElement('span');
+  newSpan.id = 'selCount';
+  newSpan.style.cssText = 'background:rgba(255,255,255,.25);border-radius:10px;padding:1px 7px;font-size:11px;';
+  btn.appendChild(document.createTextNode('🗑️ Eliminar seleccionados '));
+  btn.appendChild(newSpan);
+  btn.disabled = true;
 
-    // Restaurar botón reconstruyendo sus nodos manualmente
-    while (btn.firstChild) btn.removeChild(btn.firstChild);
-    const labelText = document.createTextNode('🗑️ Eliminar seleccionados ');
-    const newSpan = document.createElement('span');
-    newSpan.id = 'selCount';
-    newSpan.style.cssText = 'background:rgba(255,255,255,.25);border-radius:10px;padding:1px 7px;font-size:11px;';
-    btn.appendChild(labelText);
-    btn.appendChild(newSpan);
-    btn.disabled = true; // queda deshabilitado porque no hay nada seleccionado
-
-    toast(`${eliminados} registro(s) eliminado(s)`, eliminados > 0 ? 'success' : 'warn');
+  toast(`${eliminados} registro(s) eliminado(s)`, eliminados > 0 ? 'success' : 'warn');
 });
 
-/* Filtros del historial: re-cargar al cambiar selects */
-document.getElementById('histFilterSede').addEventListener('change', cargarHistorial);
-document.getElementById('histFilterOrigen').addEventListener('change', cargarHistorial);
-
-document.getElementById('histSearch').addEventListener('input', e => {
-  const q = e.target.value.toLowerCase();
-  renderHistorial(q ? histData.filter(r =>
-    (r.mcncuenta||'').toLowerCase().includes(q) ||
-    (r.ctanombre||'').toLowerCase().includes(q)
-  ) : histData);
-});
+document.getElementById('histSearch').addEventListener('input', aplicarFiltrosHist);
 document.getElementById('btnRefreshHist').addEventListener('click', cargarHistorial);
+document.getElementById('btnLimpiarFiltrosHist').addEventListener('click', () => {
+  document.getElementById('histSearch').value = '';
+  if (FLT) Object.values(FLT).forEach(f => f.reset());
+  aplicarFiltrosHist();
+});
+
+document.getElementById('btnVerHistorial').addEventListener('click', () => {
+  document.querySelector('[data-tab="tab-historial"]').click();
+});
 
 /* ════════════════════════════════════════════════
    BORRAR TODO (con filtros opcionales sede/origen)
 ════════════════════════════════════════════════ */
 const modalBorrar = document.getElementById('modalBorrar');
-document.getElementById('btnBorrarTodo').addEventListener('click', () => { modalBorrar.style.display='flex'; });
-document.getElementById('cancelBorrar').addEventListener('click',  () => { modalBorrar.style.display='none'; });
+document.getElementById('btnBorrarTodo').addEventListener('click', () => { modalBorrar.style.display = 'flex'; });
+document.getElementById('cancelBorrar').addEventListener('click',  () => { modalBorrar.style.display = 'none'; });
 document.getElementById('confirmBorrar').addEventListener('click', async () => {
   modalBorrar.style.display = 'none';
   const sede   = document.getElementById('borrarFilterSede').value   || null;
@@ -1455,13 +1745,639 @@ document.getElementById('confirmBorrar').addEventListener('click', async () => {
     if (!json.success) throw new Error(json.error);
     const label = [sede, origen].filter(Boolean).join(' / ') || 'todos';
     toast(`Eliminados ${json.eliminados} registros (${label})`, 'success');
-    histData = []; renderHistorial([]);
-  } catch(e) { toast('Error: '+e.message,'error'); }
+    histData = [];
+    if (FLT) poblarFiltrosHist(histData);
+    renderHistorial([]);
+    document.getElementById('histCount').textContent = '0 registros';
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
 });
 
-document.getElementById('btnVerHistorial').addEventListener('click', () => {
-  document.querySelector('[data-tab="tab-historial"]').click();
-});
+/* ════════════════════════════════════════════════
+   TABLA DIRECTA — editor tipo hoja de cálculo
+════════════════════════════════════════════════ */
+(function () {
+
+  /* ── Sub-tabs dentro de tab-directa ── */
+  document.querySelectorAll('[data-subtab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-subtab]').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.ctb-subpanel').forEach(p => {
+        p.style.display = 'none';
+        p.classList.remove('active');
+      });
+      btn.classList.add('active');
+      const panel = document.getElementById(btn.dataset.subtab);
+      if (panel) { panel.style.display = 'block'; panel.classList.add('active'); }
+    });
+  });
+
+  /* ══════════════════════════════════════════════
+     FORMATO A — fecha vertical
+  ══════════════════════════════════════════════ */
+  const DCOLS = [
+    { key: 'mcncuenta',   label: 'mcncuenta',   req: true,  type: 'text', w: '120px' },
+    { key: 'mcnccosto',   label: 'mcnccosto',   req: false, type: 'text', w: '100px' },
+    { key: 'ctanombre',   label: 'ctanombre',   req: true,  type: 'text', w: '220px' },
+    { key: 'mcnfecha',    label: 'mcnfecha',    req: true,  type: 'text', w: '120px', ph: '2025-01-01' },
+    { key: 'valor',       label: 'valor',       req: true,  type: 'num',  w: '120px' },
+    { key: 'total_anual', label: 'total_anual', req: false, type: 'num',  w: '120px' },
+  ];
+
+  const INIT_ROWS = 30;
+  let dRows = [];
+  let dValidRows = [];
+
+  function buildHeaders() {
+    const headTr = document.getElementById('directaGridHead');
+    DCOLS.forEach(col => {
+      const th = document.createElement('th');
+      th.style.minWidth = col.w;
+      th.style.width    = col.w;
+      if (col.type === 'num') th.style.textAlign = 'right';
+      th.innerHTML = col.label + (col.req ? ' <span style="color:var(--danger);font-weight:700;">*</span>' : '');
+      headTr.appendChild(th);
+    });
+  }
+
+  function buildRows(n) {
+    const body  = document.getElementById('directaGridBody');
+    const start = dRows.length;
+
+    for (let i = start; i < start + n; i++) {
+      const row = Object.fromEntries(DCOLS.map(c => [c.key, '']));
+      dRows.push(row);
+
+      const tr = document.createElement('tr');
+      tr.dataset.idx = i;
+
+      const numTd = document.createElement('td');
+      numTd.style.cssText = 'text-align:center;font-size:11px;color:var(--muted);'
+        + 'background:#f1f3f6;border-right:2px solid var(--border2);'
+        + 'position:sticky;left:0;z-index:1;padding:3px 6px;user-select:none;';
+      numTd.textContent = i + 1;
+      tr.appendChild(numTd);
+
+      DCOLS.forEach((col, ci) => {
+        const td = document.createElement('td');
+        td.style.padding = '0';
+        td.style.borderRight = '1px solid var(--border)';
+
+        const inp = document.createElement('input');
+        inp.type        = 'text';
+        inp.placeholder = col.ph || '';
+        inp.dataset.row = i;
+        inp.dataset.col = col.key;
+        inp.style.cssText =
+          'border:none;outline:none;background:transparent;width:100%;'
+          + 'padding:5px 8px;font-size:12.5px;font-family:inherit;color:var(--text);'
+          + (col.type === 'num' ? 'text-align:right;font-variant-numeric:tabular-nums;' : '');
+
+        inp.addEventListener('focus', () => {
+          inp.style.background = 'rgba(37,99,235,.06)';
+          inp.style.boxShadow  = 'inset 0 0 0 2px var(--accent)';
+          inp.style.borderRadius = '3px';
+        });
+        inp.addEventListener('blur', () => {
+          inp.style.background  = '';
+          inp.style.boxShadow   = '';
+          inp.style.borderRadius = '';
+        });
+        inp.addEventListener('input', () => {
+          dRows[i][col.key] = inp.value;
+          updateRowCount();
+        });
+        inp.addEventListener('keydown', e => handleDNav(e, i, ci));
+        inp.addEventListener('paste',   e => handleDPaste(e, i, ci));
+
+        td.appendChild(inp);
+        tr.appendChild(td);
+      });
+
+      body.appendChild(tr);
+    }
+    updateRowCount();
+  }
+
+  function getDInput(ri, ci) {
+    return document.querySelector(
+      `#directaGrid [data-row="${ri}"][data-col="${DCOLS[ci].key}"]`
+    );
+  }
+
+  function handleDNav(e, ri, ci) {
+    const inp = e.target;
+    switch (e.key) {
+      case 'Tab':
+        e.preventDefault();
+        if (!e.shiftKey) {
+          if (ci + 1 < DCOLS.length)      getDInput(ri, ci + 1)?.focus();
+          else if (ri + 1 < dRows.length) getDInput(ri + 1, 0)?.focus();
+        } else {
+          if (ci > 0)      getDInput(ri, ci - 1)?.focus();
+          else if (ri > 0) getDInput(ri - 1, DCOLS.length - 1)?.focus();
+        }
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (ri + 1 < dRows.length) getDInput(ri + 1, ci)?.focus();
+        break;
+      case 'ArrowDown':
+        if (ri + 1 < dRows.length) { e.preventDefault(); getDInput(ri + 1, ci)?.focus(); }
+        break;
+      case 'ArrowUp':
+        if (ri > 0) { e.preventDefault(); getDInput(ri - 1, ci)?.focus(); }
+        break;
+      case 'ArrowRight':
+        if (inp.selectionStart === inp.value.length && ci + 1 < DCOLS.length) {
+          e.preventDefault(); getDInput(ri, ci + 1)?.focus();
+        }
+        break;
+      case 'ArrowLeft':
+        if (inp.selectionStart === 0 && ci > 0) {
+          e.preventDefault(); getDInput(ri, ci - 1)?.focus();
+        }
+        break;
+    }
+  }
+
+  function handleDPaste(e, startRow, startCol) {
+    const text = (e.clipboardData || window.clipboardData).getData('text');
+    if (!text.includes('\t') && !text.includes('\n')) return;
+    e.preventDefault();
+
+    const sep   = text.includes('\t') ? '\t' : (text.includes(';') ? ';' : ',');
+    const lines = text.split('\n').map(l => l.replace(/\r/g, '')).filter(l => l.trim() !== '');
+
+    const needed = startRow + lines.length;
+    if (needed > dRows.length) buildRows(needed - dRows.length);
+
+    lines.forEach((line, li) => {
+      const ri   = startRow + li;
+      const vals = line.split(sep);
+      vals.forEach((val, vi) => {
+        const ci = startCol + vi;
+        if (ci >= DCOLS.length) return;
+        const cleaned = val.trim();
+        dRows[ri][DCOLS[ci].key] = cleaned;
+        const inp = getDInput(ri, ci);
+        if (inp) { inp.value = cleaned; inp.style.background = ''; }
+      });
+      document.querySelector(`#directaGridBody tr[data-idx="${ri}"]`)
+        ?.style.setProperty('background', '');
+    });
+
+    updateRowCount();
+  }
+
+  function updateRowCount() {
+    const withData = dRows.filter(r => DCOLS.some(c => r[c.key].trim() !== '')).length;
+    document.getElementById('directaRowCount').textContent =
+      `${dRows.length} filas · ${withData} con datos`;
+  }
+
+  function validateDirecta() {
+    const statusEl = document.getElementById('directaStatusBadges');
+    statusEl.innerHTML = '';
+
+    document.querySelectorAll('#directaGridBody tr').forEach(tr => { tr.style.background = ''; });
+    document.querySelectorAll('#directaGrid input').forEach(inp => { inp.style.background = ''; });
+
+    let valid = 0, errCount = 0;
+    const result = [];
+
+    dRows.forEach((row, ri) => {
+      const hasData = DCOLS.some(c => row[c.key].trim() !== '');
+      if (!hasData) return;
+
+      const errs = [];
+      if (!row.mcncuenta.trim()) errs.push('mcncuenta vacío');
+      if (!row.ctanombre.trim()) errs.push('ctanombre vacío');
+
+      const fechaOk = /^\d{4}-\d{2}-\d{2}$/.test(row.mcnfecha.trim());
+      if (!fechaOk) errs.push('mcnfecha inválida');
+
+      const valorNum = cleanNum(row.valor);
+      if (valorNum === null && row.valor.trim() !== '') errs.push('valor no numérico');
+
+      const tr = document.querySelector(`#directaGridBody tr[data-idx="${ri}"]`);
+
+      if (errs.length) {
+        errCount++;
+        if (tr) tr.style.background = 'rgba(220,38,38,.05)';
+        if (!row.mcncuenta.trim()) {
+          const inp = getDInput(ri, 0); if (inp) inp.style.background = 'rgba(220,38,38,.15)';
+        }
+        if (!row.ctanombre.trim()) {
+          const inp = getDInput(ri, 2); if (inp) inp.style.background = 'rgba(220,38,38,.15)';
+        }
+        if (!fechaOk) {
+          const inp = getDInput(ri, 3); if (inp) inp.style.background = 'rgba(220,38,38,.15)';
+        }
+        if (valorNum === null && row.valor.trim() !== '') {
+          const inp = getDInput(ri, 4); if (inp) inp.style.background = 'rgba(220,38,38,.15)';
+        }
+      } else {
+        valid++;
+        result.push({
+          mcncuenta:   row.mcncuenta.trim(),
+          mcnccosto:   row.mcnccosto.trim() || '0',
+          ctanombre:   row.ctanombre.trim(),
+          mcnfecha:    row.mcnfecha.trim(),
+          valor:       valorNum,
+          total_anual: cleanNum(row.total_anual),
+        });
+      }
+    });
+
+    function mkBadge(cls, txt) {
+      const b = document.createElement('span');
+      b.className = 'badge ' + cls;
+      b.textContent = txt;
+      statusEl.appendChild(b);
+    }
+    if (valid)    mkBadge('badge-ok',  `✓ ${valid} filas válidas`);
+    if (errCount) mkBadge('badge-err', `⚠ ${errCount} con errores`);
+    if (!valid && !errCount) mkBadge('badge-info', 'Sin datos para validar');
+
+    dValidRows = result;
+    document.getElementById('btnDirectaCargar').disabled = valid === 0;
+    document.getElementById('directaValidCount').textContent = valid ? `(${valid})` : '';
+
+    return result;
+  }
+
+  function clearTable() {
+    if (!confirm('¿Limpiar toda la tabla?')) return;
+    dRows = []; dValidRows = [];
+    document.getElementById('directaGridBody').innerHTML = '';
+    document.getElementById('directaStatusBadges').innerHTML = '';
+    document.getElementById('btnDirectaCargar').disabled = true;
+    document.getElementById('directaValidCount').textContent = '';
+    buildRows(INIT_ROWS);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    buildHeaders();
+    buildRows(INIT_ROWS);
+
+    document.getElementById('btnDirectaAddRows').addEventListener('click', () => {
+      const n = parseInt(document.getElementById('directaNumRows').value, 10) || 10;
+      buildRows(n);
+    });
+    document.getElementById('btnDirectaClear').addEventListener('click', clearTable);
+    document.getElementById('btnDirectaValidar').addEventListener('click', validateDirecta);
+
+    document.getElementById('btnDirectaCargar').addEventListener('click', () => {
+      if (!dValidRows.length) return;
+      const { sede, origen } = getSedeOrigen('Directa');
+      if (!validarSedeOrigen(sede, origen, 'Directa')) return;
+
+      enviarRegistros(
+        dValidRows, sede, origen,
+        document.getElementById('directaProgressFill'),
+        document.getElementById('directaProgressLabel'),
+        document.getElementById('directaProgressWrap'),
+        document.getElementById('btnDirectaCargar')
+      );
+    });
+
+    bindCheckboxSinAsignar('chkSinSedeDirecta',   'selectSedeDirecta');
+    bindCheckboxSinAsignar('chkSinOrigenDirecta', 'selectOrigenDirecta');
+  });
+
+  /* ══════════════════════════════════════════════
+     FORMATO B — meses horizontales
+  ══════════════════════════════════════════════ */
+  (function () {
+
+    const MESES_LABELS = [
+      'enero','febrero','marzo','abril','mayo','junio',
+      'julio','agosto','septiembre','octubre','noviembre','diciembre'
+    ];
+
+    const DCOLSB = [
+      { key: 'mcncuenta',   label: 'cuenta',        req: true,  type: 'text', w: '110px' },
+      { key: 'mcnccosto',   label: 'centro costo',  req: false, type: 'text', w: '100px' },
+      { key: 'ctanombre',   label: 'nombre cuenta', req: true,  type: 'text', w: '200px' },
+      ...MESES_LABELS.map(m => ({ key: m, label: m, req: false, type: 'num', w: '90px' })),
+      { key: 'total_anual', label: 'total (auto)',  req: false, type: 'num',  w: '120px' },
+    ];
+
+    /* Último índice editable (excluye la columna calculada) */
+    const LAST_EDITABLE = DCOLSB.length - 2;
+
+    const INIT_ROWS_B = 20;
+    let dRowsB      = [];
+    let dValidRowsB = [];
+
+    function buildHeadersB() {
+      const headTr = document.getElementById('directaBGridHead');
+      DCOLSB.forEach(col => {
+        const th = document.createElement('th');
+        th.style.minWidth = col.w;
+        th.style.width    = col.w;
+        if (col.type === 'num') th.style.textAlign = 'right';
+        if (MESES_LABELS.includes(col.key)) {
+          th.style.background = '#f0edff';
+          th.style.color = '#5b21b6';
+        }
+        if (col.key === 'total_anual') {
+          th.style.background = '#e8eaee';
+          th.title = 'Suma automática de enero…diciembre';
+        }
+        th.innerHTML = col.label + (col.req ? ' <span style="color:var(--danger);font-weight:700;">*</span>' : '');
+        headTr.appendChild(th);
+      });
+    }
+
+    /* ── Recalcular el total de una fila ── */
+    function recalcTotalB(ri) {
+      if (!dRowsB[ri]) return;
+      const conDato = MESES_LABELS.some(m => String(dRowsB[ri][m] ?? '').trim() !== '');
+      const suma    = MESES_LABELS.reduce((acc, m) => acc + (cleanNum(dRowsB[ri][m]) || 0), 0);
+
+      dRowsB[ri].total_anual = conDato ? String(suma) : '';
+
+      const inp = document.querySelector(
+        `#directaBGrid [data-row="${ri}"][data-col="total_anual"]`
+      );
+      if (inp) inp.value = conDato ? fmtN(suma) : '';
+    }
+
+    function buildRowsB(n) {
+      const body  = document.getElementById('directaBGridBody');
+      const start = dRowsB.length;
+
+      for (let i = start; i < start + n; i++) {
+        const row = Object.fromEntries(DCOLSB.map(c => [c.key, '']));
+        dRowsB.push(row);
+
+        const tr = document.createElement('tr');
+        tr.dataset.idx = i;
+
+        const numTd = document.createElement('td');
+        numTd.style.cssText = 'text-align:center;font-size:11px;color:var(--muted);'
+          + 'background:#f1f3f6;border-right:2px solid var(--border2);'
+          + 'position:sticky;left:0;z-index:1;padding:3px 6px;user-select:none;';
+        numTd.textContent = i + 1;
+        tr.appendChild(numTd);
+
+        DCOLSB.forEach((col, ci) => {
+          const esTotal = col.key === 'total_anual';
+
+          const td = document.createElement('td');
+          td.style.padding = '0';
+          td.style.borderRight = '1px solid var(--border)';
+          if (MESES_LABELS.includes(col.key)) td.style.background = '#faf8ff';
+          if (esTotal)                        td.style.background = '#f1f3f6';
+
+          const inp = document.createElement('input');
+          inp.type        = 'text';
+          inp.dataset.row = i;
+          inp.dataset.col = col.key;
+          inp.style.cssText =
+            'border:none;outline:none;background:transparent;width:100%;'
+            + 'padding:5px 8px;font-size:12.5px;font-family:inherit;color:var(--text);'
+            + (col.type === 'num' ? 'text-align:right;font-variant-numeric:tabular-nums;' : '');
+
+          if (esTotal) {
+            /* Columna calculada: bloqueada */
+            inp.readOnly = true;
+            inp.tabIndex = -1;
+            inp.title    = 'Suma automática de enero…diciembre';
+            inp.style.color      = 'var(--muted)';
+            inp.style.fontWeight = '600';
+            inp.style.cursor     = 'not-allowed';
+            inp.addEventListener('mousedown', e => e.preventDefault());
+          } else {
+            inp.addEventListener('focus', () => {
+              inp.style.background = 'rgba(124,58,237,.06)';
+              inp.style.boxShadow  = 'inset 0 0 0 2px #7c3aed';
+              inp.style.borderRadius = '3px';
+            });
+            inp.addEventListener('blur', () => {
+              inp.style.background  = '';
+              inp.style.boxShadow   = '';
+              inp.style.borderRadius = '';
+            });
+            inp.addEventListener('input', () => {
+              dRowsB[i][col.key] = inp.value;
+              if (MESES_LABELS.includes(col.key)) recalcTotalB(i);
+              updateRowCountB();
+            });
+            inp.addEventListener('keydown', e => handleDNavB(e, i, ci));
+            inp.addEventListener('paste',   e => handleDPasteB(e, i, ci));
+          }
+
+          td.appendChild(inp);
+          tr.appendChild(td);
+        });
+
+        body.appendChild(tr);
+      }
+      updateRowCountB();
+    }
+
+    function getDInputB(ri, ci) {
+      return document.querySelector(
+        `#directaBGrid [data-row="${ri}"][data-col="${DCOLSB[ci].key}"]`
+      );
+    }
+
+    function handleDNavB(e, ri, ci) {
+      const inp = e.target;
+      switch (e.key) {
+        case 'Tab':
+          e.preventDefault();
+          if (!e.shiftKey) {
+            if (ci < LAST_EDITABLE)          getDInputB(ri, ci + 1)?.focus();
+            else if (ri + 1 < dRowsB.length) getDInputB(ri + 1, 0)?.focus();
+          } else {
+            if (ci > 0)      getDInputB(ri, ci - 1)?.focus();
+            else if (ri > 0) getDInputB(ri - 1, LAST_EDITABLE)?.focus();
+          }
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (ri + 1 < dRowsB.length) getDInputB(ri + 1, ci)?.focus();
+          break;
+        case 'ArrowDown':
+          if (ri + 1 < dRowsB.length) { e.preventDefault(); getDInputB(ri + 1, ci)?.focus(); }
+          break;
+        case 'ArrowUp':
+          if (ri > 0) { e.preventDefault(); getDInputB(ri - 1, ci)?.focus(); }
+          break;
+        case 'ArrowRight':
+          if (inp.selectionStart === inp.value.length && ci < LAST_EDITABLE) {
+            e.preventDefault(); getDInputB(ri, ci + 1)?.focus();
+          }
+          break;
+        case 'ArrowLeft':
+          if (inp.selectionStart === 0 && ci > 0) {
+            e.preventDefault(); getDInputB(ri, ci - 1)?.focus();
+          }
+          break;
+      }
+    }
+
+    function handleDPasteB(e, startRow, startCol) {
+      const text = (e.clipboardData || window.clipboardData).getData('text');
+      if (!text.includes('\t') && !text.includes('\n')) return;
+      e.preventDefault();
+
+      const sep   = text.includes('\t') ? '\t' : (text.includes(';') ? ';' : ',');
+      const lines = text.split('\n').map(l => l.replace(/\r/g, '')).filter(l => l.trim() !== '');
+
+      const needed = startRow + lines.length;
+      if (needed > dRowsB.length) buildRowsB(needed - dRowsB.length);
+
+      lines.forEach((line, li) => {
+        const ri   = startRow + li;
+        const vals = line.split(sep);
+        vals.forEach((val, vi) => {
+          const ci = startCol + vi;
+          if (ci >= DCOLSB.length) return;
+          if (DCOLSB[ci].key === 'total_anual') return;   // calculada: se ignora
+          const cleaned = val.trim();
+          dRowsB[ri][DCOLSB[ci].key] = cleaned;
+          const inp = getDInputB(ri, ci);
+          if (inp) { inp.value = cleaned; inp.style.background = ''; }
+        });
+        recalcTotalB(ri);
+      });
+      updateRowCountB();
+    }
+
+    function updateRowCountB() {
+      const withData = dRowsB.filter(r => DCOLSB.some(c => r[c.key].trim() !== '')).length;
+      document.getElementById('directaBRowCount').textContent =
+        `${dRowsB.length} filas · ${withData} con datos`;
+    }
+
+    /* ── Validar y expandir a filas Formato A ── */
+    function validateDirectaB() {
+      const statusEl = document.getElementById('directaBStatusBadges');
+      statusEl.innerHTML = '';
+      const anio = parseInt(document.getElementById('directaBAnio').value, 10) || 2025;
+
+      document.querySelectorAll('#directaBGridBody tr').forEach(tr => { tr.style.background = ''; });
+      document.querySelectorAll('#directaBGrid input').forEach(inp => {
+        if (inp.dataset.col !== 'total_anual') inp.style.background = '';
+      });
+
+      let valid = 0, errCount = 0;
+      const result = [];
+
+      dRowsB.forEach((row, ri) => {
+        const hasData = DCOLSB.some(c => row[c.key].trim() !== '');
+        if (!hasData) return;
+
+        const errs = [];
+        if (!row.mcncuenta.trim()) errs.push('cuenta vacía');
+        if (!row.ctanombre.trim()) errs.push('nombre vacío');
+
+        const trEl = document.querySelector(`#directaBGridBody tr[data-idx="${ri}"]`);
+
+        if (errs.length) {
+          errCount++;
+          if (trEl) trEl.style.background = 'rgba(220,38,38,.05)';
+          if (!row.mcncuenta.trim()) {
+            const inp = getDInputB(ri, 0); if (inp) inp.style.background = 'rgba(220,38,38,.15)';
+          }
+          if (!row.ctanombre.trim()) {
+            const inp = getDInputB(ri, 2); if (inp) inp.style.background = 'rgba(220,38,38,.15)';
+          }
+          return;
+        }
+
+        /* El total enviado es siempre el calculado */
+        recalcTotalB(ri);
+        const totalCalculado = cleanNum(row.total_anual);
+
+        let hasMes = false;
+        MESES_LABELS.forEach((mes, idx) => {
+          const raw   = row[mes].trim();
+          const valor = cleanNum(raw);
+          if (raw !== '') {
+            hasMes = true;
+            result.push({
+              mcncuenta:   row.mcncuenta.trim(),
+              mcnccosto:   row.mcnccosto.trim() || '0',
+              ctanombre:   row.ctanombre.trim(),
+              mcnfecha:    padFecha(anio, idx + 1),
+              valor:       valor !== null ? valor : 0,
+              total_anual: totalCalculado,
+            });
+          }
+        });
+
+        if (hasMes) valid++;
+      });
+
+      function mkBadge(cls, txt) {
+        const b = document.createElement('span');
+        b.className = 'badge ' + cls;
+        b.textContent = txt;
+        statusEl.appendChild(b);
+      }
+      if (valid)    mkBadge('badge-ok',  `✓ ${valid} cuentas · ${result.length} registros mensuales`);
+      if (errCount) mkBadge('badge-err', `⚠ ${errCount} filas con errores`);
+      if (!valid && !errCount) mkBadge('badge-info', 'Sin datos para validar');
+
+      dValidRowsB = result;
+      document.getElementById('btnDirectaBCargar').disabled = result.length === 0;
+      document.getElementById('directaBValidCount').textContent =
+        result.length ? `(${result.length} registros)` : '';
+
+      return result;
+    }
+
+    function clearTableB() {
+      if (!confirm('¿Limpiar la tabla Formato B?')) return;
+      dRowsB = []; dValidRowsB = [];
+      document.getElementById('directaBGridBody').innerHTML = '';
+      document.getElementById('directaBStatusBadges').innerHTML = '';
+      document.getElementById('btnDirectaBCargar').disabled = true;
+      document.getElementById('directaBValidCount').textContent = '';
+      buildRowsB(INIT_ROWS_B);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      buildHeadersB();
+      buildRowsB(INIT_ROWS_B);
+
+      document.getElementById('btnDirectaBAddRows').addEventListener('click', () => {
+        const n = parseInt(document.getElementById('directaBNumRows').value, 10) || 10;
+        buildRowsB(n);
+      });
+      document.getElementById('btnDirectaBClear').addEventListener('click', clearTableB);
+      document.getElementById('btnDirectaBValidar').addEventListener('click', validateDirectaB);
+
+      document.getElementById('btnDirectaBCargar').addEventListener('click', () => {
+        if (!dValidRowsB.length) return;
+        const sede   = document.getElementById('selectSedeDirectaB').value;
+        const origen = document.getElementById('selectOrigenDirectaB').value;
+        const chkS   = document.getElementById('chkSinSedeDirectaB');
+        const chkO   = document.getElementById('chkSinOrigenDirectaB');
+        if (!sede   && !chkS?.checked) { toast('Selecciona una sede o marca "Sin sede"',    'warn'); return; }
+        if (!origen && !chkO?.checked) { toast('Selecciona un origen o marca "Sin origen"', 'warn'); return; }
+
+        enviarRegistros(
+          dValidRowsB, sede, origen,
+          document.getElementById('directaBProgressFill'),
+          document.getElementById('directaBProgressLabel'),
+          document.getElementById('directaBProgressWrap'),
+          document.getElementById('btnDirectaBCargar')
+        );
+      });
+
+      bindCheckboxSinAsignar('chkSinSedeDirectaB',   'selectSedeDirectaB');
+      bindCheckboxSinAsignar('chkSinOrigenDirectaB', 'selectOrigenDirectaB');
+    });
+
+  })(); /* /Formato B */
+
+})(); /* /Tabla Directa */
 </script>
 {% endblock %}
 {% endblock %}

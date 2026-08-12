@@ -5,22 +5,26 @@ urlpatterns = [
     path('dashboard/', views.dashboard_home, name='dashboardPresupuesto'), 
     path('cuenta5/', views.cuenta5, name='cuenta5'),
     path('obtener-cuenta5-base/', views.obtener_cuenta5_base, name='obtener_cuenta5_base'),
-    # path('cargar-cuenta5-base/', views.cargar_cuenta5_base, name='cargar_cuenta5_base'),
     path("subir_excel_cuenta5/", views.subir_excel_cuenta5, name="subir_excel_cuenta5"),
     path("borrar_cuenta5_base/", views.borrar_cuenta5_base, name="borrar_cuenta5_base"),
-    
     # OBTENER, SUBIR Y BORRAR PRESUPUESTO CONSOLIDADO
-    path('obtener-cuenta5-presupuestado/', views.obtener_cuenta5_presupuestado, name='obtener_cuenta5_presupuestado'),
     path("subir_excel_cuenta5_presupuestado/", views.subir_excel_cuenta5_presupuestado, name="subir_excel_cuenta5_presupuestado"),
-    path("borrar_cuenta5_presupuestado/", views.borrar_cuenta5_presupuestado, name="borrar_cuenta5_presupuestado"),
-    
-    
-    # cuenta 5 y consolidado presupuestado -------------------------------------------------------
     path('cuenta5-presupuestado/', views.cuenta5_presupuestado, name='cuenta5_presupuestado'),
     path('obtener-cuenta5-presupuestado/', views.obtener_cuenta5_presupuestado, name='obtener_cuenta5_presupuestado'),
+    path("borrar_cuenta5_presupuestado/", views.borrar_cuenta5_presupuestado, name="borrar_cuenta5_presupuestado"),
+    
+    # obtener y subir cuenta 4 base
+    path('cuenta4/', views.cuenta4, name='cuenta4'),
+    path('obtener-cuenta4-base/', views.obtener_cuenta4_base, name='obtener_cuenta4_base'),
+    path("subir_excel_cuenta4/", views.subir_excel_cuenta4, name="subir_excel_cuenta4"),
+    path("borrar_cuenta4_base/", views.borrar_cuenta4_base, name="borrar_cuenta4_base"),
+    # obtener y subir cuenta 4 presupuestado
+    path('cuenta4-presupuestado/', views.cuenta4_presupuestado, name='cuenta4_presupuestado'),
+    path('obtener-cuenta4-presupuestado/', views.obtener_cuenta4_presupuestado, name='obtener_cuenta4_presupuestado'),
+    path("subir_excel_cuenta4_presupuestado/", views.subir_excel_cuenta4_presupuestado, name="subir_excel_cuenta4_presupuestado"),
+    path("borrar_cuenta4_presupuestado/", views.borrar_cuenta4_presupuestado, name="borrar_cuenta4_presupuestado"),
     
     path('exportar-excel-presupuestos/', views.exportar_excel_presupuestos, name='exportar_excel_presupuestos'),
-    
     path("exportar-excel/", views.exportar_excel_nomina, name="exportar_excel"),
     path('exportar-nomina-vertical/', views.exportar_nomina_vertical, name='exportar_nomina_vertical'),
     path('presupuesto-ventas/', views.base_comercial, name='baseComercial'), 
@@ -288,6 +292,13 @@ urlpatterns = [
     #----CUENTAS CONTABLES---------
     path('seleccion-cuentas-contables/', views.seleccion_cuentas_contables, name='seleccionCuentasContables'),
     
+    # ── Ajustes: orden de cuentas ──
+    path('ajustes/orden-cuentas/', views.ajustes_orden_cuentas, name='ajustes_orden_cuentas'),
+    path('ajustes/orden-cuentas/listar/', views.listar_orden_cuentas, name='listar_orden_cuentas'),
+    path('ajustes/orden-cuentas/sincronizar/', views.sincronizar_orden_cuentas, name='sincronizar_orden_cuentas'),
+    path('ajustes/orden-cuentas/guardar/', views.guardar_orden_cuentas, name='guardar_orden_cuentas'),
+    path('ajustes/orden-cuentas/eliminar/', views.eliminar_orden_cuenta, name='eliminar_orden_cuenta'),
+    
     # -------------- PRESUPUESTO POR SEDE (genérico, escalable) --------------
     # Para agregar Buga/Cartago/Cali: solo agrega su entrada en SEDE_CONFIG
     # (views_presupuesto_sedes.py). Estas 9 rutas les sirven automáticamente.
@@ -302,32 +313,21 @@ urlpatterns = [
     path('presupuesto/<str:sede>/subir/', views.subir_presupuesto_sede, name='subir_presupuesto_sede'),
     path('presupuesto/<str:sede>/borrar/', views.borrar_presupuesto_sede, name='borrar_presupuesto_sede'),
     
-    
-    # consolidado general
-    path('consolidado-tulua/', views.consolidado_tulua, name='consolidado_tulua'),
-    path('consolidado-buga/', views.consolidado_buga, name='consolidado_buga'),
-    path('consolidado-cartago/', views.consolidado_cartago, name='consolidado_cartago'),
-    path('consolidado-cali/', views.consolidado_cali, name='consolidado_cali'),
-    path('consolidado-total-base/', views.consolidado_total_base, name='consolidado_total_base'), 
+    # consolidado general 
     path('obtener-consolidado/', views.obtener_consolidado, name='obtener_consolidado'),
+    path('consolidado/general/', views.consolidado_general, name='consolidado_general'),
     
     # PRESUPUESTADO
-    path('presupuestado-tulua/', views.presupuestado_tulua, name='presupuestado_tulua'),
-    path('presupuestado-buga/', views.presupuestado_buga, name='presupuestado_buga'),
-    path('presupuestado-cartago/', views.presupuestado_cartago, name='presupuestado_cartago'),
-    path('presupuestado-cali/', views.presupuestado_cali, name='presupuestado_cali'),
-    path('presupuestado-total-base/', views.presupuestado_total_base, name='presupuestado_total_base'), 
     path('obtener-presupuestado/', views.obtener_presupuestado, name='obtener_presupuestado'),
+    path('presupuestado/general/', views.presupuestado_general, name='presupuestado_general'),
     
-    path('guardar-fila-consolidado/', views.guardar_fila_consolidado, name='guardar_fila_consolidado'),
-    path('eliminar-fila-consolidado/', views.eliminar_fila_consolidado, name='eliminar_fila_consolidado'),
+    # TABLA DINAMICA ------------------------------
     path('obtener-valores-filtros/', views.obtener_valores_filtros, name='obtener_valores_filtros'),
     path('obtener-tabla-dinamica-flexible/', views.obtener_tabla_dinamica_flexible, name='obtener_tabla_dinamica_flexible'),
     path('tabla-dinamica/', views.tabla_dinamica_view, name='tabla_dinamica'),
     path('obtener-registros-detalle/', views.obtener_registros_detalle,  name='obtener_registros_detalle'),
     path('editar-registro/<int:registro_id>/', views.editar_registro, name='editar_registro'),
     path('eliminar-registro/<int:registro_id>/', views.eliminar_registro, name='eliminar_registro'),
-    
     path('obtener-registros-nivel/',  views.obtener_registros_nivel,  name='obtener_registros_nivel'),
     path('renombrar-nivel/',          views.renombrar_nivel,           name='renombrar_nivel'),
     path('eliminar-nivel/', views.eliminar_nivel, name='eliminar_nivel'),
@@ -361,17 +361,18 @@ urlpatterns = [
         name='eliminar_fila_consolidado_total_base',
     ),
     
-    #COMPARATIVO 
-    path('comparativo-tulua/', views.comparativo_tulua, name='comparativo_tulua'),
-    path('comparativo-buga/', views.comparativo_buga, name='comparativo_buga'),
-    path('comparativo-cartago/', views.comparativo_cartago, name='comparativo_cartago'),
-    path('comparativo-cali/', views.comparativo_cali, name='comparativo_cali'),
-    path('comparativo-total/', views.comparativo_total, name='comparativo_total'),
+    # ── Comparativo general: 4 sedes + total, con comentarios ──
+    path('comparativo/general/', views.comparativo_general, name='comparativo_general'),
+ 
+    # ── Comentarios del comparativo (uno por sede + fila) ──
+    # IMPORTANTE: 'guardar/' debe ir ANTES que '<str:sede>/', si no Django
+    # matchea el patrón dinámico primero y toma "guardar" como si fuera
+    # el nombre de una sede (por eso daba 405 Method Not Allowed en el POST).
+    path('comparativo/comentarios/guardar/', views.guardar_comentario_comparativo,
+         name='guardar_comentario_comparativo'),
+    path('comparativo/comentarios/<str:sede>/', views.obtener_comentarios_comparativo,
+         name='obtener_comentarios_comparativo'),
     
-    # urls.py
-    path('cuenta5/editar/<int:pk>/', views.editar_cuenta5_base, name='editar_cuenta5_base'),
-    # path('cuenta5/eliminar/<int:pk>/', views.eliminar_cuenta5_base, name='eliminar_cuenta5_base'),
-    path('cuenta5/eliminar-bulk/', views.eliminar_bulk_cuenta5_base, name='eliminar_bulk_cuenta5_base'),
     #------------------PRESUPUESTO CONSOLIDADO---------------------------
     path('<str:area>/', views.presupuesto_consolidado, name='presupuesto_consolidado'),
     path('<str:area>/obtener-presupuesto-consolidado/', views.obtener_presupuesto_consolidado, name='obtener_presupuesto_consolidado'),

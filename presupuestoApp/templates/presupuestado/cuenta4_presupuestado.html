@@ -341,7 +341,7 @@
       </button>
       <input type="file" id="inputExcel" accept=".xlsx,.xls" style="display:none">
       <button class="c5-btn c5-btn-danger" id="btnBorrar">
-        &#128465; Borrar Cuenta 5 presupuestado
+        &#128465; Borrar Cuenta 4 presupuestado
       </button>
     </div>
   </div>
@@ -620,8 +620,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
-  const url_obtener_cuenta5_presupuestado = "{% url 'obtener_cuenta5_presupuestado' %}";
-  const url_borrar_cuenta5_presupuestado  = "{% url 'borrar_cuenta5_presupuestado' %}";
+  const url_obtener_cuenta4_presupuestado = "{% url 'obtener_cuenta4_presupuestado' %}";
+  const url_borrar_cuenta4_presupuestado  = "{% url 'borrar_cuenta4_presupuestado' %}";
 
   /* ═══════════════════════════════════════════════════
      MÓDULO: Filtros estilo Excel
@@ -850,7 +850,7 @@
     };
   })();
 </script>
-<script src="{% static 'js/cuenta5_presupuestado.js' %}"></script>
+<script src="{% static 'js/cuenta4_presupuestado.js' %}"></script>
 {% endblock %}
 
 {% endblock %}

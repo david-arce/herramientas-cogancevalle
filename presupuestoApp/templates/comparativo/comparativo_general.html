@@ -5,6 +5,26 @@
 <meta name="csrf-token" content="{{ csrf_token }}">
 <link rel="stylesheet" href="{% static 'css/consolidado_sedes.css' %}">
 <style>
+    /* ── Pestañas de sede ── */
+    .tabs-bar { display:flex; gap:.4rem; margin: .75rem 0 1rem; flex-wrap:wrap; }
+    .tab-btn {
+        padding: .45rem 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--c-border, #3c3c3c);
+        background: transparent;
+        color: var(--c-muted, #9a9aab);
+        cursor: pointer;
+        font-size: .85rem;
+        font-weight: 600;
+        transition: background .15s, color .15s, border-color .15s;
+    }
+    .tab-btn:hover { border-color: var(--c-accent, #6d6df6); color: var(--c-text, #f1f1f5); }
+    .tab-btn.active {
+        background: var(--c-accent, #6d6df6);
+        border-color: var(--c-accent, #6d6df6);
+        color: #fff;
+    }
+
     /* ── Sticky vertical: ambas filas del thead ── */
     .comparativo table thead tr.grp-row th {
         position: sticky;
@@ -25,7 +45,7 @@
     }
     .comparativo table thead tr.sub-row th.lbl { text-align: left; }
 
-    /* ── Sticky horizontal: columnas Cuenta y Nombre ── */
+    /* ── Sticky horizontal: Cuenta, Nombre y Comentarios ── */
     .comparativo table tr th.th-fixed,
     .comparativo table tr td.th-fixed {
         position: sticky;
@@ -34,9 +54,29 @@
     }
     .comparativo table tr .th-cuenta,
     .comparativo table tr .td-cuenta { left: 0; min-width: 90px; max-width: 90px; }
+
+    /* NOMBRE CUENTA: se corrige el desbordamiento — el texto ahora
+       hace salto de línea dentro de la celda en lugar de sobresalir. */
     .comparativo table tr .th-nombre,
-    .comparativo table tr .td-nombre { left: 90px; min-width: 200px; max-width: 200px;
-        box-shadow: 2px 0 6px -2px rgba(0,0,0,0.3); }
+    .comparativo table tr .td-nombre {
+        left: 90px;
+        min-width: 220px;
+        max-width: 220px;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        line-height: 1.3;
+        vertical-align: middle;
+        box-shadow: 2px 0 6px -2px rgba(0,0,0,0.3);
+    }
+
+    /* COMENTARIOS: última columna fija a la izquierda (siempre visible) */
+    .comparativo table tr .th-comentario,
+    .comparativo table tr .td-comentario {
+        min-width: 210px;
+        max-width: 210px;
+        border-left: 2px solid var(--c-border, #3c3c3c);
+    }
 
     /* Las celdas fijas en thead tienen z-index mayor */
     .comparativo table thead tr th.th-fixed { z-index: 4; }
@@ -51,6 +91,31 @@
     .comparativo td.pos { color: #1a7f37; }
     .comparativo td.neg { color: #c62828; }
     .comparativo td.dif { font-weight: 600; }
+
+    /* ── Comentarios: input + indicador de guardado ── */
+    .comentario-cell { display:flex; align-items:center; gap:.35rem; padding:.25rem .4rem; }
+    .comentario-input {
+        flex: 1;
+        min-width: 0;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        color: inherit;
+        font: inherit;
+        font-size: .78rem;
+        padding: .3rem .4rem;
+        transition: border-color .15s, background .15s;
+    }
+    .comentario-input:hover { border-color: var(--c-border, #3c3c3c); }
+    .comentario-input:focus {
+        outline: none;
+        border-color: var(--c-accent, #6d6df6);
+        background: rgba(255,255,255,0.03);
+    }
+    .comentario-estado { width: 14px; text-align:center; font-size:.75rem; flex-shrink:0; }
+    .comentario-estado.guardando { color: var(--c-muted, #9a9aab); }
+    .comentario-estado.guardado  { color: #1a7f37; }
+    .comentario-estado.error     { color: #c62828; }
 </style>
 {% endblock %}
 
@@ -60,7 +125,7 @@
     <!-- CABECERA -->
     <div class="consolidado-header">
         <div class="consolidado-title">
-            📊 Comparativo Consolidado vs Presupuestado <span>Tuluá</span>
+            📊 Comparativo Consolidado vs Presupuestado <span id="tituloSede">Tuluá</span>
         </div>
         <div class="controls-bar">
             <div class="search-box">
@@ -72,6 +137,15 @@
             <button class="btn btn-outline" id="recargarBtn">🔄 Recargar</button>
             <button class="btn btn-export"  id="exportarBtn">📥 Exportar CSV</button>
         </div>
+    </div>
+
+    <!-- PESTAÑAS: 4 sedes + total -->
+    <div class="tabs-bar" id="tabsBar">
+        <button class="tab-btn active" data-sede="tulua">Tuluá</button>
+        <button class="tab-btn" data-sede="buga">Buga</button>
+        <button class="tab-btn" data-sede="cartago">Cartago</button>
+        <button class="tab-btn" data-sede="cali">Cali</button>
+        <button class="tab-btn" data-sede="consolidado">Total</button>
     </div>
 
     <!-- STATS -->
@@ -101,6 +175,7 @@
                         <th class="th-fixed th-cuenta">CUENTA</th>
                         <th class="th-fixed th-nombre">NOMBRE CUENTA</th>
                         <th colspan="4" class="col-sep col-acum">Acumulado Año</th>
+                        <th class="th-comentario">COMENTARIOS</th>
                     </tr>
                     <tr class="sub-row" id="subRow">
                         <th class="th-fixed th-cuenta"></th>
@@ -109,10 +184,11 @@
                         <th class="col-acum" id="lbl-acum-p">Presupuestado</th>
                         <th class="col-acum">DIF</th>
                         <th class="col-acum">%</th>
+                        <th class="th-comentario"></th>
                     </tr>
                 </thead>
                 <tbody id="comparativoBody">
-                    <tr class="empty-row"><td colspan="54">⏳ Cargando datos...</td></tr>
+                    <tr class="empty-row"><td colspan="55">⏳ Cargando datos...</td></tr>
                 </tbody>
                 <tfoot id="comparativoFoot"></tfoot>
             </table>
@@ -128,16 +204,47 @@
 <script>
 /* ══════════════════════════════════════════════════════════════════
    CONFIGURACIÓN
-   - Cambia ANIO_C / ANIO_P si quieres que los encabezados de mes
-     muestren sufijos de año distintos (ej: "ene-25" / "ene-26").
-     Si el consolidado y el presupuestado son del MISMO año, deja
-     ambos strings vacíos ('') y solo se mostrará el nombre del mes.
 ══════════════════════════════════════════════════════════════════ */
 const ANIO_C = '-25';   // sufijo columna Consolidado
 const ANIO_P = '-26';   // sufijo columna Presupuestado
 
-const URL_CONSOLIDADO   = "{% url 'obtener_consolidado' %}?sede=tulua";
-const URL_PRESUPUESTADO = "{% url 'obtener_presupuestado' %}?sede=tulua";
+const URL_CONSOLIDADO_BASE   = "{% url 'obtener_consolidado' %}";
+const URL_PRESUPUESTADO_BASE = "{% url 'obtener_presupuestado' %}";
+const URL_GUARDAR_COMENTARIO = "{% url 'guardar_comentario_comparativo' %}";
+
+/* OJO: la clave de "todas las sedes" NO se llama igual en los dos
+   endpoints del backend:
+     SEDE_CONFIG_CONSOLIDADO   -> 'consolidado'
+     SEDE_CONFIG_PRESUPUESTADO -> 'presupuestado'
+   Si se manda ?sede=consolidado a obtener_presupuestado, el view
+   responde 400 "Sede inválida" y el lado presupuestado queda vacío.
+   Estas funciones traducen la sede de la pestaña a la clave que
+   espera cada endpoint. */
+function sedeParaConsolidado(sede) {
+    return sede === 'consolidado' ? 'consolidado' : sede;
+}
+function sedeParaPresupuestado(sede) {
+    return sede === 'consolidado' ? 'presupuestado' : sede;
+}
+
+// Los endpoints de comentarios llevan la sede en la URL, así que se
+// resuelven una vez por sede en el servidor (no se puede parametrizar
+// en JS puro porque la URL la arma Django).
+const URL_COMENTARIOS = {
+    tulua:       "{% url 'obtener_comentarios_comparativo' sede='tulua' %}",
+    buga:        "{% url 'obtener_comentarios_comparativo' sede='buga' %}",
+    cartago:     "{% url 'obtener_comentarios_comparativo' sede='cartago' %}",
+    cali:        "{% url 'obtener_comentarios_comparativo' sede='cali' %}",
+    consolidado: "{% url 'obtener_comentarios_comparativo' sede='consolidado' %}",
+};
+
+const SEDES = [
+    { key: 'tulua',       label: 'Tuluá' },
+    { key: 'buga',        label: 'Buga' },
+    { key: 'cartago',     label: 'Cartago' },
+    { key: 'cali',        label: 'Cali' },
+    { key: 'consolidado', label: 'Total' },
+];
 
 const MESES = [
     'Enero','Febrero','Marzo','Abril','Mayo','Junio',
@@ -152,8 +259,12 @@ const FMT = new Intl.NumberFormat('es-ES', { minimumFractionDigits:0, maximumFra
 function fmt(n){ if (n === 0 || n === null || n === undefined) return '-'; return FMT.format(n); }
 function fmtPct(n){ if (n === 0 || n === null || n === undefined || !isFinite(n)) return '-'; return n.toFixed(2) + '%'; }
 
-let datosConsolidado   = [];
-let datosPresupuestado = [];
+let sedeActual          = 'tulua';
+let datosConsolidado    = [];
+let datosPresupuestado  = [];
+let comentariosActuales = {};   // { fila_key: texto }
+const cache             = {};   // { sede: { consolidado, presupuestado, comentarios } }
+const timersGuardado    = {};   // debounce por fila_key
 
 /* ══════════════════════════════════════════════════════════════════
    TOAST
@@ -168,6 +279,16 @@ function showToast(msg, tipo = 'info') {
         div.classList.remove('show');
         setTimeout(() => div.remove(), 350);
     }, 4000);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CSRF (para el POST de guardado de comentarios)
+══════════════════════════════════════════════════════════════════ */
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta && meta.content) return meta.content;
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -295,8 +416,6 @@ function calcularPorcentajeExcedentes(data) {
     return fila;
 }
 
-// Mapa tipoTotal -> función para poder recalcular la MISMA fila total
-// pero sobre el dataset de presupuestado
 const CALCULADORAS_TOTAL = {
     'VentasNetas':            d => ({ ...calcularTotalesPorLista(d, ['1','2','41750201']) }),
     '54':                     d => calcularTotalesPorPrefijo(d, '54'),
@@ -315,11 +434,6 @@ const FILAS_PORCENTAJE = new Set([
     'PctUtilidadOperacional','PctExcedentes'
 ]);
 
-/* ══════════════════════════════════════════════════════════════════
-   construirFilas: idéntico a los dashboards individuales.
-   Se ejecuta SOLO sobre el dataset consolidado; ese resultado define
-   el orden y la estructura de filas de toda la tabla comparativa.
-══════════════════════════════════════════════════════════════════ */
 function construirFilas(data) {
     const totales54        = calcularTotalesPorPrefijo(data, '54');
     const totalesVN        = calcularTotalesPorLista(data, ['1','2','41750201']);
@@ -368,14 +482,6 @@ function construirFilas(data) {
     return resultado;
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   Dada la fila "consolidado" (que define la estructura), obtiene la
-   fila equivalente del lado "presupuestado":
-   - Si es una fila de totales (isTotalRow) -> se recalcula con la
-     función correspondiente sobre datosPresupuestado.
-   - Si es una fila de cuenta normal -> se busca por mcncuenta en
-     datosPresupuestado.
-══════════════════════════════════════════════════════════════════ */
 function obtenerFilaEquivalente(filaC, mapaPresupuestado) {
     if (filaC.isTotalRow) {
         const fn = CALCULADORAS_TOTAL[filaC.tipoTotal];
@@ -385,13 +491,21 @@ function obtenerFilaEquivalente(filaC, mapaPresupuestado) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   IDENTIFICADOR DE FILA PARA LOS COMENTARIOS
+   - Cuenta normal  -> su código (mcncuenta)
+   - Fila calculada -> su tipoTotal (VentasNetas, MargenBruto, ...)
+══════════════════════════════════════════════════════════════════ */
+function filaKeyDe(filaC) {
+    return String(filaC.mcncuenta || filaC.tipoTotal || '');
+}
+
+/* ══════════════════════════════════════════════════════════════════
    ENCABEZADOS (2 filas: nombre de mes + subcolumnas)
 ══════════════════════════════════════════════════════════════════ */
 function construirEncabezados() {
     const grpRow = document.getElementById('grpRow');
     const subRow = document.getElementById('subRow');
 
-    // Limpia los th de mes insertados previamente (deja Cuenta/Nombre y Acumulado)
     document.querySelectorAll('#grpRow th.mes-th').forEach(th => th.remove());
     document.querySelectorAll('#subRow th.mes-sub').forEach(th => th.remove());
 
@@ -415,13 +529,93 @@ function construirEncabezados() {
 
     document.getElementById('lbl-acum-c').textContent = 'Consol.' + ANIO_C;
     document.getElementById('lbl-acum-p').textContent = 'Presup.' + ANIO_P;
-    // Calcula top dinámico para sub-row
     requestAnimationFrame(() => {
         const alturaGrp = document.querySelector('thead tr.grp-row')?.offsetHeight || 35;
         document.querySelectorAll('thead tr.sub-row th').forEach(th => {
             th.style.top = alturaGrp + 'px';
         });
     });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   COMENTARIOS: celda editable + guardado automático
+══════════════════════════════════════════════════════════════════ */
+function crearCeldaComentario(filaKey, cuenta, nombre) {
+    const td = document.createElement('td');
+    td.className = 'td-comentario';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'comentario-cell';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'comentario-input';
+    input.placeholder = 'Agregar comentario...';
+    input.value = comentariosActuales[filaKey] || '';
+    input.title = input.value;
+
+    const estado = document.createElement('span');
+    estado.className = 'comentario-estado';
+
+    input.addEventListener('input', () => {
+        input.title = input.value;
+        clearTimeout(timersGuardado[filaKey]);
+        estado.textContent = '';
+        estado.className = 'comentario-estado';
+        timersGuardado[filaKey] = setTimeout(
+            () => guardarComentario(filaKey, input.value, cuenta, nombre, estado),
+            800
+        );
+    });
+    input.addEventListener('blur', () => {
+        clearTimeout(timersGuardado[filaKey]);
+        guardarComentario(filaKey, input.value, cuenta, nombre, estado);
+    });
+
+    wrap.appendChild(input);
+    wrap.appendChild(estado);
+    td.appendChild(wrap);
+    return td;
+}
+
+async function guardarComentario(filaKey, valor, cuenta, nombre, estadoEl) {
+    if (!filaKey) return;
+    if (comentariosActuales[filaKey] === valor) return; // sin cambios
+
+    estadoEl.textContent = '⏳';
+    estadoEl.className = 'comentario-estado guardando';
+    try {
+        const resp = await fetch(URL_GUARDAR_COMENTARIO, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken(),
+            },
+            body: JSON.stringify({
+                sede: sedeActual,
+                fila_key: filaKey,
+                comentario: valor,
+                mcncuenta: cuenta || '',
+                ctanombre: nombre || '',
+            }),
+        });
+        const json = await resp.json();
+        if (!resp.ok || !json.success) throw new Error(json.error || 'Error desconocido');
+
+        comentariosActuales[filaKey] = valor;
+        if (cache[sedeActual]) cache[sedeActual].comentarios[filaKey] = valor;
+
+        estadoEl.textContent = '✓';
+        estadoEl.className = 'comentario-estado guardado';
+        setTimeout(() => {
+            estadoEl.textContent = '';
+            estadoEl.className = 'comentario-estado';
+        }, 1500);
+    } catch (e) {
+        estadoEl.textContent = '✗';
+        estadoEl.className = 'comentario-estado error';
+        showToast('No se pudo guardar el comentario: ' + e.message, 'error');
+    }
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -468,7 +662,7 @@ function renderTabla() {
     tbody.innerHTML = '';
 
     if (!datosConsolidado.length && !datosPresupuestado.length) {
-        tbody.innerHTML = `<tr class="empty-row"><td colspan="54">Sin datos disponibles.</td></tr>`;
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="55">Sin datos disponibles.</td></tr>`;
         actualizarStats();
         return;
     }
@@ -479,6 +673,7 @@ function renderTabla() {
     filasC.forEach(filaC => {
         const filaP = obtenerFilaEquivalente(filaC, mapaPresupuestado);
         const esPct = FILAS_PORCENTAJE.has(filaC.tipoTotal);
+        const filaKey = filaKeyDe(filaC);
 
         const tr = document.createElement('tr');
         if (filaC.isTotalRow) tr.className = claseTotal(filaC.tipoTotal);
@@ -490,35 +685,37 @@ function renderTabla() {
         const tdNombre = document.createElement('td');
         tdNombre.className = 'th-fixed td-nombre';
         tdNombre.textContent = filaC.ctanombre || '';
+        tdNombre.title = filaC.ctanombre || '';
+
         tr.appendChild(tdCuenta);
         tr.appendChild(tdNombre);
 
-        MESES.forEach((mes, mesIdx) => {
+        MESES.forEach((mes) => {
             const valC = parseFloat(filaC[mes]) || 0;
             const valP = parseFloat(filaP[mes]) || 0;
             const dif  = valP - valC;
             const pct  = valC !== 0 ? (dif / valC) * 100 : 0;
 
             const tdC = celdaValor(valC, esPct);
-            tdC.classList.add('mes-sep');          // ← borde izquierdo en la 1ª celda de cada mes
+            tdC.classList.add('mes-sep');
             tr.appendChild(tdC);
             tr.appendChild(celdaValor(valP, esPct));
             tr.appendChild(celdaDif(dif, esPct));
             tr.appendChild(celdaPct(pct));
         });
 
-        // Acumulado — primera celda también lleva separador
         const totC = parseFloat(filaC.total) || 0;
         const totP = parseFloat(filaP.total) || 0;
         const totDif = totP - totC;
         const totPct = totC !== 0 ? (totDif / totC) * 100 : 0;
 
         const tdAcumC = celdaValor(totC, esPct);
-        tdAcumC.classList.add('mes-sep');           // ← borde antes del acumulado
+        tdAcumC.classList.add('mes-sep');
         tr.appendChild(tdAcumC);
         tr.appendChild(celdaValor(totP, esPct));
         tr.appendChild(celdaDif(totDif, esPct));
         tr.appendChild(celdaPct(totPct));
+        tr.appendChild(crearCeldaComentario(filaKey, filaC.mcncuenta, filaC.ctanombre));
 
         tbody.appendChild(tr);
     });
@@ -536,35 +733,75 @@ function actualizarStats() {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   CARGA DE DATOS
+   PESTAÑAS Y CARGA DE DATOS
 ══════════════════════════════════════════════════════════════════ */
-async function cargarDatos() {
+function actualizarTabsUI() {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.sede === sedeActual);
+    });
+    document.getElementById('tituloSede').textContent =
+        (SEDES.find(s => s.key === sedeActual) || {}).label || sedeActual;
+}
+
+async function cargarDatos(sede, forzar = false) {
+    sedeActual = sede;
+    actualizarTabsUI();
+
+    if (!forzar && cache[sede]) {
+        datosConsolidado    = cache[sede].consolidado;
+        datosPresupuestado  = cache[sede].presupuestado;
+        comentariosActuales = cache[sede].comentarios;
+        construirEncabezados();
+        renderTabla();
+        return;
+    }
+
     document.getElementById('loadingOverlay').classList.add('active');
     document.getElementById('comparativoBody').innerHTML =
-        `<tr class="empty-row"><td colspan="54">⏳ Cargando...</td></tr>`;
+        `<tr class="empty-row"><td colspan="55">⏳ Cargando...</td></tr>`;
+
     try {
-        const [respC, respP] = await Promise.all([
-            fetch(URL_CONSOLIDADO),
-            fetch(URL_PRESUPUESTADO)
+        const [respC, respP, respCom] = await Promise.all([
+            fetch(`${URL_CONSOLIDADO_BASE}?sede=${sedeParaConsolidado(sede)}`),
+            fetch(`${URL_PRESUPUESTADO_BASE}?sede=${sedeParaPresupuestado(sede)}`),
+            fetch(URL_COMENTARIOS[sede]),
         ]);
-        const [jsonC, jsonP] = await Promise.all([respC.json(), respP.json()]);
+        const [jsonC, jsonP, jsonCom] = await Promise.all([respC.json(), respP.json(), respCom.json()]);
 
-        if (jsonC.error) { showToast('Error consolidado: ' + jsonC.error, 'error'); }
-        if (jsonP.error) { showToast('Error presupuestado: ' + jsonP.error, 'error'); }
+        if (!respC.ok || jsonC.error)
+            showToast('Error consolidado: ' + (jsonC.error || respC.status), 'error');
+        if (!respP.ok || jsonP.error)
+            showToast('Error presupuestado: ' + (jsonP.error || respP.status), 'error');
+        if (!respCom.ok || jsonCom.error)
+            showToast('Error comentarios: ' + (jsonCom.error || respCom.status), 'error');
 
-        datosConsolidado   = jsonC.data || [];
-        datosPresupuestado = jsonP.data || [];
+        datosConsolidado    = jsonC.data || [];
+        datosPresupuestado  = jsonP.data || [];
+        comentariosActuales = jsonCom.data || {};
+
+        cache[sede] = {
+            consolidado: datosConsolidado,
+            presupuestado: datosPresupuestado,
+            comentarios: comentariosActuales,
+        };
 
         construirEncabezados();
         renderTabla();
     } catch (e) {
         showToast('Error al cargar datos: ' + e.message, 'error');
         document.getElementById('comparativoBody').innerHTML =
-            `<tr class="empty-row"><td colspan="54">❌ Error al cargar datos.</td></tr>`;
+            `<tr class="empty-row"><td colspan="55">❌ Error al cargar datos.</td></tr>`;
     } finally {
         document.getElementById('loadingOverlay').classList.remove('active');
     }
 }
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        if (btn.dataset.sede === sedeActual && cache[sedeActual]) return;
+        cargarDatos(btn.dataset.sede);
+    });
+});
 
 /* ══════════════════════════════════════════════════════════════════
    BÚSQUEDA GLOBAL
@@ -584,7 +821,12 @@ document.getElementById('globalSearch').addEventListener('input', aplicarBusqued
 /* ══════════════════════════════════════════════════════════════════
    RECARGAR / EXPORTAR
 ══════════════════════════════════════════════════════════════════ */
-document.getElementById('recargarBtn').addEventListener('click', cargarDatos);
+document.getElementById('recargarBtn').addEventListener('click', () => cargarDatos(sedeActual, true));
+
+function csvEscape(v) {
+    const s = String(v ?? '');
+    return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
 
 document.getElementById('exportarBtn').addEventListener('click', () => {
     if (!datosConsolidado.length && !datosPresupuestado.length) {
@@ -597,11 +839,12 @@ document.getElementById('exportarBtn').addEventListener('click', () => {
     MESES.forEach(m => headers.push(
         `${MESES_ABREV[m]}${ANIO_C}`, `${MESES_ABREV[m]}${ANIO_P}`, 'DIF', '%'
     ));
-    headers.push(`Acum${ANIO_C}`, `Acum${ANIO_P}`, 'DIF Acum', '% Acum');
+    headers.push(`Acum${ANIO_C}`, `Acum${ANIO_P}`, 'DIF Acum', '% Acum', 'Comentario');
 
     const rows = filasC.map(filaC => {
         const filaP = obtenerFilaEquivalente(filaC, mapaPresupuestado);
-        const row = [filaC.mcncuenta || '', filaC.ctanombre || ''];
+        const filaKey = filaKeyDe(filaC);
+        const row = [filaC.mcncuenta || '', filaC.ctanombre];
         MESES.forEach(mes => {
             const valC = parseFloat(filaC[mes]) || 0;
             const valP = parseFloat(filaP[mes]) || 0;
@@ -614,14 +857,15 @@ document.getElementById('exportarBtn').addEventListener('click', () => {
         const totDif = totP - totC;
         const totPct = totC !== 0 ? (totDif / totC) * 100 : 0;
         row.push(totC, totP, totDif, totPct.toFixed(2));
+        row.push(comentariosActuales[filaKey] || '');
         return row;
     });
 
-    const csv  = [headers, ...rows].map(r => r.join(';')).join('\n');
+    const csv  = [headers, ...rows].map(r => r.map(csvEscape).join(';')).join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const a    = document.createElement('a');
     a.href     = URL.createObjectURL(blob);
-    a.download = `comparativo_tulua_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `comparativo_${sedeActual}_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     showToast('📥 CSV exportado', 'success');
 });
@@ -629,7 +873,7 @@ document.getElementById('exportarBtn').addEventListener('click', () => {
 /* ══════════════════════════════════════════════════════════════════
    INIT
 ══════════════════════════════════════════════════════════════════ */
-cargarDatos();
+cargarDatos(sedeActual);
 </script>
 {% endblock %}
 {% endblock %}

@@ -1,4 +1,4 @@
-/* cuenta5.js — tabla HTML nativa, sin DataTables */
+/* cuenta4.js — tabla HTML nativa, sin DataTables */
 
 "use strict";
 
@@ -68,16 +68,13 @@ const COLUMNS = [
 const FILTER_COLS = ["mcncuenta", "mcnfecha", "mcnccosto", "mcndestino", "mcnzona", "ctanombre"];
 
 // ─── Estado global ────────────────────────────────────────────
-let allRows            = [];  // todos los registros cargados del servidor
-let filteredRows       = [];  // resultado tras búsqueda + filtros Excel
-let currentPage        = 1;
-let perPage            = 50;
-let sortCol            = null;
-let sortDir            = "asc";
-let searchQuery        = "";
-let pendingDeleteIndex = null;  // índice en filteredRows
-let pendingDeleteId    = null;  // pk de BD para llamada a la API
-let pendingEditIndex   = null;  // índice en filteredRows para el modal de edición
+let allRows          = [];  // todos los registros cargados del servidor
+let filteredRows     = [];  // resultado tras búsqueda + filtros Excel
+let currentPage      = 1;
+let perPage          = 50;
+let sortCol          = null;
+let sortDir          = "asc";
+let searchQuery      = "";
 
 // ─── Arranque ─────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
@@ -101,7 +98,7 @@ function loadData() {
   formData.append("length", 999999);
   formData.append("search[value]", "");
 
-  fetch(url_obtener_cuenta5_presupuestado, {
+  fetch(url_obtener_cuenta4_base, {
     method: "POST",
     headers: { "X-CSRFToken": getCookie("csrftoken") },
     body: formData,
@@ -109,7 +106,7 @@ function loadData() {
     .then(r => r.json())
     .then(json => {
       allRows = json.data || [];
-      feedFilterValues();
+      feedFilterValues();       // <── cargar valores únicos en los dropdowns
       applyFilterAndRender();
     })
     .catch(err => {
@@ -121,7 +118,9 @@ function loadData() {
 // ─── Alimentar valores únicos en el módulo C5Filters ──────────
 function feedFilterValues() {
   if (!window.C5Filters) return;
+
   FILTER_COLS.forEach(col => {
+    // Recoger todos los valores únicos no nulos de esa columna
     const unique = [...new Set(
       allRows
         .map(row => row[col])
@@ -135,9 +134,14 @@ function feedFilterValues() {
 // ─── Filtrar + ordenar + renderizar ───────────────────────────
 function applyFilterAndRender() {
   const q = searchQuery.trim().toLowerCase();
-  const excelFilters = window.C5Filters ? C5Filters.getParams() : {};
 
+  // 1. Obtener filtros Excel activos
+  const excelFilters = window.C5Filters ? C5Filters.getParams() : {};
+  // excelFilters = { mcncuenta: ["510506","510507"], mcnzona: ["NORTE"], ... }
+
+  // 2. Filtrar sobre allRows
   filteredRows = allRows.filter(row => {
+    // 2a. Búsqueda libre (searchInput)
     if (q) {
       const matchSearch = COLUMNS.some(col => {
         const v = row[col.key];
@@ -145,14 +149,18 @@ function applyFilterAndRender() {
       });
       if (!matchSearch) return false;
     }
+
+    // 2b. Filtros Excel — cada columna activa debe coincidir
     for (const [col, allowed] of Object.entries(excelFilters)) {
       if (!allowed || allowed.length === 0) continue;
       const cellVal = row[col] !== null && row[col] !== undefined ? String(row[col]) : "";
       if (!allowed.includes(cellVal)) return false;
     }
+
     return true;
   });
 
+  // 3. Ordenamiento
   if (sortCol !== null) {
     const col = COLUMNS[sortCol];
     filteredRows.sort((a, b) => {
@@ -174,7 +182,6 @@ function applyFilterAndRender() {
   renderTable();
   renderPagination();
   renderInfo();
-  updateBulkDeleteBtn();
 }
 
 // ─── Renderizar filas de la página actual ─────────────────────
@@ -201,35 +208,8 @@ function renderTable() {
     const chk = document.createElement("input");
     chk.type = "checkbox";
     chk.className = "row-check";
-    chk.dataset.id = row.id ?? "";
     tdCheck.appendChild(chk);
     tr.appendChild(tdCheck);
-
-    // Botones de acción: editar + eliminar
-    const tdAct = document.createElement("td");
-    tdAct.className = "c5-col-actions";
-
-    const btnEdit = document.createElement("button");
-    btnEdit.className = "c5-btn-icon c5-btn-edit";
-    btnEdit.title = "Editar fila";
-    btnEdit.setAttribute("aria-label", "Editar fila");
-    btnEdit.innerHTML = "&#9998;";   // ✎
-    btnEdit.addEventListener("click", () => openEditModal(globalIdx));
-    tdAct.appendChild(btnEdit);
-
-    const btnDel = document.createElement("button");
-    btnDel.className = "c5-btn-icon c5-btn-delete";
-    btnDel.title = "Eliminar fila";
-    btnDel.setAttribute("aria-label", "Eliminar fila");
-    btnDel.innerHTML = "&#10006;";   // ✖
-    btnDel.addEventListener("click", () => {
-      pendingDeleteIndex = globalIdx;
-      pendingDeleteId    = row.id ?? null;
-      openModal("modalEliminar");
-    });
-    tdAct.appendChild(btnDel);
-
-    tr.appendChild(tdAct);
 
     // Datos
     COLUMNS.forEach(col => {
@@ -252,97 +232,6 @@ function renderTable() {
   tbody.appendChild(frag);
   syncCheckAll();
   renderTotals();
-}
-
-// ─── Modal de edición ─────────────────────────────────────────
-function openEditModal(globalIdx) {
-  pendingEditIndex = globalIdx;
-  const row = filteredRows[globalIdx];
-
-  // Rellenar cada campo del formulario de edición
-  COLUMNS.forEach(col => {
-    const input = document.getElementById(`edit_${col.key}`);
-    if (input) input.value = row[col.key] ?? "";
-  });
-
-  openModal("modalEditar");
-}
-
-function saveEdit() {
-  if (pendingEditIndex === null) return;
-
-  const row = filteredRows[pendingEditIndex];
-  const pk  = row.id ?? null;
-
-  // Recolectar valores del formulario
-  const updated = {};
-  COLUMNS.forEach(col => {
-    const input = document.getElementById(`edit_${col.key}`);
-    if (!input) return;
-    const raw = input.value.trim();
-    if (raw === "") {
-      updated[col.key] = null;
-    } else if (col.num) {
-      updated[col.key] = Number(raw);
-    } else {
-      updated[col.key] = raw;
-    }
-  });
-
-  // Actualizar en memoria inmediatamente
-  Object.assign(row, updated);
-  const globalPos = allRows.indexOf(row);
-  if (globalPos !== -1) Object.assign(allRows[globalPos], updated);
-
-  // Si hay pk, persistir en BD
-  if (pk) {
-    fetch(`/presupuesto/cuenta5/editar/${pk}/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": getCookie("csrftoken"),
-      },
-      body: JSON.stringify(updated),
-    })
-      .then(r => r.json())
-      .then(d => {
-        if (d.ok) showToast("Registro actualizado", "success");
-        else      showToast("Error al guardar: " + (d.error || ""), "error");
-      })
-      .catch(() => showToast("Error de conexión al guardar", "error"));
-  }
-
-  feedFilterValues();
-  renderTable();
-  renderTotals();
-  closeModal("modalEditar");
-  pendingEditIndex = null;
-}
-
-// ─── Eliminar bulk (filas seleccionadas) ──────────────────────
-function getSelectedIds() {
-  return [...document.querySelectorAll(".row-check:checked")]
-    .map(chk => chk.dataset.id)
-    .filter(Boolean);
-}
-
-function getSelectedIndices() {
-  // Devuelve los índices globales (en filteredRows) de las filas marcadas
-  return [...document.querySelectorAll("#c5Tbody tr")]
-    .filter(tr => tr.querySelector(".row-check:checked"))
-    .map(tr => parseInt(tr.dataset.idx, 10))
-    .filter(n => !isNaN(n));
-}
-
-function updateBulkDeleteBtn() {
-  // El botón se habilita/deshabilita en función de si hay filas marcadas
-  const btn = document.getElementById("btnEliminarSeleccionados");
-  if (!btn) return;
-  const count = document.querySelectorAll(".row-check:checked").length;
-  btn.disabled = count === 0;
-  btn.textContent = count > 0
-    ? `🗑️ Eliminar seleccionados (${count})`
-    : "🗑️ Eliminar seleccionados";
 }
 
 // ─── Paginación ───────────────────────────────────────────────
@@ -404,13 +293,15 @@ function renderInfo() {
     ? "Sin registros"
     : `${new Intl.NumberFormat("es-ES").format(start)}–${new Intl.NumberFormat("es-ES").format(end)} de ${new Intl.NumberFormat("es-ES").format(total)} registros`;
 }
-
 // ─── Fila de totales ──────────────────────────────────────────
 function renderTotals() {
   const row = document.getElementById("c5TotalRow");
   if (!row) return;
 
+  // Columnas numéricas (índices en COLUMNS)
   const numCols = new Set(COLUMNS.filter(c => c.num).map(c => c.key));
+
+  // Sumar sobre TODOS los filteredRows (no solo la página visible)
   const sums = {};
   numCols.forEach(k => { sums[k] = 0; });
   filteredRows.forEach(r => {
@@ -421,21 +312,32 @@ function renderTotals() {
   });
 
   const cells = [];
+
+  // Celda checkbox (vacía)
   cells.push(`<td></td>`);
+
+  // Celda acciones → etiqueta "TOTAL"
   cells.push(`<td class="c5-total-label">TOTAL</td>`);
+
+  // Una celda por columna
   COLUMNS.forEach(col => {
-    if (col.num) cells.push(`<td class="c5-num">${fmt(sums[col.key].toFixed(2))}</td>`);
-    else         cells.push(`<td></td>`);
+    if (col.num) {
+      cells.push(`<td class="c5-num">${fmt(sums[col.key].toFixed(2))}</td>`);
+    } else {
+      cells.push(`<td></td>`);
+    }
   });
+
   row.innerHTML = cells.join("");
 }
-
 // ─── Ordenamiento por columna ─────────────────────────────────
 function bindSortHeaders() {
   document.querySelectorAll("#c5Table thead th[data-col]").forEach((th, idx) => {
     th.classList.add("c5-sortable");
     th.addEventListener("click", e => {
+      // Ignorar clics sobre el icono de filtro
       if (e.target.classList.contains("c5-filter-icon")) return;
+
       if (sortCol === idx) {
         sortDir = sortDir === "asc" ? "desc" : "asc";
       } else {
@@ -451,15 +353,15 @@ function bindSortHeaders() {
 
 // ─── Checkboxes ───────────────────────────────────────────────
 function syncCheckAll() {
-  const all    = document.querySelectorAll(".row-check");
-  const chkd   = document.querySelectorAll(".row-check:checked");
+  const all  = document.querySelectorAll(".row-check");
+  const chkd = document.querySelectorAll(".row-check:checked");
   const master = document.getElementById("checkAll");
-  if (!all.length)                   { master.checked = false; master.indeterminate = false; }
-  else if (chkd.length === 0)        { master.checked = false; master.indeterminate = false; }
-  else if (chkd.length === all.length) { master.checked = true;  master.indeterminate = false; }
-  else                               { master.checked = false; master.indeterminate = true;  }
-  updateBulkDeleteBtn();
+  if (!all.length)              { master.checked = false; master.indeterminate = false; return; }
+  if (chkd.length === 0)        { master.checked = false; master.indeterminate = false; }
+  else if (chkd.length === all.length) { master.checked = true; master.indeterminate = false; }
+  else                          { master.checked = false; master.indeterminate = true; }
 }
+
 const CHUNK = 2000;   // ~1,2 MB por lote
 
 async function enviarPorLotes(valid, url) {
@@ -488,7 +390,8 @@ async function enviarPorLotes(valid, url) {
   }
   return total;
 }
-// ─── Enlazar todos los eventos de UI ──────────────────────────
+
+// ─── Enlazar todos los eventos de UI ─────────────────────────
 function bindUI() {
   bindSortHeaders();
 
@@ -511,7 +414,6 @@ function bindUI() {
   // Checkbox maestro
   document.getElementById("checkAll").addEventListener("change", e => {
     document.querySelectorAll(".row-check").forEach(c => c.checked = e.target.checked);
-    updateBulkDeleteBtn();
   });
 
   // Delegación checkboxes individuales
@@ -519,109 +421,12 @@ function bindUI() {
     if (e.target.classList.contains("row-check")) syncCheckAll();
   });
 
-  // ── Eliminar fila individual ───────────────────────────────
-  document.getElementById("cancelEliminar").addEventListener("click", () => {
-    pendingDeleteIndex = null;
-    pendingDeleteId    = null;
-    closeModal("modalEliminar");
-  });
-
-  document.getElementById("confirmEliminar").addEventListener("click", () => {
-    if (pendingDeleteIndex === null) { closeModal("modalEliminar"); return; }
-
-    const row       = filteredRows[pendingDeleteIndex];
-    const globalPos = allRows.indexOf(row);
-
-    // Eliminar en memoria
-    if (globalPos !== -1) allRows.splice(globalPos, 1);
-    filteredRows.splice(pendingDeleteIndex, 1);
-
-    // Llamar a la API si tenemos pk
-    if (pendingDeleteId) {
-      fetch(`/presupuesto/cuenta5/eliminar/${pendingDeleteId}/`, {
-        method: "POST",
-        headers: { "X-CSRFToken": getCookie("csrftoken") },
-      })
-        .then(r => r.json())
-        .then(d => {
-          if (!d.ok) showToast("Error al eliminar en BD: " + (d.error || ""), "error");
-        })
-        .catch(() => showToast("Error de conexión al eliminar", "error"));
-    }
-
-    pendingDeleteIndex = null;
-    pendingDeleteId    = null;
-
-    feedFilterValues();
-    renderTable();
-    renderPagination();
-    renderInfo();
-    showToast("Fila eliminada", "error");
-    closeModal("modalEliminar");
-  });
-
-  // ── Eliminar filas seleccionadas (bulk) ───────────────────
-  document.getElementById("btnEliminarSeleccionados").addEventListener("click", () => {
-    const count = document.querySelectorAll(".row-check:checked").length;
-    if (count === 0) return;
-    document.getElementById("bulkDeleteCount").textContent = count;
-    openModal("modalEliminarBulk");
-  });
-
-  document.getElementById("cancelEliminarBulk").addEventListener("click", () => closeModal("modalEliminarBulk"));
-
-  document.getElementById("confirmEliminarBulk").addEventListener("click", () => {
-    const indices = getSelectedIndices();
-    const ids     = getSelectedIds();
-
-    // Eliminar en memoria (de mayor a menor para no desplazar índices)
-    const indexSet = new Set(indices);
-    // Obtener las filas a eliminar de filteredRows
-    const rowsToRemove = indices.map(i => filteredRows[i]);
-    rowsToRemove.forEach(row => {
-      const pos = allRows.indexOf(row);
-      if (pos !== -1) allRows.splice(pos, 1);
-    });
-    // Reconstruir filteredRows sin esas filas
-    filteredRows = filteredRows.filter((_, i) => !indexSet.has(i));
-
-    // Llamar a la API bulk si hay IDs de BD
-    if (ids.length > 0) {
-      fetch("/presupuesto/cuenta5/eliminar-bulk/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": getCookie("csrftoken"),
-        },
-        body: JSON.stringify({ ids }),
-      })
-        .then(r => r.json())
-        .then(d => {
-          if (d.ok) showToast(`${d.eliminados} registros eliminados de BD`, "error");
-          else      showToast("Error al eliminar en BD: " + (d.error || ""), "error");
-        })
-        .catch(() => showToast("Error de conexión al eliminar", "error"));
-    }
-
-    feedFilterValues();
-    applyFilterAndRender();
-    closeModal("modalEliminarBulk");
-    showToast(`${indices.length} filas eliminadas`, "error");
-  });
-
-  // ── Modal editar — botones ─────────────────────────────────
-  document.getElementById("cancelEditar").addEventListener("click", () => {
-    pendingEditIndex = null;
-    closeModal("modalEditar");
-  });
-  document.getElementById("confirmEditar").addEventListener("click", saveEdit);
-
   // ── Borrar cuenta completa ─────────────────────────────────
   document.getElementById("btnBorrar").addEventListener("click", () => openModal("modalEliminarCuenta"));
   document.getElementById("cancelEliminarCuenta").addEventListener("click", () => closeModal("modalEliminarCuenta"));
   document.getElementById("confirmEliminarCuenta").addEventListener("click", () => {
     closeModal("modalEliminarCuenta");
-    fetch(url_borrar_cuenta5_presupuestado, {
+    fetch(url_borrar_cuenta4_base, {
       method: "POST",
       headers: { "X-CSRFToken": getCookie("csrftoken") },
     })
@@ -652,7 +457,7 @@ function bindUI() {
 
   document.getElementById("inputExcel").addEventListener("change", function(e) {
     const spinner = document.getElementById("spinnerCargar");
-    const btn     = document.getElementById("btnCargarExcel");
+    const btn = document.getElementById("btnCargarExcel");
     spinner.style.display = "inline-block";
     btn.disabled = true;
 
@@ -723,7 +528,7 @@ function bindUI() {
           spinner.style.display = "none"; btn.disabled = false; return;
         }
 
-        enviarPorLotes(valid, "/presupuesto/subir_excel_cuenta5_presupuestado/")
+        enviarPorLotes(valid, "/presupuesto/subir_excel_cuenta4/")
           .then(total => {
             showToast(`${total} registros cargados`, "success");
             loadData();

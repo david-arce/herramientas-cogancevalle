@@ -44,7 +44,16 @@
           <span class="material-icons nav-icon">file_download</span>
           <span class="nav-text">Exportar Presupuesto Nómina</span>
         </a>
-
+        <a href="{% url 'vista_carga_consolidado_base' %}" class="nav-link nav-child
+            {% if request.resolver_match.url_name == 'vista_carga_consolidado_base' %}active{% endif %}">
+          <span class="material-icons nav-icon">folder</span>
+          <span class="nav-text">Carga Consolidado Base</span>
+        </a>
+        <a href="{% url 'tabla_dinamica' %}" class="nav-link nav-child
+            {% if request.resolver_match.url_name == 'tabla_dinamica' %}active{% endif %}">
+          <span class="material-icons nav-icon">folder</span>
+          <span class="nav-text">Tabla dinamica</span>
+        </a>
         <!-- ── Grupo desplegable: EJECUTADO ──
              NOTA: las listas "*_active" ahora usan delimitador "|" en ambos extremos
              y la comprobación compara "|valor|" contra la cadena completa, para
@@ -67,35 +76,15 @@
               <span class="material-icons nav-icon">folder</span>
               <span class="nav-text">Cuenta 5</span>
             </a>
-            <a href="{% url 'consolidado_tulua' %}" class="nav-link nav-child
-               {% if request.resolver_match.url_name == 'consolidado_tulua' %}active{% endif %}">
+            <a href="{% url 'cuenta4' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'cuenta4' %}active{% endif %}">
               <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Consolidado Tuluá</span>
+              <span class="nav-text">Cuenta 4</span>
             </a>
-            <a href="{% url 'consolidado_buga' %}" class="nav-link nav-child
-               {% if request.resolver_match.url_name == 'consolidado_buga' %}active{% endif %}">
+            <a href="{% url 'consolidado_general' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'consolidado_general' %}active{% endif %}">
               <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Consolidado Buga</span>
-            </a>
-            <a href="{% url 'consolidado_cartago' %}" class="nav-link nav-child
-               {% if request.resolver_match.url_name == 'consolidado_cartago' %}active{% endif %}">
-              <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Consolidado Cartago</span>
-            </a>
-            <a href="{% url 'consolidado_cali' %}" class="nav-link nav-child
-               {% if request.resolver_match.url_name == 'consolidado_cali' %}active{% endif %}">
-              <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Consolidado Cali</span>
-            </a>
-            <a href="{% url 'consolidado_total_base' %}" class="nav-link nav-child
-               {% if request.resolver_match.url_name == 'consolidado_total_base' %}active{% endif %}">
-              <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Consolidado Total Base</span>
-            </a>
-            <a href="{% url 'vista_carga_consolidado_base' %}" class="nav-link nav-child
-               {% if request.resolver_match.url_name == 'vista_carga_consolidado_base' %}active{% endif %}">
-              <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Carga Consolidado Base</span>
+              <span class="nav-text">Consolidado General</span>
             </a>
           </div>
         </div>
@@ -122,30 +111,16 @@
               <span class="material-icons nav-icon">folder</span>
               <span class="nav-text">Cuenta 5 Presupuestado</span>
             </a>
-            <a href="{% url 'presupuestado_tulua' %}" class="nav-link nav-child
-               {% if request.resolver_match.url_name == 'presupuestado_tulua' %}active{% endif %}">
+            <a href="{% url 'cuenta4_presupuestado' %}" class="nav-link nav-child
+              {% if request.resolver_match.url_name == 'cuenta4_presupuestado' %}active{% endif %}">
               <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Presupuestado Tuluá</span>
+              <span class="nav-text">Cuenta 4 Presupuestado</span>
             </a>
-            <a href="{% url 'presupuestado_buga' %}" class="nav-link nav-child
-               {% if request.resolver_match.url_name == 'presupuestado_buga' %}active{% endif %}">
-              <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Presupuestado Buga</span>
             </a>
-            <a href="{% url 'presupuestado_cartago' %}" class="nav-link nav-child
-               {% if request.resolver_match.url_name == 'presupuestado_cartago' %}active{% endif %}">
+            <a href="{% url 'presupuestado_general' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'presupuestado_general' %}active{% endif %}">
               <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Presupuestado Cartago</span>
-            </a>
-            <a href="{% url 'presupuestado_cali' %}" class="nav-link nav-child
-               {% if request.resolver_match.url_name == 'presupuestado_cali' %}active{% endif %}">
-              <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Presupuestado Cali</span>
-            </a>
-            <a href="{% url 'presupuestado_total_base' %}" class="nav-link nav-child
-               {% if request.resolver_match.url_name == 'presupuestado_total_base' %}active{% endif %}">
-              <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Presupuestado Total Base</span>
+              <span class="nav-text">Presupuestado general</span>
             </a>
           </div>
 
@@ -172,37 +147,21 @@
           </button>
 
           <div class="nav-group-menu" id="comparativosMenu" role="menu">
-            <a href="{% url 'comparativo_tulua' %}" class="nav-link nav-child
-               {% if request.resolver_match.url_name == 'comparativo_tulua' %}active{% endif %}">
+            <a href="{% url 'comparativo_general' %}" class="nav-link nav-child
+               {% if request.resolver_match.url_name == 'comparativo_general' %}active{% endif %}">
               <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Comparativo tulua</span>
-            </a>
-            <a href="{% url 'comparativo_buga' %}" class="nav-link nav-child
-               {% if request.resolver_match.url_name == 'comparativo_buga' %}active{% endif %}">
-              <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Comparativo buga</span>
-            </a>
-            <a href="{% url 'comparativo_cartago' %}" class="nav-link nav-child
-               {% if request.resolver_match.url_name == 'comparativo_cartago' %}active{% endif %}">
-              <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Comparativo cartago</span>
-            </a>
-            <a href="{% url 'comparativo_cali' %}" class="nav-link nav-child
-               {% if request.resolver_match.url_name == 'comparativo_cali' %}active{% endif %}">
-              <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Comparativo cali</span>
-            </a>
-            <a href="{% url 'comparativo_total' %}" class="nav-link nav-child
-               {% if request.resolver_match.url_name == 'comparativo_total' %}active{% endif %}">
-              <span class="material-icons nav-icon">folder</span>
-              <span class="nav-text">Comparativo total</span>
+              <span class="nav-text">Comparativo general</span>
             </a>
           </div>
 
         </div>
         {% endwith %}
         {% endwith %}
-
+        <a href="{% url 'ajustes_orden_cuentas' %}"
+          class="nav-link {% if request.resolver_match.url_name == 'ajustes_orden_cuentas' %}active{% endif %}">
+          <span class="material-icons nav-icon">settings</span>
+          <span class="nav-text">Ajustes · Orden de cuentas</span>
+        </a>
       </nav>
     </aside>
 

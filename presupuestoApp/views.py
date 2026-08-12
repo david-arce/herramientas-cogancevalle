@@ -6,7 +6,7 @@ from pyexpat.errors import messages
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 import pandas as pd
-from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoBolsaConsumibles, PresupuestoBolsaConsumiblesAux, PresupuestoAuxilioTBCKIT, PresupuestoAuxilioTCBKITAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado, PresupuestoServiciosTecnicos, PresupuestoServiciosTecnicosAux, PresupuestoServiciosTecnicosAprobado, PresupuestoLogistica, PresupuestoLogisticaAux, PresupuestoLogisticaAprobado, PresupuestoGestionRiesgos, PresupuestoGestionRiesgosAux, PresupuestoGestionRiesgosAprobado, PresupuestoGH, PresupuestoGHAux, PresupuestoGHAprobado, PresupuestoAlmacenTulua, PresupuestoAlmacenTuluaAux, PresupuestoAlmacenTuluaAprobado, PresupuestoAlmacenBuga, PresupuestoAlmacenBugaAux, PresupuestoAlmacenBugaAprobado, PresupuestoAlmacenCartago, PresupuestoAlmacenCartagoAux, PresupuestoAlmacenCartagoAprobado, PresupuestoAlmacenCali, PresupuestoAlmacenCaliAux, PresupuestoAlmacenCaliAprobado, PresupuestoComunicaciones, PresupuestoComunicacionesAux, PresupuestoComunicacionesAprobado, PresupuestoComercialCostos, PresupuestoComercialCostosAux, PresupuestoComercialCostosAprobado, PresupuestoContabilidad, PresupuestoContabilidadAux, PresupuestoContabilidadAprobado, PresupuestoGerencia, PresupuestoGerenciaAux, PresupuestoGerenciaAprobado, Cuenta5, Cuenta5Base, PresupuestoCentroSegLineaCostos, PresupuestoCentroSegLineaVentas, ConsolidadoTotalBase, Cuenta5Presupuestado
+from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, ComentarioComparativo, Cuenta4Base, Cuenta4Presupuestado, OrdenCuenta, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoBolsaConsumibles, PresupuestoBolsaConsumiblesAux, PresupuestoAuxilioTBCKIT, PresupuestoAuxilioTCBKITAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado, PresupuestoServiciosTecnicos, PresupuestoServiciosTecnicosAux, PresupuestoServiciosTecnicosAprobado, PresupuestoLogistica, PresupuestoLogisticaAux, PresupuestoLogisticaAprobado, PresupuestoGestionRiesgos, PresupuestoGestionRiesgosAux, PresupuestoGestionRiesgosAprobado, PresupuestoGH, PresupuestoGHAux, PresupuestoGHAprobado, PresupuestoAlmacenTulua, PresupuestoAlmacenTuluaAux, PresupuestoAlmacenTuluaAprobado, PresupuestoAlmacenBuga, PresupuestoAlmacenBugaAux, PresupuestoAlmacenBugaAprobado, PresupuestoAlmacenCartago, PresupuestoAlmacenCartagoAux, PresupuestoAlmacenCartagoAprobado, PresupuestoAlmacenCali, PresupuestoAlmacenCaliAux, PresupuestoAlmacenCaliAprobado, PresupuestoComunicaciones, PresupuestoComunicacionesAux, PresupuestoComunicacionesAprobado, PresupuestoComercialCostos, PresupuestoComercialCostosAux, PresupuestoComercialCostosAprobado, PresupuestoContabilidad, PresupuestoContabilidadAux, PresupuestoContabilidadAprobado, PresupuestoGerencia, PresupuestoGerenciaAux, PresupuestoGerenciaAprobado, Cuenta5, Cuenta5Base, PresupuestoCentroSegLineaCostos, PresupuestoCentroSegLineaVentas, ConsolidadoTotalBase, Cuenta5Presupuestado
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.db.models.functions import Concat
 from django.db.models import Sum, Max, Q
@@ -7325,45 +7325,45 @@ MESES = CAMPOS_PRESUPUESTO[9:21]
 CAMPOS_BASE_PLANTILLA = [c for c in CAMPOS_PRESUPUESTO if c not in ("total", "comentario")]
 CAMPOS_NUMERICOS = ["cuenta", "sede_distribucion"] + MESES + ["total"]
 SEDE_CONFIG = {
-    "tulua": {
+    "almacen-tulua": {
         "label": "Almacén Tuluá",
         "usuarios_permitidos": {"admin", "JEFEALMACENTULUA", "DBENITEZ"},
         "responsable_filtro": "JEFE ALMACEN TULUA",
         "model_oficial": PresupuestoAlmacenTulua,
         "model_aprobado": PresupuestoAlmacenTuluaAprobado,
         "model_temp": PresupuestoAlmacenTuluaAux,
-        "fecha_limite_auxiliar": datetime.date(2026, 10, 15),  
-        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),  
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
     },
-    "buga": {
+    "almacen-buga": {
         "label": "Almacén Buga",
         "usuarios_permitidos": {"admin", "JEFEALMACENBUGA", "FDUQUE"},
         "responsable_filtro": "JEFE ALMACEN BUGA",
         "model_oficial": PresupuestoAlmacenBuga,
         "model_aprobado": PresupuestoAlmacenBugaAprobado,
         "model_temp": PresupuestoAlmacenBugaAux,
-        "fecha_limite_auxiliar": datetime.date(2026, 10, 15),  
-        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),  
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
     },
-    "cartago": {
+    "almacen-cartago": {
         "label": "Almacén Cartago",
         "usuarios_permitidos": {"admin", "JEFEALMACENCARTAGO", "CHINCAPI"},
         "responsable_filtro": "JEFE ALMACEN CARTAGO",
         "model_oficial": PresupuestoAlmacenCartago,
         "model_aprobado": PresupuestoAlmacenCartagoAprobado,
         "model_temp": PresupuestoAlmacenCartagoAux,
-        "fecha_limite_auxiliar": datetime.date(2026, 10, 15),
-        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
     },
-    "cali": {
+    "almacen-cali": {
         "label": "Almacén Cali",
         "usuarios_permitidos": {"admin", "JEFEALMACENCALI", "LAMAYA"},
         "responsable_filtro": "JEFE ALMACEN CALI",
         "model_oficial": PresupuestoAlmacenCali,
         "model_aprobado": PresupuestoAlmacenCaliAprobado,
         "model_temp": PresupuestoAlmacenCaliAux,
-        "fecha_limite_auxiliar": datetime.date(2026, 10, 15),
-        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
     },
     "comunicaciones": {
         "label": "Comunicaciones y Mercadeo",
@@ -7372,8 +7372,8 @@ SEDE_CONFIG = {
         "model_oficial": PresupuestoComunicaciones,
         "model_aprobado": PresupuestoComunicacionesAprobado,
         "model_temp": PresupuestoComunicacionesAux,
-        "fecha_limite_auxiliar": datetime.date(2026, 10, 8),
-        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 8),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
     },
     "comercial-costos": {
         "label": "Comercial y Costos",
@@ -7382,8 +7382,8 @@ SEDE_CONFIG = {
         "model_oficial": PresupuestoComercialCostos,
         "model_aprobado": PresupuestoComercialCostosAprobado,
         "model_temp": PresupuestoComercialCostosAux,
-        "fecha_limite_auxiliar": datetime.date(2026, 10, 8),
-        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 8),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
     },
     "contabilidad": {
         "label": "Contabilidad",
@@ -7392,8 +7392,8 @@ SEDE_CONFIG = {
         "model_oficial": PresupuestoContabilidad,
         "model_aprobado": PresupuestoContabilidadAprobado,
         "model_temp": PresupuestoContabilidadAux,
-        "fecha_limite_auxiliar": datetime.date(2026, 10, 8),
-        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 8),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
     },
     "gerencia": {
         "label": "Gerencia",
@@ -7402,8 +7402,8 @@ SEDE_CONFIG = {
         "model_oficial": PresupuestoGerencia,
         "model_aprobado": PresupuestoGerenciaAprobado,
         "model_temp": PresupuestoGerenciaAux,
-        "fecha_limite_auxiliar": datetime.date(2026, 10, 8),
-        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 8),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
     },
     "gestion-humana": {
         "label": "Gestión Humana",
@@ -7412,8 +7412,8 @@ SEDE_CONFIG = {
         "model_oficial": PresupuestoGH,
         "model_aprobado": PresupuestoGHAprobado,
         "model_temp": PresupuestoGHAux,
-        "fecha_limite_auxiliar": datetime.date(2026, 10, 15),
-        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
     },
     "gestion-riesgos": {
         "label": "Gestión de Riesgos",
@@ -7422,8 +7422,8 @@ SEDE_CONFIG = {
         "model_oficial": PresupuestoGestionRiesgos,
         "model_aprobado": PresupuestoGestionRiesgosAprobado,
         "model_temp": PresupuestoGestionRiesgosAux,
-        "fecha_limite_auxiliar": datetime.date(2026, 10, 15),
-        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
     },
     "logistica": {
         "label": "Logística",
@@ -7432,8 +7432,8 @@ SEDE_CONFIG = {
         "model_oficial": PresupuestoLogistica,
         "model_aprobado": PresupuestoLogisticaAprobado,
         "model_temp": PresupuestoLogisticaAux,
-        "fecha_limite_auxiliar": datetime.date(2026, 10, 15),
-        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
     },
     "servicios-tecnicos": {
         "label": "Servicios Técnicos",
@@ -7442,8 +7442,8 @@ SEDE_CONFIG = {
         "model_oficial": PresupuestoServiciosTecnicos,
         "model_aprobado": PresupuestoServiciosTecnicosAprobado,
         "model_temp": PresupuestoServiciosTecnicosAux,
-        "fecha_limite_auxiliar": datetime.date(2026, 10, 15),
-        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
     },
     "salud-ocupacional": {
         "label": "Salud Ocupacional",
@@ -7452,8 +7452,8 @@ SEDE_CONFIG = {
         "model_oficial": PresupuestoOcupacional,
         "model_aprobado": PresupuestoOcupacionalAprobado,
         "model_temp": PresupuestoOcupacionalAux,
-        "fecha_limite_auxiliar": datetime.date(2026, 10, 15),
-        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
     },
     "tecnologia": {
         "label": "Tecnología",
@@ -7462,8 +7462,8 @@ SEDE_CONFIG = {
         "model_oficial": PresupuestoTecnologia,
         "model_aprobado": PresupuestotecnologiaAprobado,
         "model_temp": PresupuestoTecnologiaAux,
-        "fecha_limite_auxiliar": datetime.date(2026, 10, 15),
-        "fecha_limite_aprobado": datetime.date(2025, 10, 30),
+        "fecha_limite_auxiliar": datetime.date(2027, 10, 15),
+        "fecha_limite_aprobado": datetime.date(2027, 10, 30),
     },
 }
  
@@ -7854,80 +7854,6 @@ def obtener_cuenta5_base(request):
         print(f"❌ Error en obtener_cuenta5_base: {e}")
         return JsonResponse({'error': str(e)}, status=500) 
     
-# def cargar_cuenta5_base(request):
-#     # limpio tabla cuenta 5 antes de recalcular
-#     Cuenta5Base.objects.all().delete()
-#     base_data = Cuenta5.objects.values("mcncuenta", "mcnfecha", "mcntipodoc", "mcnnumedoc", "mcnvincula", "vinnombre", "mcnvaldebi", "mcnvalcred", "saldonew", "mcnsucurs", "mcnccosto", "mcndestino", "mcndetalle", "mcnzona", "cconombre", "dnonombre", "zonnombre", "mcnempresa", "mcnclase", "mcnvinkey", "tpreg", "ctanombre", "docdetalle", "infdetalle")
-#     for row in base_data:   
-#         Cuenta5Base.objects.create(
-#             mcncuenta=row["mcncuenta"],
-#             mcnfecha=row["mcnfecha"],
-#             mcntipodoc=row["mcntipodoc"],
-#             mcnnumedoc=row["mcnnumedoc"],
-#             mcnvincula=row["mcnvincula"],
-#             vinnombre=row["vinnombre"],
-#             mcnvaldebi=row["mcnvaldebi"],
-#             mcnvalcred=row["mcnvalcred"],
-#             saldonew=row["saldonew"],
-#             mcnsucurs=row["mcnsucurs"],
-#             mcnccosto=row["mcnccosto"],
-#             mcndestino=row["mcndestino"],
-#             mcndetalle=row["mcndetalle"],
-#             mcnzona=row["mcnzona"],
-#             cconombre=row["cconombre"],
-#             dnonombre=row["dnonombre"],
-#             zonnombre=row["zonnombre"],
-#             mcnempresa=row["mcnempresa"],
-#             mcnclase=row["mcnclase"],
-#             mcnvinkey=row["mcnvinkey"],
-#             tpreg=row["tpreg"],
-#             ctanombre=row["ctanombre"],
-#             docdetalle=row["docdetalle"],
-#             infdetalle=row["infdetalle"],
-#         )
-#     return JsonResponse({"status": "ok", "msg": f"{base_data.count()} filas cargadas desde la base ✅"})
-
-# def guardar_cuenta5(request):
-#     if request.method == "POST":
-#         try:
-#             data = json.loads(request.body.decode("utf-8"))
-#             registros = []
-#             for row in data:
-#                 registros.append(Cuenta5Base(
-#                     mcncuenta=row.get("mcncuenta"),
-#                     mcnfecha=row.get("mcnfecha"),
-#                     mcntipodoc=row.get("mcntipodoc"),
-#                     mcnnumedoc=row.get("mcnnumedoc"),
-#                     mcnvincula=row.get("mcnvincula"),
-#                     vinnombre=row.get("vinnombre"),
-#                     mcnvaldebi=row.get("mcnvaldebi") or 0,
-#                     mcnvalcred=row.get("mcnvalcred") or 0,
-#                     saldonew=row.get("saldonew") or 0,
-#                     mcnsucurs=row.get("mcnsucurs"),
-#                     mcncosto=row.get("mcncosto"),
-#                     mcndestino=row.get("mcndestino"),
-#                     mcndetalle=row.get("mcndetalle"),
-#                     mcnzona=row.get("mcnzona"),
-#                     cconombre=row.get("cconombre"),
-#                     dnonombre=row.get("dnonombre"),
-#                     zonnombre=row.get("zonnombre"),
-#                     mcnempresa=row.get("mcnempresa"),
-#                     mcnclase=row.get("mcnclase"),
-#                     mcnvinkey=row.get("mcnvinkey"),
-#                     tpreg=row.get("tpreg"),
-#                     ctanombre=row.get("ctanombre"),
-#                     docdetalle=row.get("docdetalle"),
-#                     infdetalle=row.get("infdetalle"),
-#                 ))
-#             # ✅ Transacción atómica → si algo falla, no se borra nada
-#             with transaction.atomic():
-#                 Cuenta5Base.objects.all().delete()
-#                 Cuenta5Base.objects.bulk_create(registros)
-#             return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-#         except Exception as e:
-#             return JsonResponse({"status": "error", "message": str(e)}, status=400)
-#     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
 @csrf_exempt
 def subir_excel_cuenta5(request):
     if request.method == "POST":
@@ -7954,106 +7880,7 @@ def borrar_cuenta5_base(request):
         return JsonResponse({"status": "ok", "message": "Datos de cuenta 5 eliminados"})
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
-# SUBIR Y BORRAR CUENTA 5 PRESUPUESTADO
-@csrf_exempt
-def subir_excel_cuenta5_presupuestado(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body)
-            registros = data.get("registros", [])
-            insertados = 0
-
-            with transaction.atomic():
-                for r in registros:
-                    Cuenta5Presupuestado.objects.create(**r)
-                    insertados += 1
-
-            return JsonResponse({"status": "ok", "insertados": insertados})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    else:
-        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-@csrf_exempt
-def borrar_cuenta5_presupuestado(request):
-    if request.method == "POST":
-        Cuenta5Presupuestado.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Datos de cuenta 5 eliminados"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-
-# @require_POST
-# def eliminar_cuenta5_base(request, pk):
-#     try:
-#         Cuenta5Base.objects.filter(pk=pk).delete()
-#         return JsonResponse({'ok': True})
-#     except Exception as e:
-#         return JsonResponse({'ok': False, 'error': str(e)}, status=400)
-
-@require_POST
-def editar_cuenta5_base(request, pk):
-    try:
-        data = json.loads(request.body)
-        # mcnfecha puede llegar como "2024-01-15" o como número serial
-        # si llega como string de fecha, reconvertir a serial para el FloatField
-        if 'mcnfecha' in data and data['mcnfecha']:
-            val = data['mcnfecha']
-            if isinstance(val, str) and '-' in val:
-                from datetime import date
-                d = date.fromisoformat(val)
-                origin = date(1899, 12, 30)
-                data['mcnfecha'] = (d - origin).days
-        Cuenta5Base.objects.filter(pk=pk).update(**data)
-        return JsonResponse({'ok': True})
-    except Exception as e:
-        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
-
-@require_POST
-def eliminar_bulk_cuenta5_base(request):
-    try:
-        data = json.loads(request.body)
-        ids = data.get('ids', [])
-        Cuenta5Base.objects.filter(pk__in=ids).delete()
-        return JsonResponse({'ok': True, 'eliminados': len(ids)})
-    except Exception as e:
-        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
-
-@login_required
-def consolidado_tulua(request):
-    usuarios_permitidos = ['admin', 'NICOLAS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuesto_consolidado/consolidado_tulua.html")
-
-@login_required
-def consolidado_buga(request):
-    usuarios_permitidos = ['admin', 'NICOLAS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuesto_consolidado/consolidado_buga.html")
-
-@login_required
-def consolidado_cartago(request):
-    usuarios_permitidos = ['admin', 'NICOLAS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuesto_consolidado/consolidado_cartago.html")
-
-@login_required
-def consolidado_cali(request):
-    usuarios_permitidos = ['admin', 'NICOLAS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuesto_consolidado/consolidado_cali.html")
-
-@login_required
-def consolidado_total_base(request):
-    usuarios_permitidos = ['admin', 'NICOLAS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuesto_consolidado/consolidado_total_base.html")
-
-# ----------------- PRESUPUESTADO ------------------------
+# SUBIR Y BORRAR CUENTA 5 PRESUPUESTADO -------------------------------
 @login_required
 def cuenta5_presupuestado(request):
     usuarios_permitidos = ['admin', 'NICOLAS']
@@ -8092,774 +7919,688 @@ def obtener_cuenta5_presupuestado(request):
     except Exception as e:
         print(f"❌ Error en obtener_cuenta5_base: {e}")
         return JsonResponse({'error': str(e)}, status=500) 
-   
+  
+@csrf_exempt
+def subir_excel_cuenta5_presupuestado(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            registros = data.get("registros", [])
+            insertados = 0
+
+            with transaction.atomic():
+                for r in registros:
+                    Cuenta5Presupuestado.objects.create(**r)
+                    insertados += 1
+
+            return JsonResponse({"status": "ok", "insertados": insertados})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    else:
+        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+@csrf_exempt
+def borrar_cuenta5_presupuestado(request):
+    if request.method == "POST":
+        Cuenta5Presupuestado.objects.all().delete()
+        return JsonResponse({"status": "ok", "message": "Datos de cuenta 5 eliminados"})
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+ 
+ 
+# CUENTA 4-----------------------------------
 @login_required
-def presupuestado_tulua(request):
+def cuenta4(request):
     usuarios_permitidos = ['admin', 'NICOLAS']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuestado/presupuestado_tulua.html")
+    return render(request, "presupuesto_consolidado/cuenta4_base.html")
 
+@csrf_exempt
+def obtener_cuenta4_base(request):
+    try:
+        params = request.POST or request.GET  # funciona con ambos métodos
+        draw = int(params.get('draw') or 1)
+        start = int(params.get('start') or 0)
+        length = int(params.get('length') or 50)
+
+        queryset = Cuenta4Base.objects.all()
+        total = queryset.count()
+
+        paginator = Paginator(queryset, length)
+        page_number = start // length + 1
+        page = paginator.get_page(page_number)
+
+        data = list(page.object_list.values())
+
+        # 🔹 Convertir fecha Excel a fecha normal
+        for row in data:
+            row['mcnfecha'] = excel_serial_to_date(row.get('mcnfecha'))
+        
+        return JsonResponse({
+            'draw': draw,
+            'recordsTotal': total,
+            'recordsFiltered': total,
+            'data': data
+        })
+
+    except Exception as e:
+        print(f"❌ Error en obtener_cuenta4_base: {e}")
+        return JsonResponse({'error': str(e)}, status=500) 
+    
+@csrf_exempt
+def subir_excel_cuenta4(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            registros = data.get("registros", [])
+            insertados = 0
+
+            with transaction.atomic():
+                for r in registros:
+                    Cuenta4Base.objects.create(**r)
+                    insertados += 1
+
+            return JsonResponse({"status": "ok", "insertados": insertados})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    else:
+        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+@csrf_exempt
+def borrar_cuenta4_base(request):
+    if request.method == "POST":
+        Cuenta4Base.objects.all().delete()
+        return JsonResponse({"status": "ok", "message": "Datos de cuenta 4 eliminados"})
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+# SUBIR Y BORRAR CUENTA 5 PRESUPUESTADO -------------------------------
 @login_required
-def presupuestado_buga(request):
+def cuenta4_presupuestado(request):
     usuarios_permitidos = ['admin', 'NICOLAS']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuestado/presupuestado_buga.html")
+    return render(request, "presupuestado/cuenta4_presupuestado.html")
 
-@login_required
-def presupuestado_cartago(request):
-    usuarios_permitidos = ['admin', 'NICOLAS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuestado/presupuestado_cartago.html")
+@csrf_exempt
+def obtener_cuenta4_presupuestado(request):
+    try:
+        params = request.POST or request.GET  # funciona con ambos métodos
+        draw = int(params.get('draw') or 1)
+        start = int(params.get('start') or 0)
+        length = int(params.get('length') or 50)
 
-@login_required
-def presupuestado_cali(request):
-    usuarios_permitidos = ['admin', 'NICOLAS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuestado/presupuestado_cali.html")
+        queryset = Cuenta4Presupuestado.objects.all()
+        total = queryset.count()
 
-@login_required
-def presupuestado_total_base(request):
-    usuarios_permitidos = ['admin', 'NICOLAS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuestado/presupuestado_total_base.html")
+        paginator = Paginator(queryset, length)
+        page_number = start // length + 1
+        page = paginator.get_page(page_number)
 
+        data = list(page.object_list.values())
+
+        # 🔹 Convertir fecha Excel a fecha normal
+        for row in data:
+            row['mcnfecha'] = excel_serial_to_date(row.get('mcnfecha'))
+        
+        return JsonResponse({
+            'draw': draw,
+            'recordsTotal': total,
+            'recordsFiltered': total,
+            'data': data
+        })
+
+    except Exception as e:
+        print(f"❌ Error en obtener_cuenta4_base: {e}")
+        return JsonResponse({'error': str(e)}, status=500) 
+  
+@csrf_exempt
+def subir_excel_cuenta4_presupuestado(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            registros = data.get("registros", [])
+            insertados = 0
+
+            with transaction.atomic():
+                for r in registros:
+                    Cuenta4Presupuestado.objects.create(**r)
+                    insertados += 1
+
+            return JsonResponse({"status": "ok", "insertados": insertados})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    else:
+        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+
+@csrf_exempt
+def borrar_cuenta4_presupuestado(request):
+    if request.method == "POST":
+        Cuenta4Presupuestado.objects.all().delete()
+        return JsonResponse({"status": "ok", "message": "Datos de cuenta 4 eliminados"})
+    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+  
+
+# NOTA: añadir a los imports del views.py
+from itertools import chain
 
 # ══════════════════════════════════════════════════════════════════
-#  FUNCIÓN GENÉRICA — reemplaza todas las calcular_consolidado_*
+#  CONFIGURACIÓN COMPARTIDA  (a nivel de módulo: se construye una
+#  sola vez, no en cada request)
 # ══════════════════════════════════════════════════════════════════
 
+MESES_ES = {
+    1: 'Enero',      2: 'Febrero',  3: 'Marzo',     4: 'Abril',
+    5: 'Mayo',       6: 'Junio',    7: 'Julio',     8: 'Agosto',
+    9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre',
+}
+MESES_COLS = list(MESES_ES.values())
+
+# sede -> zona contable + nombre en ConsolidadoTotalBase
 SEDE_CONFIG_CONSOLIDADO = {
-    'cali': {
-        'cuenta5_filter':   {'mcnzona__in': ['004', 4]},
-        'consolidado_filter': {'sede__icontains': 'CALI'},
+    'cali':    {'zona': ['004', 4], 'nombre': 'CALI'},
+    'tulua':   {'zona': ['001', 1], 'nombre': 'TULUA'},
+    'buga':    {'zona': ['002', 2], 'nombre': 'BUGA'},
+    'cartago': {'zona': ['003', 3], 'nombre': 'CARTAGO'},
+    'total':   None,                       # None → sin filtro, todas las sedes
+}
+
+# Alias para no romper el front ni las URLs actuales
+ALIAS_SEDE = {
+    'consolidado':   'total',
+    'presupuestado': 'total',
+    'total_base':    'total',
+}
+
+# origen -> modelos de detalle. Las cuentas 5x y las 4x viven en tablas
+# distintas. El mismo string se usa para filtrar ConsolidadoTotalBase.origen
+ORIGENES = {
+    'ejecutado': {
+        'cuenta5': Cuenta5Base,
+        'cuenta4': Cuenta4Base,
     },
-    'tulua': {
-        'cuenta5_filter':   {'mcnzona__in': ['001', 1]},
-        'consolidado_filter': {'sede__icontains': 'TULUA'},
-    },
-    'buga': {
-        'cuenta5_filter':   {'mcnzona__in': ['002', 2]},
-        'consolidado_filter': {'sede__icontains': 'BUGA'},
-    },
-    'cartago': {
-        'cuenta5_filter':   {'mcnzona__in': ['003', 3]},
-        'consolidado_filter': {'sede__icontains': 'CARTAGO'},
-    },
-    'consolidado': {
-        'cuenta5_filter':   {},          # sin filtro → todas las sedes
-        'consolidado_filter': {},
+    'presupuestado': {
+        'cuenta5': Cuenta5Presupuestado,
+        'cuenta4': Cuenta4Presupuestado,
     },
 }
 
-def calcular_consolidado(sede='consolidado'):
-    """
-    Calcula el consolidado para una sede específica o para todas.
+# Campos que necesita el motor de ambas tablas de detalle
+CAMPOS_DETALLE = ('mcncuenta', 'mcnccosto', 'mcnfecha',
+                  'mcnvaldebi', 'mcnvalcred', 'mcndestino')
 
-    sede: clave de SEDE_CONFIG  ('cali' | 'tulua' | 'buga' | 'palmira' | 'consolidado')
+CUENTAS_OMITIR = ['521020']
+
+ASISTENCIA_TECNICA = {
+    "AT-00004", "AT-00008", "AT-00010", "AT-00013", "AT-00014",
+    "AT-00015", "AT-00016", "AT-00019", "AT-00020", "AT-00021",
+    "AT-00022", "AT-00023", "AT-00024", "AT-00026", "AT-00028",
+    "AT-00029", "AT-00030", "AT-00032", "VT-00025", "AT-00003",
+}
+ASISTENCIA_TECNICA_PROPIA    = {'AT-00001', 'AT-00002', 'AT-00005'}
+ASISTENCIA_TECNICA_CONVENIOS = {'AT-00003', 'AT-00004', 'AT-00006'}
+
+# destino -> cuentas que se agrupan en él (se invierte a lookup O(1))
+_GRUPOS = {
+    '54100207_54100211': ['54100207', '54100208', '54100209', '54100210', '54100211'],
+    '541009_541033':     ['541009', '541033', '54103301', '54103302'],
+    '541015_541016':     ['541015', '541016'],
+    '511015_511016':     ['511015', '511016'],
+    '51109501_51109502': ['51109501', '51109502'],
+}
+AGRUPACIONES_EXACTAS = {c: destino for destino, cuentas in _GRUPOS.items() for c in cuentas}
+
+PREFIJOS_AGRUPADOS = ('5230', '541003', '541005', '541006', '541024', '541027', '5415')
+
+NOMBRES_ESPECIALES = {
+    '541001': 'Honorarios', '54100207_54100211': 'Tasas Bomberil-otras',
+    '541003': 'Arrendamientos', '541005': 'Seguros',
+    '541006': 'Mantenimiento y Reparaciónes',
+    '541009_541033': 'Adecuación e Instalaciones-Reparac locat',
+    '541015_541016': 'Utiles - Papelería- Fotocopias',
+    '541024': 'Gastos Legales', '541027': 'Gastos de Viaje',
+    '5415': 'Depreciación', '511015_511016': 'Papelería y Utiles de Oficina',
+    '5405': 'Gastos de Personal', '5105': 'Gastos de Personal',
+    '51109501_51109502': 'Gastos de Fondos Sociales',
+    '5': 'Proyecto de Aftosa', '6': 'Asistencia Técnica Propia',
+    '7': 'Asistencia Técnica Convenios',
+    '8': 'Asistencia Técnica Otros - Capacitaciones',
+    '5230': 'Gastos no Operacionales-IVA obsequios',
+    '521015': 'Gastos Contribución 4 x1000', '615035': 'Intereses',
+    'AT-00003': 'Convenio Elanco', 'AT-00004': 'Apoyo ciclo aftosa Virbac',
+    'AT-00005': 'Convenio Proalba-Santa Lucía', 'AT-00007': 'Convenio Tecnoquímicas',
+    'AT-00008': 'Seminario ambiental',
+    'AT-00010': 'Jornada de actualización en reproducción',
+    'AT-00013': 'Curso de gestión empresarial', 'AT-00014': 'Curso de mayordomía',
+    'AT-00015': 'Ecografo Bovino', 'AT-00016': 'Curso de Inseminación',
+    'AT-00019': 'Brucelosis-Tuberculosis', 'AT-00020': 'Programa ambiental',
+    'AT-00021': 'Chequeo reproductivo', 'AT-00022': 'Curso de Bromatología',
+    'AT-00023': 'Capacitación software ganadero', 'AT-00024': 'Atencion urgencias',
+    'AT-00026': 'Taller atención básica equipos de ordeño',
+    'AT-00028': 'Mantenimiento equipo técnico-Diplomado',
+    'AT-00029': 'Taller en bienestar y sanidad bovina',
+    'AT-00030': 'Seminario productividad láctea',
+    'AT-00032': 'Servicio de imágenes con dron',
+    'VT-00025': 'Convenio Tecnoquímicas', '41659505': 'Proyecto de Aftosa',
+    '41659501': 'Patrocinio de eventos', '420560': 'Venta PPE (moto)',
+}
+
+
+# ══════════════════════════════════════════════════════════════════
+#  HELPERS
+# ══════════════════════════════════════════════════════════════════
+
+def normalizar_sede(sede):
+    """Devuelve la clave canónica de SEDE_CONFIG_CONSOLIDADO o None si es inválida."""
+    sede = (sede or 'total').lower()
+    sede = ALIAS_SEDE.get(sede, sede)
+    return sede if sede in SEDE_CONFIG_CONSOLIDADO else None
+
+
+def filtros_sede(sede):
+    """(filtro_detalle, filtro_consolidado) para la sede indicada."""
+    cfg = SEDE_CONFIG_CONSOLIDADO[sede]
+    if cfg is None:
+        return {}, {}
+    return {'mcnzona__in': cfg['zona']}, {'sede__icontains': cfg['nombre']}
+
+
+def aplicar_agrupaciones(cuenta, costo):
+    if cuenta.startswith('4'):
+        return cuenta
+
+    if costo.startswith('02040'):                         cuenta = '5'
+    if costo == '020201' and cuenta.startswith('5405'):   cuenta = '5405'
+    if costo == '0101':                                   cuenta = '5105'
+    if cuenta.startswith('541001'):                       cuenta = '541001'
+
+    if cuenta in AGRUPACIONES_EXACTAS:
+        return AGRUPACIONES_EXACTAS[cuenta]
+
+    for prefijo in PREFIJOS_AGRUPADOS:
+        if cuenta.startswith(prefijo):
+            return prefijo
+
+    return cuenta
+
+
+def _mes_desde_serial(valor):
+    """Fecha en serial Excel (Cuenta5*) -> nombre de mes, o None."""
+    fecha = excel_serial_to_date(valor)
+    if not fecha:
+        return None
+    return MESES_ES[datetime.datetime.strptime(fecha, '%Y-%m-%d').date().month]
+
+
+def _mes_desde_fecha(valor):
+    """Fecha date o str (ConsolidadoTotalBase) -> nombre de mes, o None."""
+    if not valor:
+        return None
+    if isinstance(valor, str):
+        valor = datetime.datetime.strptime(valor, '%Y-%m-%d').date()
+    return MESES_ES[valor.month]
+
+
+def _nombres_cuentas(*modelos):
+    """Diccionario cuenta -> nombre, tomando el primero no vacío."""
+    cuentas_dict = {}
+    fuentes = list(modelos) + [ConsolidadoTotalBase]
+    for modelo in fuentes:
+        for c in modelo.objects.values('mcncuenta', 'ctanombre').distinct():
+            cta, nom = c['mcncuenta'], (c['ctanombre'] or '').strip()
+            if cta and nom and cta not in cuentas_dict:
+                cuentas_dict[cta] = nom
+    return cuentas_dict
+
+
+# ══════════════════════════════════════════════════════════════════
+#  MOTOR ÚNICO DE CÁLCULO
+# ══════════════════════════════════════════════════════════════════
+
+def calcular_movimientos(origen='ejecutado', sede='total'):
+    """
+    Motor único para ejecutado y presupuestado.
+
+    origen: 'ejecutado' | 'presupuestado'
+    sede:   'cali' | 'tulua' | 'buga' | 'cartago' | 'total'
     """
     try:
-        config = SEDE_CONFIG_CONSOLIDADO[sede]
-        CUENTAS_OMITIR = ['521020']
+        modelos = ORIGENES[origen]
+        sede = normalizar_sede(sede)
+        if sede is None:
+            raise ValueError('Sede inválida')
 
-        queryset = (
-            Cuenta5Base.objects
-            .filter(**config['cuenta5_filter'])
+        filtro_detalle, filtro_consolidado = filtros_sede(sede)
+
+        # Cuentas 5x (y cualquier otra que no empiece por 4)
+        queryset_5 = (
+            modelos['cuenta5'].objects
+            .filter(**filtro_detalle)
             .exclude(mcncuenta__in=CUENTAS_OMITIR)
-            .values('mcncuenta', 'mcnccosto', 'mcnfecha',
-                    'mcnvaldebi', 'mcnvalcred', 'mcndestino')
+            .values(*CAMPOS_DETALLE)
+        )
+
+        # Cuentas 4x desde su propia tabla
+        queryset_4 = (
+            modelos['cuenta4'].objects
+            .filter(**filtro_detalle, mcncuenta__startswith='4')
+            .values(*CAMPOS_DETALLE)
         )
 
         queryset_consolidado = (
             ConsolidadoTotalBase.objects
-            .filter(**config['consolidado_filter'])
+            .filter(**filtro_consolidado, origen=origen)
             .values('mcncuenta', 'mcnccosto', 'mcnfecha', 'valor')
         )
 
-        # ── todo lo demás es idéntico en todas las versiones ──────
-        MESES_ES = {
-            1: 'Enero',  2: 'Febrero', 3: 'Marzo',     4: 'Abril',
-            5: 'Mayo',   6: 'Junio',   7: 'Julio',      8: 'Agosto',
-            9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
-        }
+        consolidado = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
 
-        def aplicar_agrupaciones(cuenta, costo):
-            if cuenta.startswith('4'):
-                return cuenta
-            if costo.startswith('02040'):                          cuenta = '5'
-            if costo == '020201' and cuenta.startswith('5405'):    cuenta = '5405'
-            if costo == '0101':                                    cuenta = '5105'
-            if cuenta.startswith('541001'):                        cuenta = '541001'
-
-            agrupaciones_exactas = {
-                frozenset(['54100207','54100208','54100209','54100210','54100211']): '54100207_54100211',
-                frozenset(['541009','541033','54103301','54103302']):                '541009_541033',
-                frozenset(['541015','541016']):                                      '541015_541016',
-                frozenset(['511015','511016']):                                      '511015_511016',
-                frozenset(['51109501','51109502']):                                  '51109501_51109502',
-            }
-            for grupo, destino_cuenta in agrupaciones_exactas.items():
-                if cuenta in grupo:
-                    cuenta = destino_cuenta
-                    break
-
-            prefijos = [
-                ('5230',   '5230'),
-                ('541003', '541003'),
-                ('541005', '541005'),
-                ('541006', '541006'),
-                ('541024', '541024'),
-                ('541027', '541027'),
-                ('5415',   '5415'),
-            ]
-            for prefijo, destino_cuenta in prefijos:
-                if cuenta.startswith(prefijo):
-                    cuenta = destino_cuenta
-                    break
-
-            return cuenta
-
-        asistencia_tecnica          = ["AT-00004","AT-00008","AT-00010","AT-00013","AT-00014",
-                                       "AT-00015","AT-00016","AT-00019","AT-00020","AT-00021",
-                                       "AT-00022","AT-00023","AT-00024","AT-00026","AT-00028",
-                                       "AT-00029","AT-00030","AT-00032","VT-00025","AT-00003"]
-        asistencia_tecnica_propia    = ['AT-00001','AT-00002','AT-00005']
-        asistencia_tecnica_convenios = ['AT-00003','AT-00004','AT-00006']
-
-        consolidado         = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
-        consolidado_normal  = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
-        consolidado_at      = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
-        consolidado_cuenta4 = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
-
-        # ── pase único sobre queryset ─────────────────────────────
-        for row in queryset:
-            fecha = excel_serial_to_date(row['mcnfecha'])
-            if not fecha:
+        # ── detalle (cuentas 5 + cuentas 4) ───────────────────────
+        for row in chain(queryset_5, queryset_4):
+            mes = _mes_desde_serial(row['mcnfecha'])
+            if not mes:
                 continue
-            fecha   = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
-            mes     = MESES_ES[fecha.month]
+
             cuenta  = row['mcncuenta'] or 'SIN CUENTA'
             costo   = row['mcnccosto'] or 'SIN COSTO'
             destino = row['mcndestino'] or 'SIN DESTINO'
             destino_norm = destino.strip().upper()
 
             if cuenta.startswith('4'):
-                # Pase 2 — AT
-                if destino_norm in asistencia_tecnica:
-                    key = (mes, destino_norm, costo, destino)
-                    consolidado_at[key]['total_debito']  += row['mcnvaldebi'] or 0
-                    consolidado_at[key]['total_credito'] += row['mcnvalcred'] or 0
-                # Pase 3 — cuenta 4 normal
-                else:
-                    key = (mes, cuenta, costo, destino)
-                    consolidado_cuenta4[key]['total_debito']  += row['mcnvaldebi'] or 0
-                    consolidado_cuenta4[key]['total_credito'] += row['mcnvalcred'] or 0
-                continue
+                # Ingresos AT se agrupan por destino; el resto por cuenta
+                if destino_norm in ASISTENCIA_TECNICA:
+                    cuenta = destino_norm
+            else:
+                cuenta = aplicar_agrupaciones(cuenta, costo)
+                if destino_norm in ASISTENCIA_TECNICA_PROPIA:
+                    cuenta = '6'
+                elif destino_norm in ASISTENCIA_TECNICA_CONVENIOS:
+                    cuenta = '7'
+                elif costo.startswith('0203'):
+                    cuenta = '8'
 
-            # Pase 1 — cuentas normales (no 4)
-            cuenta = aplicar_agrupaciones(cuenta, costo)
-            if destino_norm in asistencia_tecnica_propia:    cuenta = '6'
-            elif destino_norm in asistencia_tecnica_convenios: cuenta = '7'
-            elif costo.startswith('0203') and destino_norm not in asistencia_tecnica_convenios \
-                                          and destino_norm not in asistencia_tecnica_propia:
-                cuenta = '8'
-
-            key = (mes, cuenta, costo, destino)
-            consolidado_normal[key]['total_debito']  += row['mcnvaldebi'] or 0
-            consolidado_normal[key]['total_credito'] += row['mcnvalcred'] or 0
-
-        # ── unir acumuladores ─────────────────────────────────────
-        for acc in (consolidado_normal, consolidado_at, consolidado_cuenta4):
-            for key, valores in acc.items():
-                consolidado[key]['total_debito']  += valores['total_debito']
-                consolidado[key]['total_credito'] += valores['total_credito']
+            acc = consolidado[(mes, cuenta, costo, destino)]
+            acc['total_debito']  += row['mcnvaldebi'] or 0
+            acc['total_credito'] += row['mcnvalcred'] or 0
 
         # ── ConsolidadoTotalBase ──────────────────────────────────
         for row in queryset_consolidado:
-            fecha = row['mcnfecha']
-            if not fecha:
+            mes = _mes_desde_fecha(row['mcnfecha'])
+            if not mes:
                 continue
-            if isinstance(fecha, str):
-                fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
-            mes    = MESES_ES[fecha.month]
-            cuenta = aplicar_agrupaciones(row['mcncuenta'] or 'SIN CUENTA',
-                                          row['mcnccosto'] or 'SIN COSTO')
-            key = (mes, cuenta, row['mcnccosto'] or 'SIN COSTO', 'SIN DESTINO')
-            consolidado[key]['total_valor'] += row['valor'] or 0
+            costo  = row['mcnccosto'] or 'SIN COSTO'
+            cuenta = aplicar_agrupaciones(row['mcncuenta'] or 'SIN CUENTA', costo)
+            consolidado[(mes, cuenta, costo, 'SIN DESTINO')]['total_valor'] += row['valor'] or 0
 
-        # ── nombres ───────────────────────────────────────────────
-        cuentas_dict = {}
-        for qs in (Cuenta5Base.objects.values('mcncuenta','ctanombre').distinct(),
-                   ConsolidadoTotalBase.objects.values('mcncuenta','ctanombre').distinct()):
-            for c in qs:
-                cta, nom = c['mcncuenta'], (c['ctanombre'] or '').strip()
-                if cta and nom and cta not in cuentas_dict:
-                    cuentas_dict[cta] = nom
+        # ── armado de registros ───────────────────────────────────
+        cuentas_dict = _nombres_cuentas(modelos['cuenta5'], modelos['cuenta4'])
+        registros = defaultdict(lambda: {'mcncuenta': '', 'ctanombre': '', 'meses': {}})
 
-        nombres_especiales = {
-            '541001':'Honorarios','54100207_54100211':'Tasas Bomberil-otras',
-            '541003':'Arrendamientos','541005':'Seguros',
-            '541006':'Mantenimiento y Reparaciónes',
-            '541009_541033':'Adecuación e Instalaciones-Reparac locat',
-            '541015_541016':'Utiles - Papelería- Fotocopias',
-            '541024':'Gastos Legales','541027':'Gastos de Viaje',
-            '5415':'Depreciación','511015_511016':'Papelería y Utiles de Oficina',
-            '5405':'Gastos de Personal','5105':'Gastos de Personal',
-            '51109501_51109502':'Gastos de Fondos Sociales',
-            '5':'Proyecto de Aftosa','6':'Asistencia Técnica Propia',
-            '7':'Asistencia Técnica Convenios',
-            '8':'Asistencia Técnica Otros - Capacitaciones',
-            '5230':'Gastos no Operacionales-IVA obsequios',
-            '521015':'Gastos Contribución 4 x1000','615035':'Intereses',
-            'AT-00003':'Convenio Elanco','AT-00004':'Apoyo ciclo aftosa Virbac',
-            'AT-00005':'Convenio Proalba-Santa Lucía','AT-00007':'Convenio Tecnoquímicas',
-            'AT-00008':'Seminario ambiental',
-            'AT-00010':'Jornada de actualización en reproducción',
-            'AT-00013':'Curso de gestión empresarial','AT-00014':'Curso de mayordomía',
-            'AT-00015':'Ecografo Bovino','AT-00016':'Curso de Inseminación',
-            'AT-00019':'Brucelosis-Tuberculosis','AT-00020':'Programa ambiental',
-            'AT-00021':'Chequeo reproductivo','AT-00022':'Curso de Bromatología',
-            'AT-00023':'Capacitación software ganadero','AT-00024':'Atencion urgencias',
-            'AT-00026':'Taller atención básica equipos de ordeño',
-            'AT-00028':'Mantenimiento equipo técnico-Diplomado',
-            'AT-00029':'Taller en bienestar y sanidad bovina',
-            'AT-00030':'Seminario productividad láctea',
-            'AT-00032':'Servicio de imágenes con dron',
-            'VT-00025':'Convenio Tecnoquímicas','41659505':'Proyecto de Aftosa',
-            '41659501':'Patrocinio de eventos','420560':'Venta PPE (moto)',
-        }
-
-        registros = defaultdict(lambda: {'mcncuenta':'','ctanombre':'','meses':{}})
-
-        for (mes, cuenta, costo, destino) in consolidado:
-            vals = consolidado[(mes, cuenta, costo, destino)]
-            if cuenta in asistencia_tecnica or cuenta.startswith('4'):
+        for (mes, cuenta, _costo, _destino), vals in consolidado.items():
+            if cuenta in ASISTENCIA_TECNICA or cuenta.startswith('4'):
                 saldo = vals['total_credito'] - vals['total_debito'] + vals['total_valor']
             else:
                 saldo = vals['total_debito'] - vals['total_credito'] + vals['total_valor']
 
-            registros[cuenta]['mcncuenta'] = cuenta
-            registros[cuenta]['ctanombre'] = nombres_especiales.get(
+            reg = registros[cuenta]
+            reg['mcncuenta'] = cuenta
+            reg['ctanombre'] = NOMBRES_ESPECIALES.get(
                 cuenta, cuentas_dict.get(cuenta, 'SIN NOMBRE')
             ).capitalize()
-            registros[cuenta]['meses'][mes] = round(
-                registros[cuenta]['meses'].get(mes, 0) + saldo
-            )
+            reg['meses'][mes] = round(reg['meses'].get(mes, 0) + saldo)
 
         return {'success': True, 'data': registros}
 
     except Exception as e:
-        print(f"❌ Error en calcular_consolidado({sede}): {e}")
+        print(f"❌ Error en calcular_movimientos({origen}, {sede}): {e}")
         return {'success': False, 'error': str(e)}
 
+
+# Wrappers por compatibilidad (si los llamas desde otros módulos)
+def calcular_consolidado(sede='total'):
+    return calcular_movimientos('ejecutado', sede)
+
+
+def calcular_presupuestado(sede='total'):
+    return calcular_movimientos('presupuestado', sede)
+
+
 # ══════════════════════════════════════════════════════════════════
-#  VISTA GENÉRICA — reemplaza todas las obtener_consolidado_*
+#  VISTA GENÉRICA
 # ══════════════════════════════════════════════════════════════════
 
-def obtener_consolidado(request):
-    """
-    Vista única para todas las sedes.
-    Recibe ?sede=cali | tulua | buga | palmira | consolidado  (default: consolidado)
-    """
-    sede = request.GET.get('sede', 'consolidado').lower()
-    if sede not in SEDE_CONFIG_CONSOLIDADO:
-        return JsonResponse({'error': f'Sede inválida: {sede}'}, status=400)
+def _responder_movimientos(request, origen):
+    sede = normalizar_sede(request.GET.get('sede'))
+    if sede is None:
+        return JsonResponse({'error': f"Sede inválida: {request.GET.get('sede')}"}, status=400)
 
-    if sede == 'consolidado':
-        # Para la vista consolidado_total_base, se mantiene el orden personalizado de cuentas
-        ORDEN_PERSONALIZADO = [
-            '1','2','41750201','613522','4240900101','4240909502',
-            '5405','541001','54100201','54100202','54100204','54100205','54100206',
-            '54100207_54100211','541003','541005','541006','541009_541033',
-            '541010','541011','54101201','54101202','54101203','54101204',
-            '541013','541014','541015_541016','541018','541023','541024','541027',
-            '541029','541032','541035','54109501','54109502','54109503','54109504',
-            '54109505','54109506','54109507','54109508','54109509','54109510',
-            '5415','542005','54100203','54100211',
-            '5105','511001','511002','511003','511005','511006','511009','511010',
-            '511011','511012','511013','511015_511016','511018','511019','511020',
-            '511021','511022','511023','511024','511026','511027','511031','511033',
-            '511035','51109502','51109501_51109502','511512','511534',
-            '521005','521015','521020','3','615035',
-            'AT-00004','AT-00005','AT-00007','AT-00008','AT-00010','AT-00013',
-            'AT-00014','AT-00015','AT-00016','AT-00019','AT-00020','AT-00021',
-            'AT-00022','AT-00023','AT-00024','AT-00026','AT-00028','AT-00029',
-            'AT-00030','AT-00032','VT-00001','VT-00025','AT-00003',
-            '41659505','41659501','422004','422507','422529','4240900202','420560',
-            '4240900301','4240900401','4240909501','4240909503','4240909901','41750105',
-            '5','6','7','8','5230',
-        ]
-    else:
-        # Para las vistas de sedes individuales, se omiten ciertas cuentas y se ordena alfabéticamente
-        ORDEN_PERSONALIZADO = [
-            '1','2','41750201','613522','4240900101','4240909502',
-            '5405','541001','54100201','54100202','54100204','54100205','54100206',
-            '54100207_54100211','541003','541005','541006','541009_541033',
-            '541010','541011','54101201','54101202','54101203','54101204',
-            '541013','541014','541015_541016','541018','541023','541024','541027',
-            '541029','541032','541035','54109501','54109502','54109503','54109504',
-            '54109505','54109506','54109507','54109508','54109509','54109510',
-            '5415','542005',
-        ]
-            
-    MESES_COLS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-
-    resultado = calcular_consolidado(sede)
+    resultado = calcular_movimientos(origen, sede)
     if not resultado['success']:
         return JsonResponse({'error': resultado.get('error', 'Error')}, status=500)
 
-    pivot_data = {}
-    for key, row in resultado['data'].items():
-        entry = {'mcncuenta': row['mcncuenta'], 'ctanombre': row['ctanombre'],
-                 **{m: 0 for m in MESES_COLS}, 'total': 0}
+    ORDEN_PERSONALIZADO = obtener_orden_cuentas('total' if sede == 'total' else 'sede')
+    NOMBRES = nombres_personalizados()
+
+    filas = []
+    for row in resultado['data'].values():
+        if row['mcncuenta'] not in ORDEN_PERSONALIZADO:
+            continue
+        entry = {
+            'mcncuenta': row['mcncuenta'],
+            'ctanombre': NOMBRES.get(row['mcncuenta'], row['ctanombre']),
+            **{m: 0 for m in MESES_COLS},
+            'total': 0,
+        }
         for mes, valor in row['meses'].items():
             if mes in entry:
-                entry[mes]    = valor
+                entry[mes] = valor
                 entry['total'] += valor
-        pivot_data[key] = entry
+        filas.append(entry)
 
-    result = sorted(
-        [v for v in pivot_data.values() if v['mcncuenta'] in ORDEN_PERSONALIZADO],
-        key=lambda item: ORDEN_PERSONALIZADO.index(item['mcncuenta'])
+    filas.sort(key=lambda item: ORDEN_PERSONALIZADO.index(item['mcncuenta']))
+
+    return JsonResponse({'data': filas,
+                         'recordsTotal': len(filas),
+                         'recordsFiltered': len(filas)})
+
+
+def obtener_consolidado(request):
+    """?sede=cali|tulua|buga|cartago|total   (default: total)"""
+    return _responder_movimientos(request, 'ejecutado')
+
+
+def obtener_presupuestado(request):
+    """?sede=cali|tulua|buga|cartago|total   (default: total)"""
+    return _responder_movimientos(request, 'presupuestado')
+
+
+# ═══════════════════════════════════════════════════════════════
+#  ORDEN PERSONALIZADO DE CUENTAS
+# ═══════════════════════════════════════════════════════════════
+
+# Listas actuales del código: solo se usan como semilla / fallback.
+ORDEN_TOTAL_FALLBACK = [
+    '1','2','41750201','613522','4240900101','4240909502',
+    '5405','541001','54100201','54100202','54100204','54100205','54100206',
+    '54100207_54100211','541003','541005','541006','541009_541033',
+    '541010','541011','54101201','54101202','54101203','54101204',
+    '541013','541014','541015_541016','541018','541023','541024','541027',
+    '541029','541032','541035','54109501','54109502','54109503','54109504',
+    '54109505','54109506','54109507','54109508','54109509','54109510',
+    '5415','542005','54100203','54100211',
+    '5105','511001','511002','511003','511005','511006','511009','511010',
+    '511011','511012','511013','511015_511016','511018','511019','511020',
+    '511021','511022','511023','511024','511026','511027','511031','511033',
+    '511035','51109502','51109501_51109502','511512','511534',
+    '521005','521015','521020','3','615035',
+    'AT-00004','AT-00005','AT-00007','AT-00008','AT-00010','AT-00013',
+    'AT-00014','AT-00015','AT-00016','AT-00019','AT-00020','AT-00021',
+    'AT-00022','AT-00023','AT-00024','AT-00026','AT-00028','AT-00029',
+    'AT-00030','AT-00032','VT-00001','VT-00025','AT-00003',
+    '41659505','41659501','422004','422507','422529','4240900202','420560',
+    '4240900301','4240900401','4240909501','4240909503','4240909901','41750105',
+    '5','6','7','8','5230',
+]
+ORDEN_SEDE_FALLBACK = ORDEN_TOTAL_FALLBACK[:ORDEN_TOTAL_FALLBACK.index('542005') + 1]
+
+
+def obtener_orden_cuentas(ambito='total'):
+    """Lista ordenada de códigos de cuenta. ambito: 'total' | 'sede'."""
+    qs = OrdenCuenta.objects.all()
+    qs = qs.filter(visible_sede=True) if ambito == 'sede' else qs.filter(visible_total=True)
+    orden = list(qs.order_by('orden', 'id').values_list('mcncuenta', flat=True))
+    if orden:
+        return orden
+    return ORDEN_SEDE_FALLBACK if ambito == 'sede' else ORDEN_TOTAL_FALLBACK
+
+
+def nombres_personalizados():
+    """{ mcncuenta: ctanombre } solo para las que tengan nombre definido."""
+    return {
+        c: n for c, n in OrdenCuenta.objects.exclude(ctanombre='')
+                                            .values_list('mcncuenta', 'ctanombre')
+    }
+
+
+def _cuentas_detectadas():
+    """Cuentas que realmente pueden aparecer en las tablas, ya agrupadas."""
+    detectadas = {}
+    for fn, arg in ((calcular_consolidado, 'consolidado'),
+                    (calcular_presupuestado, 'presupuestado')):
+        res = fn(arg)
+        if res.get('success'):
+            for cta, row in res['data'].items():
+                if cta and cta not in detectadas:
+                    detectadas[cta] = row.get('ctanombre') or ''
+    return detectadas
+
+
+@login_required
+def ajustes_orden_cuentas(request):
+    if request.user.username not in ['admin', 'NICOLAS']:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, 'ajustes/orden_cuentas.html')
+
+
+@require_GET
+def listar_orden_cuentas(request):
+    data = list(
+        OrdenCuenta.objects.order_by('orden', 'id')
+        .values('id', 'mcncuenta', 'ctanombre', 'orden', 'visible_total', 'visible_sede')
     )
+    return JsonResponse({'success': True, 'data': data, 'total': len(data)})
 
-    return JsonResponse({'data': result,
-                         'recordsTotal': len(result),
-                         'recordsFiltered': len(result)})
 
-SEDE_CONFIG_PRESUPUESTADO = {
-    'cali': {
-        'cuenta5_filter':   {'mcnzona__in': ['004', 4]},
-        'presupuestado_filter': {'sede__icontains': 'CALI'},
-    },
-    'tulua': {
-        'cuenta5_filter':   {'mcnzona__in': ['001', 1]},
-        'presupuestado_filter': {'sede__icontains': 'TULUA'},
-    },
-    'buga': {
-        'cuenta5_filter':   {'mcnzona__in': ['002', 2]},
-        'presupuestado_filter': {'sede__icontains': 'BUGA'},
-    },
-    'cartago': {
-        'cuenta5_filter':   {'mcnzona__in': ['003', 3]},
-        'presupuestado_filter': {'sede__icontains': 'CARTAGO'},
-    },
-    'presupuestado': {
-        'cuenta5_filter':   {},          # sin filtro → todas las sedes
-        'presupuestado_filter': {},
-    },
-}
-# CALCULAR Y OBTENER PRESUPUESTADO ----------------
-def calcular_presupuestado(sede='presupuestado'):
-    """
-    Calcula el presupuestado para una sede específica o para todas.
-
-    sede: clave de SEDE_CONFIG  ('cali' | 'tulua' | 'buga' | 'palmira' | 'presupuestado')
-    """
+@login_required
+@require_POST
+def sincronizar_orden_cuentas(request):
+    """Crea las cuentas que aún no estén en la tabla (al final de la lista).
+    Si la tabla está vacía, la siembra con el orden que hay hoy en el código."""
     try:
-        config = SEDE_CONFIG_PRESUPUESTADO[sede]
-        CUENTAS_OMITIR = ['521020']
+        detectadas = _cuentas_detectadas()
+        existentes = set(OrdenCuenta.objects.values_list('mcncuenta', flat=True))
+        creadas = 0
 
-        queryset = (
-            Cuenta5Presupuestado.objects
-            .filter(**config['cuenta5_filter'])
-            .exclude(mcncuenta__in=CUENTAS_OMITIR)
-            .values('mcncuenta', 'mcnccosto', 'mcnfecha',
-                    'mcnvaldebi', 'mcnvalcred', 'mcndestino')
-        )
+        with transaction.atomic():
+            if not existentes:
+                en_sede = set(ORDEN_SEDE_FALLBACK)
+                OrdenCuenta.objects.bulk_create([
+                    OrdenCuenta(
+                        mcncuenta=cta,
+                        ctanombre=detectadas.get(cta, ''),
+                        orden=(i + 1) * 10,
+                        visible_total=True,
+                        visible_sede=cta in en_sede,
+                    ) for i, cta in enumerate(ORDEN_TOTAL_FALLBACK)
+                ])
+                creadas = len(ORDEN_TOTAL_FALLBACK)
+                existentes = set(ORDEN_TOTAL_FALLBACK)
 
-        queryset_presupuestado = (
-            ConsolidadoTotalBase.objects
-            .filter(**config['presupuestado_filter'])
-            .values('mcncuenta', 'mcnccosto', 'mcnfecha', 'valor')
-        )
+            ultimo = OrdenCuenta.objects.aggregate(m=models.Max('orden'))['m'] or 0
+            nuevas = []
+            for cta, nombre in detectadas.items():
+                if cta not in existentes:
+                    ultimo += 10
+                    nuevas.append(OrdenCuenta(
+                        mcncuenta=cta, ctanombre=nombre, orden=ultimo,
+                        visible_total=True, visible_sede=False,
+                    ))
+            OrdenCuenta.objects.bulk_create(nuevas)
+            creadas += len(nuevas)
 
-        # ── todo lo demás es idéntico en todas las versiones ──────
-        MESES_ES = {
-            1: 'Enero',  2: 'Febrero', 3: 'Marzo',     4: 'Abril',
-            5: 'Mayo',   6: 'Junio',   7: 'Julio',      8: 'Agosto',
-            9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
-        }
-
-        def aplicar_agrupaciones(cuenta, costo):
-            if cuenta.startswith('4'):
-                return cuenta
-            if costo.startswith('02040'):                          cuenta = '5'
-            if costo == '020201' and cuenta.startswith('5405'):    cuenta = '5405'
-            if costo == '0101':                                    cuenta = '5105'
-            if cuenta.startswith('541001'):                        cuenta = '541001'
-
-            agrupaciones_exactas = {
-                frozenset(['54100207','54100208','54100209','54100210','54100211']): '54100207_54100211',
-                frozenset(['541009','541033','54103301','54103302']):                '541009_541033',
-                frozenset(['541015','541016']):                                      '541015_541016',
-                frozenset(['511015','511016']):                                      '511015_511016',
-                frozenset(['51109501','51109502']):                                  '51109501_51109502',
-            }
-            for grupo, destino_cuenta in agrupaciones_exactas.items():
-                if cuenta in grupo:
-                    cuenta = destino_cuenta
-                    break
-
-            prefijos = [
-                ('5230',   '5230'),
-                ('541003', '541003'),
-                ('541005', '541005'),
-                ('541006', '541006'),
-                ('541024', '541024'),
-                ('541027', '541027'),
-                ('5415',   '5415'),
-            ]
-            for prefijo, destino_cuenta in prefijos:
-                if cuenta.startswith(prefijo):
-                    cuenta = destino_cuenta
-                    break
-
-            return cuenta
-
-        asistencia_tecnica          = ["AT-00004","AT-00008","AT-00010","AT-00013","AT-00014",
-                                       "AT-00015","AT-00016","AT-00019","AT-00020","AT-00021",
-                                       "AT-00022","AT-00023","AT-00024","AT-00026","AT-00028",
-                                       "AT-00029","AT-00030","AT-00032","VT-00025","AT-00003"]
-        asistencia_tecnica_propia    = ['AT-00001','AT-00002','AT-00005']
-        asistencia_tecnica_convenios = ['AT-00003','AT-00004','AT-00006']
-
-        consolidado         = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
-        consolidado_normal  = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
-        consolidado_at      = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
-        consolidado_cuenta4 = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
-
-        # ── pase único sobre queryset ─────────────────────────────
-        for row in queryset:
-            fecha = excel_serial_to_date(row['mcnfecha'])
-            if not fecha:
-                continue
-            fecha   = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
-            mes     = MESES_ES[fecha.month]
-            cuenta  = row['mcncuenta'] or 'SIN CUENTA'
-            costo   = row['mcnccosto'] or 'SIN COSTO'
-            destino = row['mcndestino'] or 'SIN DESTINO'
-            destino_norm = destino.strip().upper()
-
-            if cuenta.startswith('4'):
-                # Pase 2 — AT
-                if destino_norm in asistencia_tecnica:
-                    key = (mes, destino_norm, costo, destino)
-                    consolidado_at[key]['total_debito']  += row['mcnvaldebi'] or 0
-                    consolidado_at[key]['total_credito'] += row['mcnvalcred'] or 0
-                # Pase 3 — cuenta 4 normal
-                else:
-                    key = (mes, cuenta, costo, destino)
-                    consolidado_cuenta4[key]['total_debito']  += row['mcnvaldebi'] or 0
-                    consolidado_cuenta4[key]['total_credito'] += row['mcnvalcred'] or 0
-                continue
-
-            # Pase 1 — cuentas normales (no 4)
-            cuenta = aplicar_agrupaciones(cuenta, costo)
-            if destino_norm in asistencia_tecnica_propia:    cuenta = '6'
-            elif destino_norm in asistencia_tecnica_convenios: cuenta = '7'
-            elif costo.startswith('0203') and destino_norm not in asistencia_tecnica_convenios \
-                                          and destino_norm not in asistencia_tecnica_propia:
-                cuenta = '8'
-
-            key = (mes, cuenta, costo, destino)
-            consolidado_normal[key]['total_debito']  += row['mcnvaldebi'] or 0
-            consolidado_normal[key]['total_credito'] += row['mcnvalcred'] or 0
-
-        # ── unir acumuladores ─────────────────────────────────────
-        for acc in (consolidado_normal, consolidado_at, consolidado_cuenta4):
-            for key, valores in acc.items():
-                consolidado[key]['total_debito']  += valores['total_debito']
-                consolidado[key]['total_credito'] += valores['total_credito']
-
-        # ── ConsolidadoTotalBase ──────────────────────────────────
-        for row in queryset_presupuestado:
-            fecha = row['mcnfecha']
-            if not fecha:
-                continue
-            if isinstance(fecha, str):
-                fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
-            mes    = MESES_ES[fecha.month]
-            cuenta = aplicar_agrupaciones(row['mcncuenta'] or 'SIN CUENTA',
-                                          row['mcnccosto'] or 'SIN COSTO')
-            key = (mes, cuenta, row['mcnccosto'] or 'SIN COSTO', 'SIN DESTINO')
-            consolidado[key]['total_valor'] += row['valor'] or 0
-
-        # ── nombres ───────────────────────────────────────────────
-        cuentas_dict = {}
-        for qs in (Cuenta5Presupuestado.objects.values('mcncuenta','ctanombre').distinct(),
-                   ConsolidadoTotalBase.objects.values('mcncuenta','ctanombre').distinct()):
-            for c in qs:
-                cta, nom = c['mcncuenta'], (c['ctanombre'] or '').strip()
-                if cta and nom and cta not in cuentas_dict:
-                    cuentas_dict[cta] = nom
-
-        nombres_especiales = {
-            '541001':'Honorarios','54100207_54100211':'Tasas Bomberil-otras',
-            '541003':'Arrendamientos','541005':'Seguros',
-            '541006':'Mantenimiento y Reparaciónes',
-            '541009_541033':'Adecuación e Instalaciones-Reparac locat',
-            '541015_541016':'Utiles - Papelería- Fotocopias',
-            '541024':'Gastos Legales','541027':'Gastos de Viaje',
-            '5415':'Depreciación','511015_511016':'Papelería y Utiles de Oficina',
-            '5405':'Gastos de Personal','5105':'Gastos de Personal',
-            '51109501_51109502':'Gastos de Fondos Sociales',
-            '5':'Proyecto de Aftosa','6':'Asistencia Técnica Propia',
-            '7':'Asistencia Técnica Convenios',
-            '8':'Asistencia Técnica Otros - Capacitaciones',
-            '5230':'Gastos no Operacionales-IVA obsequios',
-            '521015':'Gastos Contribución 4 x1000','615035':'Intereses',
-            'AT-00003':'Convenio Elanco','AT-00004':'Apoyo ciclo aftosa Virbac',
-            'AT-00005':'Convenio Proalba-Santa Lucía','AT-00007':'Convenio Tecnoquímicas',
-            'AT-00008':'Seminario ambiental',
-            'AT-00010':'Jornada de actualización en reproducción',
-            'AT-00013':'Curso de gestión empresarial','AT-00014':'Curso de mayordomía',
-            'AT-00015':'Ecografo Bovino','AT-00016':'Curso de Inseminación',
-            'AT-00019':'Brucelosis-Tuberculosis','AT-00020':'Programa ambiental',
-            'AT-00021':'Chequeo reproductivo','AT-00022':'Curso de Bromatología',
-            'AT-00023':'Capacitación software ganadero','AT-00024':'Atencion urgencias',
-            'AT-00026':'Taller atención básica equipos de ordeño',
-            'AT-00028':'Mantenimiento equipo técnico-Diplomado',
-            'AT-00029':'Taller en bienestar y sanidad bovina',
-            'AT-00030':'Seminario productividad láctea',
-            'AT-00032':'Servicio de imágenes con dron',
-            'VT-00025':'Convenio Tecnoquímicas','41659505':'Proyecto de Aftosa',
-            '41659501':'Patrocinio de eventos','420560':'Venta PPE (moto)',
-        }
-
-        registros = defaultdict(lambda: {'mcncuenta':'','ctanombre':'','meses':{}})
-
-        for (mes, cuenta, costo, destino) in consolidado:
-            vals = consolidado[(mes, cuenta, costo, destino)]
-            if cuenta in asistencia_tecnica or cuenta.startswith('4'):
-                saldo = vals['total_credito'] - vals['total_debito'] + vals['total_valor']
-            else:
-                saldo = vals['total_debito'] - vals['total_credito'] + vals['total_valor']
-
-            registros[cuenta]['mcncuenta'] = cuenta
-            registros[cuenta]['ctanombre'] = nombres_especiales.get(
-                cuenta, cuentas_dict.get(cuenta, 'SIN NOMBRE')
-            ).capitalize()
-            registros[cuenta]['meses'][mes] = round(
-                registros[cuenta]['meses'].get(mes, 0) + saldo
-            )
-
-        return {'success': True, 'data': registros}
-
+        return JsonResponse({
+            'success': True, 'creadas': creadas,
+            'total': OrdenCuenta.objects.count(),
+        })
     except Exception as e:
-        print(f"❌ Error en calcular_presupuestado({sede}): {e}")
-        return {'success': False, 'error': str(e)}
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def guardar_orden_cuentas(request):
+    """Recibe la lista completa en el orden final:
+       { "cuentas": [ {mcncuenta, ctanombre, visible_total, visible_sede}, ... ] }"""
+    try:
+        body = json.loads(request.body)
+        filas = body.get('cuentas', [])
+        if not filas:
+            return JsonResponse({'success': False, 'error': 'Sin cuentas'}, status=400)
+
+        with transaction.atomic():
+            for i, f in enumerate(filas):
+                cta = str(f.get('mcncuenta', '') or '').strip()
+                if not cta:
+                    continue
+                OrdenCuenta.objects.update_or_create(
+                    mcncuenta=cta,
+                    defaults={
+                        'orden': (i + 1) * 10,
+                        'ctanombre': str(f.get('ctanombre', '') or '').strip(),
+                        'visible_total': bool(f.get('visible_total', True)),
+                        'visible_sede': bool(f.get('visible_sede', False)),
+                    },
+                )
+        return JsonResponse({'success': True, 'guardadas': len(filas)})
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'JSON inválido'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def eliminar_orden_cuenta(request):
+    try:
+        pk = json.loads(request.body).get('id')
+        OrdenCuenta.objects.filter(pk=pk).delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 # ══════════════════════════════════════════════════════════════════
 #  VISTA GENÉRICA — reemplaza todas las obtener_presupuestado_*
 # ══════════════════════════════════════════════════════════════════
 
-def obtener_presupuestado(request):
-    """
-    Vista única para todas las sedes.
-    Recibe ?sede=cali | tulua | buga | cartago | presupuestado  (default: presupuestado)
-    """
-    sede = request.GET.get('sede', 'presupuestado').lower()
-    if sede not in SEDE_CONFIG_PRESUPUESTADO:
-        return JsonResponse({'error': f'Sede inválida: {sede}'}, status=400)
-
-    ORDEN_PERSONALIZADO = [
-        '1','2','41750201','613522','4240900101','4240909502',
-        '5405','541001','54100201','54100202','54100204','54100205','54100206',
-        '54100207_54100211','541003','541005','541006','541009_541033',
-        '541010','541011','54101201','54101202','54101203','54101204',
-        '541013','541014','541015_541016','541018','541023','541024','541027',
-        '541029','541032','541035','54109501','54109502','54109503','54109504',
-        '54109505','54109506','54109507','54109508','54109509','54109510',
-        '5415','542005','54100203','54100211',
-        '5105','511001','511002','511003','511005','511006','511009','511010',
-        '511011','511012','511013','511015_511016','511018','511019','511020',
-        '511021','511022','511023','511024','511026','511027','511031','511033',
-        '511035','51109502','51109501_51109502','511512','511534',
-        '521005','521015','521020','3','615035',
-        'AT-00004','AT-00005','AT-00007','AT-00008','AT-00010','AT-00013',
-        'AT-00014','AT-00015','AT-00016','AT-00019','AT-00020','AT-00021',
-        'AT-00022','AT-00023','AT-00024','AT-00026','AT-00028','AT-00029',
-        'AT-00030','AT-00032','VT-00001','VT-00025','AT-00003',
-        '41659505','41659501','422004','422507','422529','4240900202','420560',
-        '4240900301','4240900401','4240909501','4240909503','4240909901','41750105',
-        '5','6','7','8','5230',
-    ]
-
-    MESES_COLS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-
-    resultado = calcular_presupuestado(sede)
-    if not resultado['success']:
-        return JsonResponse({'error': resultado.get('error', 'Error')}, status=500)
-
-    pivot_data = {}
-    for key, row in resultado['data'].items():
-        entry = {'mcncuenta': row['mcncuenta'], 'ctanombre': row['ctanombre'],
-                 **{m: 0 for m in MESES_COLS}, 'total': 0}
-        for mes, valor in row['meses'].items():
-            if mes in entry:
-                entry[mes]    = valor
-                entry['total'] += valor
-        pivot_data[key] = entry
-
-    result = sorted(
-        [v for v in pivot_data.values() if v['mcncuenta'] in ORDEN_PERSONALIZADO],
-        key=lambda item: ORDEN_PERSONALIZADO.index(item['mcncuenta'])
-    )
-
-    return JsonResponse({'data': result,
-                         'recordsTotal': len(result),
-                         'recordsFiltered': len(result)})
 
 # FIN CALCULAR Y OBTENER PRESUPUESTADO -----------------
+# CONSOLIDADO GENERAL
+@login_required
+def consolidado_general(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuesto_consolidado/consolidado_general.html")
 
-@require_http_methods(["POST"])
-def guardar_fila_consolidado(request):
-    """
-    Guarda o actualiza una fila del consolidado.
-    Recibe datos pivotados (meses en horizontal) y los guarda como registros individuales por mes.
-    """
-    try:
-        data = json.loads(request.body)
-        nueva_data = data.get('nueva_data')
-        old_data = data.get('old_data')
-        
-        if not nueva_data:
-            return JsonResponse({
-                'success': False,
-                'error': 'No se recibieron datos'
-            }, status=400)
-        
-        # Validaciones
-        if not nueva_data.get('mcncuenta') or not nueva_data.get('mcnccosto'):
-            return JsonResponse({
-                'success': False,
-                'error': 'Cuenta y Centro de Costo son obligatorios'
-            }, status=400)
-        
-        # tomar año de la cuenta 5 
-        queryset = Cuenta5Base.objects.values(
-                'mcncuenta',
-                'mcnccosto',
-                'mcnfecha',
-            )
-        year = 0
-        for row in queryset:
-            fecha = excel_serial_to_date(row['mcnfecha'])
-            if not fecha:
-                continue
-            fecha = datetime.datetime.strptime(fecha, '%Y-%m-%d').date()
-            year = fecha.year
-        # Mapeo de meses
-        meses_mapping = {
-            'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
-            'mayo': 5, 'junio': 6, 'julio': 7, 'agosto': 8,
-            'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
-        }
-        
-        with transaction.atomic():
-            # Si hay datos antiguos, eliminar los registros correspondientes
-            if old_data and old_data.get('mcncuenta') and old_data.get('mcnccosto'):
-                ConsolidadoTotalBase.objects.filter(
-                    mcncuenta=old_data['mcncuenta'],
-                    mcnccosto=old_data['mcnccosto'],
-                    mcnfecha__year=year
-                ).delete()
-            
-            # Crear nuevos registros para cada mes
-            registros_nuevos = []
-            total_anual = nueva_data.get('total', 0)
-            
-            for mes_nombre, mes_num in meses_mapping.items():
-                valor_mes = nueva_data.get(mes_nombre, 0)
-                
-                # Solo crear registro si hay valor o si es una fila nueva
-                if valor_mes != 0 or not old_data:
-                    fecha = datetime.date(year, mes_num, 1)
-                    
-                    registros_nuevos.append(
-                        ConsolidadoTotalBase(
-                            mcncuenta=nueva_data['mcncuenta'],
-                            mcnccosto=nueva_data['mcnccosto'],
-                            ctanombre=nueva_data.get('ctanombre', ''),
-                            mcnfecha=fecha,
-                            valor = valor_mes,
-                            total_anual=total_anual
-                        )
-                    )
-            
-            # Guardar todos los registros
-            if registros_nuevos:
-                ConsolidadoTotalBase.objects.bulk_create(registros_nuevos)
-            
-            return JsonResponse({
-                'success': True,
-                'mensaje': f'✅ Fila guardada correctamente. {len(registros_nuevos)} registros creados.',
-                'registros_creados': len(registros_nuevos)
-            })
-            
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': 'Error al procesar datos JSON'
-        }, status=400)
-    except Exception as e:
-        print(f"❌ Error en guardar_fila_consolidado: {e}")
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
+# PRESUPUESTO GENERAL
+@login_required
+def presupuestado_general(request):
+    usuarios_permitidos = ['admin', 'NICOLAS']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    return render(request, "presupuestado/presupuestado_general.html")
 
-@require_http_methods(["POST"])
-def eliminar_fila_consolidado(request):
-    """
-    Elimina todos los registros asociados a una cuenta y centro de costo
-    """
-    try:
-        data = json.loads(request.body)
-        mcncuenta = data.get('mcncuenta')
-        
-        if not mcncuenta:
-            return JsonResponse({
-                'success': False,
-                'error': 'Cuenta es obligatoria'
-            }, status=400)
-        
-        year = datetime.datetime.now().year
-        
-        with transaction.atomic():
-            # Eliminar todos los registros de esa cuenta/costo
-            registros_eliminados = ConsolidadoTotalBase.objects.filter(
-                mcncuenta=mcncuenta,
-                mcnfecha__year=year
-            ).delete()
-            
-            num_eliminados = registros_eliminados[0] if registros_eliminados else 0
-            
-            return JsonResponse({
-                'success': True,
-                'mensaje': f'✅ Fila eliminada correctamente. {num_eliminados} registros eliminados.',
-                'registros_eliminados': num_eliminados
-            })
-            
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': 'Error al procesar datos JSON'
-        }, status=400)
-    except Exception as e:
-        print(f"❌ Error en eliminar_fila_consolidado: {e}")
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
-
+# TABLA DINÁMICA FLEXIBLE
+@login_required
 def obtener_tabla_dinamica_flexible(request):
     """
     ▼ Ahora también filtra por ctanombre si se envía en los parámetros GET.
@@ -8879,7 +8620,7 @@ def obtener_tabla_dinamica_flexible(request):
             'mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto'
         ]))
  
-        queryset = Cuenta5Base.objects.values(*campos_select)
+        queryset = Cuenta5Presupuestado.objects.values(*campos_select)
  
         filtro_cuenta    = request.GET.get('mcncuenta',  '')
         filtro_zona      = request.GET.get('mcnzona',    '')
@@ -8967,7 +8708,7 @@ def obtener_valores_filtros(request):
         if campo not in campos_validos:
             return JsonResponse({'error': 'Campo no válido'}, status=400)
  
-        queryset = Cuenta5Base.objects.all()
+        queryset = Cuenta5Presupuestado.objects.all()
  
         # Aplicar los filtros de los OTROS campos (no del campo que se consulta)
         filtro_cuenta   = request.GET.get('mcncuenta',  '')
@@ -9015,7 +8756,7 @@ def obtener_registros_detalle(request):
         if not ctanombre or not vinnombre or not mcndetalle:
             return JsonResponse({'error': 'Faltan parámetros obligatorios'}, status=400)
 
-        queryset = Cuenta5Base.objects.filter(
+        queryset = Cuenta5Presupuestado.objects.filter(
             ctanombre=ctanombre,
             vinnombre=vinnombre,
             mcndetalle=mcndetalle,
@@ -9063,8 +8804,8 @@ def editar_registro(request, registro_id):
     Body JSON con los campos a actualizar.
     """
     try:
-        obj = Cuenta5Base.objects.get(pk=registro_id)
-    except Cuenta5Base.DoesNotExist:
+        obj = Cuenta5Presupuestado.objects.get(pk=registro_id)
+    except Cuenta5Presupuestado.DoesNotExist:
         return JsonResponse({'error': 'Registro no encontrado'}, status=404)
 
     try:
@@ -9098,8 +8839,8 @@ def eliminar_registro(request, registro_id):
     Elimina un registro individual de Cuenta5Base.
     """
     try:
-        obj = Cuenta5Base.objects.get(pk=registro_id)
-    except Cuenta5Base.DoesNotExist:
+        obj = Cuenta5Presupuestado.objects.get(pk=registro_id)
+    except Cuenta5Presupuestado.DoesNotExist:
         return JsonResponse({'error': 'Registro no encontrado'}, status=404)
 
     obj.delete()
@@ -9118,7 +8859,7 @@ def obtener_registros_nivel(request):
         if not nivel or not ctanombre:
             return JsonResponse({'error': 'Faltan parámetros obligatorios'}, status=400)
 
-        queryset = Cuenta5Base.objects.filter(ctanombre=ctanombre)
+        queryset = Cuenta5Presupuestado.objects.filter(ctanombre=ctanombre)
 
         if nivel == 'vinculo':
             vinnombre = request.GET.get('vinnombre', '')
@@ -9188,7 +8929,7 @@ def renombrar_nivel(request):
             nuevo = body.get('ctanombre_nuevo', '').strip()
             if not nuevo:
                 return JsonResponse({'error': 'Falta ctanombre_nuevo'}, status=400)
-            count = Cuenta5Base.objects.filter(ctanombre=ctanombre_actual).update(ctanombre=nuevo)
+            count = Cuenta5Presupuestado.objects.filter(ctanombre=ctanombre_actual).update(ctanombre=nuevo)
             return JsonResponse({'success': True, 'actualizados': count, 'nuevo': nuevo})
 
         elif nivel == 'vinculo':
@@ -9196,7 +8937,7 @@ def renombrar_nivel(request):
             nuevo = body.get('vinnombre_nuevo', '').strip()
             if not vinnombre_actual or not nuevo:
                 return JsonResponse({'error': 'Faltan vinnombre_actual o vinnombre_nuevo'}, status=400)
-            count = Cuenta5Base.objects.filter(
+            count = Cuenta5Presupuestado.objects.filter(
                 ctanombre=ctanombre_actual,
                 vinnombre=vinnombre_actual
             ).update(vinnombre=nuevo)
@@ -9226,7 +8967,7 @@ def eliminar_nivel(request):
         if not nivel or not ctanombre:
             return JsonResponse({'error': 'Faltan parámetros'}, status=400)
 
-        queryset = Cuenta5Base.objects.filter(ctanombre=ctanombre)
+        queryset = Cuenta5Presupuestado.objects.filter(ctanombre=ctanombre)
 
         if nivel == 'vinculo':
             vinnombre = request.GET.get('vinnombre', '')
@@ -9440,40 +9181,88 @@ def _to_bigint(value):
         return int(float(str(value).replace('.', '').replace(',', '.')))
     except (ValueError, TypeError):
         return None
-    
-    
-# COMPARATIVO PRESUPUESTADO VS EJECUTADO
-@login_required
-def comparativo_tulua(request):
-    usuarios_permitidos = ['admin', 'NICOLAS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "comparativo/comparativo_tulua.html")
+
+# ---------------------------------------------------------------------------
+# AÑADIR A views.py
+# ---------------------------------------------------------------------------
+# Requiere que arriba del archivo ya existan (si no, añadirlos):
+#   from django.views.decorators.http import require_GET, require_POST
+#   from .models import ComentarioComparativo   (o el import equivalente
+#       si tu archivo usa "from .models import *")
+# ---------------------------------------------------------------------------
+
+SEDES_COMPARATIVO = {'tulua', 'buga', 'cartago', 'cali', 'consolidado'}
+
 
 @login_required
-def comparativo_buga(request):
+def comparativo_general(request):
+    """
+    Página única de comparativo: pestañas para las 4 sedes + el total,
+    con columna de comentarios editable y guardado automático.
+    """
     usuarios_permitidos = ['admin', 'NICOLAS']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "comparativo/comparativo_buga.html")
+    return render(request, "comparativo/comparativo_general.html")
+
+
+@require_GET
+def obtener_comentarios_comparativo(request, sede):
+    """
+    Devuelve todos los comentarios guardados para una sede, como un
+    diccionario { fila_key: comentario }.
+    """
+    sede = (sede or '').strip().lower()
+    if sede not in SEDES_COMPARATIVO:
+        return JsonResponse({'error': f'Sede inválida: {sede}'}, status=400)
+
+    data = {
+        c.fila_key: (c.comentario or '')
+        for c in ComentarioComparativo.objects.filter(sede=sede)
+    }
+    return JsonResponse({'data': data})
+
 
 @login_required
-def comparativo_cartago(request):
-    usuarios_permitidos = ['admin', 'NICOLAS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "comparativo/comparativo_cartago.html")
+@require_POST
+def guardar_comentario_comparativo(request):
+    """
+    Crea o actualiza el comentario de una fila específica dentro de una sede.
+    Body JSON esperado:
+        {
+            "sede": "tulua",
+            "fila_key": "541001",
+            "comentario": "texto libre...",
+            "mcncuenta": "541001",       (opcional, solo referencia)
+            "ctanombre": "Honorarios"    (opcional, solo referencia)
+        }
+    """
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'JSON inválido'}, status=400)
 
-@login_required
-def comparativo_cali(request):
-    usuarios_permitidos = ['admin', 'NICOLAS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "comparativo/comparativo_cali.html")
+    sede = str(body.get('sede', '')).strip().lower()
+    fila_key = str(body.get('fila_key', '')).strip()
+    comentario = body.get('comentario', '') or ''
+    mcncuenta = str(body.get('mcncuenta', '') or '')
+    ctanombre = str(body.get('ctanombre', '') or '')
 
-@login_required
-def comparativo_total(request):
-    usuarios_permitidos = ['admin', 'NICOLAS']
-    if request.user.username not in usuarios_permitidos:
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "comparativo/comparativo_total.html")
+    if sede not in SEDES_COMPARATIVO:
+        return JsonResponse({'success': False, 'error': f'Sede inválida: {sede}'}, status=400)
+    if not fila_key:
+        return JsonResponse({'success': False, 'error': 'fila_key es obligatorio'}, status=400)
+
+    usuario = request.user.username if request.user.is_authenticated else ''
+
+    obj, _ = ComentarioComparativo.objects.update_or_create(
+        sede=sede,
+        fila_key=fila_key,
+        defaults={
+            'comentario': comentario,
+            'mcncuenta': mcncuenta,
+            'ctanombre': ctanombre,
+            'actualizado_por': usuario,
+        },
+    )
+    return JsonResponse({'success': True, 'fila_key': fila_key, 'comentario': obj.comentario})
