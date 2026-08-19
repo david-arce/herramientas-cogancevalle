@@ -7327,7 +7327,7 @@ CAMPOS_NUMERICOS = ["cuenta", "sede_distribucion"] + MESES + ["total"]
 SEDE_CONFIG = {
     "almacen-tulua": {
         "label": "Almacén Tuluá",
-        "usuarios_permitidos": {"admin", "JEFEALMACENTULUA", "DBENITEZ"},
+        "usuarios_permitidos": {"admin", "JEFEALMACENTULUA", "DBENITEZ", "NICOLAS"},
         "responsable_filtro": "JEFE ALMACEN TULUA",
         "model_oficial": PresupuestoAlmacenTulua,
         "model_aprobado": PresupuestoAlmacenTuluaAprobado,
@@ -7337,7 +7337,7 @@ SEDE_CONFIG = {
     },
     "almacen-buga": {
         "label": "Almacén Buga",
-        "usuarios_permitidos": {"admin", "JEFEALMACENBUGA", "FDUQUE"},
+        "usuarios_permitidos": {"admin", "JEFEALMACENBUGA", "FDUQUE", "NICOLAS"},
         "responsable_filtro": "JEFE ALMACEN BUGA",
         "model_oficial": PresupuestoAlmacenBuga,
         "model_aprobado": PresupuestoAlmacenBugaAprobado,
@@ -7347,7 +7347,7 @@ SEDE_CONFIG = {
     },
     "almacen-cartago": {
         "label": "Almacén Cartago",
-        "usuarios_permitidos": {"admin", "JEFEALMACENCARTAGO", "CHINCAPI"},
+        "usuarios_permitidos": {"admin", "JEFEALMACENCARTAGO", "CHINCAPI", "NICOLAS"},
         "responsable_filtro": "JEFE ALMACEN CARTAGO",
         "model_oficial": PresupuestoAlmacenCartago,
         "model_aprobado": PresupuestoAlmacenCartagoAprobado,
@@ -7357,7 +7357,7 @@ SEDE_CONFIG = {
     },
     "almacen-cali": {
         "label": "Almacén Cali",
-        "usuarios_permitidos": {"admin", "JEFEALMACENCALI", "LAMAYA"},
+        "usuarios_permitidos": {"admin", "JEFEALMACENCALI", "LAMAYA", "NICOLAS"},
         "responsable_filtro": "JEFE ALMACEN CALI",
         "model_oficial": PresupuestoAlmacenCali,
         "model_aprobado": PresupuestoAlmacenCaliAprobado,
@@ -7367,7 +7367,7 @@ SEDE_CONFIG = {
     },
     "comunicaciones": {
         "label": "Comunicaciones y Mercadeo",
-        "usuarios_permitidos": {"admin", "COMUNICACIONES"},
+        "usuarios_permitidos": {"admin", "COMUNICACIONES", "NICOLAS"},
         "responsable_filtro": "CARLOS USMAN",
         "model_oficial": PresupuestoComunicaciones,
         "model_aprobado": PresupuestoComunicacionesAprobado,
@@ -7377,7 +7377,7 @@ SEDE_CONFIG = {
     },
     "comercial-costos": {
         "label": "Comercial y Costos",
-        "usuarios_permitidos": {"admin", "COMERCIALCOSTOS", "EVALENCIA"},
+        "usuarios_permitidos": {"admin", "COMERCIALCOSTOS", "EVALENCIA", "NICOLAS"},
         "responsable_filtro": "EVALENCIA",
         "model_oficial": PresupuestoComercialCostos,
         "model_aprobado": PresupuestoComercialCostosAprobado,
@@ -7387,7 +7387,7 @@ SEDE_CONFIG = {
     },
     "contabilidad": {
         "label": "Contabilidad",
-        "usuarios_permitidos": {"admin", "CONTABILIDAD"},
+        "usuarios_permitidos": {"admin", "CONTABILIDAD", "NICOLAS"},
         "responsable_filtro": "CONTABILIDAD",
         "model_oficial": PresupuestoContabilidad,
         "model_aprobado": PresupuestoContabilidadAprobado,
@@ -7397,7 +7397,7 @@ SEDE_CONFIG = {
     },
     "gerencia": {
         "label": "Gerencia",
-        "usuarios_permitidos": {"admin", "GERENCIA"},
+        "usuarios_permitidos": {"admin", "GERENCIA", "NICOLAS"},
         "responsable_filtro": "GERENCIA",
         "model_oficial": PresupuestoGerencia,
         "model_aprobado": PresupuestoGerenciaAprobado,
@@ -7407,7 +7407,7 @@ SEDE_CONFIG = {
     },
     "gestion-humana": {
         "label": "Gestión Humana",
-        "usuarios_permitidos": {"admin", "GESTIONHUMANA"},
+        "usuarios_permitidos": {"admin", "GESTIONHUMANA", "NICOLAS"},
         "responsable_filtro": "MARTA GH",
         "model_oficial": PresupuestoGH,
         "model_aprobado": PresupuestoGHAprobado,
@@ -7417,7 +7417,7 @@ SEDE_CONFIG = {
     },
     "gestion-riesgos": {
         "label": "Gestión de Riesgos",
-        "usuarios_permitidos": {"admin", "GESTIONRIESGOS"},
+        "usuarios_permitidos": {"admin", "GESTIONRIESGOS", "NICOLAS"},
         "responsable_filtro": "LINA RICARDO",
         "model_oficial": PresupuestoGestionRiesgos,
         "model_aprobado": PresupuestoGestionRiesgosAprobado,
@@ -7427,7 +7427,7 @@ SEDE_CONFIG = {
     },
     "logistica": {
         "label": "Logística",
-        "usuarios_permitidos": {"admin", "PLOZANO"},
+        "usuarios_permitidos": {"admin", "PLOZANO", "NICOLAS"},
         "responsable_filtro": "PILAR LOZANO",
         "model_oficial": PresupuestoLogistica,
         "model_aprobado": PresupuestoLogisticaAprobado,
@@ -7437,7 +7437,7 @@ SEDE_CONFIG = {
     },
     "servicios-tecnicos": {
         "label": "Servicios Técnicos",
-        "usuarios_permitidos": {"admin", "SERVICIOSTECNICOS"},
+        "usuarios_permitidos": {"admin", "SERVICIOSTECNICOS", "NICOLAS"},
         "responsable_filtro": "JORGE GUERRERO",
         "model_oficial": PresupuestoServiciosTecnicos,
         "model_aprobado": PresupuestoServiciosTecnicosAprobado,
@@ -7447,7 +7447,7 @@ SEDE_CONFIG = {
     },
     "salud-ocupacional": {
         "label": "Salud Ocupacional",
-        "usuarios_permitidos": {"admin", "SALUDOCUPACIONAL"},
+        "usuarios_permitidos": {"admin", "SALUDOCUPACIONAL", "NICOLAS"},
         "responsable_filtro": "SALUD OCUPACIONAL",
         "model_oficial": PresupuestoOcupacional,
         "model_aprobado": PresupuestoOcupacionalAprobado,
@@ -7457,7 +7457,7 @@ SEDE_CONFIG = {
     },
     "tecnologia": {
         "label": "Tecnología",
-        "usuarios_permitidos": {"admin", "TECNOLOGIA"},
+        "usuarios_permitidos": {"admin", "TECNOLOGIA", "NICOLAS"},
         "responsable_filtro": "DIEGO CANO",
         "model_oficial": PresupuestoTecnologia,
         "model_aprobado": PresupuestotecnologiaAprobado,
