@@ -7815,6 +7815,26 @@ def excel_serial_to_date(serial):
     except Exception:
         return None
 
+def date_to_excel_serial(value):
+    """'YYYY-MM-DD' | date | int  ->  serial Excel (int) o None."""
+    if value in (None, ''):
+        return None
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        v = value.strip()
+        if v.isdigit():
+            return int(v)
+        try:
+            fecha = datetime.datetime.strptime(v, '%Y-%m-%d').date()
+        except ValueError:
+            return None
+    elif isinstance(value, datetime.date):
+        fecha = value
+    else:
+        return None
+    return (fecha - datetime.date(1899, 12, 30)).days
+
 @login_required
 def cuenta5(request):
     usuarios_permitidos = ['admin', 'NICOLAS']
@@ -8949,6 +8969,98 @@ def renombrar_nivel(request):
     except Exception as e:
         print(f"❌ Error en renombrar_nivel: {e}")
         return JsonResponse({'error': str(e)}, status=500)
+
+def _mes_de_serial(serial):
+    """Serial Excel -> número de mes (1-12) o None."""
+    fecha = excel_serial_to_date(serial)
+    if not fecha:
+        return None
+    return datetime.datetime.strptime(fecha, '%Y-%m-%d').date().month
+
+
+@csrf_exempt
+@require_POST
+def redistribuir_mes(request):
+    """
+    Redistribuye proporcionalmente un nuevo total mensual sobre los registros
+    reales de Cuenta5Presupuestado. Garantiza que la suma final == nuevo_total.
+
+    Body JSON:
+      nivel: 'cuenta' | 'vinculo' | 'detalle'
+      ctanombre, vinnombre, mcndetalle, mes (1-12), nuevo_total,
+      filtros: {mcncuenta: [], mcnzona: [], mcndestino: [], mcnccosto: []}
+    """
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    nivel      = body.get('nivel')
+    ctanombre  = body.get('ctanombre') or ''
+    vinnombre  = body.get('vinnombre') or ''
+    mcndetalle = body.get('mcndetalle') or ''
+
+    if nivel not in ('cuenta', 'vinculo', 'detalle') or not ctanombre:
+        return JsonResponse({'error': 'Nivel o cuenta inválidos'}, status=400)
+
+    try:
+        mes = int(body.get('mes'))
+        nuevo_total = int(round(float(body.get('nuevo_total'))))
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'mes o nuevo_total inválidos'}, status=400)
+
+    if not 1 <= mes <= 12:
+        return JsonResponse({'error': 'Mes fuera de rango'}, status=400)
+
+    qs = Cuenta5Presupuestado.objects.filter(ctanombre=ctanombre)
+    if nivel in ('vinculo', 'detalle'):
+        qs = qs.filter(vinnombre=vinnombre)
+    if nivel == 'detalle':
+        qs = qs.filter(mcndetalle=mcndetalle)
+
+    # Mismos filtros que usa la tabla, para que el universo coincida
+    filtros = body.get('filtros') or {}
+    for campo in ('mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto'):
+        valores = [v for v in (filtros.get(campo) or []) if v not in (None, '')]
+        if valores:
+            qs = qs.filter(**{f'{campo}__in': valores})
+
+    registros = [r for r in qs if _mes_de_serial(r.mcnfecha) == mes]
+    if not registros:
+        return JsonResponse(
+            {'error': 'No hay registros en ese mes para el nivel seleccionado. '
+                      'No es posible distribuir el valor.'},
+            status=400,
+        )
+
+    saldos = [(r.mcnvaldebi or 0) - (r.mcnvalcred or 0) for r in registros]
+    total_actual = sum(saldos)
+    n = len(registros)
+
+    asignaciones = []
+    acumulado = 0
+    for i, (reg, saldo) in enumerate(zip(registros, saldos)):
+        if i == n - 1:
+            valor = nuevo_total - acumulado       # el último absorbe el residuo
+        else:
+            prop = (saldo / total_actual) if total_actual else (1 / n)
+            valor = int(round(nuevo_total * prop))
+            acumulado += valor
+        asignaciones.append((reg, valor))
+
+    with transaction.atomic():
+        for reg, valor in asignaciones:
+            # Saldo = débito - crédito. Normalizamos para que siempre cuadre.
+            reg.mcnvaldebi = valor if valor >= 0 else 0
+            reg.mcnvalcred = 0 if valor >= 0 else -valor
+            reg.save(update_fields=['mcnvaldebi', 'mcnvalcred'])
+
+    return JsonResponse({
+        'success': True,
+        'actualizados': n,
+        'total_aplicado': nuevo_total,
+        'total_anterior': total_actual,
+    })
     
 @csrf_exempt
 @require_http_methods(["DELETE"])

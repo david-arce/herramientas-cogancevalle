@@ -18,6 +18,30 @@ function fmt(value) {
   return value;
 }
 
+// ─── Valor usado por los filtros (permite agrupar) ───────────
+const MESES_LARGOS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio",
+                      "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+function monthKey(v) {
+  if (v === null || v === undefined || v === "") return "";
+  const m = String(v).match(/^(\d{4})-(\d{2})/);
+  return m ? `${m[1]}-${m[2]}` : String(v);
+}
+function monthLabel(key) {
+  const m = String(key).match(/^(\d{4})-(\d{2})$/);
+  return m ? `${MESES_LARGOS[+m[2] - 1]} ${m[1]}` : (key === "" ? "(Vacío)" : key);
+}
+
+// Columnas con agrupación especial
+const FILTER_VALUE_GETTERS = { mcnfecha: monthKey };
+
+function getFilterValue(row, col) {
+  const g = FILTER_VALUE_GETTERS[col];
+  const raw = row[col];
+  if (g) return g(raw);
+  return raw === null || raw === undefined ? "" : String(raw);
+}
+
 function showToast(msg, type = "success", duration = 3000) {
   const c = document.getElementById("toastContainer");
   const t = document.createElement("div");
@@ -72,12 +96,7 @@ let allRows            = [];  // todos los registros cargados del servidor
 let filteredRows       = [];  // resultado tras búsqueda + filtros Excel
 let currentPage        = 1;
 let perPage            = 50;
-let sortCol            = null;
-let sortDir            = "asc";
 let searchQuery        = "";
-let pendingDeleteIndex = null;  // índice en filteredRows
-let pendingDeleteId    = null;  // pk de BD para llamada a la API
-let pendingEditIndex   = null;  // índice en filteredRows para el modal de edición
 
 // ─── Arranque ─────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
@@ -93,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // ─── Cargar datos ─────────────────────────────────────────────
 function loadData() {
   const tbody = document.getElementById("c5Tbody");
-  tbody.innerHTML = `<tr class="c5-loading-row"><td colspan="28">Cargando datos…</td></tr>`;
+  tbody.innerHTML = `<tr class="c5-loading-row"><td colspan="26">Cargando datos…</td></tr>`;
 
   const formData = new FormData();
   formData.append("draw", 1);
@@ -113,7 +132,7 @@ function loadData() {
       applyFilterAndRender();
     })
     .catch(err => {
-      tbody.innerHTML = `<tr><td colspan="28" class="c5-error">Error al cargar datos.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="26" class="c5-error">Error al cargar datos.</td></tr>`;
       console.error(err);
     });
 }
@@ -122,13 +141,15 @@ function loadData() {
 function feedFilterValues() {
   if (!window.C5Filters) return;
   FILTER_COLS.forEach(col => {
-    const unique = [...new Set(
-      allRows
-        .map(row => row[col])
-        .filter(v => v !== null && v !== undefined)
-        .map(String)
-    )];
-    C5Filters.setValues(col, unique);
+    const set = new Set();
+    allRows.forEach(row => set.add(getFilterValue(row, col)));
+    const values = [...set];
+    let labels = null;
+    if (col === "mcnfecha") {
+      labels = {};
+      values.forEach(v => { labels[v] = monthLabel(v); });
+    }
+    C5Filters.setValues(col, values, labels);
   });
 }
 
@@ -147,34 +168,15 @@ function applyFilterAndRender() {
     }
     for (const [col, allowed] of Object.entries(excelFilters)) {
       if (!allowed || allowed.length === 0) continue;
-      const cellVal = row[col] !== null && row[col] !== undefined ? String(row[col]) : "";
-      if (!allowed.includes(cellVal)) return false;
+      if (!allowed.includes(getFilterValue(row, col))) return false;
     }
     return true;
   });
-
-  if (sortCol !== null) {
-    const col = COLUMNS[sortCol];
-    filteredRows.sort((a, b) => {
-      let va = a[col.key], vb = b[col.key];
-      if (col.num) {
-        va = parseFloat(va) || 0;
-        vb = parseFloat(vb) || 0;
-      } else {
-        va = String(va ?? "").toLowerCase();
-        vb = String(vb ?? "").toLowerCase();
-      }
-      if (va < vb) return sortDir === "asc" ? -1 : 1;
-      if (va > vb) return sortDir === "asc" ?  1 : -1;
-      return 0;
-    });
-  }
 
   currentPage = 1;
   renderTable();
   renderPagination();
   renderInfo();
-  updateBulkDeleteBtn();
 }
 
 // ─── Renderizar filas de la página actual ─────────────────────
@@ -184,54 +186,15 @@ function renderTable() {
   const slice = filteredRows.slice(start, start + perPage);
 
   if (slice.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="28" class="c5-empty">Sin resultados.</td></tr>`;
-    syncCheckAll();
+    tbody.innerHTML = `<tr><td colspan="26" class="c5-empty">Sin resultados.</td></tr>`;
+    renderTotals();
     return;
   }
 
   const frag = document.createDocumentFragment();
   slice.forEach((row, pageIdx) => {
-    const globalIdx = start + pageIdx;
     const tr = document.createElement("tr");
-    tr.dataset.idx = globalIdx;
 
-    // Checkbox
-    const tdCheck = document.createElement("td");
-    tdCheck.className = "c5-col-check";
-    const chk = document.createElement("input");
-    chk.type = "checkbox";
-    chk.className = "row-check";
-    chk.dataset.id = row.id ?? "";
-    tdCheck.appendChild(chk);
-    tr.appendChild(tdCheck);
-
-    // Botones de acción: editar + eliminar
-    const tdAct = document.createElement("td");
-    tdAct.className = "c5-col-actions";
-
-    const btnEdit = document.createElement("button");
-    btnEdit.className = "c5-btn-icon c5-btn-edit";
-    btnEdit.title = "Editar fila";
-    btnEdit.setAttribute("aria-label", "Editar fila");
-    btnEdit.innerHTML = "&#9998;";   // ✎
-    btnEdit.addEventListener("click", () => openEditModal(globalIdx));
-    tdAct.appendChild(btnEdit);
-
-    const btnDel = document.createElement("button");
-    btnDel.className = "c5-btn-icon c5-btn-delete";
-    btnDel.title = "Eliminar fila";
-    btnDel.setAttribute("aria-label", "Eliminar fila");
-    btnDel.innerHTML = "&#10006;";   // ✖
-    btnDel.addEventListener("click", () => {
-      pendingDeleteIndex = globalIdx;
-      pendingDeleteId    = row.id ?? null;
-      openModal("modalEliminar");
-    });
-    tdAct.appendChild(btnDel);
-
-    tr.appendChild(tdAct);
-
-    // Datos
     COLUMNS.forEach(col => {
       const td = document.createElement("td");
       td.className = col.num ? "c5-num" : "";
@@ -239,8 +202,7 @@ function renderTable() {
       tr.appendChild(td);
     });
 
-    tr.addEventListener("click", e => {
-      if (e.target.tagName === "INPUT" || e.target.tagName === "BUTTON") return;
+    tr.addEventListener("click", () => {
       document.querySelectorAll("#c5Tbody tr.c5-active").forEach(r => r.classList.remove("c5-active"));
       tr.classList.add("c5-active");
     });
@@ -250,99 +212,7 @@ function renderTable() {
 
   tbody.innerHTML = "";
   tbody.appendChild(frag);
-  syncCheckAll();
   renderTotals();
-}
-
-// ─── Modal de edición ─────────────────────────────────────────
-function openEditModal(globalIdx) {
-  pendingEditIndex = globalIdx;
-  const row = filteredRows[globalIdx];
-
-  // Rellenar cada campo del formulario de edición
-  COLUMNS.forEach(col => {
-    const input = document.getElementById(`edit_${col.key}`);
-    if (input) input.value = row[col.key] ?? "";
-  });
-
-  openModal("modalEditar");
-}
-
-function saveEdit() {
-  if (pendingEditIndex === null) return;
-
-  const row = filteredRows[pendingEditIndex];
-  const pk  = row.id ?? null;
-
-  // Recolectar valores del formulario
-  const updated = {};
-  COLUMNS.forEach(col => {
-    const input = document.getElementById(`edit_${col.key}`);
-    if (!input) return;
-    const raw = input.value.trim();
-    if (raw === "") {
-      updated[col.key] = null;
-    } else if (col.num) {
-      updated[col.key] = Number(raw);
-    } else {
-      updated[col.key] = raw;
-    }
-  });
-
-  // Actualizar en memoria inmediatamente
-  Object.assign(row, updated);
-  const globalPos = allRows.indexOf(row);
-  if (globalPos !== -1) Object.assign(allRows[globalPos], updated);
-
-  // Si hay pk, persistir en BD
-  if (pk) {
-    fetch(`/presupuesto/cuenta4/editar/${pk}/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": getCookie("csrftoken"),
-      },
-      body: JSON.stringify(updated),
-    })
-      .then(r => r.json())
-      .then(d => {
-        if (d.ok) showToast("Registro actualizado", "success");
-        else      showToast("Error al guardar: " + (d.error || ""), "error");
-      })
-      .catch(() => showToast("Error de conexión al guardar", "error"));
-  }
-
-  feedFilterValues();
-  renderTable();
-  renderTotals();
-  closeModal("modalEditar");
-  pendingEditIndex = null;
-}
-
-// ─── Eliminar bulk (filas seleccionadas) ──────────────────────
-function getSelectedIds() {
-  return [...document.querySelectorAll(".row-check:checked")]
-    .map(chk => chk.dataset.id)
-    .filter(Boolean);
-}
-
-function getSelectedIndices() {
-  // Devuelve los índices globales (en filteredRows) de las filas marcadas
-  return [...document.querySelectorAll("#c5Tbody tr")]
-    .filter(tr => tr.querySelector(".row-check:checked"))
-    .map(tr => parseInt(tr.dataset.idx, 10))
-    .filter(n => !isNaN(n));
-}
-
-function updateBulkDeleteBtn() {
-  // El botón se habilita/deshabilita en función de si hay filas marcadas
-  const btn = document.getElementById("btnEliminarSeleccionados");
-  if (!btn) return;
-  const count = document.querySelectorAll(".row-check:checked").length;
-  btn.disabled = count === 0;
-  btn.textContent = count > 0
-    ? `🗑️ Eliminar seleccionados (${count})`
-    : "🗑️ Eliminar seleccionados";
 }
 
 // ─── Paginación ───────────────────────────────────────────────
@@ -420,46 +290,13 @@ function renderTotals() {
     });
   });
 
-  const cells = [];
-  cells.push(`<td></td>`);
-  cells.push(`<td class="c5-total-label">TOTAL</td>`);
-  COLUMNS.forEach(col => {
-    if (col.num) cells.push(`<td class="c5-num">${fmt(sums[col.key].toFixed(2))}</td>`);
-    else         cells.push(`<td></td>`);
-  });
+  const cells = COLUMNS.map((col, i) =>
+    i === 0        ? `<td class="c5-total-label">TOTAL</td>`
+  : col.num        ? `<td class="c5-num">${fmt(sums[col.key].toFixed(2))}</td>`
+                   : `<td></td>`);
   row.innerHTML = cells.join("");
 }
 
-// ─── Ordenamiento por columna ─────────────────────────────────
-function bindSortHeaders() {
-  document.querySelectorAll("#c5Table thead th[data-col]").forEach((th, idx) => {
-    th.classList.add("c5-sortable");
-    th.addEventListener("click", e => {
-      if (e.target.classList.contains("c5-filter-icon")) return;
-      if (sortCol === idx) {
-        sortDir = sortDir === "asc" ? "desc" : "asc";
-      } else {
-        sortCol = idx;
-        sortDir = "asc";
-      }
-      document.querySelectorAll("th[data-col]").forEach(h => h.removeAttribute("data-sort"));
-      th.dataset.sort = sortDir;
-      applyFilterAndRender();
-    });
-  });
-}
-
-// ─── Checkboxes ───────────────────────────────────────────────
-function syncCheckAll() {
-  const all    = document.querySelectorAll(".row-check");
-  const chkd   = document.querySelectorAll(".row-check:checked");
-  const master = document.getElementById("checkAll");
-  if (!all.length)                   { master.checked = false; master.indeterminate = false; }
-  else if (chkd.length === 0)        { master.checked = false; master.indeterminate = false; }
-  else if (chkd.length === all.length) { master.checked = true;  master.indeterminate = false; }
-  else                               { master.checked = false; master.indeterminate = true;  }
-  updateBulkDeleteBtn();
-}
 const CHUNK = 2000;   // ~1,2 MB por lote
 
 async function enviarPorLotes(valid, url) {
@@ -488,9 +325,28 @@ async function enviarPorLotes(valid, url) {
   }
   return total;
 }
+function isoToExcelSerial(v) {
+  if (v === null || v === undefined || v === "") return "";
+  const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return v;                       // ya era serial u otro formato
+  const utc = Date.UTC(+m[1], +m[2] - 1, +m[3]);
+  return Math.round(utc / 86400000) + 25569;   // epoch → serial 1900
+}
+function exportarDatosExcel() {
+  if (!filteredRows.length) { showToast("No hay datos para exportar", "error"); return; }
+  const headers = COLUMNS.map(c => c.label);
+  const aoa = [headers, ...filteredRows.map(r =>
+    COLUMNS.map(c => c.key === "mcnfecha" ? isoToExcelSerial(r[c.key]) : (r[c.key] ?? ""))
+  )];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "cuenta4");
+  XLSX.writeFile(wb, `cuenta4_presupuestado_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast(`${filteredRows.length} filas exportadas`, "success");
+}
 // ─── Enlazar todos los eventos de UI ──────────────────────────
 function bindUI() {
-  bindSortHeaders();
+  document.getElementById("btnExportarExcel").addEventListener("click", exportarDatosExcel);
 
   // Búsqueda libre
   let searchTimer;
@@ -508,118 +364,27 @@ function bindUI() {
     applyFilterAndRender();
   });
 
-  // Checkbox maestro
-  document.getElementById("checkAll").addEventListener("change", e => {
-    document.querySelectorAll(".row-check").forEach(c => c.checked = e.target.checked);
-    updateBulkDeleteBtn();
+  // ── Borrar cuenta completa (con confirmación escrita) ──────
+  const inputConfirmBorrar = document.getElementById("inputConfirmBorrar");
+  const btnConfirmBorrar   = document.getElementById("confirmEliminarCuenta");
+
+  document.getElementById("btnBorrar").addEventListener("click", () => {
+    inputConfirmBorrar.value = "";
+    btnConfirmBorrar.disabled = true;
+    document.getElementById("borrarCuentaConteo").textContent =
+      new Intl.NumberFormat("es-ES").format(allRows.length);
+    openModal("modalEliminarCuenta");
+    setTimeout(() => inputConfirmBorrar.focus(), 100);
   });
 
-  // Delegación checkboxes individuales
-  document.getElementById("c5Tbody").addEventListener("change", e => {
-    if (e.target.classList.contains("row-check")) syncCheckAll();
+  inputConfirmBorrar.addEventListener("input", () => {
+    btnConfirmBorrar.disabled = inputConfirmBorrar.value.trim().toUpperCase() !== "ELIMINAR";
   });
 
-  // ── Eliminar fila individual ───────────────────────────────
-  document.getElementById("cancelEliminar").addEventListener("click", () => {
-    pendingDeleteIndex = null;
-    pendingDeleteId    = null;
-    closeModal("modalEliminar");
-  });
-
-  document.getElementById("confirmEliminar").addEventListener("click", () => {
-    if (pendingDeleteIndex === null) { closeModal("modalEliminar"); return; }
-
-    const row       = filteredRows[pendingDeleteIndex];
-    const globalPos = allRows.indexOf(row);
-
-    // Eliminar en memoria
-    if (globalPos !== -1) allRows.splice(globalPos, 1);
-    filteredRows.splice(pendingDeleteIndex, 1);
-
-    // Llamar a la API si tenemos pk
-    if (pendingDeleteId) {
-      fetch(`/presupuesto/cuenta4/eliminar/${pendingDeleteId}/`, {
-        method: "POST",
-        headers: { "X-CSRFToken": getCookie("csrftoken") },
-      })
-        .then(r => r.json())
-        .then(d => {
-          if (!d.ok) showToast("Error al eliminar en BD: " + (d.error || ""), "error");
-        })
-        .catch(() => showToast("Error de conexión al eliminar", "error"));
-    }
-
-    pendingDeleteIndex = null;
-    pendingDeleteId    = null;
-
-    feedFilterValues();
-    renderTable();
-    renderPagination();
-    renderInfo();
-    showToast("Fila eliminada", "error");
-    closeModal("modalEliminar");
-  });
-
-  // ── Eliminar filas seleccionadas (bulk) ───────────────────
-  document.getElementById("btnEliminarSeleccionados").addEventListener("click", () => {
-    const count = document.querySelectorAll(".row-check:checked").length;
-    if (count === 0) return;
-    document.getElementById("bulkDeleteCount").textContent = count;
-    openModal("modalEliminarBulk");
-  });
-
-  document.getElementById("cancelEliminarBulk").addEventListener("click", () => closeModal("modalEliminarBulk"));
-
-  document.getElementById("confirmEliminarBulk").addEventListener("click", () => {
-    const indices = getSelectedIndices();
-    const ids     = getSelectedIds();
-
-    // Eliminar en memoria (de mayor a menor para no desplazar índices)
-    const indexSet = new Set(indices);
-    // Obtener las filas a eliminar de filteredRows
-    const rowsToRemove = indices.map(i => filteredRows[i]);
-    rowsToRemove.forEach(row => {
-      const pos = allRows.indexOf(row);
-      if (pos !== -1) allRows.splice(pos, 1);
-    });
-    // Reconstruir filteredRows sin esas filas
-    filteredRows = filteredRows.filter((_, i) => !indexSet.has(i));
-
-    // Llamar a la API bulk si hay IDs de BD
-    if (ids.length > 0) {
-      fetch("/presupuesto/cuenta4/eliminar-bulk/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": getCookie("csrftoken"),
-        },
-        body: JSON.stringify({ ids }),
-      })
-        .then(r => r.json())
-        .then(d => {
-          if (d.ok) showToast(`${d.eliminados} registros eliminados de BD`, "error");
-          else      showToast("Error al eliminar en BD: " + (d.error || ""), "error");
-        })
-        .catch(() => showToast("Error de conexión al eliminar", "error"));
-    }
-
-    feedFilterValues();
-    applyFilterAndRender();
-    closeModal("modalEliminarBulk");
-    showToast(`${indices.length} filas eliminadas`, "error");
-  });
-
-  // ── Modal editar — botones ─────────────────────────────────
-  document.getElementById("cancelEditar").addEventListener("click", () => {
-    pendingEditIndex = null;
-    closeModal("modalEditar");
-  });
-  document.getElementById("confirmEditar").addEventListener("click", saveEdit);
-
-  // ── Borrar cuenta completa ─────────────────────────────────
-  document.getElementById("btnBorrar").addEventListener("click", () => openModal("modalEliminarCuenta"));
   document.getElementById("cancelEliminarCuenta").addEventListener("click", () => closeModal("modalEliminarCuenta"));
-  document.getElementById("confirmEliminarCuenta").addEventListener("click", () => {
+
+  btnConfirmBorrar.addEventListener("click", () => {
+    if (inputConfirmBorrar.value.trim().toUpperCase() !== "ELIMINAR") return;
     closeModal("modalEliminarCuenta");
     fetch(url_borrar_cuenta4_presupuestado, {
       method: "POST",

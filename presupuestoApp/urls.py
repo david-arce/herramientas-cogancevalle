@@ -331,6 +331,7 @@ urlpatterns = [
     path('obtener-registros-nivel/',  views.obtener_registros_nivel,  name='obtener_registros_nivel'),
     path('renombrar-nivel/',          views.renombrar_nivel,           name='renombrar_nivel'),
     path('eliminar-nivel/', views.eliminar_nivel, name='eliminar_nivel'),
+    path('redistribuir-mes/', views.redistribuir_mes, name='redistribuir_mes'),
     
     # ── Página de carga ──────────────────────────────────────-----------------------------------
     path(

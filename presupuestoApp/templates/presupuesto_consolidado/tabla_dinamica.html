@@ -144,7 +144,7 @@
         }
         .reg-filtros-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr auto;
+            grid-template-columns: repeat(4, 1fr) auto;
             gap: 8px;
             align-items: end;
         }
@@ -624,6 +624,23 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- Destino -->
+                        <div class="reg-filtro-group">
+                            <label>Destino</label>
+                            <div class="rm-dropdown" id="rmd-destino">
+                                <button class="rm-btn" onclick="_rmToggle('destino')">
+                                    <span id="rmd-destino-text">Todos</span><span class="rm-arrow">▼</span>
+                                </button>
+                                <div class="rm-panel" id="rm-panel-destino">
+                                    <div class="rm-search"><input type="text" placeholder="Buscar..." id="rm-search-destino" oninput="_rmFiltrarOpciones('destino')"></div>
+                                    <div class="rm-options" id="rm-opts-destino"></div>
+                                    <div class="rm-actions">
+                                        <button onclick="_rmSelTodos('destino',true)">Todo</button>
+                                        <button onclick="_rmSelTodos('destino',false)">Ninguno</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <!-- Botones -->
                         <div class="reg-filtros-actions">
                             <button class="btn-filtrar" onclick="aplicarFiltrosRegistros()">Filtrar</button>
@@ -901,20 +918,40 @@
            ▼ NUEVO: FILTROS DENTRO DEL MODAL DE REGISTROS
         ══════════════════════════════════════════════════════════════════════ */
         /* ══ Multi-select dropdowns del modal de registros ════════════════════════ */
-        const _rmState = { fecha: new Set(), zona: new Set(), ccosto: new Set() };
+        const RM_TIPOS = ['fecha','zona','ccosto','destino'];
+        const _rmState = { fecha:new Set(), zona:new Set(), ccosto:new Set(), destino:new Set() };
 
         function _rmToggle(tipo) {
-            ['fecha','zona','ccosto'].forEach(t => {
-                if (t !== tipo) document.getElementById(`rm-panel-${t}`).classList.remove('open');
-            });
+            RM_TIPOS.forEach(t => { if (t !== tipo) document.getElementById(`rm-panel-${t}`).classList.remove('open'); });
             document.getElementById(`rm-panel-${tipo}`).classList.toggle('open');
         }
 
+        const _rmSnapshot = {};
+
         function _rmFiltrarOpciones(tipo) {
-            const q = document.getElementById(`rm-search-${tipo}`).value.toLowerCase();
-            document.querySelectorAll(`#rm-opts-${tipo} .rm-option`).forEach(op => {
-                op.style.display = op.dataset.val.toLowerCase().includes(q) ? '' : 'none';
-            });
+            const q = document.getElementById(`rm-search-${tipo}`).value.trim().toLowerCase();
+            const opciones = [...document.querySelectorAll(`#rm-opts-${tipo} .rm-option`)];
+
+            if (q && _rmSnapshot[tipo] === undefined) _rmSnapshot[tipo] = new Set(_rmState[tipo]);
+
+            if (!q) {
+                opciones.forEach(op => op.style.display = '');
+                if (_rmSnapshot[tipo] !== undefined) {
+                    _rmState[tipo] = new Set(_rmSnapshot[tipo]);
+                    opciones.forEach(op => op.querySelector('input').checked = _rmState[tipo].has(op.dataset.val));
+                    _rmSnapshot[tipo] = undefined;
+                }
+            } else {
+                _rmState[tipo].clear();
+                opciones.forEach(op => {
+                    const texto = (op.textContent + ' ' + op.dataset.val).toLowerCase();
+                    const match = texto.includes(q);
+                    op.style.display = match ? '' : 'none';
+                    op.querySelector('input').checked = match;
+                    if (match) _rmState[tipo].add(op.dataset.val);
+                });
+            }
+            _rmActualizarBoton(tipo);
         }
 
         function _rmSelTodos(tipo, checked) {
@@ -939,19 +976,15 @@
             const total = document.querySelectorAll(`#rm-opts-${tipo} .rm-option`).length;
             const sel   = _rmState[tipo].size;
             const span  = document.getElementById(`rmd-${tipo}-text`);
-            if (sel === 0 || sel === total) {
-                span.innerHTML = tipo === 'ccosto' ? 'Todos' : 'Todas';
-            } else {
-                span.innerHTML = `<span class="rm-selected-badge">${sel}</span> seleccionados`;
-            }
+            if (sel === 0 || sel === total) span.innerHTML = (tipo === 'fecha' || tipo === 'zona') ? 'Todas' : 'Todos';
+            else span.innerHTML = `<span class="rm-selected-badge">${sel}</span> seleccionados`;
             _contarFiltrosActivos();
         }
 
         function _poblarSelectsFiltros(registros) {
-            const zonas  = [...new Set(registros.map(r => r.mcnzona  ).filter(Boolean))].sort();
-            const costos = [...new Set(registros.map(r => r.mcnccosto).filter(Boolean))].sort();
-            _rmPoblar('zona',   zonas);
-            _rmPoblar('ccosto', costos);
+            _rmPoblar('zona',    [...new Set(registros.map(r => r.mcnzona   ).filter(Boolean))].sort());
+            _rmPoblar('ccosto',  [...new Set(registros.map(r => r.mcnccosto ).filter(Boolean))].sort());
+            _rmPoblar('destino', [...new Set(registros.map(r => r.mcndestino).filter(Boolean))].sort());
         }
 
         function _poblarSelectFecha(registros) {
@@ -989,32 +1022,24 @@
 
         function _contarFiltrosActivos() {
             let activos = 0;
-            ['fecha','zona','ccosto'].forEach(tipo => {
+            RM_TIPOS.forEach(tipo => {
                 const total = document.querySelectorAll(`#rm-opts-${tipo} .rm-option`).length;
                 if (_rmState[tipo].size > 0 && _rmState[tipo].size < total) activos++;
             });
             const badge = document.getElementById('regFiltrosBadge');
-            if (activos > 0) {
-                badge.textContent = `${activos} activo${activos > 1 ? 's' : ''}`;
-                badge.style.display = 'inline-block';
-            } else {
-                badge.style.display = 'none';
-            }
+            if (activos > 0) { badge.textContent = `${activos} activo${activos>1?'s':''}`; badge.style.display = 'inline-block'; }
+            else badge.style.display = 'none';
         }
 
         function aplicarFiltrosRegistros() {
-            const fechasSel  = _rmState.fecha;
-            const zonasSel   = _rmState.zona;
-            const ccostosSel = _rmState.ccosto;
-
-            const totalFechas  = document.querySelectorAll('#rm-opts-fecha  .rm-option').length;
-            const totalZonas   = document.querySelectorAll('#rm-opts-zona   .rm-option').length;
-            const totalCcostos = document.querySelectorAll('#rm-opts-ccosto .rm-option').length;
+            const tot = t => document.querySelectorAll(`#rm-opts-${t} .rm-option`).length;
+            const activo = t => _rmState[t].size > 0 && _rmState[t].size < tot(t);
 
             _registrosFiltrados = _registrosCargados.filter(r => {
-                if (fechasSel.size > 0  && fechasSel.size < totalFechas  && !fechasSel.has(String(r.mcnfecha)))  return false;
-                if (zonasSel.size > 0   && zonasSel.size < totalZonas    && !zonasSel.has(r.mcnzona   || ''))    return false;
-                if (ccostosSel.size > 0 && ccostosSel.size < totalCcostos && !ccostosSel.has(r.mcnccosto || '')) return false;
+                if (activo('fecha')   && !_rmState.fecha.has(String(r.mcnfecha)))    return false;
+                if (activo('zona')    && !_rmState.zona.has(r.mcnzona    || ''))     return false;
+                if (activo('ccosto')  && !_rmState.ccosto.has(r.mcnccosto || ''))    return false;
+                if (activo('destino') && !_rmState.destino.has(r.mcndestino || ''))  return false;
                 return true;
             });
 
@@ -1024,19 +1049,19 @@
         }
 
         function limpiarFiltrosRegistros() {
-            ['fecha','zona','ccosto'].forEach(tipo => {
+            RM_TIPOS.forEach(tipo => {
                 _rmState[tipo].clear();
                 document.querySelectorAll(`#rm-opts-${tipo} .rm-option input`).forEach(cb => cb.checked = false);
+                document.getElementById(`rm-search-${tipo}`).value = '';
                 _rmActualizarBoton(tipo);
             });
-            ['fecha','zona','ccosto'].forEach(t => document.getElementById(`rm-search-${t}`).value = '');
             _registrosFiltrados = [..._registrosCargados];
             _contarFiltrosActivos();
             _renderizarRegistros(_registrosFiltrados, 1);
         }
 
         function _limpiarFiltrosLocalesSinRender() {
-            ['fecha','zona','ccosto'].forEach(tipo => {
+            RM_TIPOS.forEach(tipo => {
                 _rmState[tipo].clear();
                 document.getElementById(`rm-opts-${tipo}`).innerHTML = '';
                 _rmActualizarBoton(tipo);
@@ -1045,7 +1070,7 @@
         }
 
         function _cerrarTodosRmPanels() {
-            ['fecha','zona','ccosto'].forEach(t => document.getElementById(`rm-panel-${t}`).classList.remove('open'));
+            RM_TIPOS.forEach(t => document.getElementById(`rm-panel-${t}`).classList.remove('open'));
         }
 
         /* Cerrar panels al click fuera */
@@ -1471,72 +1496,53 @@
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           FILTROS DINÁMICOS EN CASCADA (tabla principal)
+        FILTROS DINÁMICOS EN CASCADA (tabla principal) — comportamiento Excel
         ══════════════════════════════════════════════════════════════════════ */
+        const FILTRO_TIPOS = ['cuenta','zona','destino','costo','ctanombre'];
+        const CAMPO_MAP    = { cuenta:'mcncuenta', zona:'mcnzona', destino:'mcndestino',
+                            costo:'mcnccosto', ctanombre:'ctanombre' };
+
+        // Selección guardada antes de empezar a escribir en el buscador
+        const _snapshotSeleccion = {};
+
+        const _escAttr = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+        const _escHtml = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
         function _paramsFiltrosActivos(excluir = null) {
             const p = new URLSearchParams();
-            if (excluir !== 'cuenta'     && filtrosActivos.cuenta.length)     p.set('mcncuenta',  filtrosActivos.cuenta.join(','));
-            if (excluir !== 'zona'       && filtrosActivos.zona.length)       p.set('mcnzona',    filtrosActivos.zona.join(','));
-            if (excluir !== 'destino'    && filtrosActivos.destino.length)    p.set('mcndestino', filtrosActivos.destino.join(','));
-            if (excluir !== 'costo'      && filtrosActivos.costo.length)      p.set('mcnccosto',  filtrosActivos.costo.join(','));
-            if (excluir !== 'ctanombre'  && filtrosActivos.ctanombre.length)  p.set('ctanombre',  filtrosActivos.ctanombre.join(','));
+            FILTRO_TIPOS.forEach(t => {
+                if (excluir !== t && filtrosActivos[t].length) p.set(CAMPO_MAP[t], filtrosActivos[t].join(','));
+            });
             return p;
         }
 
         async function _actualizarOpcionesFiltro(tipo) {
-            if (tipo === 'ctanombre') {
-                _actualizarOpcionesFiltroCtanombre();
-                return;
-            }
-            const campoMap = { cuenta: 'mcncuenta', zona: 'mcnzona', destino: 'mcndestino', costo: 'mcnccosto' };
-            const campo = campoMap[tipo];
             const seleccionadosAntes = new Set(filtrosActivos[tipo]);
-
             const params = _paramsFiltrosActivos(tipo);
-            params.set('campo', campo);
+            params.set('campo', CAMPO_MAP[tipo]);
 
-            try {
-                const r = await fetch(`../obtener-valores-filtros/?${params}`);
-                const d = await r.json();
-                const nuevosValores = d.valores || [];
-                valoresFiltros[tipo] = nuevosValores;
-                renderizarOpcionesFiltro(tipo, nuevosValores, seleccionadosAntes);
-                filtrosActivos[tipo] = filtrosActivos[tipo].filter(v => nuevosValores.includes(v));
-                _actualizarTextoBoton(tipo);
-                actualizarContador(tipo);
-            } catch(e) {
-                console.error(`Error actualizando filtro ${tipo}:`, e);
-            }
-        }
-
-        async function _actualizarOpcionesFiltroCtanombre() {
-            const seleccionadosAntes = new Set(filtrosActivos.ctanombre);
-            const params = _paramsFiltrosActivos('ctanombre');
-            params.set('campo', 'ctanombre');
             try {
                 const r = await fetch(`../obtener-valores-filtros/?${params}`);
                 const d = await r.json();
                 const valores = d.valores || [];
-                valoresFiltros.ctanombre = valores;
-                renderizarOpcionesFiltro('ctanombre', valores, seleccionadosAntes);
-                filtrosActivos.ctanombre = filtrosActivos.ctanombre.filter(v => valores.includes(v));
-                _actualizarTextoBoton('ctanombre');
-                actualizarContador('ctanombre');
-            } catch(e) {
-                console.error('Error actualizando filtro ctanombre:', e);
+                valoresFiltros[tipo] = valores;
+                renderizarOpcionesFiltro(tipo, valores, seleccionadosAntes);
+                filtrosActivos[tipo] = filtrosActivos[tipo].filter(v => valores.includes(v));
+                _actualizarTextoBoton(tipo);
+                actualizarContador(tipo);
+            } catch (e) {
+                console.error(`Error actualizando filtro ${tipo}:`, e);
             }
         }
 
+        // se mantiene el nombre por compatibilidad con llamadas existentes
+        async function _actualizarOpcionesFiltroCtanombre() { await _actualizarOpcionesFiltro('ctanombre'); }
+
         async function _actualizarTodosFiltros() {
-            await Promise.all(
-                ['cuenta', 'zona', 'destino', 'costo'].map(_actualizarOpcionesFiltro)
-                .concat([_actualizarOpcionesFiltroCtanombre()])
-            );
+            await Promise.all(FILTRO_TIPOS.map(_actualizarOpcionesFiltro));
         }
 
-        async function cargarValoresFiltros() {
-            await _actualizarTodosFiltros();
-        }
+        async function cargarValoresFiltros() { await _actualizarTodosFiltros(); }
 
         function _actualizarTextoBoton(tipo) {
             const total = valoresFiltros[tipo].length;
@@ -1545,23 +1551,94 @@
                 (sel === 0 || sel === total) ? 'Todos' : `${sel} seleccionados`;
         }
 
+        /** Sin filtro activo ⇒ todas las casillas marcadas (así "Aplicar" nunca vacía la tabla). */
         function renderizarOpcionesFiltro(tipo, valores, seleccionadosAntes = new Set()) {
             const container = document.getElementById(`options-${tipo}`);
+            const marcarTodo = seleccionadosAntes.size === 0;
             container.innerHTML = '';
             valores.forEach(valor => {
                 const label = document.createElement('label');
                 label.className = 'filter-option';
-                const checked = seleccionadosAntes.has(valor) ? 'checked' : '';
-                label.innerHTML = `<input type="checkbox" value="${valor}" ${checked} onchange="actualizarContador('${tipo}')"><span>${valor}</span>`;
+                const checked = (marcarTodo || seleccionadosAntes.has(valor)) ? 'checked' : '';
+                label.innerHTML =
+                    `<input type="checkbox" value="${_escAttr(valor)}" ${checked}
+                            onchange="actualizarContador('${tipo}')"><span>${_escHtml(valor)}</span>`;
                 container.appendChild(label);
             });
+            _resetBusqueda(tipo, false);
+        }
+
+        /* ── Buscador: marca los resultados, desmarca el resto ─────────────── */
+        function filtrarOpciones(tipo) {
+            const input = document.getElementById(`search-${tipo}`);
+            const q = (input ? input.value : '').trim().toLowerCase();
+            const opciones = [...document.querySelectorAll(`#options-${tipo} .filter-option`)];
+
+            // Guardar selección original la primera vez que se escribe
+            if (q && _snapshotSeleccion[tipo] === undefined) {
+                _snapshotSeleccion[tipo] = opciones
+                    .filter(op => op.querySelector('input').checked)
+                    .map(op => op.querySelector('input').value);
+            }
+
+            if (!q) {
+                opciones.forEach(op => op.style.display = '');
+                if (_snapshotSeleccion[tipo] !== undefined) {
+                    const prev = new Set(_snapshotSeleccion[tipo]);
+                    opciones.forEach(op => {
+                        const cb = op.querySelector('input');
+                        cb.checked = prev.has(cb.value);
+                    });
+                    _snapshotSeleccion[tipo] = undefined;
+                }
+            } else {
+                opciones.forEach(op => {
+                    const cb = op.querySelector('input');
+                    const match = String(cb.value).toLowerCase().includes(q);
+                    op.style.display = match ? '' : 'none';
+                    cb.checked = match;              // ← esto es lo que faltaba
+                });
+            }
+
+            _actualizarTextoSelectAll(tipo, !!q);
+            actualizarContador(tipo);
+        }
+
+        function _actualizarTextoSelectAll(tipo, buscando) {
+            const span = document.getElementById(`selall-text-${tipo}`);
+            if (span) span.textContent = buscando ? '(Seleccionar todos los resultados)' : '(Seleccionar todo)';
+        }
+
+        function _resetBusqueda(tipo, limpiarInput = true) {
+            if (limpiarInput) {
+                const input = document.getElementById(`search-${tipo}`);
+                if (input) input.value = '';
+                document.querySelectorAll(`#options-${tipo} .filter-option`).forEach(op => op.style.display = '');
+            }
+            _snapshotSeleccion[tipo] = undefined;
+            _actualizarTextoSelectAll(tipo, false);
+        }
+
+        function seleccionarTodos(tipo, checked) {
+            document.querySelectorAll(`#options-${tipo} .filter-option`).forEach(op => {
+                if (op.style.display !== 'none') op.querySelector('input').checked = checked;
+            });
+            actualizarContador(tipo);
         }
 
         async function aplicarFiltro(tipo) {
-            filtrosActivos[tipo] = Array.from(
-                document.querySelectorAll(`#options-${tipo} input[type="checkbox"]:checked`)
-            ).map(cb => cb.value);
+            const cbs = [...document.querySelectorAll(`#options-${tipo} input[type="checkbox"]`)];
+            const marcados = cbs.filter(cb => cb.checked).map(cb => cb.value);
 
+            if (cbs.length && marcados.length === 0) {
+                mostrarToast('Selecciona al menos un valor', 'error');
+                return;                       // igual que Excel: no se acepta selección vacía
+            }
+
+            // Todo marcado = sin filtro
+            filtrosActivos[tipo] = (marcados.length === cbs.length) ? [] : marcados;
+
+            _resetBusqueda(tipo);
             _actualizarTextoBoton(tipo);
             document.getElementById(`filter-${tipo}`).classList.remove('show');
             await _actualizarTodosFiltros();
@@ -1570,7 +1647,8 @@
 
         async function limpiarFiltro(tipo) {
             filtrosActivos[tipo] = [];
-            document.querySelectorAll(`#options-${tipo} input[type="checkbox"]`).forEach(cb => cb.checked = false);
+            _resetBusqueda(tipo);
+            document.querySelectorAll(`#options-${tipo} input[type="checkbox"]`).forEach(cb => cb.checked = true);
             document.getElementById(`${tipo}-text`).textContent = 'Todos';
             document.getElementById(`filter-${tipo}`).classList.remove('show');
             await _actualizarTodosFiltros();
@@ -1578,32 +1656,40 @@
         }
 
         function toggleFilter(tipo) {
-            ['cuenta','zona','destino','costo','ctanombre'].forEach(t => {
+            FILTRO_TIPOS.forEach(t => {
                 if (t !== tipo) document.getElementById(`filter-${t}`).classList.remove('show');
             });
-            document.getElementById(`filter-${tipo}`).classList.toggle('show');
-        }
-
-        function filtrarOpciones(tipo) {
-            const busqueda = document.getElementById(`search-${tipo}`).value.toLowerCase();
-            document.querySelectorAll(`#options-${tipo} .filter-option`).forEach(op => {
-                op.style.display = op.textContent.toLowerCase().includes(busqueda) ? '' : 'none';
-            });
-        }
-
-        function seleccionarTodos(tipo, checked) {
-            document.querySelectorAll(`#options-${tipo} input[type="checkbox"]`).forEach(cb => {
-                if (cb.parentElement.style.display !== 'none') cb.checked = checked;
-            });
-            actualizarContador(tipo);
+            const panel = document.getElementById(`filter-${tipo}`);
+            panel.classList.toggle('show');
+            if (panel.classList.contains('show')) {
+                setTimeout(() => document.getElementById(`search-${tipo}`)?.focus(), 60);
+            }
         }
 
         function actualizarContador(tipo) {
-            const checked = document.querySelectorAll(`#options-${tipo} input[type="checkbox"]:checked`);
+            const checked = document.querySelectorAll(`#options-${tipo} input[type="checkbox"]:checked`).length;
             const total   = document.querySelectorAll(`#options-${tipo} input[type="checkbox"]`).length;
             const sa = document.querySelector(`#filter-${tipo} .select-all`);
-            sa.checked = checked.length === total;
-            sa.indeterminate = checked.length > 0 && checked.length < total;
+            if (!sa) return;
+            sa.checked = total > 0 && checked === total;
+            sa.indeterminate = checked > 0 && checked < total;
+        }
+
+        /* Enter = Aplicar, Escape = cerrar; y se etiquetan los "(Seleccionar todo)" */
+        function _initBuscadoresFiltros() {
+            FILTRO_TIPOS.forEach(tipo => {
+                const input = document.getElementById(`search-${tipo}`);
+                if (input) {
+                    input.addEventListener('input', () => filtrarOpciones(tipo));
+                    input.addEventListener('keydown', e => {
+                        if (e.key === 'Enter')  { e.preventDefault(); aplicarFiltro(tipo); }
+                        if (e.key === 'Escape') { e.preventDefault(); document.getElementById(`filter-${tipo}`).classList.remove('show'); }
+                    });
+                }
+                const sa = document.querySelector(`#filter-${tipo} .select-all`);
+                const span = sa && sa.parentElement.querySelector('span');
+                if (span && !span.id) span.id = `selall-text-${tipo}`;
+            });
         }
 
         /* ══════════════════════════════════════════════════════════════════════
@@ -1689,7 +1775,29 @@
             return t;
         }
 
-        function renderizarTabla(jerarquia) {
+        function _capturarEstadoNiveles() {
+            const estado = {};
+            document.querySelectorAll('#tablaBody tr[class*="nivel-"]').forEach(tr => {
+                const cls = [...tr.classList].find(c => c.startsWith('nivel-'));
+                if (cls && !(cls in estado)) estado[cls] = tr.classList.contains('hidden');
+            });
+            return estado;
+        }
+
+        function _restaurarEstadoNiveles(estado) {
+            Object.entries(estado).forEach(([cls, hidden]) => {
+                document.querySelectorAll(`#tablaBody .${cls}`).forEach(tr => tr.classList.toggle('hidden', hidden));
+            });
+            document.querySelectorAll('#tablaBody .toggle-btn').forEach(btn => {
+                const m = (btn.getAttribute('onclick') || '').match(/toggleNivel\('([^']+)'\)/);
+                if (!m) return;
+                const primera = document.querySelector(`#tablaBody .nivel-${m[1]}`);
+                btn.textContent = (primera && primera.classList.contains('hidden')) ? '+' : '−';
+            });
+        }
+
+        function renderizarTabla(jerarquia, preservarEstado = true) {
+            const estadoPrevio = preservarEstado ? _capturarEstadoNiveles() : null;
             const tbody = document.getElementById('tablaBody');
             tbody.innerHTML = '';
             const totalesGenerales = inicializarTotales();
@@ -1783,6 +1891,7 @@
                 ${generarCeldasNumericas(totalesGenerales)}
                 <td></td>`;
             tbody.appendChild(trTotal);
+            if (estadoPrevio && Object.keys(estadoPrevio).length) _restaurarEstadoNiveles(estadoPrevio);
         }
 
         function generarCeldasNumericas(totales, nivelInfo) {
@@ -2039,118 +2148,59 @@
         /* ══════════════════════════════════════════════════════════════════════
            CONFIRMAR Y GUARDAR DISTRIBUCIÓN
         ══════════════════════════════════════════════════════════════════════ */
+        const MESES_NUM = { enero:1, febrero:2, marzo:3, abril:4, mayo:5, junio:6,
+                    julio:7, agosto:8, septiembre:9, octubre:10, noviembre:11, diciembre:12 };
+
+        function _filtrosParaBackend() {
+            const f = {};
+            if (filtrosActivos.cuenta.length  && filtrosActivos.cuenta.length  < valoresFiltros.cuenta.length)  f.mcncuenta  = filtrosActivos.cuenta;
+            if (filtrosActivos.zona.length    && filtrosActivos.zona.length    < valoresFiltros.zona.length)    f.mcnzona    = filtrosActivos.zona;
+            if (filtrosActivos.destino.length && filtrosActivos.destino.length < valoresFiltros.destino.length) f.mcndestino = filtrosActivos.destino;
+            if (filtrosActivos.costo.length   && filtrosActivos.costo.length   < valoresFiltros.costo.length)   f.mcnccosto  = filtrosActivos.costo;
+            return f;
+        }
+
         async function confirmarDistribucion() {
             if (!_distribucionPendiente) return;
-            const { nivelInfo, mes, nuevoTotal, items } = _distribucionPendiente;
+            const { nivelInfo, mes, nuevoTotal } = _distribucionPendiente;
 
-            const body = document.getElementById('modalDistribucionBody');
-            body.insertAdjacentHTML('beforeend',
-                `<div class="saving-overlay" id="savingOverlay">
-                    <div class="mini-spinner"></div> Guardando cambios en la base de datos...
+            const btnSave = document.querySelector('#modalDistribucion .btn-save');
+            document.getElementById('modalDistribucionBody').insertAdjacentHTML('beforeend',
+                `<div class="modal-loading" id="savingOverlay">
+                    <div class="mini-spinner"></div><span>Guardando cambios en la base de datos...</span>
                 </div>`);
-            document.querySelector('#modalDistribucion .btn-save').disabled = true;
+            btnSave.disabled = true;
 
-            let errores = 0;
-            for (const item of items) {
-                try {
-                    const ok = await _actualizarMesEnBD(item.cuenta, item.vinculo, item.detalle, mes, item.valorNuevo, item.valorAnterior);
-                    if (!ok) errores++;
-                } catch(e) {
-                    errores++;
-                }
-            }
-
-            if (errores > 0) {
-                mostrarToast(`⚠️ ${errores} registros no pudieron guardarse`, 'error');
-            } else {
-                mostrarToast('✅ Redistribución aplicada correctamente');
-            }
-
-            _aplicarDistribucionEnJerarquia(items, mes);
-            cerrarModal('modalDistribucion');
-            document.querySelector('#modalDistribucion .btn-save').disabled = false;
-            _distribucionPendiente = null;
-            renderizarTabla(jerarquiaGlobal);
-            calcularEstadisticas(datosGlobales);
-        }
-
-        async function _actualizarMesEnBD(cuenta, vinculo, detalle, mes, valorNuevo, valorAnterior) {
-            const params = new URLSearchParams({ ctanombre: cuenta, vinnombre: vinculo, mcndetalle: detalle });
-            const resp = await fetch(`../obtener-registros-detalle/?${params}`);
-            const data = await resp.json();
-            if (data.error || !data.registros) return false;
-
-            const MESES_NUM = { enero:1, febrero:2, marzo:3, abril:4, mayo:5, junio:6,
-                                julio:7, agosto:8, septiembre:9, octubre:10, noviembre:11, diciembre:12 };
-            const numMes = MESES_NUM[mes];
-
-            const registrosMes = data.registros.filter(r => {
-                if (!r.mcnfecha) return false;
-                const n = parseInt(r.mcnfecha, 10);
-                if (isNaN(n)) return false;
-                const f = new Date(Date.UTC(1899, 11, 30) + n * 86400000);
-                return f.getUTCMonth() + 1 === numMes;
-            });
-
-            if (registrosMes.length === 0) return true;
-
-            const saldoTotal = registrosMes.reduce((s, r) => s + (r.mcnvaldebi||0) - (r.mcnvalcred||0), 0);
-            let acumulado = 0;
-
-            for (let i = 0; i < registrosMes.length; i++) {
-                const reg = registrosMes[i];
-                const saldoReg = (reg.mcnvaldebi||0) - (reg.mcnvalcred||0);
-                let nuevoSaldo;
-                if (i === registrosMes.length - 1) {
-                    nuevoSaldo = valorNuevo - acumulado;
-                } else {
-                    const prop = saldoTotal !== 0 ? saldoReg / saldoTotal : 1 / registrosMes.length;
-                    nuevoSaldo = Math.round(valorNuevo * prop);
-                    acumulado += nuevoSaldo;
-                }
-
-                let nuevoDebi = reg.mcnvaldebi || 0;
-                let nuevoCred = reg.mcnvalcred || 0;
-
-                if (reg.mcnvalcred === 0 || reg.mcnvalcred === null) {
-                    nuevoDebi = nuevoSaldo; nuevoCred = 0;
-                } else if (reg.mcnvaldebi === 0 || reg.mcnvaldebi === null) {
-                    nuevoDebi = 0; nuevoCred = -nuevoSaldo;
-                } else {
-                    const ratioDebi = reg.mcnvaldebi / (reg.mcnvaldebi + reg.mcnvalcred);
-                    nuevoDebi = Math.round(nuevoSaldo > 0 ? nuevoSaldo / (1 - ratioDebi) * ratioDebi : 0);
-                    nuevoCred = nuevoDebi - nuevoSaldo;
-                }
-
-                const putResp = await fetch(`../editar-registro/${reg.id}/`, {
-                    method: 'PUT',
+            try {
+                const resp = await fetch('../redistribuir-mes/', {
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-                    body: JSON.stringify({ mcnvaldebi: nuevoDebi, mcnvalcred: nuevoCred }),
+                    body: JSON.stringify({
+                        nivel:       nivelInfo.nivel,
+                        ctanombre:   nivelInfo.cuenta,
+                        vinnombre:   nivelInfo.vinculo || '',
+                        mcndetalle:  nivelInfo.detalle || '',
+                        mes:         MESES_NUM[mes],
+                        nuevo_total: nuevoTotal,
+                        filtros:     _filtrosParaBackend(),
+                    }),
                 });
-                if (!putResp.ok) return false;
+                const data = await resp.json();
+
+                if (!resp.ok || data.error) {
+                    mostrarToast('Error: ' + (data.error || resp.statusText), 'error');
+                } else {
+                    mostrarToast(`✅ Redistribución aplicada sobre ${data.actualizados} registros`);
+                    cerrarModal('modalDistribucion');
+                    cargarDatos();   // recarga desde el back: front y back siempre coinciden
+                }
+            } catch (e) {
+                mostrarToast('Error de red al guardar', 'error');
+            } finally {
+                document.getElementById('savingOverlay')?.remove();
+                btnSave.disabled = false;
+                _distribucionPendiente = null;
             }
-            return true;
-        }
-
-        function _aplicarDistribucionEnJerarquia(items, mes) {
-            items.forEach(({ cuenta, vinculo, detalle, valorNuevo, valorAnterior }) => {
-                const diff = valorNuevo - valorAnterior;
-                const cd = jerarquiaGlobal[cuenta];
-                if (!cd) return;
-                const vd = cd.vinculos[vinculo];
-                if (!vd) return;
-                const dd = vd.detalles[detalle];
-                if (!dd) return;
-
-                dd[mes] = valorNuevo;
-                dd.total = dd.total + diff;
-
-                vd.totales[mes] = Object.values(vd.detalles).reduce((s, d) => s + (d[mes]||0), 0);
-                vd.totales.total = MESES.reduce((s, m) => s + (vd.totales[m]||0), 0);
-
-                cd.totales[mes] = Object.values(cd.vinculos).reduce((s, v) => s + (v.totales[mes]||0), 0);
-                cd.totales.total = MESES.reduce((s, m) => s + (cd.totales[m]||0), 0);
-            });
         }
 
         /* Cerrar filtros al click fuera */
