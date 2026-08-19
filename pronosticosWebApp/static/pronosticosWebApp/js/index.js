@@ -2,7 +2,24 @@ let dataTable;
 let dataTableIsInitialized = false;
 let selectedRowData = null;
 let productosData = null; // Variable global para almacenar los datos
+// Cache del mapeo proveedor|sku -> col_base, cargado desde la BD
+let multiplosConfigCache = null;
+async function loadMultiplosConfig() {
+    if (multiplosConfigCache) return multiplosConfigCache;
+    const response = await fetch('/config_proveedor_sku/');
+    const data = await response.json();
+    multiplosConfigCache = data.config;
+    return multiplosConfigCache;
+}
 
+// Función de lookup: exacto primero, luego comodín
+function getMultiplo(config, proveedor, producto) {
+    const exactKey    = `${proveedor}|${producto}`;
+    const wildcardKey = `${proveedor}|*`;
+    if (config[exactKey]    !== undefined) return config[exactKey];
+    if (config[wildcardKey] !== undefined) return config[wildcardKey];
+    return '';
+}
 const handleRowClick = (data) => {
     // const filteredData = data.slice(1);  // Eliminar el primer elemento (indice de la tabla)
     selectedRowData = data;
@@ -61,26 +78,6 @@ document.getElementById('export-visible').addEventListener('click', async functi
         'CANTIDAD.N20', 'AUTOMATIZACION.C20', 'PRECIO_UNITARIO.N20', 'FECHAENTREGA.C10',
         'DETALLE.C255',
     ];
-
-    // Cache del mapeo proveedor|sku -> col_base, cargado desde la BD
-    let multiplosConfigCache = null;
-
-    async function loadMultiplosConfig() {
-        if (multiplosConfigCache) return multiplosConfigCache;
-        const response = await fetch('/config_proveedor_sku/');
-        const data = await response.json();
-        multiplosConfigCache = data.config;
-        return multiplosConfigCache;
-    }
-
-    // Función de lookup: exacto primero, luego comodín
-    function getMultiplo(config, proveedor, producto) {
-        const exactKey    = `${proveedor}|${producto}`;
-        const wildcardKey = `${proveedor}|*`;
-        if (config[exactKey]    !== undefined) return config[exactKey];
-        if (config[wildcardKey] !== undefined) return config[wildcardKey];
-        return '';
-    }
 
     const exportData = [headers];
     let index = 1;
