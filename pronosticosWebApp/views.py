@@ -7,7 +7,7 @@ from django.shortcuts import render, HttpResponse
 from django.http.response import JsonResponse
 from django.views.decorators.http import require_GET
 import pandas as pd
-from .models import Producto
+from .models import ConfigProveedorSku, Producto
 from django.views.decorators.csrf import csrf_exempt
 import json
 import requests
@@ -336,3 +336,13 @@ def traslados_resumen_json(request):
         hojas[sede_actual] = {"headers": headers, "rows": rows}
 
     return JsonResponse({"hojas": hojas})
+
+@login_required
+def config_proveedor_sku_json(request):
+    """
+    Devuelve el mapeo proveedor|sku -> col_base (stock_seguridad / cantidadx3)
+    usado por el frontend para poblar la columna AUTOMATIZACION.
+    """
+    qs = ConfigProveedorSku.objects.all().values('proveedor', 'sku', 'col_base')
+    config = {f"{row['proveedor']}|{row['sku']}": row['col_base'] for row in qs}
+    return JsonResponse({"config": config})

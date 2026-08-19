@@ -247,3 +247,26 @@ class TrasladoResumenSede(models.Model):
 
     def __str__(self):
         return f"{self.sku} {self.sede_origen} -> {self.sede_destino}: {self.cantidad}"
+    
+class ConfigProveedorSku(models.Model):
+    """
+    Reemplaza al diccionario PRODUCTOS_CONFIG hardcodeado en Pronosticos.
+    Una fila = una regla para (proveedor, sku). sku='*' funciona como comodín.
+    """
+    COL_BASE_CHOICES = [
+        ('stock_seguridad', 'Stock de seguridad'),
+        ('cantidadx3', 'Cantidad x3'),
+    ]
+    proveedor = models.CharField(max_length=100, db_index=True)
+    sku = models.CharField(max_length=20, db_index=True)  # puede ser '*'
+    habilitado_traslado = models.BooleanField(default=False)
+    col_base = models.CharField(max_length=20, choices=COL_BASE_CHOICES, default='stock_seguridad')
+    multiplo = models.PositiveIntegerField(null=True, blank=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'config_proveedor_sku'
+        managed = False  # ya existe en la BD, gestionada por carga_bd
+
+    def __str__(self):
+        return f"{self.proveedor} - {self.sku}"
