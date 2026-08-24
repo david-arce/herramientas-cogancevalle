@@ -9061,6 +9061,108 @@ def redistribuir_mes(request):
         'total_aplicado': nuevo_total,
         'total_anterior': total_actual,
     })
+
+@csrf_exempt
+@require_POST
+def aplicar_inflacion(request):
+    """
+    Aplica un % de inflación al saldo de los registros de VARIOS nodos de la
+    jerarquía a la vez. Los registros se deduplican por PK, así que aunque un
+    objetivo quede contenido en otro, la inflación se aplica una sola vez.
+
+    Body JSON:
+      porcentaje: float (5 = +5%, -3.5 = -3.5%)
+      meses: [1..12]  (opcional; por defecto todos)
+      objetivos: [{nivel:'cuenta'|'vinculo'|'detalle',
+                   ctanombre, vinnombre, mcndetalle}, ...]
+      filtros: {mcncuenta: [], mcnzona: [], mcndestino: [], mcnccosto: []}
+    """
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    objetivos = body.get('objetivos') or []
+    if not objetivos:
+        return JsonResponse({'error': 'No se seleccionó ninguna fila'}, status=400)
+
+    try:
+        porcentaje = float(body.get('porcentaje'))
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Porcentaje inválido'}, status=400)
+
+    if porcentaje < -100:
+        return JsonResponse({'error': 'El porcentaje no puede ser menor a -100%'}, status=400)
+
+    try:
+        meses = {int(m) for m in (body.get('meses') or range(1, 13))}
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Meses inválidos'}, status=400)
+    meses = {m for m in meses if 1 <= m <= 12}
+    if not meses:
+        return JsonResponse({'error': 'Debe indicar al menos un mes'}, status=400)
+
+    # ── Un OR por cada objetivo seleccionado ──────────────────────────────
+    condicion = Q()
+    for o in objetivos:
+        nivel     = o.get('nivel')
+        ctanombre = o.get('ctanombre') or ''
+        if nivel not in ('cuenta', 'vinculo', 'detalle') or not ctanombre:
+            return JsonResponse({'error': f'Objetivo inválido: {o}'}, status=400)
+
+        q = Q(ctanombre=ctanombre)
+        if nivel in ('vinculo', 'detalle'):
+            q &= Q(vinnombre=o.get('vinnombre') or '')
+        if nivel == 'detalle':
+            q &= Q(mcndetalle=o.get('mcndetalle') or '')
+        condicion |= q
+
+    qs = Cuenta5Presupuestado.objects.filter(condicion)
+
+    # Mismos filtros de la tabla, para que el universo coincida con lo visible
+    filtros = body.get('filtros') or {}
+    for campo in ('mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto'):
+        valores = [v for v in (filtros.get(campo) or []) if v not in (None, '')]
+        if valores:
+            qs = qs.filter(**{f'{campo}__in': valores})
+
+    # distinct() + dict por PK: blindaje contra doble aplicación
+    unicos = {}
+    for r in qs.distinct():
+        if _mes_de_serial(r.mcnfecha) in meses:
+            unicos[r.pk] = r
+    registros = list(unicos.values())
+
+    if not registros:
+        return JsonResponse(
+            {'error': 'No hay registros en los meses seleccionados para las filas elegidas.'},
+            status=400,
+        )
+
+    factor = 1 + porcentaje / 100.0
+    total_ant = total_nue = 0
+
+    with transaction.atomic():
+        for reg in registros:
+            saldo = (reg.mcnvaldebi or 0) - (reg.mcnvalcred or 0)
+            nuevo = int(round(saldo * factor))
+            total_ant += saldo
+            total_nue += nuevo
+            reg.mcnvaldebi = nuevo if nuevo >= 0 else 0
+            reg.mcnvalcred = 0 if nuevo >= 0 else -nuevo
+        Cuenta5Presupuestado.objects.bulk_update(
+            registros, ['mcnvaldebi', 'mcnvalcred'], batch_size=500
+        )
+
+    return JsonResponse({
+        'success': True,
+        'actualizados': len(registros),
+        'objetivos': len(objetivos),
+        'porcentaje': porcentaje,
+        'meses': sorted(meses),
+        'total_anterior': total_ant,
+        'total_nuevo': total_nue,
+    })
     
 @csrf_exempt
 @require_http_methods(["DELETE"])

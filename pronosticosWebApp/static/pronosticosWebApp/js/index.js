@@ -11,7 +11,21 @@ async function loadMultiplosConfig() {
     multiplosConfigCache = data.config;
     return multiplosConfigCache;
 }
+// Función reutilizable: arma los query params a partir de los filtros seleccionados
+function buildFilterParams() {
+    const params = new URLSearchParams();
 
+    getSelectedValues('select-options-items', 'select-all-items')
+        .forEach(v => params.append('item', v));
+    getSelectedValues('select-options-proveedores', 'select-all-proveedores')
+        .forEach(v => params.append('proveedor', v));
+    getSelectedValues('select-options-productos', 'select-all-productos')
+        .forEach(v => params.append('producto', v));
+    getSelectedValues('select-options-sedes', 'select-all-sedes')
+        .forEach(v => params.append('sede', v));
+
+    return params;
+}
 // Función de lookup: exacto primero, luego comodín
 function getMultiplo(config, proveedor, producto) {
     const exactKey    = `${proveedor}|${producto}`;
@@ -123,7 +137,8 @@ document.getElementById('export-visible').addEventListener('click', async functi
 
     //agregar hojas de traslados entre sedes ────────────────────────
     try {
-        const response = await fetch('/traslados_resumen_json/');
+        const params = buildFilterParams();
+        const response = await fetch(`/traslados_resumen_json/?${params.toString()}`);
         const data = await response.json();
 
         Object.entries(data.hojas || {}).forEach(([sedeOrigen, hoja]) => {
@@ -132,13 +147,10 @@ document.getElementById('export-visible').addEventListener('click', async functi
             if (hoja.rows.length > 0) {
                 hoja.rows.forEach(row => filas.push(row));
             } else {
-                // Fila indicando que no hubo traslados desde esta sede
                 filas.push([`No se realizaron traslados desde ${sedeOrigen}`]);
             }
 
             const wsSede = XLSX.utils.aoa_to_sheet(filas);
-
-            // Excel limita el nombre de hoja a 31 caracteres y no admite : \ / ? * [ ]
             const nombreHoja = `Traslados_${sedeOrigen}`
                 .replace(/[:\\/?*\[\]]/g, '')
                 .substring(0, 31);
@@ -160,7 +172,7 @@ document.getElementById('export-visible').addEventListener('click', async functi
 });
 
 async function uploadData() {
-    const params = new URLSearchParams();
+    const params = buildFilterParams();
 
     getSelectedValues('select-options-items', 'select-all-items')
         .forEach(v => params.append('item', v));

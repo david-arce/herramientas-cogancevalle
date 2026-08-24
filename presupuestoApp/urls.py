@@ -332,7 +332,7 @@ urlpatterns = [
     path('renombrar-nivel/',          views.renombrar_nivel,           name='renombrar_nivel'),
     path('eliminar-nivel/', views.eliminar_nivel, name='eliminar_nivel'),
     path('redistribuir-mes/', views.redistribuir_mes, name='redistribuir_mes'),
-    
+    path('aplicar-inflacion/', views.aplicar_inflacion, name='aplicar_inflacion'),
     # ── Página de carga ──────────────────────────────────────-----------------------------------
     path(
         'consolidado-base/carga/',

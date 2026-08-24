@@ -289,10 +289,29 @@ def traslados_resumen_json(request):
     (una 'hoja' por sede origen, con una columna por sede destino),
     replicando la misma estructura que tenía el Excel original,
     para que el frontend los agregue como hojas adicionales al workbook.
+
+    Acepta los mismos filtros que la vista `demanda`:
+        ?item=X&item=Y&proveedor=A&producto=B&sede=C
     """
-    qs = TrasladoResumenSede.objects.all().values(
-        'sku', 'sku_nom', 'marca_nom', 'sede_origen', 'sede_destino', 'cantidad'
-    )
+    qs = TrasladoResumenSede.objects.all()
+
+    # Leer filtros desde query params (mismos nombres que usa /demanda)
+    items       = request.GET.getlist('item')        # -> sku
+    proveedores = request.GET.getlist('proveedor')    # -> marca_nom
+    productos   = request.GET.getlist('producto')     # -> sku_nom
+    sedes       = request.GET.getlist('sede')         # -> sede_origen / sede_destino
+
+    if items:
+        qs = qs.filter(sku__in=items)
+    if proveedores:
+        qs = qs.filter(marca_nom__in=proveedores)
+    if productos:
+        qs = qs.filter(sku_nom__in=productos)
+    if sedes:
+        # Se conserva el traslado si la sede filtrada participa como origen o como destino
+        qs = qs.filter(Q(sede_origen__in=sedes) | Q(sede_destino__in=sedes))
+
+    qs = qs.values('sku', 'sku_nom', 'marca_nom', 'sede_origen', 'sede_destino', 'cantidad')
     df = pd.DataFrame(list(qs))
 
     if df.empty:
