@@ -3,6 +3,7 @@ import hashlib
 from io import BytesIO
 import logging
 import time
+from django.db.models import Q
 from django.shortcuts import render, HttpResponse
 from django.http.response import JsonResponse
 from django.views.decorators.http import require_GET
