@@ -174,15 +174,6 @@ document.getElementById('export-visible').addEventListener('click', async functi
 async function uploadData() {
     const params = buildFilterParams();
 
-    getSelectedValues('select-options-items', 'select-all-items')
-        .forEach(v => params.append('item', v));
-    getSelectedValues('select-options-proveedores', 'select-all-proveedores')
-        .forEach(v => params.append('proveedor', v));
-    getSelectedValues('select-options-productos', 'select-all-productos')
-        .forEach(v => params.append('producto', v));
-    getSelectedValues('select-options-sedes', 'select-all-sedes')
-        .forEach(v => params.append('sede', v));
-
     if (!params.toString()) {
         alert('Selecciona al menos un filtro antes de buscar.');
         return null;
