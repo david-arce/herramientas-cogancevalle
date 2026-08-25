@@ -255,6 +255,7 @@ class ConfigProveedorSku(models.Model):
     """
     COL_BASE_CHOICES = [
         ('stock_seguridad', 'Stock de seguridad'),
+        ('cantidad',        'Cantidad'),
         ('cantidadx3', 'Cantidad x3'),
     ]
     proveedor = models.CharField(max_length=100, db_index=True)

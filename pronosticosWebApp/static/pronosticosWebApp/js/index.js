@@ -76,11 +76,15 @@ document.getElementById('export-visible').addEventListener('click', async functi
     // Cargar el mapeo desde la BD (una sola vez, cacheado)
     const multiplosConfig = await loadMultiplosConfig();
     
+    const toInt = (v) => {
+        const n = parseInt(v, 10);
+        return Number.isFinite(n) ? n : 0;
+    };
     const updatedData = filteredData.map(row => {
-        row[9] = parseInt(row[9], 10);
-        row[10] = parseInt(row[10], 10);
-        row[11] = parseInt(row[11], 10);
-        row[12] = parseInt(row[12], 10);
+        row[9]  = toInt(row[9]);
+        row[10] = toInt(row[10]);
+        row[11] = toInt(row[11]);
+        row[12] = toInt(row[12]);
         return row;
     });
 
@@ -107,18 +111,21 @@ document.getElementById('export-visible').addEventListener('click', async functi
             }
         });
 
-        // Buscar el valor del múltiplo usando proveedor (índice 7) y producto (índice 2)
-        const proveedor = String(row[7]).trim();
-        const producto = String(row[2]).trim();
-        const multiplo = getMultiplo(multiplosConfig, proveedor, producto);
+        // Índice de columna de la tabla según la col_base configurada
+        //  9 = CANTIDAD 1 MES  |  10 = STOCK  |  11 = CANTIDAD 3 MESES
+        const COL_BASE_INDEX = {
+            'cantidad':        9,
+            'stock_seguridad': 10,
+            'cantidadx3':      11,
+        };
 
-        // Resolver el valor real: stock o cantidadx3
-        let valorMultiplo = '';
-        if (multiplo === 'stock_seguridad') {
-            valorMultiplo = row[10];
-        } else if (multiplo === 'cantidadx3') {
-            valorMultiplo = row[11];
-        }
+        const proveedor = String(row[7]).trim();
+        const producto  = String(row[2]).trim();
+        const colBase   = getMultiplo(multiplosConfig, proveedor, producto);
+
+        const idxCol = COL_BASE_INDEX[colBase];
+        // Si no hay configuración o el valor no es numérico → 0, nunca vacío
+        const valorMultiplo = (idxCol !== undefined) ? toInt(row[idxCol]) : 0;
 
         // AUTOMATIZACION va antes de PRECIO_UNITARIO (índice 12 en la tabla)
         rowData.push(valorMultiplo);         // AUTOMATIZACION.C20
