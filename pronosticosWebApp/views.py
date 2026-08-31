@@ -345,12 +345,17 @@ def traslados_resumen_json(request):
             for sd in sedes_destino:
                 if sd not in pivot_wide.columns:
                     pivot_wide[sd] = 0
-
+            # Ordenar alfabéticamente por marca_nom (proveedor)
+            pivot_wide = pivot_wide.sort_values(
+                by="marca_nom",
+                key=lambda col: col.str.lower(),
+                kind="mergesort"  # estable, mantiene orden relativo si hay empates
+            )
             for _, row in pivot_wide.iterrows():
                 fila = [str(row['sku']), str(row['marca_nom']), str(row['sku_nom'])]
                 for sd in sedes_destino:
                     val = int(row.get(sd, 0))
-                    fila.append(val if val > 0 else '-')
+                    fila.append(val if val > 0 else '')
                 rows.append(fila)
 
         hojas[sede_actual] = {"headers": headers, "rows": rows}
