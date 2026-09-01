@@ -238,6 +238,7 @@ def exportar_nomina_vertical(request):
         df_final.to_excel(writer, sheet_name="Presupuesto Nómina", index=False)
     return response
 
+# --------------COMERCIAL------------------------------------
 @login_required
 def base_comercial(request):
     # ✅ Permitir solo a ciertos usuarios por username
@@ -3022,10 +3023,6 @@ def actualizar_presupuesto_centro_segmento_linea_ventas(request):
         "mensaje": "Presupuesto por centro, segmento y línea actualizado y distribuido por mes ✅"
     })
     
-        
-        
-        
-
 @csrf_exempt
 def importar_crecimiento_ventas(request):
     if request.method != 'POST':
