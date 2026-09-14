@@ -7309,12 +7309,27 @@ def calcular_movimientos(origen='ejecutado', sede='total'):
             .values(*CAMPOS_DETALLE_CONTABLE)
         )
 
-        # Cuentas 4x desde su propia tabla + cuentas clave reconocidas por nombre
+        # Cuentas 4x desde su propia tabla + cuentas clave reconocidas por nombre.
+        # Las cuentas de ventas (1, 2, 41750201) del PRESUPUESTADO las genera
+        # generar_presupuesto_ventas en ConsolidadoTotalBase; si se tomaran
+        # también del detalle contable quedarían sumadas dos veces.
+        zonas_generadas = set()
+        if origen == 'presupuestado':
+            sedes_generadas = (
+                ConsolidadoTotalBase.objects
+                .filter(origen='presupuestado', mcncuenta__in=list(CUENTAS_VENTAS))
+                .values_list('sede', flat=True).distinct()
+            )
+            for s in sedes_generadas:
+                cfg = SEDE_CONFIG_CONSOLIDADO.get((s or '').strip().lower())
+                if cfg:
+                    zonas_generadas.update(str(z) for z in cfg['zona'])
+
         queryset_4 = (
             modelos['cuenta4'].objects
             .filter(**filtro_detalle)
             .filter(Q(mcncuenta__startswith='4') | q_cuentas_clave())
-            .values(*CAMPOS_DETALLE_CONTABLE)
+            .values(*CAMPOS_DETALLE_CONTABLE, 'mcnzona')
         )
 
         queryset_consolidado = (
@@ -7336,7 +7351,10 @@ def calcular_movimientos(origen='ejecutado', sede='total'):
                 destino = row['mcndestino'] or 'SIN DESTINO'
                 destino_norm = destino.strip().upper()
                 cuenta  = resolver_cuenta_clave(row['mcncuenta'], row['ctanombre']) or 'SIN CUENTA'
-
+                
+                if (tabla == 'cuenta4' and cuenta in CUENTAS_VENTAS
+                        and str(row.get('mcnzona') or '') in zonas_generadas):
+                    continue   # esta sede ya tiene la cuenta generada
                 if cuenta in ALIAS_CUENTAS_CLAVE:
                     pass  # cuenta clave: se conserva, no se reagrupa
                 elif tabla == 'cuenta4' and not cuenta.startswith('4'):

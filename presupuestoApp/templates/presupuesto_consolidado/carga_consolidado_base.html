@@ -763,7 +763,7 @@ main.content, .page-content, .main-content {
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
         <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;">
           Año para meses horizontales:
-          <input type="number" id="inputAnioHorizontalExcel" value="2025" min="2000" max="2099"
+          <input type="number" id="inputAnioHorizontalExcel" value="2026" min="2000" max="2099"
             style="width:80px;padding:4px 8px;border:1px solid var(--border2);border-radius:5px;font-size:13px;">
         </label>
         <span style="font-size:11px;color:var(--muted);">Se usa si el Excel tiene columnas enero…diciembre</span>
@@ -1252,7 +1252,7 @@ inputExcel.addEventListener('change', e => { if (e.target.files[0]) procesarExce
 
 function procesarExcel(file) {
   document.getElementById('excelFileName').textContent = `Archivo: ${file.name}`;
-  const anio = parseInt(document.getElementById('inputAnioHorizontalExcel').value, 10) || 2025;
+  const anio = parseInt(document.getElementById('inputAnioHorizontalExcel').value, 10) || 2026;
   const reader = new FileReader();
   reader.onload = ev => {
     try {
