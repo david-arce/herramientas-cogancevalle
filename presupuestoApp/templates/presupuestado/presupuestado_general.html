@@ -2,7 +2,6 @@
 {% load static %}
 
 {% block css %}
-<link rel="stylesheet" href="{% static 'css/consolidado_sedes.css' %}">
 <link rel="stylesheet" href="{% static 'css/consolidado_total_base.css' %}">
 <style>
     .tabs-bar { display:flex; gap:.4rem; margin: .75rem 0 1rem; flex-wrap:wrap; }
@@ -23,6 +22,7 @@
         border-color: var(--c-accent, #6d6df6);
         color: #fff;
     }
+    .tab-btn:disabled, .btn:disabled { opacity: .5; cursor: wait; }
 </style>
 {% endblock %}
 
@@ -69,7 +69,7 @@
     <div class="table-wrap">
         <div class="loading-overlay active" id="loadingOverlay">
             <div class="spinner"></div>
-            <span style="font-size:.85rem;color:var(--c-muted);">Cargando datos...</span>
+            <span id="loadingText" style="font-size:.85rem;color:var(--c-muted);">Cargando datos...</span>
         </div>
 
         <div class="table-scroll">
@@ -122,13 +122,17 @@
 
 <!-- Toast container -->
 <div id="toastContainer"></div>
-
+<!-- Tooltip de filas calculadas -->
+<div id="tooltipCalculo" class="tooltip-calculo" role="tooltip" aria-hidden="true"></div>
 {% block js %}
 <script>
 /* ══════════════════════════════════════════════════════════════════
    URLS / CONFIG
 ══════════════════════════════════════════════════════════════════ */
-const URL_OBTENER_SEDE = "{% url 'obtener_presupuestado' %}";
+// Esta página muestra el PRESUPUESTADO → obtener_presupuestado (antes obtener_consolidado)
+const URL_OBTENER_SEDE   = "{% url 'obtener_presupuestado' %}";
+const URL_GENERAR_VENTAS = "{% url 'generar_presupuesto_ventas' %}";
+const CSRF_TOKEN         = "{{ csrf_token }}";
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -148,7 +152,7 @@ let sedeActual      = 'tulua';
 let datosOriginales = [];
 let sortCol         = null;
 let sortDir         = 'asc';
-
+let ordenCuentas    = [];   // orden de cuentas que envía el backend
 /* ══════════════════════════════════════════════════════════════════
    TOAST
 ══════════════════════════════════════════════════════════════════ */
@@ -178,16 +182,39 @@ function calcularTotalesPorPrefijo(data, prefijo) {
     });
     return t;
 }
+/* Cuentas clave: si la fila no trae el número correcto se reconoce por el nombre */
+const ALIAS_CUENTAS_CLAVE = {
+    '1':        ['ventas a credito', 'ventas credito', 'venta a credito', 'venta credito'],
+    '2':        ['ventas a contado', 'ventas contado', 'venta a contado', 'venta contado', 'ventas de contado'],
+    '41750201': ['descuentos otorgados x pto pago', 'descuentos otorgados por pronto pago',
+                 'descuentos otorgados pronto pago', 'descuento otorgado x pto pago',
+                 'descuentos x pronto pago', 'descuentos por pronto pago'],
+    '613522':   ['costo de ventas', 'costos de ventas', 'costo de venta', 'costo ventas'],
+};
+function normalizarNombre(txt) {
+    return String(txt || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+const CUENTA_POR_ALIAS = {};
+Object.entries(ALIAS_CUENTAS_CLAVE).forEach(([cta, alias]) =>
+    alias.forEach(a => { CUENTA_POR_ALIAS[normalizarNombre(a)] = cta; }));
+
+function cuentaClave(row) {
+    const c = String(row.mcncuenta || '').trim();
+    if (ALIAS_CUENTAS_CLAVE[c]) return c;
+    return CUENTA_POR_ALIAS[normalizarNombre(row.ctanombre)] || null;
+}
+
 function calcularTotalesPorLista(data, lista) {
     const t = { total: 0 };
     MESES.forEach(m => t[m] = 0);
     data.forEach(row => {
-        if (row.mcncuenta) {
-            const c = String(row.mcncuenta);
-            if (lista.some(cod => c.startsWith(cod))) {
-                MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
-                t.total += parseFloat(row.total) || 0;
-            }
+        const c = String(row.mcncuenta || '');
+        const clave = cuentaClave(row);
+        const coincide = lista.some(cod => (c && c.startsWith(cod)) || clave === cod);
+        if (coincide) {
+            MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
+            t.total += parseFloat(row.total) || 0;
         }
     });
     return t;
@@ -271,52 +298,62 @@ function calcularPorcentajeExcedentesSede(data) {
     return fila;
 }
 
-function construirFilasSede(data) {
-    const totales54        = calcularTotalesPorPrefijo(data, '54');
-    const totalesVN        = calcularTotalesPorLista(data, ['1','2','41750201']);
-    const filaPct          = calcularPorcentajeCostoVentas(data);
-    const filaMargen       = calcularMargenBruto(data);
-    const filaPctMargen    = calcularPorcentajeMargenBruto(data);
-    const filaMargenCtb    = calcularMargenContribucion(data);
-    const filaPctMargenCtb = calcularPorcentajeMargenContribucion(data);
-    const filaUtilidadOp   = calcularUtilidadOperacional(data);
-    const filaPctUtilidadOp     = calcularPorcentajeUtilidadOperacional(data);
-    const filaExcedentesPerdida = calcularExcedentesPerdidaNetaSede(data);
-    const filaPctExcedentes     = calcularPorcentajeExcedentesSede(data);
+/* ══════════════════════════════════════════════════════════════════
+   UBICACIÓN DE FILAS CALCULADAS
+   Cada bloque tiene un "ancla" definida sobre el orden de cuentas.
+   Si la cuenta de referencia no tiene datos, el bloque igual se
+   muestra en su lugar (con ceros).
+══════════════════════════════════════════════════════════════════ */
+function filaTotal(totales, mcncuenta, ctanombre, tipoTotal) {
+    return { ...totales, mcncuenta, ctanombre, isTotalRow: true, tipoTotal };
+}
 
-    const insertado = { VentasNetas:false, Gastos54:false, Despues613522:false, Despues5415:false };
+function intercalarFilas(data, bloques) {
+    const orden = (ordenCuentas.length ? ordenCuentas : data.map(r => r.mcncuenta)).map(c => String(c || ''));
+    const pos = new Map();
+    orden.forEach((c, i) => { if (!pos.has(c)) pos.set(c, i); });
+
+    const umbral = a => {
+        let i = -1, despues = false;
+        if (a.antesDe !== undefined)             i = orden.indexOf(a.antesDe);
+        else if (a.antesDePrefijo !== undefined) i = orden.findIndex(c => c.startsWith(a.antesDePrefijo));
+        else if (a.despuesDe !== undefined)      { i = orden.indexOf(a.despuesDe); despues = true; }
+        else if (a.despuesDeUltimoPrefijo) {
+            orden.forEach((c, n) => { if (a.despuesDeUltimoPrefijo.some(p => c.startsWith(p))) i = n; });
+            despues = true;
+        }
+        if (i < 0) return a.porDefecto !== undefined ? a.porDefecto : Infinity;  // Infinity = al final
+        return despues ? i + 0.5 : i;
+    };
+
+    const pendientes = bloques
+        .map((b, n) => ({ filas: b.filas, t: umbral(b.ancla), n }))
+        .sort((a, b) => (a.t === b.t ? a.n - b.n : a.t - b.t));
+
     const resultado = [];
-
+    let k = 0;
     data.forEach(row => {
-        const cuenta = String(row.mcncuenta || '');
-
-        if (cuenta === '1' && !insertado.VentasNetas) {
-            resultado.push({ ...totalesVN, mcncuenta:'', ctanombre:'VENTAS NETAS', isTotalRow:true, tipoTotal:'VentasNetas' });
-            insertado.VentasNetas = true;
-        }
-        if (cuenta === '5405' && !insertado.Gastos54) {
-            resultado.push({ ...totales54, mcncuenta:'', ctanombre:'GASTOS DE VENTAS', isTotalRow:true, tipoTotal:'54' });
-            insertado.Gastos54 = true;
-        }
-
+        const p = pos.has(String(row.mcncuenta || '')) ? pos.get(String(row.mcncuenta || '')) : Infinity;
+        while (k < pendientes.length && pendientes[k].t <= p) resultado.push(...pendientes[k++].filas);
         resultado.push(row);
-
-        if (cuenta === '613522' && !insertado.Despues613522) {
-            resultado.push(filaPct, filaMargen, filaPctMargen, filaMargenCtb, filaPctMargenCtb);
-            insertado.Despues613522 = true;
-        }
-        if (cuenta === '5415' && !insertado.Despues5415) {
-            resultado.push(filaUtilidadOp, filaPctUtilidadOp, filaExcedentesPerdida, filaPctExcedentes);
-            insertado.Despues5415 = true;
-        }
     });
-
-    if (!insertado.VentasNetas) resultado.push({ ...totalesVN, mcncuenta:'', ctanombre:'VENTAS NETAS', isTotalRow:true, tipoTotal:'VentasNetas' });
-    if (!insertado.Gastos54)    resultado.push({ ...totales54, mcncuenta:'', ctanombre:'GASTOS DE VENTAS', isTotalRow:true, tipoTotal:'54' });
-    if (!insertado.Despues613522) resultado.push(filaPct, filaMargen, filaPctMargen, filaMargenCtb, filaPctMargenCtb);
-    if (!insertado.Despues5415)   resultado.push(filaUtilidadOp, filaPctUtilidadOp, filaExcedentesPerdida, filaPctExcedentes);
-
+    while (k < pendientes.length) resultado.push(...pendientes[k++].filas);
     return resultado;
+}
+
+function construirFilasSede(data) {
+    return intercalarFilas(data, [
+        { ancla: { antesDePrefijo: '1', porDefecto: -1 },
+          filas: [filaTotal(calcularTotalesPorLista(data, ['1','2','41750201']), '', 'VENTAS NETAS', 'VentasNetas')] },
+        { ancla: { antesDePrefijo: '54' },
+          filas: [filaTotal(calcularTotalesPorPrefijo(data, '54'), '', 'GASTOS DE VENTAS', '54')] },
+        { ancla: { despuesDe: '613522' },
+          filas: [calcularPorcentajeCostoVentas(data), calcularMargenBruto(data), calcularPorcentajeMargenBruto(data),
+                  calcularMargenContribucion(data), calcularPorcentajeMargenContribucion(data)] },
+        { ancla: { despuesDe: '5415' },
+          filas: [calcularUtilidadOperacional(data), calcularPorcentajeUtilidadOperacional(data),
+                  calcularExcedentesPerdidaNetaSede(data), calcularPorcentajeExcedentesSede(data)] },
+    ]);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -401,98 +438,210 @@ function calcularPorcentajeExcedentesTB(data) {
 }
 
 function construirFilasTotalBase(data) {
-    const totales54  = calcularTotalesPorPrefijo(data, '54');
-    const totales51  = calcularTotalesPorPrefijo(data, '51');
-    const totalesVN  = calcularTotalesPorLista(data, ['1','2','41750201']);
-    const filaPct    = calcularPorcentajeCostoVentas(data);
-    const filaMargen = calcularMargenBruto(data);
-    const filaPctMargen = calcularPorcentajeMargenBruto(data);
-    const filaMargenCtb       = calcularMargenContribucion(data);
-    const filaPctMargenCtb    = calcularPorcentajeMargenContribucion(data);
-    const filaUtilidadOp      = calcularUtilidadOperacional(data);
-    const filaPctUtilidadOp   = calcularPorcentajeUtilidadOperacional(data);
-    const filaGastosFinanc    = calcularGastosFinancierosTB(data);
-    const filaAsistenciaTecnica    = calcularAsistenciaTecnicaTB(data);
-    const filaOtrosIngresos        = calcularOtrosIngresosTB(data);
-    const filaIngresosPorServicios = calcularIngresosPorServiciosTB(data);
-    const filaGastosPorServicios   = calcularGastosPorServiciosTB(data);
-    const filaExcedentesPerdida    = calcularExcedentesPerdidaNetaTB(data);
-    const filaPctExcedentes        = calcularPorcentajeExcedentesTB(data);
+    return intercalarFilas(data, [
+        { ancla: { antesDePrefijo: '1', porDefecto: -1 },
+          filas: [filaTotal(calcularTotalesPorLista(data, ['1','2','41750201']), '', 'VENTAS NETAS', 'VentasNetas')] },
+        { ancla: { antesDePrefijo: '54' },
+          filas: [filaTotal(calcularTotalesPorPrefijo(data, '54'), '54', 'GASTOS DE VENTAS', '54')] },
+        { ancla: { antesDePrefijo: '51' },
+          filas: [filaTotal(calcularTotalesPorPrefijo(data, '51'), '51', 'GASTOS DE ADMINISTRACIÓN', '51')] },
+        { ancla: { antesDe: '5' },
+          filas: [calcularGastosPorServiciosTB(data)] },
+        { ancla: { despuesDe: '613522' },
+          filas: [calcularPorcentajeCostoVentas(data), calcularMargenBruto(data), calcularPorcentajeMargenBruto(data)] },
+        { ancla: { despuesDe: '4240909502' },
+          filas: [calcularMargenContribucion(data), calcularPorcentajeMargenContribucion(data)] },
+        { ancla: { despuesDeUltimoPrefijo: ['51'] },
+          filas: [calcularUtilidadOperacional(data), calcularPorcentajeUtilidadOperacional(data), calcularGastosFinancierosTB(data)] },
+        { ancla: { despuesDe: '615035' },
+          filas: [calcularIngresosPorServiciosTB(data), calcularAsistenciaTecnicaTB(data)] },
+        { ancla: { despuesDeUltimoPrefijo: ['AT', 'VT'] },
+          filas: [calcularOtrosIngresosTB(data)] },
+        { ancla: { despuesDe: '5230' },
+          filas: [calcularExcedentesPerdidaNetaTB(data), calcularPorcentajeExcedentesTB(data)] },
+    ]);
+}
+/* ══════════════════════════════════════════════════════════════════
+   DESCRIPCIÓN DE LAS FILAS CALCULADAS (tooltip)
+══════════════════════════════════════════════════════════════════ */
+const VN_TXT = 'Ventas Netas';
 
-    const resultado = [];
-    let pos54 = -1, pos51 = -1, posVN = -1;
+const DESCRIPCIONES_CALCULO = {
+    VentasNetas: {
+        titulo: 'Ventas Netas',
+        desc: 'Ingresos por ventas del periodo, descontando los descuentos por pronto pago.',
+        formula: 'Cuentas que inician con 1 (Ventas a crédito)\n+ Cuentas que inician con 2 (Ventas a contado)\n+ 41750201 (Descuentos otorgados x pto pago)',
+    },
+    '54': {
+        titulo: 'Gastos de Ventas',
+        desc: 'Total de los gastos asociados a la operación de ventas.',
+        formula: 'Suma de todas las cuentas que inician con 54',
+    },
+    '51': {
+        titulo: 'Gastos de Administración',
+        desc: 'Total de los gastos administrativos.',
+        formula: 'Suma de todas las cuentas que inician con 51',
+    },
+    PctCostoVentas: {
+        titulo: '% Costo de Ventas',
+        desc: 'Porción de las ventas netas que se va en el costo de la mercancía vendida.',
+        formula: `613522 (Costo de ventas) ÷ ${VN_TXT} × 100`,
+    },
+    MargenBruto: {
+        titulo: 'Margen Bruto',
+        desc: 'Lo que queda de las ventas después de cubrir el costo de la mercancía.',
+        formula: `${VN_TXT} − 613522 (Costo de ventas)`,
+    },
+    PctMargenBruto: {
+        titulo: '% Margen Bruto',
+        desc: 'Margen bruto expresado como porcentaje de las ventas netas.',
+        formula: `Margen Bruto ÷ ${VN_TXT} × 100`,
+    },
+    MargenContribucion: {
+        titulo: 'Margen de Contribución',
+        desc: 'Margen bruto ajustado con descuentos y bonificaciones de proveedores.',
+        formula: 'Margen Bruto\n+ 4240900101 (Descuentos pronto pago)\n+ 4240909502 (Bonificaciones de proveedores)',
+    },
+    PctMargenContribucion: {
+        titulo: '% Margen de Contribución',
+        desc: 'Margen de contribución como porcentaje de las ventas netas.',
+        formula: `Margen de Contribución ÷ ${VN_TXT} × 100`,
+    },
+    UtilidadOperacional: {
+        titulo: 'Utilidad Operacional',
+        desc: 'Resultado de la operación después de los gastos de ventas y de administración.',
+        formula: 'Margen de Contribución\n− Gastos de Ventas (cuentas 54)\n− Gastos de Administración (cuentas 51)',
+    },
+    PctUtilidadOperacional: {
+        titulo: '% Utilidad Operacional',
+        desc: 'Utilidad operacional como porcentaje de las ventas netas.',
+        formula: `Utilidad Operacional ÷ ${VN_TXT} × 100`,
+    },
+    GastosFinancieros: {
+        titulo: 'Gastos Financieros',
+        desc: 'Gastos bancarios, contribuciones e intereses.',
+        formula: 'Cuentas que inician con 521005, 521015, 521020, 3\ny 615035 (Intereses)',
+    },
+    AsistenciaTecnica: {
+        titulo: 'Asistencia Técnica',
+        desc: 'Ingresos por los programas y convenios de asistencia técnica.',
+        formula: 'Suma de las cuentas que inician con AT o VT',
+    },
+    OtrosIngresos: {
+        titulo: 'Otros Ingresos',
+        desc: 'Ingresos no operacionales: patrocinios, proyecto aftosa, venta de activos, etc.',
+        formula: '41659505 + 41659501 + 422004 + 422507 + 422529\n+ 4240900202 + 4240900301 + 4240900401\n+ 4240909501 + 4240909503 + 4240909901\n+ 4 + 420560',
+    },
+    IngresosPorServicios: {
+        titulo: 'Ingresos por Servicios',
+        desc: 'Total de ingresos distintos a la venta de mercancía.',
+        formula: 'Asistencia Técnica + Otros Ingresos',
+    },
+    GastosPorServicios: {
+        titulo: 'Gastos por Servicios',
+        desc: 'Gastos de los proyectos y programas de servicios.',
+        formula: '5 (Proyecto de Aftosa)\n+ 6 (Asistencia Técnica Propia)\n+ 7 (Asistencia Técnica Convenios)\n+ 8 (Asistencia Técnica Otros)\n+ 5230 (Gastos no operacionales)',
+    },
+};
 
-    data.forEach((row, i) => {
-        const c = String(row.mcncuenta || '');
-        if (pos54 < 0 && c.startsWith('54')) pos54 = i;
-        if (pos51 < 0 && c.startsWith('51')) pos51 = i;
-        if (posVN < 0 && c.startsWith('1'))  posVN = i;
-    });
-
-    const cuentasExistentes = new Set(data.map(row => String(row.mcncuenta || '')));
-
-    const insertado = {
-        pct_margen: false, margenCtb: false, utilidadOp: false,
-        ingresoServicios: false, otrosIngresos: false,
-        gastosPorServicios: false, excedentes: false,
-    };
-
-    data.forEach((row, i) => {
-        if (i === posVN) resultado.push({ ...totalesVN, mcncuenta: '', ctanombre: 'VENTAS NETAS', isTotalRow: true, tipoTotal: 'VentasNetas' });
-        if (i === pos54) resultado.push({ ...totales54, mcncuenta: '54', ctanombre: 'GASTOS DE VENTAS', isTotalRow: true, tipoTotal: '54' });
-        if (i === pos51) resultado.push({ ...totales51, mcncuenta: '51', ctanombre: 'GASTOS DE ADMINISTRACIÓN', isTotalRow: true, tipoTotal: '51' });
-
-        const cuenta = String(row.mcncuenta || '');
-
-        if (cuenta === '5') {
-            resultado.push(filaGastosPorServicios);
-            insertado.gastosPorServicios = true;
-        }
-        resultado.push(row);
-
-        if (cuenta === '613522') {
-            resultado.push(filaPct, filaMargen, filaPctMargen);
-            insertado.pct_margen = true;
-        }
-        if (cuenta === '4240909502') {
-            resultado.push(filaMargenCtb, filaPctMargenCtb);
-            insertado.margenCtb = true;
-        }
-
-        const cuentasUtilidadGastosFinanc = ['511534', '511512', '51109501_51109502'];
-        const cuentaExistenteUtilidadGastos = cuentasUtilidadGastosFinanc.find(c => data.some(r => r.mcncuenta === c));
-        if (cuenta === cuentaExistenteUtilidadGastos && !insertado.utilidadOp) {
-            resultado.push(filaUtilidadOp, filaPctUtilidadOp, filaGastosFinanc);
-            insertado.utilidadOp = true;
-        }
-        if (cuenta === '615035') {
-            resultado.push(filaIngresosPorServicios, filaAsistenciaTecnica);
-            insertado.ingresoServicios = true;
-        }
-
-        const cuentasOtrosIngresos = ['AT-00003', 'VT-00025', 'AT-00032', 'VT-00001'];
-        const cuentaDisparo = cuentasOtrosIngresos.find(c => data.some(r => r.mcncuenta === c));
-        if (cuenta === cuentaDisparo && !insertado.otrosIngresos) {
-            resultado.push(filaOtrosIngresos);
-            insertado.otrosIngresos = true;
-        }
-        if (cuenta === '5230') {
-            resultado.push(filaExcedentesPerdida, filaPctExcedentes);
-            insertado.excedentes = true;
-        }
-    });
-
-    if (!insertado.pct_margen && !cuentasExistentes.has('613522')) resultado.push(filaPct, filaMargen, filaPctMargen);
-    if (!insertado.margenCtb && !cuentasExistentes.has('4240909502')) resultado.push(filaMargenCtb, filaPctMargenCtb);
-    if (!insertado.utilidadOp && !cuentasExistentes.has('511534')) resultado.push(filaUtilidadOp, filaPctUtilidadOp, filaGastosFinanc);
-    if (!insertado.ingresoServicios && !cuentasExistentes.has('615035')) resultado.push(filaIngresosPorServicios, filaAsistenciaTecnica);
-    if (!insertado.otrosIngresos && !cuentasExistentes.has('VT-00001')) resultado.push(filaOtrosIngresos);
-    if (!insertado.gastosPorServicios && !cuentasExistentes.has('4')) resultado.push(filaGastosPorServicios);
-    if (!insertado.excedentes && !cuentasExistentes.has('5230')) resultado.push(filaExcedentesPerdida, filaPctExcedentes);
-
-    return resultado;
+function descripcionCalculo(tipoTotal) {
+    if (tipoTotal === 'ExcedentesPerdidaNeta') {
+        return sedeActual === 'total_base'
+            ? {
+                titulo: 'Excedentes o Pérdida Neta',
+                desc: 'Resultado final del periodo para toda la empresa.',
+                formula: 'Utilidad Operacional\n− Gastos Financieros\n+ Ingresos por Servicios\n− Gastos por Servicios',
+              }
+            : {
+                titulo: 'Excedentes o Pérdida Neta',
+                desc: 'Resultado final de la sede. En las sedes no se incluyen gastos financieros ni servicios, por eso es igual a la utilidad operacional.',
+                formula: 'Utilidad Operacional',
+              };
+    }
+    if (tipoTotal === 'PctExcedentes') {
+        return {
+            titulo: '% Excedente o Pérdida',
+            desc: 'Excedente o pérdida neta como porcentaje de las ventas netas.',
+            formula: `Excedentes o Pérdida Neta ÷ ${VN_TXT} × 100`,
+        };
+    }
+    return DESCRIPCIONES_CALCULO[tipoTotal] || null;
 }
 
+/* ── Comportamiento del tooltip ─────────────────────────────── */
+const tooltipEl = document.getElementById('tooltipCalculo');
+let celdaTooltip = null;
+
+function llenarTooltip(info) {
+    tooltipEl.replaceChildren();
+    const add = (cls, txt) => {
+        const div = document.createElement('div');
+        div.className = cls;
+        div.textContent = txt;
+        tooltipEl.appendChild(div);
+    };
+    add('tt-titulo', info.titulo);
+    add('tt-desc', info.desc);
+    add('tt-formula', info.formula);
+    add('tt-nota', 'Si una cuenta no tiene valores se toma como 0. Los porcentajes quedan en 0% cuando las ventas netas son 0.');
+}
+
+function posicionarTooltip(x, y) {
+    const margen = 14;
+    const { width, height } = tooltipEl.getBoundingClientRect();
+    let left = x + margen;
+    let top  = y + margen;
+    if (left + width > window.innerWidth - 8)  left = x - width - margen;
+    if (top + height > window.innerHeight - 8) top  = y - height - margen;
+    tooltipEl.style.left = Math.max(8, left) + 'px';
+    tooltipEl.style.top  = Math.max(8, top) + 'px';
+}
+
+function mostrarTooltip(td, x, y) {
+    const info = descripcionCalculo(td.dataset.tipoTotal);
+    if (!info) return;
+    celdaTooltip = td;
+    llenarTooltip(info);
+    tooltipEl.setAttribute('aria-hidden', 'false');
+    tooltipEl.classList.add('visible');
+    posicionarTooltip(x, y);
+}
+
+function ocultarTooltip() {
+    celdaTooltip = null;
+    tooltipEl.classList.remove('visible');
+    tooltipEl.setAttribute('aria-hidden', 'true');
+}
+
+(() => {
+    const tbody = document.getElementById('presupuestadoBody');
+
+    // Mouse
+    tbody.addEventListener('mouseover', e => {
+        const td = e.target.closest('td.celda-calculada');
+        if (td && td !== celdaTooltip) mostrarTooltip(td, e.clientX, e.clientY);
+    });
+    tbody.addEventListener('mousemove', e => {
+        if (celdaTooltip) posicionarTooltip(e.clientX, e.clientY);
+    });
+    tbody.addEventListener('mouseout', e => {
+        const td = e.target.closest('td.celda-calculada');
+        if (td && !td.contains(e.relatedTarget)) ocultarTooltip();
+    });
+
+    // Teclado (Tab sobre la celda)
+    tbody.addEventListener('focusin', e => {
+        const td = e.target.closest('td.celda-calculada');
+        if (!td) return;
+        const r = td.getBoundingClientRect();
+        mostrarTooltip(td, r.left, r.bottom);
+    });
+    tbody.addEventListener('focusout', ocultarTooltip);
+
+    // Al hacer scroll o redibujar la tabla se oculta
+    document.querySelector('.table-scroll').addEventListener('scroll', ocultarTooltip, { passive: true });
+    window.addEventListener('scroll', ocultarTooltip, { passive: true });
+})();
 /* ══════════════════════════════════════════════════════════════════
    RENDERIZADO (solo lectura)
 ══════════════════════════════════════════════════════════════════ */
@@ -518,16 +667,15 @@ function claseTotalRow(tipoTotal) {
     }
 }
 
+const TIPOS_PCT = new Set(['PctCostoVentas','PctMargenBruto','PctMargenContribucion','PctUtilidadOperacional','PctExcedentes']);
+
 function renderTabla(data) {
     const tbody = document.getElementById('presupuestadoBody');
+    ocultarTooltip();
     tbody.innerHTML = '';
+    data = data || [];
 
-    if (!data || data.length === 0) {
-        tbody.innerHTML = `<tr class="empty-row"><td colspan="15">Sin datos disponibles.</td></tr>`;
-        actualizarFooter([]); actualizarStats([]);
-        return;
-    }
-
+    // Las filas calculadas se muestran siempre, aunque no haya cuentas (quedan en cero)
     const filas = sedeActual === 'total_base' ? construirFilasTotalBase(data) : construirFilasSede(data);
     let filas54 = [], filas51 = [];
 
@@ -550,16 +698,23 @@ function renderTabla(data) {
             if (num) {
                 td.className = 'num' + (cls ? ' ' + cls : '');
                 const v = parseFloat(fila[key]) || 0;
-                const esPct = ['PctCostoVentas','PctMargenBruto','PctMargenContribucion','PctUtilidadOperacional','PctExcedentes'].includes(fila.tipoTotal);
-                if (esPct) {
-                    td.textContent = v !== 0 ? v.toFixed(2) + '%' : '-';
+                if (TIPOS_PCT.has(fila.tipoTotal)) {
+                    td.textContent = (Math.abs(v) < 0.005 ? 0 : v).toFixed(2) + '%';
                     td.style.fontStyle = 'italic';
+                } else if (fila.isTotalRow) {
+                    td.textContent = FMT.format(Math.round(v) || 0);   // calculadas: 0 en vez de "-"
                 } else {
                     td.textContent = fmt(v);
-                    if (!fila.isTotalRow && v !== 0) td.classList.add(v > 0 ? 'pos' : 'neg');
+                    if (v !== 0) td.classList.add(v > 0 ? 'pos' : 'neg');
                 }
             } else {
                 td.textContent = fila[key] || '';
+                if (key === 'ctanombre' && fila.isTotalRow && descripcionCalculo(fila.tipoTotal)) {
+                    td.classList.add('celda-calculada');
+                    td.dataset.tipoTotal = fila.tipoTotal;
+                    td.tabIndex = 0;
+                    td.setAttribute('aria-label', `${fila.ctanombre}: ver cómo se calcula`);
+                }
             }
             tr.appendChild(td);
         });
@@ -597,10 +752,57 @@ function actualizarStats(data) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   OVERLAY DE CARGA
+══════════════════════════════════════════════════════════════════ */
+function setLoading(activo, texto = 'Cargando datos...') {
+    document.getElementById('loadingText').textContent = texto;
+    document.getElementById('loadingOverlay').classList.toggle('active', activo);
+}
+
+function bloquearControles(bloquear) {
+    document.querySelectorAll('.tab-btn, #recargarBtn').forEach(el => { el.disabled = bloquear; });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ACTUALIZAR PRESUPUESTO DE VENTAS (cuentas 1, 2, 41750201)
+   Se ejecuta al entrar a la página, antes de cargar la tabla.
+   Si falla, avisa y la tabla se carga igual con lo que haya guardado.
+══════════════════════════════════════════════════════════════════ */
+async function actualizarPresupuestoVentas() {
+    setLoading(true, 'Actualizando presupuesto de ventas...');
+    bloquearControles(true);
+    try {
+        const resp = await fetch(URL_GENERAR_VENTAS, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
+            body: '{}',
+        });
+        const json = await resp.json().catch(() => ({}));
+
+        if (!resp.ok || !json.success) {
+            showToast('No se actualizó el presupuesto de ventas: ' + (json.error || `HTTP ${resp.status}`)
+                      + '. Se muestran los últimos valores guardados.', 'error');
+            return;
+        }
+
+        const omitidas = Object.entries(json.sedes_omitidas || {});
+        if (omitidas.length) {
+            showToast('Presupuesto de ventas sin actualizar en: '
+                      + omitidas.map(([sede, motivo]) => `${sede} (${motivo})`).join(', '), 'error');
+        }
+    } catch (e) {
+        showToast('No se actualizó el presupuesto de ventas: ' + e.message
+                  + '. Se muestran los últimos valores guardados.', 'error');
+    } finally {
+        bloquearControles(false);
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════════
    CARGA DE DATOS
 ══════════════════════════════════════════════════════════════════ */
 async function cargarDatos() {
-    document.getElementById('loadingOverlay').classList.add('active');
+    setLoading(true, 'Cargando datos...');
     document.getElementById('presupuestadoBody').innerHTML =
         `<tr class="empty-row"><td colspan="15">⏳ Cargando...</td></tr>`;
     try {
@@ -611,13 +813,14 @@ async function cargarDatos() {
         const json = await resp.json();
         if (json.error) { showToast('Error: ' + json.error, 'error'); return; }
         datosOriginales = json.data || [];
+        ordenCuentas    = json.orden || [];
         renderTabla(datosOriginales);
     } catch (e) {
         showToast('Error al cargar datos: ' + e.message, 'error');
         document.getElementById('presupuestadoBody').innerHTML =
             `<tr class="empty-row"><td colspan="15">❌ Error al cargar datos.</td></tr>`;
     } finally {
-        document.getElementById('loadingOverlay').classList.remove('active');
+        setLoading(false);
     }
 }
 
@@ -699,7 +902,13 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 actualizarTabsUI();
-cargarDatos();
+
+// Al entrar: primero se recalcula el presupuesto de ventas y luego se carga la tabla,
+// para que la primera vista ya muestre los valores actualizados.
+(async () => {
+    await actualizarPresupuestoVentas();
+    await cargarDatos();
+})();
 </script>
 {% endblock %}
 {% endblock %}

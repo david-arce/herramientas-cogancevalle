@@ -464,6 +464,9 @@ main.content, .page-content, .main-content {
 .preview-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
 .preview-wrap::-webkit-scrollbar-track { background: #f0f1f3; }
 .preview-wrap::-webkit-scrollbar-thumb { background: #c1c5ce; border-radius: 3px; }
+
+/* ── Ocultar columna de centro de costo ── */
+.hide-ccosto .col-ccosto { display: none; }
 </style>
 {% endblock %}
 
@@ -524,7 +527,7 @@ main.content, .page-content, .main-content {
           Origen <span style="color:var(--danger);">*</span>
           <select id="selectOrigenDirecta">
             <option value="">— Selecciona —</option>
-            <option value="ejecutado">Ejecutado</option>
+            <option value="ejecutado" selected>Ejecutado</option>
             <option value="presupuestado">Presupuestado</option>
           </select>
           <label style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11.5px;
@@ -545,6 +548,10 @@ main.content, .page-content, .main-content {
         </p>
 
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer;">
+            <input type="checkbox" id="chkMostrarCcostoDirecta" style="cursor:pointer;accent-color:var(--accent);">
+            Mostrar centro de costo
+          </label>
           <button class="btn" id="btnDirectaAddRows">➕ Agregar</button>
           <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);">
             <input type="number" id="directaNumRows" value="10" min="1" max="500"
@@ -557,7 +564,7 @@ main.content, .page-content, .main-content {
           <div id="directaStatusBadges" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
         </div>
 
-        <div class="preview-wrap" id="directaGridWrap">
+        <div class="preview-wrap hide-ccosto" id="directaGridWrap">
           <table class="preview-table" id="directaGrid">
             <thead>
               <tr id="directaGridHead">
@@ -605,7 +612,7 @@ main.content, .page-content, .main-content {
           Origen <span style="color:var(--danger);">*</span>
           <select id="selectOrigenDirectaB">
             <option value="">— Selecciona —</option>
-            <option value="ejecutado">Ejecutado</option>
+            <option value="ejecutado" selected>Ejecutado</option>
             <option value="presupuestado">Presupuestado</option>
           </select>
           <label style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11.5px;
@@ -635,6 +642,10 @@ main.content, .page-content, .main-content {
           </label>
           <span style="font-size:11px;color:var(--muted);">Cada mes se guardará como YYYY-MM-01</span>
           <div style="flex:1;"></div>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer;">
+            <input type="checkbox" id="chkMostrarCcostoDirectaB" style="cursor:pointer;accent-color:var(--accent);">
+            Mostrar centro de costo
+          </label>
           <button class="btn" id="btnDirectaBAddRows">➕ Agregar</button>
           <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);">
             <input type="number" id="directaBNumRows" value="10" min="1" max="500"
@@ -648,7 +659,7 @@ main.content, .page-content, .main-content {
 
         <div id="directaBStatusBadges" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;"></div>
 
-        <div class="preview-wrap" id="directaBGridWrap">
+        <div class="preview-wrap hide-ccosto" id="directaBGridWrap">
           <table class="preview-table" id="directaBGrid">
             <thead>
               <tr id="directaBGridHead">
@@ -700,7 +711,7 @@ main.content, .page-content, .main-content {
         Origen <span style="color:var(--danger);">*</span>
         <select id="selectOrigenExcel">
           <option value="">— Selecciona —</option>
-          <option value="ejecutado">Ejecutado</option>
+          <option value="ejecutado" selected>Ejecutado</option>
           <option value="presupuestado">Presupuestado</option>
         </select>
         <label style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11.5px;
@@ -1794,6 +1805,7 @@ document.getElementById('confirmBorrar').addEventListener('click', async () => {
       th.style.minWidth = col.w;
       th.style.width    = col.w;
       if (col.type === 'num') th.style.textAlign = 'right';
+      if (col.key === 'mcnccosto') th.classList.add('col-ccosto'); // ← nuevo
       th.innerHTML = col.label + (col.req ? ' <span style="color:var(--danger);font-weight:700;">*</span>' : '');
       headTr.appendChild(th);
     });
@@ -1821,7 +1833,8 @@ document.getElementById('confirmBorrar').addEventListener('click', async () => {
         const td = document.createElement('td');
         td.style.padding = '0';
         td.style.borderRight = '1px solid var(--border)';
-
+        if (col.key === 'mcnccosto') td.classList.add('col-ccosto');
+        
         const inp = document.createElement('input');
         inp.type        = 'text';
         inp.placeholder = col.ph || '';
@@ -2040,7 +2053,9 @@ document.getElementById('confirmBorrar').addEventListener('click', async () => {
         document.getElementById('btnDirectaCargar')
       );
     });
-
+    document.getElementById('chkMostrarCcostoDirecta').addEventListener('change', e => {
+      document.getElementById('directaGridWrap').classList.toggle('hide-ccosto', !e.target.checked);
+    });
     bindCheckboxSinAsignar('chkSinSedeDirecta',   'selectSedeDirecta');
     bindCheckboxSinAsignar('chkSinOrigenDirecta', 'selectOrigenDirecta');
   });
@@ -2077,6 +2092,7 @@ document.getElementById('confirmBorrar').addEventListener('click', async () => {
         th.style.minWidth = col.w;
         th.style.width    = col.w;
         if (col.type === 'num') th.style.textAlign = 'right';
+        if (col.key === 'mcnccosto') th.classList.add('col-ccosto');
         if (MESES_LABELS.includes(col.key)) {
           th.style.background = '#f0edff';
           th.style.color = '#5b21b6';
@@ -2128,6 +2144,7 @@ document.getElementById('confirmBorrar').addEventListener('click', async () => {
           const td = document.createElement('td');
           td.style.padding = '0';
           td.style.borderRight = '1px solid var(--border)';
+          if (col.key === 'mcnccosto') td.classList.add('col-ccosto');
           if (MESES_LABELS.includes(col.key)) td.style.background = '#faf8ff';
           if (esTotal)                        td.style.background = '#f1f3f6';
 
@@ -2370,7 +2387,9 @@ document.getElementById('confirmBorrar').addEventListener('click', async () => {
           document.getElementById('btnDirectaBCargar')
         );
       });
-
+      document.getElementById('chkMostrarCcostoDirectaB').addEventListener('change', e => {
+        document.getElementById('directaBGridWrap').classList.toggle('hide-ccosto', !e.target.checked);
+      });
       bindCheckboxSinAsignar('chkSinSedeDirectaB',   'selectSedeDirectaB');
       bindCheckboxSinAsignar('chkSinOrigenDirectaB', 'selectOrigenDirectaB');
     });

@@ -858,3 +858,59 @@ tr.row-new-flash td {
     animation: newRowFade 1.2s ease forwards;
 }
 
+/* ── Tooltip de filas calculadas ─────────────────────────────── */
+td.celda-calculada {
+    cursor: help;
+    outline: none;
+}
+td.celda-calculada::after {
+    content: 'ⓘ';
+    margin-left: .4rem;
+    font-size: .75rem;
+    font-weight: 400;
+    font-style: normal;
+    opacity: .45;
+    transition: opacity .15s;
+}
+td.celda-calculada:hover::after,
+td.celda-calculada:focus::after { opacity: 1; }
+
+.tooltip-calculo {
+    position: fixed;
+    z-index: 9999;
+    max-width: 360px;
+    padding: .7rem .85rem;
+    border-radius: 10px;
+    border: 1px solid var(--c-border, #3c3c3c);
+    background: var(--c-surface, #1f1f28);
+    color: var(--c-text, #f1f1f5);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .35);
+    font-size: .8rem;
+    line-height: 1.45;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity .12s, transform .12s;
+}
+.tooltip-calculo.visible { opacity: 1; transform: translateY(0); }
+.tooltip-calculo .tt-titulo {
+    font-weight: 700;
+    font-size: .85rem;
+    margin-bottom: .25rem;
+}
+.tooltip-calculo .tt-desc { color: var(--c-muted, #9a9aab); }
+.tooltip-calculo .tt-formula {
+    margin: .5rem 0 .4rem;
+    padding: .4rem .55rem;
+    border-radius: 6px;
+    background: rgba(109, 109, 246, .12);
+    border-left: 3px solid var(--c-accent, #6d6df6);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .75rem;
+    white-space: pre-line;
+}
+.tooltip-calculo .tt-nota {
+    font-size: .72rem;
+    color: var(--c-muted, #9a9aab);
+    font-style: italic;
+}

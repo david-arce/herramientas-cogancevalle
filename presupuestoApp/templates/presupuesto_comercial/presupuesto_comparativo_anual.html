@@ -1,0 +1,100 @@
+{% extends "presupuesto_comercial/base_presupuesto_comercial.html" %}
+{% load static %}
+
+{% block content %}
+<div class="bloque-vista">
+    <h2>📈 Comparativo año anterior vs año actual</h2>
+    <p>Ventas y costos por línea, centro de operación y segmento — para visualizar el crecimiento.</p>
+
+    <div id="resumenComparativo" class="btn-group" style="flex-wrap:wrap; gap:16px;"></div>
+
+    <div class="btn-group">
+        <button type="button" id="exportarComparativoBtn" class="pt-btn secondary">📥 Exportar a Excel</button>
+    </div>
+
+    <div id="tablaComparativoAnual"></div>
+</div>
+{% endblock %}
+
+{% block css %}
+<style>
+.tarjeta-resumen {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 12px 18px;
+    min-width: 180px;
+}
+.tarjeta-resumen .titulo { font-size: 12px; color: #666; margin-bottom: 4px; }
+.tarjeta-resumen .valor { font-size: 20px; font-weight: 700; color: #2c3e50; }
+.tarjeta-resumen .valor.positivo { color: #1e8e3e; }
+.tarjeta-resumen .valor.negativo { color: #c0392b; }
+</style>
+{% endblock %}
+
+{% block js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    let tabla = null;
+
+    function tarjeta(titulo, valorTexto, claseExtra) {
+        return `<div class="tarjeta-resumen"><div class="titulo">${titulo}</div>` +
+               `<div class="valor ${claseExtra || ''}">${valorTexto}</div></div>`;
+    }
+
+    function pintarResumen(registros, yearAnterior, yearActual) {
+        const totalVentasAnterior = registros.reduce((acc, r) => acc + (r.ventas_anterior || 0), 0);
+        const totalVentasActual = registros.reduce((acc, r) => acc + (r.ventas_actual || 0), 0);
+        const totalCostosAnterior = registros.reduce((acc, r) => acc + (r.costos_anterior || 0), 0);
+        const totalCostosActual = registros.reduce((acc, r) => acc + (r.costos_actual || 0), 0);
+
+        const crecimientoVentasPct = totalVentasAnterior ? ((totalVentasActual - totalVentasAnterior) / totalVentasAnterior) * 100 : 0;
+        const claseCrecimiento = crecimientoVentasPct >= 0 ? 'positivo' : 'negativo';
+        const signo = crecimientoVentasPct >= 0 ? '▲' : '▼';
+
+        const resumen = document.getElementById('resumenComparativo');
+        resumen.innerHTML =
+            tarjeta(`Ventas ${yearAnterior}`, PresupuestoUtils.formatearValor(totalVentasAnterior, 'money')) +
+            tarjeta(`Ventas ${yearActual}`, PresupuestoUtils.formatearValor(totalVentasActual, 'money')) +
+            tarjeta('Crecimiento en ventas', `${signo} ${Math.abs(crecimientoVentasPct).toFixed(1)}%`, claseCrecimiento) +
+            tarjeta(`Costos ${yearAnterior}`, PresupuestoUtils.formatearValor(totalCostosAnterior, 'money')) +
+            tarjeta(`Costos ${yearActual}`, PresupuestoUtils.formatearValor(totalCostosActual, 'money'));
+    }
+
+    async function cargarDatos() {
+        const res = await fetch("{% url 'obtener_comparativo_anual' %}");
+        const { year_anterior, year_actual, data } = await res.json();
+
+        pintarResumen(data, year_anterior, year_actual);
+
+        if (!tabla) {
+            tabla = new PresupuestoTable({
+                container: 'tablaComparativoAnual',
+                exportFileName: 'Comparativo_Anual',
+                emptyMessage: 'No hay datos para comparar',
+                columns: [
+                    { key: 'linea', label: 'Línea', type: 'text', filterable: true },
+                    { key: 'centro', label: 'Centro de operación', type: 'text', filterable: true },
+                    { key: 'segmento', label: 'Segmento', type: 'text', filterable: true },
+                    { key: 'ventas_anterior', label: `Ventas ${year_anterior}`, type: 'money' },
+                    { key: 'ventas_actual', label: `Ventas ${year_actual}`, type: 'money' },
+                    { key: 'variacion_valor_ventas', label: 'Variación $ ventas', type: 'money' },
+                    { key: 'variacion_pct_ventas', label: 'Variación % ventas', type: 'percent' },
+                    { key: 'costos_anterior', label: `Costos ${year_anterior}`, type: 'money' },
+                    { key: 'costos_actual', label: `Costos ${year_actual}`, type: 'money' },
+                    { key: 'variacion_valor_costos', label: 'Variación $ costos', type: 'money' },
+                    { key: 'variacion_pct_costos', label: 'Variación % costos', type: 'percent' },
+                    { key: 'margen_pct_anterior', label: `Margen % ${year_anterior}`, type: 'percent' },
+                    { key: 'margen_pct_actual', label: `Margen % ${year_actual}`, type: 'percent' },
+                ],
+            });
+        }
+        tabla.setData(data);
+    }
+
+    document.getElementById('exportarComparativoBtn').addEventListener('click', () => tabla && tabla.exportToExcel());
+
+    cargarDatos();
+});
+</script>
+{% endblock %}

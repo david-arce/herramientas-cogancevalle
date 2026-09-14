@@ -31,40 +31,34 @@ urlpatterns = [
     
     # Presupuesto general ventas 
     path('presupuesto-general-ventas/', views.vista_presupuesto_general_ventas, name='presupuestoGeneralVentas'), 
-    path('guardar-presupuesto-general-ventas/', views.guardar_presupuesto_general_ventas, name='guardar_presupuesto_general_ventas'),
     path('obtener-presupuesto-general-ventas/', views.obtener_presupuesto_general_ventas, name='obtener_presupuesto_general_ventas'),
     path('cargar-presupuesto-general-ventas/', views.cargar_presupuesto_general_ventas, name='cargar_presupuesto_general_ventas'),
     path('actualizar-presupuesto-general-ventas/', views.actualizar_presupuesto_general_ventas, name='actualizar_presupuesto_general_ventas'),
     
     # presupuesto centro ventas
     path('presupuesto-centro-ventas/', views.vista_presupuesto_centro_ventas, name='presupuestoCentroVentas'), 
-    path('guardar-presupuesto-centro-ventas/', views.guardar_presupuesto_centro_ventas, name='guardar_presupuesto_centro_ventas'),
     path('obtener-presupuesto-centro-ventas/', views.obtener_presupuesto_centro_ventas, name='obtener_presupuesto_centro_ventas'),
     path('cargar-presupuesto-centro-ventas/', views.cargar_presupuesto_centro_ventas, name='cargar_presupuesto_centro_ventas'),
     path('actualizar-presupuesto-centro-ventas/', views.actualizar_presupuesto_centro_ventas, name='actualizar_presupuesto_centro_ventas'),
     
     # presupuesto centro - segmento ventas
     path('presupuesto-centro-segmento-ventas/', views.vista_presupuesto_centro_segmento_ventas, name='presupuestoCentroSegmentoVentas'), 
-    path('guardar-presupuesto-centro-segmento-ventas/', views.guardar_presupuesto_centro_segmento_ventas, name='guardar_presupuesto_centro_segmento_ventas'),
     path('obtener-presupuesto-centro-segmento-ventas/', views.obtener_presupuesto_centro_segmento_ventas, name='obtener_presupuesto_centro_segmento_ventas'),
     path('cargar-presupuesto-centro-segmento-ventas/', views.cargar_presupuesto_centro_segmento_ventas, name='cargar_presupuesto_centro_segmento_ventas'),
     path('actualizar-presupuesto-centro-segmento-ventas/', views.actualizar_presupuesto_centro_segmento_ventas, name='actualizar_presupuesto_centro_segmento_ventas'),
     
     # presupuesto general costos
     path('presupuesto-general-costos/', views.vista_presupuesto_general_costos, name='presupuestoGeneralCostos'), 
-    path('guardar-presupuesto-general-costos/', views.guardar_presupuesto_general_costos, name='guardar_presupuesto_general_costos'),
     path('obtener-presupuesto-general-costos/', views.obtener_presupuesto_general_costos, name='obtener_presupuesto_general_costos'),
     path('cargar-presupuesto-general-costos/', views.cargar_presupuesto_general_costos, name='cargar_presupuesto_general_costos'),
     
     # presupuesto centro costos
     path('presupuesto-centro-costos/', views.vista_presupuesto_centro_costos, name='presupuestoCentroCostos'), 
-    path('guardar-presupuesto-centro-costos/', views.guardar_presupuesto_centro_costos, name='guardar_presupuesto_centro_costos'),
     path('obtener-presupuesto-centro-costos/', views.obtener_presupuesto_centro_costos, name='obtener_presupuesto_centro_costos'),
     path('cargar-presupuesto-centro-costos/', views.cargar_presupuesto_centro_costos, name='cargar_presupuesto_centro_costos'),
     
     # presupuesto centro-segmento costos
     path('presupuesto-centro-segmento-costos/', views.vista_presupuesto_centro_segmento_costos, name='presupuestoCentroSegmentoCostos'), 
-    path('guardar-presupuesto-centro-segmento-costos/', views.guardar_presupuesto_centro_segmento_costos, name='guardar_presupuesto_centro_segmento_costos'),
     path('obtener-presupuesto-centro-segmento-costos/', views.obtener_presupuesto_centro_segmento_costos, name='obtener_presupuesto_centro_segmento_costos'),
     path('cargar-presupuesto-centro-segmento-costos/', views.cargar_presupuesto_centro_segmento_costos, name='cargar_presupuesto_centro_segmento_costos'),
     
@@ -84,11 +78,16 @@ urlpatterns = [
     # exportar crecimiento ventas
     path('exportar-crecimiento-ventas/', views.exportar_crecimiento_ventas, name='exportar_crecimiento_ventas'),
     
+    path('importar-bd-ventas-comercial/', views.importar_bd_ventas_comercial, name='importar_bd_ventas_comercial'),
+    path('vista-importar-ventas/', views.vista_importar_bd_ventas_comercial, name='vistaImportarVentas'),
+    
+    path('obtener-comparativo-anual/', views.obtener_comparativo_anual, name='obtener_comparativo_anual'),
+    path('vista-comparativo-anual/', views.vista_comparativo_anual, name='vistaComparativoAnual'),
+   
     # presupuesto comercial
     path('presupuesto-comercial/', views.vista_presupuesto_comercial, name='presupuestoComercial'),
     path('guardar-presupuesto-comercial/', views.guardar_presupuesto_comercial, name='guardar_presupuesto_comercial'),
     path('obtener-presupuesto-comercial/', views.obtener_presupuesto_comercial, name='obtener_presupuesto_comercial'),
-    path('cargar-presupuesto-comercial/', views.cargar_presupuesto_comercial, name='cargar_presupuesto_comercial'),
     
     path('presupuesto-nomina/', views.presupuestoNomina, name='presupuestoNomina'),
     # sueldos
@@ -320,6 +319,9 @@ urlpatterns = [
     # PRESUPUESTADO
     path('obtener-presupuestado/', views.obtener_presupuestado, name='obtener_presupuestado'),
     path('presupuestado/general/', views.presupuestado_general, name='presupuestado_general'),
+    
+    # urls.py
+    path('presupuesto/ventas/generar/', views.generar_presupuesto_ventas_view, name='generar_presupuesto_ventas'),
     
     # TABLA DINAMICA ------------------------------
     path('obtener-valores-filtros/', views.obtener_valores_filtros, name='obtener_valores_filtros'),

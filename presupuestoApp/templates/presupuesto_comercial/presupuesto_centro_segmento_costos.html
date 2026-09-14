@@ -1,257 +1,50 @@
 {% extends "presupuesto_comercial/base_presupuesto_comercial.html" %}
 {% load static %}
 
-{% block css %}
-<style>
-    table.dataTable thead th {
-      background-color: #007bff;
-      color: white;
-    }
-    .excel-filter {
-        display: none;
-        position: absolute;
-        background: white;
-        border: 1px solid #ccc;
-        padding: 6px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        z-index: 1000;
-        max-height: 200px;
-        overflow-y: auto;
-        border-radius: 6px;
-        width: 150px !important;   /* ajusta a lo que necesites */
-        min-width: 80px;          /* opcional */
-    }
-    .excel-filter input[type="text"] {
-        width: 95%;
-        margin-bottom: 6px;
-        padding: 3px;
-    }
-    .excel-filter-btn {
-        width: 100%;
-        padding: 4px 6px;
-        background: #f4f4f4;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        text-align: left;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="bloque-vista">
-    <h2>📊 Proyección presupuesto centro operacion-segmento Costos</h2>
+    <h2>📊 Proyección presupuesto centro operación - segmento - Costos</h2>
 
     <div class="btn-group">
-        <button type="button" id="cargarBtn" class="btn-accion">🔄 Cargar desde histórico</button>
-        {% comment %} <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button> {% endcomment %}
+        <button type="button" id="exportarBtn" class="pt-btn secondary">📥 Exportar a Excel</button>
     </div>
 
-    <table id="presupuestoTableCentroOperacionSegmentoCostos" class="display" style="width:100%">
-        <thead>
-            <tr>
-                <th>Año</th>
-                <th>Segmento</th>
-                <th>Centro de operacion</th>
-                <th>Ene</th>
-                <th>Feb</th>
-                <th>Mar</th>
-                <th>Abr</th>
-                <th>May</th>
-                <th>Jun</th>
-                <th>Jul</th>
-                <th>Ago</th>
-                <th>Sep</th>
-                <th>Oct</th>
-                <th>Nov</th>
-                <th>Dic</th>
-                <th>Total Año</th>
-                <th>Variación Valor</th>
-                <th>Variación %</th>
-        </thead>
-         <tbody></tbody>
-    </table>
+    <div id="tablaCentroSegmentoCostos"></div>
 </div>
 {% endblock %}
 
 {% block js %}
 <script>
-    function numberFormat(data, type, row) {
-        if (type === 'display' && !isNaN(data)) {
-            return new Intl.NumberFormat('es-ES').format(data);
-        }
-        return data;
-    }
+document.addEventListener('DOMContentLoaded', function () {
+    const GROUP_FIELDS = ['year', 'segmento', 'nombre_centro_operacion'];
+    const EXTRA_FIELDS = ['total_year', 'variacion_valor', 'variacion_pct'];
 
-    // 🔄 Pivotar datos y separar fila R2 por centro y segmento
-    function pivoData(data, selectedCentro=null, selectedSegmento=null) { 
-        let pivot = {};
-        let meses = { 1:"Ene",2:"Feb",3:"Mar",4:"Abr",5:"May",6:"Jun",7:"Jul",8:"Ago",9:"Sep",10:"Oct",11:"Nov",12:"Dic" };
-
-        data.forEach(row => {
-            let key = row.year + '_' + row.nombre_centro_operacion + '_' + row.segmento;
-            if (!pivot[key]) {
-                pivot[key] = { 
-                    year: row.year, 
-                    nombre_centro_operacion: row.nombre_centro_operacion, 
-                    segmento: row.segmento, 
-                    total_year: row.total_year, 
-                    variacion_valor: row.variacion_valor, 
-                    variacion_pct: row.variacion_pct 
-                };
-            } 
-            pivot[key][meses[row.mes]] = row.total; 
-
-        });
-        let result = Object.values(pivot);
-
-        return result;
-    }
-
-    $(document).ready(function () {
-        let table = null;
-        let allData = []; // almacenar todos los datos cargados
-
-        function loadTable(data) {
-            if ($.fn.DataTable.isDataTable('#presupuestoTableCentroOperacionSegmentoCostos')) {
-                $('#presupuestoTableCentroOperacionSegmentoCostos').DataTable().clear().destroy();
-                $('#presupuestoTableCentroOperacionSegmentoCostos').empty();  // 🔥 IMPORTANTE: limpiar thead/tbody
-            }
-            let meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-            let columns = [{ data: 'year', title: 'Año' },
-                        { data: 'segmento', title: 'Segmento' },
-                        { data: 'nombre_centro_operacion', title: 'Centro de operacion' }];
-            meses.forEach(m => 
-                columns.push({ data: m, title: m, render: numberFormat, className: "editable" }));
-            
-            // ➕ columnas extra
-            columns.push({ data: "total_year", title: "Total Año", render: numberFormat });
-            columns.push({ data: "variacion_valor", title: "Variación Valor", render: numberFormat });
-            columns.push({ data: "variacion_pct", title: "Variación %", render: function(data){ return data ? data.toFixed(2) + "%" : "0%"; }});
-
-            table = $('#presupuestoTableCentroOperacionSegmentoCostos').DataTable({
-                data: pivoData(data),
-                columns: columns,
-                scrollX: true,
-                scrollCollapse: true,
-                fixedHeader: true,
-                dom: 'Bltip',
-                buttons:[{ extend:'excelHtml5', text:'📥 Exportar a Excel', title:'Presupuesto Centro Operación Segmento Costos'}],
-                
-                order: [[0, "asc"], [1, "asc"], [2, "asc"]]
-            });
-
-            // Mover botón Excel
-            let wrapper = $(table.table().container());
-            wrapper.find('.dt-buttons').detach().appendTo('.bloque-vista .btn-group');
-
-            // Filtros tipo Excel
-            table.columns().every(function (index) {
-                if (index === 0 || index === 1 || index === 2) {   // 🔹 0 = Año, 1 = segmento, 2 = Centro de operación
-                    let column = this;
-                    // id dinamico
-                    let filtroId = index === 0 ? "año" : (index === 1 ? "segmento" : "centro");
-
-                    // Botón en el header
-                    let button = $(`<button id="excel-filter-btn-${filtroId}" class="excel-filter-btn">
-                                        ${index === 0 ? "Año ⬇" : (index === 1 ? "Segmento ⬇" : "Centro ⬇")}
-                                    </button>`).appendTo($(column.header()).empty());
-
-                    // Contenedor del menú
-                    let menu = $(`<div id="excel-filter-${filtroId}" class="excel-filter"></div>`).appendTo("body");
-
-                    // Input de búsqueda
-                    let searchBox = $('<input type="text" placeholder="Buscar...">').appendTo(menu);
-
-                    // Lista de checkboxes
-                    let list = $("<div></div>").appendTo(menu);
-
-                    // Agregar opciones únicas como checkboxes
-                    column.data().unique().sort().each(function (d) {
-                        if (d) {
-                            list.append(`<label><input type="checkbox" value="${d}" checked> ${d}</label><br/>`);
-                        }
-                    });
-
-                    // Función aplicar filtro
-                    function applyFilter() {
-                        let selected = [];
-                        menu.find("input[type='checkbox']:checked").each(function () {
-                            selected.push("^" + $.fn.dataTable.util.escapeRegex($(this).val()) + "$");
-                        });
-                        column.search(selected.length ? selected.join("|") : "", true, false).draw();
-                    }
-
-                    // Evento checkbox
-                    list.on("change", "input[type='checkbox']", applyFilter);
-
-                    // Evento búsqueda dentro del menú
-                    searchBox.on("keyup", function () {
-                        let val = $(this).val().toLowerCase();
-                        list.find("label").each(function () {
-                            $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
-                        });
-                    });
-
-                    // Mostrar este menú y ocultar los demás
-                    button.on("click", function (e) {
-                        e.stopPropagation();
-
-                        // 🔹 Ocultar otros menús antes de abrir este
-                        $(".excel-filter").not(menu).hide();
-
-                        // Posicionar y mostrar este
-                        let offset = $(this).offset();
-                        menu.css({
-                            top: offset.top + $(this).outerHeight(),
-                            left: offset.left,
-                            width: $(this).outerWidth()
-                        }).toggle();
-                    });
-
-                    // Cerrar menú al hacer clic fuera
-                    $(document).on("click", function (e) {
-                        if (!$(e.target).closest(`#excel-filter-${filtroId}, button`).length) {
-                            menu.hide();
-                        }
-                    });
-                }
-            });
-        }
-
-        // Cargar historico
-        $('#cargarBtn').on('click', function() {
-            let boton = $(this);
-            boton.prop('disabled', true).append('<span class="spinner"></span>');
-
-            $.ajax({
-                url: "{% url 'cargar_presupuesto_centro_segmento_costos' %}",
-                method: "GET",
-                dataType: "json",
-                success: function(resp) {
-                    // si el servidor devuelve {data: [...]}
-                    let datos = Array.isArray(resp) ? resp : resp.data;
-                    console.log("Datos cargados:", datos);
-                    loadTable(datos);
-                },
-                error: function(err) {
-                    alert("Error al cargar datos: " + (err.responseJSON?.mensaje || err.statusText));
-                },
-                complete: function() {
-                    boton.prop('disabled', false).find('.spinner').remove();
-                }
-            });
-        });
-
-        // Carga inicial
-        $.ajax({
-            url:"{% url 'obtener_presupuesto_centro_segmento_costos' %}",
-            type:"GET",
-            dataType:"json",
-            success:function(resp){ let datos=Array.isArray(resp)?resp:resp.data; loadTable(datos); }
-        });
+    const tabla = new PresupuestoTable({
+        container: 'tablaCentroSegmentoCostos',
+        exportFileName: 'Presupuesto_Centro_Segmento_Costos',
+        emptyMessage: 'No hay datos cargados todavía',
+        pivot: (data) => PresupuestoUtils.pivotByMonth(data, GROUP_FIELDS, EXTRA_FIELDS),
+        columns: [
+            { key: 'year', label: 'Año', type: 'text', filterable: true },
+            { key: 'segmento', label: 'Segmento', type: 'text', filterable: true },
+            { key: 'nombre_centro_operacion', label: 'Centro de operación', type: 'text', filterable: true },
+            ...PresupuestoUtils.columnasMeses(),
+            { key: 'total_year', label: 'Total Año', type: 'number' },
+            { key: 'variacion_valor', label: 'Variación Valor', type: 'number' },
+            { key: 'variacion_pct', label: 'Variación %', type: 'percent' },
+        ],
     });
 
+    async function cargarDatos() {
+        await PresupuestoUtils.conLoader('tablaCentroSegmentoCostos', 'Calculando costos por segmento…', async () => {
+            const datos = await PresupuestoUtils.getJSON("{% url 'obtener_presupuesto_centro_segmento_costos' %}");
+            tabla.setData(datos);
+        });
+    }
+
+    document.getElementById('exportarBtn').addEventListener('click', () => tabla.exportToExcel());
+
+    cargarDatos();
+});
 </script>
 {% endblock %}

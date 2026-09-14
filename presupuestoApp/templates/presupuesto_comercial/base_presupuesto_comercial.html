@@ -1,0 +1,55 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Presupuesto Comercial{% endblock %}</title>
+  <!-- Google Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+
+  <!-- Estilos y componente de tabla propios (sin jQuery ni DataTables) -->
+  <link rel="stylesheet" href="{% static 'css/dashboard_comercial.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/presupuesto-table.css' %}" />
+  <script src="{% static 'js/presupuesto-table.js' %}" defer></script>
+
+  <!--custom css-->
+  {% block css %}{% endblock %}
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
+      <div class="title" tabindex="0">PRESUPUESTO COMERCIAL</div>
+      <nav class="sidebar-nav" role="navigation" aria-label="Menú principal">
+        <a href="{% url 'presupuestoGeneralVentas'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto general ventas</span></a>
+        <a href="{% url 'presupuestoCentroVentas'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto centro operacion ventas</span></a>
+        <a href="{% url 'presupuestoCentroSegmentoVentas'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto centro operacion-segmento ventas</span></a>
+        {% comment %} <a href="{% url 'presupuestoGeneralCostos'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto general costos</span></a>
+        <a href="{% url 'presupuestoCentroCostos'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto centro operacion costos</span></a>
+        <a href="{% url 'presupuestoCentroSegmentoCostos'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto centro operacion-segmento costos</span></a>
+        <a href="{% url 'vistaPresupuestoCentroSegmentoLineaCostos'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto centro operacion-segmento linea costos</span></a> {% endcomment %}
+        <a href="{% url 'vistaPresupuestoCentroSegmentoLineaVentas'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto centro operacion-segmento linea ventas</span></a>
+        <a href="{% url 'presupuestoComercial'%}" tabindex="0"><span class="material-icons" aria-hidden="true">folder</span><span class="text">Presupuesto comercial</span></a>
+        <a href="{% url 'vistaComparativoAnual'%}" tabindex="0"><span class="material-icons" aria-hidden="true">trending_up</span><span class="text">Comparativo año anterior vs actual</span></a>
+        <a href="{% url 'vistaImportarVentas'%}" tabindex="0"><span class="material-icons" aria-hidden="true">upload_file</span><span class="text">Importar ventas (Excel)</span></a>
+      </nav>
+      <button aria-label="Colapsar barra lateral" class="sidebar-toggle desktop" id="sidebarToggle">
+        <span class="material-icons" aria-hidden="true">chevron_left</span>
+      </button>
+    </aside>
+    <main class="main-content" id="main" tabindex="-1">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const toggle = document.getElementById("sidebarToggle");
+      const sidebar = document.getElementById("sidebar");
+      toggle.addEventListener("click", () => sidebar.classList.toggle("collapsed"));
+    });
+  </script>
+
+  {% block js %}{% endblock %}
+</body>
+</html>

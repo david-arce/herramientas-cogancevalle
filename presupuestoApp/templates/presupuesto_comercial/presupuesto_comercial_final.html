@@ -1,623 +1,173 @@
 {% extends "presupuesto_comercial/base_presupuesto_comercial.html" %}
 {% load static %}
 
-{% block css %}
-<style>
-    table.dataTable thead th {
-      background-color: #007bff;
-      color: white;
-    }
-    /* 🔹 Altura fija para filas del cuerpo */
-    table.dataTable tbody tr {
-        height: 28px; /* ajusta el valor a tu preferencia */
-    }
-
-    /* 🔹 Alinear verticalmente el contenido de las celdas */
-    table.dataTable tbody td {
-        vertical-align: middle;
-        padding-top: 4px;
-        padding-bottom: 4px;
-    }
-    .excel-filter {
-        display: none;
-        position: absolute;
-        background: white;
-        border: 1px solid #ccc;
-        padding: 6px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        z-index: 1000;
-        max-height: 200px;
-        overflow-y: auto;
-        border-radius: 6px;
-        width: 150px !important;   /* ajusta a lo que necesites */
-        min-width: 80px;          /* opcional */
-    }
-    .excel-filter input[type="text"] {
-        width: 95%;
-        margin-bottom: 6px;
-        padding: 3px;
-    }
-    .excel-filter-btn {
-        width: 100%;
-        padding: 4px 6px;
-        background: #f4f4f4;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        text-align: left;
-    }
-    .dropdown {
-    display: inline-block;
-    position: relative;
-    }
-    .dropdown summary {
-    cursor: pointer;
-    padding: 4px 8px;
-    border: 1px solid #ccc;
-    background: #fff;
-    border-radius: 4px;
-    }
-    .dropdown[open] summary {
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-    }
-    .opciones {
-    position: absolute;
-    background: #fff;
-    border: 1px solid #ccc;
-    max-height: 220px;
-    overflow-y: auto;
-    padding: 6px;
-    border-radius: 0 0 4px 4px;
-    z-index: 10;
-    min-width: 180px;
-    }
-    .opciones input[type="text"] {
-    width: 95%;
-    padding: 3px;
-    margin-bottom: 6px;
-    font-size: 12px;
-    }
-    .opciones label {
-    display: block;
-    font-size: 13px;
-    }
-    .btn-colvis {
-    background-color: #f0f0f0 !important;
-    border: 1px solid #ccc !important;
-    color: #333 !important;
-    border-radius: 6px;
-    padding: 6px 10px;
-    margin-left: 8px;
-    }
-    .btn-guardar {
-        background-color: #28a745; 
-        color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 8px 12px;
-        cursor: pointer;
-    }
-    .btn-guardar:hover {
-        background-color: #218838;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="bloque-vista">
     <h2>📊 Proyección presupuesto general</h2>
 
     <div class="btn-group">
-        {% comment %} <button type="button" id="cargarBtnGeneral" class="btn-accion">🔄 Cargar desde histórico</button> {% endcomment %}
-        <button type="button" id="guardarBtnGeneral" class="btn-guardar">💾 Guardar cambios <span class="spinner" style="display:none; margin-left:8px;"></span></button>
-        <!-- 🆕 Botón para subir Excel -->
-        <input type="file" id="excelUpload" accept=".xlsx, .xls" style="display:none;">
-        <button type="button" id="uploadExcelBtn" class="btn-guardar" style="background-color:#007bff;">📤 Subir Excel</button>
-        <button type="button" id="exportarBtn" class="btn-accion">📤 Exportar base 2025</button>
-
+        <input type="file" id="excelUpload" accept=".xlsx,.xls" style="display:none;">
+        <button type="button" id="uploadExcelBtn" class="pt-btn">📤 Subir Excel</button>
+        <button type="button" id="exportarBaseBtn" class="pt-btn secondary">📤 Exportar base Año Actual</button>
+        <button type="button" id="exportarExcelBtn" class="pt-btn secondary">📥 Exportar a Excel Esta Tabla</button>
+        <button type="button" id="colvisBtn" class="pt-btn secondary">👁️ Mostrar / ocultar columnas</button>
+        <span id="autosaveStatus" class="pt-autosave-status" aria-live="polite"></span>
     </div>
 
-   <!-- 🎯 FILTROS -->
-<div class="filtros">
-    <label>📌 Línea:
-        <details class="dropdown">
-            <summary>Seleccionar</summary>
-            <div class="opciones" id="filtroLinea"></div>
-        </details>
-    </label>
-    <label>📅 Año:
-        <details class="dropdown">
-            <summary>Seleccionar</summary>
-            <div class="opciones" id="filtroYear"></div>
-        </details>
-    </label>
-    <label>🏭 Centro de operación:
-        <details class="dropdown">
-            <summary>Seleccionar</summary>
-            <div class="opciones" id="filtroCentro"></div>
-        </details>
-    </label>
-    <label>👥 Clase cliente:
-        <details class="dropdown">
-            <summary>Seleccionar</summary>
-            <div class="opciones" id="filtroClase"></div>
-        </details>
-    </label>
-</div>
-    <table id="presupuestoTable" class="display" style="width:100%">
-        <thead>
-            <tr>
-                <th>Línea N1</th>
-                <th>Año</th>
-                <th>Centro de operación</th>
-                <th>Clase cliente</th>
-                <th>Ventas</th>
-                <th>Costos</th>
-                <th>Variación ventas %</th>
-                <th>Variación costos %</th>
-                <th>Variación ventas $</th>
-                <th>Variación costos $</th>
-                <th>Variación mes ventas $</th>
-                <th>Variación mes costos $</th>
-                <th>Variación precios ventas $</th>
-                <th>Variación precios costos $</th>
-                <th>Crecimiento ventas proyectado</th> 
-                <th>Proyección ventas</th>
-                <th>Crecimiento costos proyectado</th> 
-                <th>Proyección costos</th>
-                <th>Margen proyectado %</th>
-                <th>Margen valor proyectado $</th>
-                <th>Margen actual %</th>
-                <th>Margen valor actual $</th>
-                <th>Variación %</th>
-                <th>Variación $</th>
-            </tr>
-        </thead>
-    </table>
+    <div id="tablaComercial"></div>
 </div>
 {% endblock %}
 
 {% block js %}
 <script>
-    document.getElementById("exportarBtn").addEventListener("click", function () {
-            window.location.href = "/presupuesto/exportar-crecimiento-ventas/";
-        });
+document.addEventListener('DOMContentLoaded', function () {
+    const ANIO_ACTUAL = new Date().getFullYear();
 
-    // 📤 Botón subir Excel
-    $('#uploadExcelBtn').on('click', function() {
-        $('#excelUpload').click();
+    // Recalcula proyección y utilidad cuando se edita "crecimiento_ventas"
+    // o "crecimiento_costos" (antes vivía embebido en 100+ líneas de
+    // callbacks de DataTables).
+    function onEdit(row, key, valor) {
+        if (key !== 'crecimiento_ventas') return;
+
+        const base = parseFloat(row.ventas) || 0;
+        row.proyeccion_ventas = Math.round(base + base * (valor / 100));
+
+        // El costo proyectado ya no es editable: se toma el costo real
+        // del año actual como referencia para el margen.
+        const costos = parseFloat(row.costos) || 0;
+        const utilidadValor = row.proyeccion_ventas - costos;
+        const utilidadPct = row.proyeccion_ventas ? (utilidadValor / row.proyeccion_ventas) * 100 : 0;
+
+        row.utilidad_valor = Math.round(utilidadValor);
+        row.utilidad_porcentual = Number(utilidadPct.toFixed(2));
+        row.variacion_proyectada_valor = Math.round(utilidadValor - (row.utilidad_valor_actual || 0));
+        row.variacion_proyectada_porcentual = Number((utilidadPct - (row.utilidad_porcentual_actual || 0)).toFixed(2));
+    }
+
+    const soloAnioActual = (row) => Number(row.year) === ANIO_ACTUAL;
+
+    // ------------------------------------------------------------------
+    // Autoguardado: cada cambio en una celda editable dispara este
+    // callback. Se agrupan (debounce) para no disparar una petición por
+    // cada tecla y se muestra el estado junto a los botones en vez de
+    // depender de un botón "Guardar cambios" manual.
+    // ------------------------------------------------------------------
+    const statusEl = document.getElementById('autosaveStatus');
+
+    function mostrarEstado(texto, clase) {
+        statusEl.textContent = texto;
+        statusEl.className = 'pt-autosave-status' + (clase ? ' ' + clase : '');
+    }
+
+    const guardarAhora = PresupuestoUtils.debounce(async function () {
+        mostrarEstado('💾 Guardando…', 'guardando');
+        try {
+            const resp = await PresupuestoUtils.postJSON("{% url 'guardar_presupuesto_comercial' %}", tabla.getRows(), "{{ csrf_token }}");
+            if (resp.status !== 'ok') throw new Error(resp.mensaje || 'Error desconocido');
+            hayCambiosSinGuardar = false;
+            mostrarEstado('✅ Cambios guardados', 'guardado');
+        } catch (err) {
+            console.error('Error al guardar automáticamente:', err);
+            mostrarEstado('❌ Error al guardar: ' + err.message, 'error');
+        }
+    }, 900);
+
+    let hayCambiosSinGuardar = false;
+
+    function onChange() {
+        hayCambiosSinGuardar = true;
+        mostrarEstado('✏️ Editando…', 'editando');
+        guardarAhora();
+    }
+
+    window.addEventListener('beforeunload', function (e) {
+        if (!hayCambiosSinGuardar) return;
+        e.preventDefault();
+        e.returnValue = '';
     });
 
-    // 🧾 Al seleccionar archivo
-    $('#excelUpload').on('change', function(e) {
+    const tabla = new PresupuestoTable({
+        container: 'tablaComercial',
+        exportFileName: 'Presupuesto_Comercial',
+        emptyMessage: 'No hay datos cargados todavía',
+        onEdit: onEdit,
+        onChange: onChange,
+        columns: [
+            { key: 'linea', label: 'Línea N1', type: 'text', filterable: true },
+            { key: 'year', label: 'Año', type: 'text', filterable: true },
+            { key: 'nombre_centro_de_operacion', label: 'Centro de operación', type: 'text', filterable: true },
+            { key: 'nombre_clase_cliente', label: 'Clase cliente', type: 'text', filterable: true },
+            { key: 'ventas', label: 'Ventas', type: 'money' },
+            { key: 'costos', label: 'Costos', type: 'money' },
+            { key: 'variacion_porcentual_ventas', label: 'Variación % ventas', type: 'percent' },
+            { key: 'variacion_valor_ventas', label: 'Variación ventas $', type: 'money', visible: false },
+            { key: 'variacion_valor_costos', label: 'Variación costos $', type: 'money', visible: false },
+            { key: 'variacion_mes_ventas', label: 'Variación mes ventas $', type: 'money', visible: false },
+            { key: 'variacion_mes_costos', label: 'Variación mes costos $', type: 'money', visible: false },
+            { key: 'variacion_precios_ventas', label: 'Variación precios ventas $', type: 'money', visible: false },
+            { key: 'variacion_precios_costos', label: 'Variación precios costos $', type: 'money', visible: false },
+            { key: 'crecimiento_ventas', label: 'Crecimiento ventas proyectado', type: 'percent', editable: soloAnioActual },
+            { key: 'proyeccion_ventas', label: 'Proyección ventas', type: 'money' },
+            { key: 'utilidad_porcentual', label: 'Margen proyectado %', type: 'percent' },
+            { key: 'utilidad_valor', label: 'Margen valor proyectado $', type: 'money' },
+            { key: 'utilidad_porcentual_actual', label: 'Margen actual %', type: 'percent' },
+            { key: 'utilidad_valor_actual', label: 'Margen valor actual $', type: 'money' },
+            { key: 'variacion_proyectada_porcentual', label: 'Variación %', type: 'percent' },
+            { key: 'variacion_proyectada_valor', label: 'Variación $', type: 'money' },
+        ],
+    });
+
+    async function cargarDatos(conIndicador = true) {
+        const traer = async () => {
+            const datos = await PresupuestoUtils.getJSON("{% url 'obtener_presupuesto_comercial' %}");
+            tabla.setData(datos);
+        };
+        if (!conIndicador) return traer();
+        await PresupuestoUtils.conLoader('tablaComercial', 'Cargando presupuesto comercial…', traer);
+    }
+
+    document.getElementById('exportarBaseBtn').addEventListener('click', function () {
+        window.location.href = "{% url 'exportar_crecimiento_ventas' %}";
+    });
+
+    document.getElementById('exportarExcelBtn').addEventListener('click', () => tabla.exportToExcel());
+
+    document.getElementById('colvisBtn').addEventListener('click', function (e) {
+        e.stopPropagation();
+        tabla.toggleColumnVisibilityMenu(this);
+    });
+
+    // 📤 Subida de Excel con crecimientos proyectados
+    document.getElementById('uploadExcelBtn').addEventListener('click', () => document.getElementById('excelUpload').click());
+    document.getElementById('excelUpload').addEventListener('change', function (e) {
         const file = e.target.files[0];
         if (!file) return;
-
-        // Validar extensión
-        const validExt = ['xls', 'xlsx'];
         const ext = file.name.split('.').pop().toLowerCase();
-        if (!validExt.includes(ext)) {
+        if (!['xls', 'xlsx'].includes(ext)) {
             alert('❌ Solo se permiten archivos Excel (.xls o .xlsx)');
             return;
         }
-
+        const btn = document.getElementById('uploadExcelBtn');
         const formData = new FormData();
         formData.append('file', file);
 
-        $.ajax({
-            url: "{% url 'importar_crecimiento_ventas' %}",
-            type: "POST",
-            data: formData,
-            processData: false,
-            contentType: false,
-            headers: { "X-CSRFToken": "{{ csrf_token }}" },
-            beforeSend: function() {
-                $('#uploadExcelBtn').prop('disabled', true).text('⏳ Cargando...');
-            },
-            success: function(resp) {
-                alert('✅ ' + resp.mensaje);
-                $('#presupuestoTable').DataTable().ajax.reload();
-            },
-            error: function(xhr) {
-                alert('❌ Error al procesar el archivo:\n' + xhr.responseText);
-            },
-            complete: function() {
-                $('#uploadExcelBtn').prop('disabled', false).text('📤 Subir Excel');
-                $('#excelUpload').val('');
-            }
-        });
+        PresupuestoUtils.withSpinner(btn, async () => {
+            const res = await fetch("{% url 'importar_crecimiento_ventas' %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': "{{ csrf_token }}" },
+                body: formData,
+            });
+            const texto = await res.text();
+            let data;
+            try { data = JSON.parse(texto); } catch (err) { data = { mensaje: texto }; }
+            if (!res.ok) throw new Error(data.mensaje || 'Error al procesar el archivo');
+            alert('✅ ' + data.mensaje);
+            await cargarDatos();
+        }).catch(err => alert('❌ Error al procesar el archivo:\n' + err.message))
+          .finally(() => { e.target.value = ''; });
     });
 
-    function numberFormat(data, type, row) {
-        if (type === 'display' && !isNaN(data)) {
-            return new Intl.NumberFormat('es-ES').format(data);
-        }
-        return data;
-    }
-
-    // 💵 Formato moneda (con signo pesos)
-    function moneyFormat(data, type) {
-        if (type === 'display' && !isNaN(data)) {
-            return new Intl.NumberFormat('es-CO', {
-                style: 'currency',
-                currency: 'COP',
-                minimumFractionDigits: 0
-            }).format(data);
-        }
-        return data;
-    }
-
-    // 📊 Formato porcentaje
-    function percentFormat(data, type, row) {
-        if (type === 'display' && !isNaN(data)) {
-            return new Intl.NumberFormat('es-CO', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }).format(data) + " %";
-        }
-        return data;
-    }
-
-    $(document).ready(function () {   
-        let table = $('#presupuestoTable').DataTable({
-            ajax: {
-                url: "{% url 'obtener_presupuesto_comercial' %}",
-                dataSrc: ""
-            },
-            columns: [
-                { data: "linea" },
-                { data: "year" },
-                { data: "nombre_centro_de_operacion" },
-                { data: "nombre_clase_cliente" },
-                { data: "ventas" },// 4
-                { data: "costos" },
-                { data: "variacion_porcentual_ventas" },
-                { data: "variacion_porcentual_costos" },
-                { data: "variacion_valor_ventas" },
-                { data: "variacion_valor_costos" }, // 10
-                { data: "variacion_mes_ventas" },
-                { data: "variacion_mes_costos" },
-                { data: "variacion_precios_ventas" },
-                { data: "variacion_precios_costos" },
-                { data: "crecimiento_ventas" },
-                { data: "proyeccion_ventas" },
-                { data: "crecimiento_costos" }, // 16
-                { data: "proyeccion_costos" },
-                { data: "utilidad_porcentual" }, // 18
-                { data: "utilidad_valor" },
-                { data: "utilidad_porcentual_actual" },
-                { data: "utilidad_valor_actual" },
-                { data: "variacion_proyectada_porcentual" },
-                { data: "variacion_proyectada_valor" } // 23
-            ],
-            language: {
-                    url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
-            },
-            dom: 'Bflrtip',
-            buttons: [
-                {
-                    extend: 'excelHtml5',
-                    text: '📥 Exportar a Excel',
-                    title: 'Presupuesto General Ventas',
-                    exportOptions: {
-                    columns: ':visible',
-                    format: {
-                        body: function (data, row, column, node) {
-                        // Helper: quitar etiquetas HTML y trim
-                        function stripHtml(input) {
-                            if (input === null || input === undefined) return '';
-                            if (typeof input !== 'string') return input;
-                            return input.replace(/<\/?[^>]+(>|$)/g, "").trim();
-                        }
-
-                        var txt = stripHtml(data);
-
-                        // Índices de tus columnas numéricas según tu DataTable (0-based)
-                        var moneyCols = [4,5,8,9,10,11,12,13,15,17,19,21,23];
-                        var percentCols = [6,7,14,16,18,20,22];
-
-                        // Si es columna de dinero: quitar separadores de miles, símbolo y ajustar decimal
-                        if (moneyCols.indexOf(column) !== -1) {
-                            txt = String(txt)
-                                    .replace(/\s/g,'')    // quita espacios
-                                    .replace(/\$/g,'')    // quita signo peso (si lo hubiera)
-                                    .replace(/\./g,'')    // quita separador de miles
-                                    .replace(/,/g,'.')    // cambia coma decimal por punto
-                                    .replace(/[^0-9.-]/g,''); // deja sólo números, punto y signo
-                            return txt === '' ? 0 : txt;
-                        }
-
-                        // Si es columna de porcentaje: quitar % y normalizar decimal
-                        if (percentCols.indexOf(column) !== -1) {
-                            txt = String(txt)
-                                    .replace(/\s/g,'')
-                                    .replace(/%/g,'')
-                                    .replace(/\./g,'')
-                                    .replace(/,/g,'.')
-                                    .replace(/[^0-9.-]/g,'');
-                            return txt === '' ? 0 : txt;
-                        }
-
-                        // Columnas de texto: devolver el texto limpio (sin HTML)
-                        return txt;
-                        }
-                    }
-                    }
-                },
-                {
-                    extend: 'colvis',              // 👈 nuevo botón de visibilidad de columnas
-                    text: '👁️ Mostrar / Ocultar columnas',
-                    titleAttr: 'Selecciona las columnas a mostrar u ocultar',
-                    postfixButtons: ['colvisRestore'], // agrega botón para restaurar visibilidad
-                    collectionLayout: 'fixed two-column', // menú en 2 columnas
-                    className: 'btn-colvis'
-                }
-            ],
-            scrollX: true,
-            columnDefs: [
-                // 💵 columnas con dinero
-            { targets: [4, 5, 8, 9, 10, 11, 12, 13, 15, 17, 19, 21, 23], render: moneyFormat, className: "dt-right" },
-            // 📊 columnas con porcentaje
-            { targets: [6, 7, 14, 16, 18, 20, 22], render: percentFormat, className: "dt-right" },
-            { targets: [14, 16], className: "editable dt-right" },
-            { targets: [6,7,8,9,10,11,12,13], visible: false}
-            ],
-            initComplete: function () {
-                let api = this.api();
-
-                function llenarFiltro(colIndex, contenedor) {
-                    let uniqueValues = [];
-                    api.column(colIndex).data().each(function (d) {
-                        if (d && uniqueValues.indexOf(d) === -1) {
-                            uniqueValues.push(d);
-                        }
-                    });
-                    uniqueValues.sort();
-
-                    let div = $(contenedor);
-                    div.empty();
-
-                    // 🔎 Campo búsqueda
-                    div.append('<input type="text" placeholder="Buscar...">');
-
-                    // ✅ Opción Todos
-                    div.append('<label><input type="checkbox" class="chk-todos" checked> (Todos)</label>');
-
-                    // Opciones únicas
-                    $.each(uniqueValues, function (i, v) {
-                        div.append('<label><input type="checkbox" class="chk-opcion" value="' + v + '" checked> ' + v + '</label>');
-                    });
-
-                    // 📌 Manejo de "Todos"
-                    div.find(".chk-todos").on("change", function () {
-                        let checked = $(this).is(":checked");
-                        div.find(".chk-opcion").prop("checked", checked).trigger("change");
-                    });
-
-                    // 📌 Manejo de checkboxes individuales
-                    div.find(".chk-opcion").on("change", function () {
-                        let vals = [];
-                        div.find(".chk-opcion:checked").each(function () {
-                            vals.push($(this).val());
-                        });
-
-                        // Actualizar estado de "Todos"
-                        let allChecked = div.find(".chk-opcion").length === div.find(".chk-opcion:checked").length;
-                        div.find(".chk-todos").prop("checked", allChecked);
-
-                        // Filtrar tabla
-                        if (vals.length > 0) {
-                            api.column(colIndex).search(vals.join("|"), true, false).draw();
-                        } else {
-                            api.column(colIndex).search("XXXXXXXX", true, false).draw(); // nada
-                        }
-                    });
-
-                    // 🔎 Filtrado por texto dentro del dropdown
-                    div.find('input[type="text"]').on("keyup", function () {
-                        let term = $(this).val().toLowerCase();
-                        div.find("label").not(":first").each(function () {
-                            let txt = $(this).text().toLowerCase();
-                            $(this).toggle(txt.indexOf(term) > -1);
-                        });
-                    });
-                }
-
-                // Llenar cada filtro
-                llenarFiltro(0, "#filtroLinea");   // Línea
-                llenarFiltro(1, "#filtroYear");    // Año
-                llenarFiltro(2, "#filtroCentro");  // Centro operación
-                llenarFiltro(3, "#filtroClase");   // Clase cliente
-            }
-        });
-        // 🆕 Cerrar filtros al hacer clic fuera
-        $(document).on("click", function(e) {
-            if (!$(e.target).closest(".dropdown").length) {
-                $("details[open]").removeAttr("open");
-            }
-        }); 
-        
-        let editingCell = null;
-        // Doble clic para editar solo año actual en columna crecimiento
-        $('#presupuestoTable').on('dblclick', 'td.editable', function () {
-            if (editingCell) return;
-            const year_actual = new Date().getFullYear();
-            let cell = table.cell(this);
-            let row = table.row(this);
-            let rowData = row.data();  // obtiene toda la fila
-
-            if (rowData.year != year_actual) {
-                return;
-            }
-
-            let oldValue = cell.data();
-            $(this).html('<input type="text" class="cell-input" value="'+ oldValue +'"/>');
-            let $input = $(this).find("input").focus();
-            editingCell = this;
-
-            $input[0].setSelectionRange(0, $input.val().length);
-
-            function commitChange() {
-                let newValue = parseFloat($input.val()) || 0;
-                cell.data(newValue).draw(false); // actualizar celda crecimiento
-                editingCell = null;
-
-                let colIdx = cell.index().column; // índice de la columna editada
-                let colName = table.column(colIdx).dataSrc(); // nombre del campo
-
-                // ⚡ Recalcular en vivo según la columna editada
-                if (colName === "crecimiento_ventas") {
-                    let proyeccionBase = parseFloat(rowData.ventas) || 0;
-                    let nuevaProyeccion = proyeccionBase + (proyeccionBase * (newValue / 100));
-                    rowData.crecimiento_ventas = newValue;
-                    rowData.proyeccion_ventas = Math.round(nuevaProyeccion);
-
-                }
-                else if (colName === "crecimiento_costos") {
-                    let proyeccionBase = parseFloat(rowData.costos) || 0;
-                    let nuevaProyeccion = proyeccionBase + (proyeccionBase * (newValue / 100));
-                    rowData.crecimiento_costos = newValue;
-                    rowData.proyeccion_costos = Math.round(nuevaProyeccion);
-                }
-                // ✅ Recalcular utilidad
-                let utilidad_valor = (rowData.proyeccion_ventas || 0) - (rowData.proyeccion_costos || 0);
-                let utilidad_porcentual = 0;
-                if (rowData.proyeccion_ventas && rowData.proyeccion_ventas !== 0) {
-                    utilidad_porcentual = (utilidad_valor / rowData.proyeccion_ventas) * 100;
-                }
-
-                // recalcular variación proyectada
-                let variacion_proyectada_valor = utilidad_valor - (rowData.utilidad_valor_actual || 0);
-                let variacion_proyectada_porcentual = utilidad_porcentual - (rowData.utilidad_porcentual_actual || 0);
-
-                rowData.utilidad_valor = Math.round(utilidad_valor);
-                rowData.utilidad_porcentual = utilidad_porcentual.toFixed(2);
-                rowData.variacion_proyectada_valor = Math.round(variacion_proyectada_valor);
-                rowData.variacion_proyectada_porcentual = variacion_proyectada_porcentual.toFixed(2);
-                
-                rowData.editado = true;  // marcar fila como modificada
-                row.data(rowData).invalidate().draw(false);
-            }
-            $input.on("keydown", function(e) {
-                if (e.key === "Enter") {
-                    e.preventDefault();
-
-                    // ✋ Detenemos el blur temporalmente
-                    $input.off("blur");
-
-                    // Guardamos índices antes de commit
-                    let cellIdx = table.cell(editingCell).index();
-                    let nextRowIdx = cellIdx.row + 1;
-                    let colIdx = cellIdx.column;
-
-                    // Ejecutamos commit
-                    commitChange();
-
-                    // Esperamos a que DataTables termine de renderizar
-                    setTimeout(function() {
-                        if (nextRowIdx < table.rows().count()) {
-                            let nextCell = table.cell(nextRowIdx, colIdx);
-                            let nextCellNode = nextCell.node();
-                            let nextRowData = table.row(nextRowIdx).data();
-                            const year_actual = new Date().getFullYear();
-
-                            // Solo abrir si es editable
-                            if ($(nextCellNode).hasClass("editable") && nextRowData.year == year_actual) {
-                                $(nextCellNode).trigger("dblclick");
-                            } else {
-                                // Buscar siguiente fila editable más abajo
-                                for (let i = nextRowIdx + 1; i < table.rows().count(); i++) {
-                                    let testCell = table.cell(i, colIdx).node();
-                                    let testData = table.row(i).data();
-                                    if ($(testCell).hasClass("editable") && testData.year == year_actual) {
-                                        $(testCell).trigger("dblclick");
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }, 80); // leve retardo asegura estabilidad
-                }
-
-                else if (e.key === "Escape") {
-                    cell.data(oldValue).draw(false);
-                    editingCell = null;
-                }
-            });
-
-        // 🧠 Importante: solo ejecutamos blur si no hay edición activa por Enter
-        $input.on("blur", function() {
-            if (editingCell) {
-                commitChange();
-            }
-        });
-
-        });
-
-        // Guardar cuando haces clic fuera
-        $(document).on("click", function(e) {
-            if (editingCell) {
-                let $cell = $(editingCell);
-                let $input = $cell.find("input");
-                if ($input.length && !$(e.target).closest("#presupuestoTable").length) {
-                    let cell = table.cell(editingCell);
-                    cell.data($input.val()).draw(false);
-                    editingCell = null;
-                }
-            }
-        });
-
-        // 🔄 Botón cargar desde histórico
-        $(document).on("click", "#cargarBtnGeneral", function () {
-            let boton = $(this);
-            boton.prop("disabled", true).append('<span class="spinner"></span>');
-            $.ajax({
-                url: "{% url 'cargar_presupuesto_comercial' %}",
-                type: "GET",
-                success: function() {
-                    table.ajax.reload();
-                },
-                error: function(err) {
-                    console.error("Error AJAX:", err);
-                },
-                complete: function() {
-                    boton.prop("disabled", false).find(".spinner").remove();
-                }
-            });
-        });
-
-        // 💾 Botón guardar cambios
-        $(document).on("click", "#guardarBtnGeneral", function () {
-            if (!table) return;
-            let $btn = $(this);
-            let $spinner = $btn.find('.spinner');
-            let data = table.rows().data().toArray();
-            // Mostrar spinner
-            $spinner.show();
-            $btn.prop("disabled", true);
-            // solo filas modificadas
-            $.ajax({
-                url: "{% url 'guardar_presupuesto_comercial' %}",
-                type: "POST",
-                data: JSON.stringify(data),
-                contentType: "application/json",
-                headers: { "X-CSRFToken": "{{ csrf_token }}" },
-                success: function() {
-                    table.ajax.reload();
-                },
-                error: function(xhr) {
-                    alert("Error al guardar ❌: " + xhr.responseText);
-                },
-                complete: function() {
-                    // Ocultar spinner y reactivar botón
-                    $spinner.hide();
-                    $btn.prop("disabled", false);
-                }
-            });
-        });
-        
-    });
+    cargarDatos();
+});
 </script>
 {% endblock %}
