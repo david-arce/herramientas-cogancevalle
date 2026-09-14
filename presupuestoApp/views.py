@@ -8241,19 +8241,41 @@ def eliminar_nivel(request):
         print(f"❌ Error en eliminar_nivel: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
-# ─────────────────────────────────────────────────────────────
-# Opciones válidas
-# ─────────────────────────────────────────────────────────────
-SEDES_VALIDAS   = {'tulua', 'buga', 'cartago', 'cali', ''}
-ORIGENES_VALIDOS = {'ejecutado', 'presupuestado', ''}
-
 
 # ─────────────────────────────────────────────────────────────
 # GET /presupuesto/consolidado-base/carga/
 # Renderiza el template de carga
 # ─────────────────────────────────────────────────────────────
+# Sedes que ofrece el formulario de carga, en orden y con su etiqueta.
+# Se derivan de SEDE_CONFIG_CONSOLIDADO para no mantener una lista aparte.
+SEDES_CARGA = [
+    ('tulua',   'Tuluá'),
+    ('buga',    'Buga'),
+    ('cartago', 'Cartago'),
+    ('cali',    'Cali'),
+]
+ORIGENES_CARGA = [
+    ('ejecutado',     'Ejecutado'),
+    ('presupuestado', 'Presupuestado'),
+]
+# ─────────────────────────────────────────────────────────────
+# Opciones válidas
+# ─────────────────────────────────────────────────────────────
+SEDES_VALIDAS = {s for s, _ in SEDES_CARGA} | {''}
+ORIGENES_VALIDOS = {o for o, _ in ORIGENES_CARGA} | {''}
+
+
 def vista_carga_consolidado_base(request):
-    return render(request, 'presupuesto_consolidado/carga_consolidado_base.html')
+    anio_actual = timezone.now().year
+    return render(request, 'presupuesto_consolidado/carga_consolidado_base.html', {
+        'sedes': SEDES_CARGA,
+        'origenes': ORIGENES_CARGA,
+        'anio_actual': anio_actual,
+        # El presupuesto siempre se arma para el año siguiente
+        'anio_presupuesto': anio_actual + 1,
+        'anio_min': anio_actual - 10,
+        'anio_max': anio_actual + 5,
+    })
 
 
 # ─────────────────────────────────────────────────────────────
