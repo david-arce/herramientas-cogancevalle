@@ -1,0 +1,32 @@
+{# Bloque sede/origen. `sufijo` distingue los ids: Directa, DirectaB, Excel #}
+<div class="sede-origen-row">
+  <label>
+    Sede <span style="color:var(--danger);">*</span>
+    <select id="selectSede{{ sufijo }}">
+      <option value="">— Selecciona —</option>
+      {% for clave, etiqueta in sedes %}
+        <option value="{{ clave }}">{{ etiqueta }}</option>
+      {% endfor %}
+    </select>
+    <label style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11.5px;
+                  color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+      <input type="checkbox" id="chkSinSede{{ sufijo }}" style="cursor:pointer;accent-color:var(--accent);">
+      Sin sede (guardar vacío)
+    </label>
+  </label>
+  <label>
+    Origen <span style="color:var(--danger);">*</span>
+    <select id="selectOrigen{{ sufijo }}">
+      <option value="">— Selecciona —</option>
+      {% for clave, etiqueta in origenes %}
+        <option value="{{ clave }}"{% if forloop.first %} selected{% endif %}>{{ etiqueta }}</option>
+      {% endfor %}
+    </select>
+    <label style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11.5px;
+                  color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+      <input type="checkbox" id="chkSinOrigen{{ sufijo }}" style="cursor:pointer;accent-color:var(--accent);">
+      Sin origen (guardar vacío)
+    </label>
+  </label>
+  <span class="sede-origen-note">⚠ Todos los registros{{ nota_extra }} se guardarán con esta sede y origen.</span>
+</div>
