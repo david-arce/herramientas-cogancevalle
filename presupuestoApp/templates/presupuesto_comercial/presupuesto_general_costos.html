@@ -1,267 +1,48 @@
 {% extends "presupuesto_comercial/base_presupuesto_comercial.html" %}
 {% load static %}
 
-{% block css %}
-<style>
-    table.dataTable thead th {
-      background-color: #007bff;
-      color: white;
-    }
-    .excel-filter {
-        display: none;
-        position: absolute;
-        background: white;
-        border: 1px solid #ccc;
-        padding: 6px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        z-index: 1000;
-        max-height: 200px;
-        overflow-y: auto;
-        border-radius: 6px;
-        width: 150px !important;   /* ajusta a lo que necesites */
-        min-width: 80px;          /* opcional */
-    }
-    .excel-filter input[type="text"] {
-        width: 95%;
-        margin-bottom: 6px;
-        padding: 3px;
-    }
-    .excel-filter-btn {
-        width: 100%;
-        padding: 4px 6px;
-        background: #f4f4f4;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        text-align: left;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="bloque-vista">
     <h2>📊 Proyección presupuesto general - Costos</h2>
 
     <div class="btn-group">
-        <button type="button" id="cargarBtn" class="btn-accion">🔄 Cargar desde histórico</button>
-        {% comment %} <button type="button" id="guardarBtn" class="btn-accion btn-guardar">💾 Guardar cambios</button> {% endcomment %}
+        <button type="button" id="exportarBtn" class="pt-btn secondary">📥 Exportar a Excel</button>
     </div>
 
-    <table id="presupuestoTableProyeccionGeneralCostos" class="display" style="width:100%">
-        <thead>
-            <tr>
-                <th>Año</th>
-                <th>Ene</th>
-                <th>Feb</th>
-                <th>Mar</th>
-                <th>Abr</th>
-                <th>May</th>
-                <th>Jun</th>
-                <th>Jul</th>
-                <th>Ago</th>
-                <th>Sep</th>
-                <th>Oct</th>
-                <th>Nov</th>
-                <th>Dic</th>
-                <th>Total Año</th>
-                <th>Variación Valor</th>
-                <th>Variación %</th>
-            </tr>
-        </thead>
-    </table>
+    <div id="tablaGeneralCostos"></div>
 </div>
 {% endblock %}
 
 {% block js %}
 <script>
-    function numberFormat(data, type, row) {
-        if (type === 'display' && !isNaN(data)) {
-            return new Intl.NumberFormat('es-ES').format(data);
-        }
-        return data;
-    }
+document.addEventListener('DOMContentLoaded', function () {
+    const GROUP_FIELDS = ['year'];
+    const EXTRA_FIELDS = ['total_year', 'variacion_valor', 'variacion_pct'];
 
-    // 🔄 Pivotar datos y separar fila R2
-    function pivotData(data) { 
-        let pivot = {}; 
-        let meses = { 1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun", 7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic" }; 
-        data.forEach(row => { 
-            if (!pivot[row.year]) {
-                pivot[row.year] = { 
-                    year: row.year, 
-                    total_year: row.total_year, 
-                    variacion_valor: row.variacion_valor, 
-                    variacion_pct: row.variacion_pct 
-                }; 
-            }
-            pivot[row.year][meses[row.mes]] = row.total; 
-        }); 
-        return Object.values(pivot); 
-    }
-
-    $(document).ready(function () {
-        let table = null;
-
-        function loadTable(data) {
-            if ($.fn.DataTable.isDataTable('#presupuestoTableProyeccionGeneralCostos')) {
-                $('#presupuestoTableProyeccionGeneralCostos').DataTable().clear().destroy();
-                $('#presupuestoTableProyeccionGeneralCostos').empty();  // 🔥 IMPORTANTE: limpiar thead/tbody
-            }
-            let meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-            let columns = [{ data: 'year', title: 'Año' }];
-            meses.forEach(m => {
-                columns.push({ data: m, title: m, render: numberFormat, className: "editable" });
-            });
-
-            // ➕ columnas extra
-            columns.push({ data: "total_year", title: "Total Año", render: numberFormat });
-            columns.push({ data: "variacion_valor", title: "Variación Valor", render: numberFormat });
-            columns.push({ data: "variacion_pct", title: "Variación %", render: function(data){ return data ? data.toFixed(2) + "%" : "0%"; }});
-
-            table = $('#presupuestoTableProyeccionGeneralCostos').DataTable({
-                data: pivotData(data),
-                columns: columns,
-                paging: false,
-                scrollX: true,
-                fixedHeader: true,
-                dom: 'Bltip',
-                buttons: [
-                    {
-                        extend: 'excelHtml5',
-                        text: '📥 Exportar a Excel',
-                        title: 'Presupuesto General Costos'
-                    }
-                ],
-                order: [[0, "asc"]]
-            });
-
-            // Mover botón Excel
-            let wrapper = $(table.table().container()); 
-            wrapper.find(".dt-buttons").appendTo(wrapper.closest(".bloque-vista").find(".btn-group"));
-
-            // Filtro en columna Año
-            table.columns().every(function (index) {
-                if (index === 0) {
-                    let column = this;
-                    // Botón en el header
-                    let button = $('<button id="excel-filter-btn-costos" class="excel-filter-btn">Año ⬇</button>').appendTo($(column.header()).empty());
-
-                    // Contenedor del menú
-                    let menu = $('<div id="excel-filter-costos" class="excel-filter"></div>').appendTo('body');
-
-                    // Input de búsqueda
-                    let searchBox = $('<input type="text" placeholder="Buscar...">').appendTo(menu);
-
-                    // Lista de checkboxes
-                    let list = $('<div></div>').appendTo(menu);
-
-                    // Agregar opciones únicas como checkboxes
-                    column.data().unique().sort().each(function (d) {
-                        if (d) {
-                            list.append('<label><input type="checkbox" value="' + d + '" checked> ' + d + '</label><br/>');
-                        }
-                    });
-
-                    // Función aplicar filtro
-                    function applyFilter() {
-                        let selected = [];
-                        menu.find('input[type="checkbox"]:checked').each(function () {
-                            selected.push('^' + $.fn.dataTable.util.escapeRegex($(this).val()) + '$');
-                        });
-                        column.search(selected.length ? selected.join('|') : '', true, false).draw();
-                    }
-
-                    // Evento checkbox
-                    list.on('change', 'input[type="checkbox"]', applyFilter);
-
-                    // Evento búsqueda dentro del menú
-                    searchBox.on('keyup', function () {
-                        let val = $(this).val().toLowerCase();
-                        list.find("label").each(function () {
-                            $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
-                        });
-                    });
-
-                    // Mostrar/ocultar menú
-                    button.on('click', function (e) {
-                        e.stopPropagation();
-                        let offset = $(this).offset();
-                        menu.css({
-                            top: offset.top + $(this).outerHeight(),
-                            left: offset.left,
-                            width: $(this).outerWidth()
-                        }).toggle();
-                    });
-
-                    // Cerrar menú al hacer clic fuera
-                    $(document).on('click', function (e) {
-                        if (!$(e.target).closest('#excel-filter-costos, button').length) {
-                            menu.hide();
-                        }
-                    });
-                }
-            });
-
-        }
-
-        // 🔄 Cargar desde histórico
-        $(document).on("click", "#cargarBtn", function () {
-            let boton = $(this);
-            boton.prop("disabled", true).append('<span class="spinner"></span>');
-
-            $.ajax({
-                url: "{% url 'cargar_presupuesto_general_costos' %}",
-                type: "GET",
-                dataType: "json", // <- importante
-                success: function(resp) {
-                    // si el servidor devuelve {data: [...]}
-                    let datos = Array.isArray(resp) ? resp : resp.data;
-                    loadTable(datos);
-                },
-                error: function(err) {
-                    console.error("Error AJAX:", err);
-                },
-                complete: function() {
-                    boton.prop("disabled", false).find(".spinner").remove();
-                }
-            });
-        });
-
-        // 💾 Guardar cambios
-        $(document).on("click", "#guardarBtn", function () {
-            if (!table) return;
-            let boton = $(this);
-            boton.prop("disabled", true).append('<span class="spinner"></span>');
-            let data = unpivotData(table.rows().data().toArray());
-
-            $.ajax({
-                url: "{% url 'guardar_presupuesto_general_costos' %}",
-                type: "POST",
-                data: JSON.stringify(data),
-                contentType: "application/json",
-                headers: { "X-CSRFToken": "{{ csrf_token }}" },
-                success: function(resp) { 
-                    // si el servidor devuelve {data: [...]}
-                    let datos = Array.isArray(resp) ? resp : resp.data;
-                    loadTable(datos); 
-                },
-                complete: function() {
-                    boton.prop("disabled", false).find(".spinner").remove();
-                }
-            });
-        });
-
-        // Primera carga automática
-        $.ajax({
-            url: "{% url 'obtener_presupuesto_general_costos' %}",
-            type: "GET",
-            dataType: "json",
-            success: function(resp) {
-                let datos = Array.isArray(resp) ? resp : resp.data;
-                loadTable(datos);
-            }
-        });
+    const tabla = new PresupuestoTable({
+        container: 'tablaGeneralCostos',
+        exportFileName: 'Presupuesto_General_Costos',
+        emptyMessage: 'No hay datos cargados todavía',
+        pivot: (data) => PresupuestoUtils.pivotByMonth(data, GROUP_FIELDS, EXTRA_FIELDS),
+        columns: [
+            { key: 'year', label: 'Año', type: 'text', filterable: true },
+            ...PresupuestoUtils.columnasMeses(),
+            { key: 'total_year', label: 'Total Año', type: 'number' },
+            { key: 'variacion_valor', label: 'Variación Valor', type: 'number' },
+            { key: 'variacion_pct', label: 'Variación %', type: 'percent' },
+        ],
     });
+
+    async function cargarDatos() {
+        await PresupuestoUtils.conLoader('tablaGeneralCostos', 'Calculando costos…', async () => {
+            const datos = await PresupuestoUtils.getJSON("{% url 'obtener_presupuesto_general_costos' %}");
+            tabla.setData(datos);
+        });
+    }
+
+    document.getElementById('exportarBtn').addEventListener('click', () => tabla.exportToExcel());
+
+    cargarDatos();
+});
 </script>
 {% endblock %}

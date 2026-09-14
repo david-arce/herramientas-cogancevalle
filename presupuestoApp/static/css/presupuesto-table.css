@@ -1,0 +1,305 @@
+/* =====================================================================
+   presupuesto-table.css
+   Estilos únicos para todas las vistas de presupuesto_comercial.
+   Antes cada plantilla repetía ~60 líneas de CSS casi idénticas
+   (.excel-filter, .excel-filter-btn, botones, spinner, etc.). Ahora
+   se define una sola vez aquí.
+   ===================================================================== */
+
+.bloque-vista {
+    max-width: 100%;
+}
+
+.btn-group {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.pt-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color .15s ease-in-out;
+}
+.pt-btn:hover { background-color: #0069d9; }
+.pt-btn:disabled { opacity: .65; cursor: not-allowed; }
+
+.pt-btn.success { background-color: #28a745; }
+.pt-btn.success:hover { background-color: #218838; }
+
+.pt-btn.secondary { background-color: #6c757d; }
+.pt-btn.secondary:hover { background-color: #5a6268; }
+
+.pt-btn.info { background-color: #17a2b8; }
+.pt-btn.info:hover { background-color: #138496; }
+
+.pt-autosave-status {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6c757d;
+    margin-left: 4px;
+}
+.pt-autosave-status.editando { color: #f0ad4e; }
+.pt-autosave-status.guardando { color: #007bff; }
+.pt-autosave-status.guardado { color: #28a745; }
+.pt-autosave-status.error { color: #dc3545; }
+
+.pt-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, .5);
+    border-top-color: #fff;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pt-spin .7s linear infinite;
+}
+@keyframes pt-spin { to { transform: rotate(360deg); } }
+
+/* ---------------------------------------------------------------- */
+/* Filtros de encabezado tipo "Excel"                                 */
+/* ---------------------------------------------------------------- */
+.pt-filtros-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+.pt-filtros-panel label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* ---------------------------------------------------------------- */
+/* Tabla                                                              */
+/* ---------------------------------------------------------------- */
+.pt-wrapper {
+    max-width: 100%;
+    overflow: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    max-height: 75vh;
+}
+
+table.pt-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.pt-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background-color: #007bff;
+    color: #fff;
+    padding: 9px 10px;
+    text-align: left;
+    font-weight: 600;
+    border-right: 1px solid rgba(255, 255, 255, .15);
+}
+
+.pt-th-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.pt-sort-icon {
+    font-size: 10px;
+    opacity: .85;
+}
+
+.pt-filter-btn {
+    background: rgba(255, 255, 255, .18);
+    border: none;
+    color: #fff;
+    border-radius: 4px;
+    padding: 1px 6px;
+    cursor: pointer;
+    font-size: 11px;
+    line-height: 1.4;
+}
+.pt-filter-btn:hover { background: rgba(255, 255, 255, .35); }
+.pt-filter-btn.active { background: #ffc107; color: #333; }
+
+.pt-table tbody td {
+    border-bottom: 1px solid #eee;
+    padding: 6px 10px;
+    vertical-align: middle;
+    cursor: cell;
+    outline: none;
+}
+
+.pt-table tbody tr:nth-child(even) { background-color: #f8fafc; }
+.pt-table tbody tr:hover { background-color: #eaf3ff; }
+
+.pt-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.pt-table td.editable {
+    background-color: #fffbea;
+}
+.pt-table td.editable:hover { outline: 1px dashed #f0ad4e; outline-offset: -1px; }
+
+/* Celda seleccionada: borde grueso verde, igual que la selección de celda
+   activa en Excel. Se aplica tanto en modo "sólo seleccionada" como en
+   modo edición. */
+.pt-table td.pt-cell-selected {
+    outline: 2px solid #107C41 !important;
+    outline-offset: -1px;
+    position: relative;
+    z-index: 1;
+}
+
+.pt-cell-input {
+    width: 100%;
+    box-sizing: border-box;
+    border: none;
+    border-radius: 0;
+    padding: 3px 5px;
+    font-size: 13px;
+    background: #fff;
+}
+.pt-cell-input:focus { outline: none; }
+
+.pt-empty {
+    text-align: center;
+    color: #888;
+    padding: 24px;
+    font-style: italic;
+}
+
+/* ---------------------------------------------------------------- */
+/* Menú flotante de filtro / visibilidad de columnas                  */
+/* ---------------------------------------------------------------- */
+.pt-filter-menu {
+    position: absolute;
+    display: none;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+    padding: 8px;
+    width: 210px;
+    max-height: 280px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+.pt-filter-menu.open { display: block; }
+
+.pt-filter-menu input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+    padding: 5px 7px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.pt-filter-list label,
+.pt-filter-menu label {
+    display: block;
+    font-size: 12px;
+    padding: 3px 2px;
+    cursor: pointer;
+}
+
+hr.pt-filter-sep {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 6px 0;
+}
+
+.pt-filter-clear {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: transparent;
+    padding: 4px 2px;
+    font-size: 12px;
+    color: #c0392b;
+    cursor: pointer;
+    border-radius: 4px;
+}
+.pt-filter-clear:hover { background: #fdecea; }
+
+.pt-filter-selectall {
+    font-weight: 600;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 4px !important;
+    margin-bottom: 4px;
+}
+
+.pt-filter-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 8px;
+    border-top: 1px solid #eee;
+    padding-top: 6px;
+}
+.pt-filter-actions button {
+    font-size: 12px;
+    border: none;
+    background: #f1f1f1;
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.pt-filter-actions button:hover { background: #e2e2e2; }
+.pt-filter-actions button.pt-filter-ok {
+    background: #007bff;
+    color: #fff;
+    font-weight: 600;
+}
+.pt-filter-actions button.pt-filter-ok:hover { background: #0069d9; }
+
+.pt-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 48px 16px;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.pt-loader__spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: pt-spin 0.8s linear infinite;
+}
+
+@keyframes pt-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pt-loader__spinner { animation-duration: 2s; }
+}
+
+.pt-loader__error {
+    padding: 16px;
+    border: 1px solid #f5c2c0;
+    background: #fdecea;
+    border-radius: 8px;
+    color: #7f1d1d;
+}

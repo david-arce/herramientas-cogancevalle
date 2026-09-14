@@ -1,0 +1,73 @@
+{% extends "presupuesto_comercial/base_presupuesto_comercial.html" %}
+{% load static %}
+
+{% block content %}
+<div class="bloque-vista">
+    <h2>📥 Importar ventas (Excel) a BdVentasComercial</h2>
+    <p>
+        Sube el Excel de ventas detalladas (una fila por documento/ítem,
+        con columnas <code>YYYY</code>, <code>MM</code>, <code>MCNZONA</code>,
+        <code>LINNOMBRE</code>, <code>VGRNOMBRE</code>, <code>SUBTOTAL</code>,
+        <code>COSTO_VTA</code>, etc.). El sistema lo depura y lo consolida
+        automáticamente por año y mes antes de guardarlo.
+    </p>
+
+    <div class="btn-group">
+        <input type="file" id="excelVentasUpload" accept=".xlsx,.xls" style="display:none;">
+        <button type="button" id="uploadVentasBtn" class="pt-btn">📤 Seleccionar y subir Excel</button>
+    </div>
+
+    <div id="resultadoImportacion" style="margin-top:16px;"></div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const resultado = document.getElementById('resultadoImportacion');
+
+    function mostrarResultado(html, exito) {
+        const color = exito ? { bg: '#e9f7ef', borde: '#b7e4c7' } : { bg: '#fdecea', borde: '#f5c2c0' };
+        resultado.innerHTML =
+            `<div style="background:${color.bg};border:1px solid ${color.borde};border-radius:8px;padding:12px;">${html}</div>`;
+    }
+
+    document.getElementById('uploadVentasBtn').addEventListener('click', () => {
+        document.getElementById('excelVentasUpload').click();
+    });
+
+    document.getElementById('excelVentasUpload').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!['xls', 'xlsx'].includes(ext)) {
+            alert('❌ Solo se permiten archivos Excel (.xls o .xlsx)');
+            e.target.value = '';
+            return;
+        }
+
+        const btn = document.getElementById('uploadVentasBtn');
+        const formData = new FormData();
+        formData.append('file', file);
+
+        resultado.innerHTML = '';
+        PresupuestoUtils.withSpinner(btn, async () => {
+            const res = await fetch("{% url 'importar_bd_ventas_comercial' %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': "{{ csrf_token }}" },
+                body: formData,
+            });
+            const texto = await res.text();
+            let data;
+            try { data = JSON.parse(texto); } catch (err) { data = { mensaje: texto }; }
+            if (!res.ok || data.status === 'error') {
+                throw new Error(data.mensaje || 'Error al importar el archivo');
+            }
+            mostrarResultado(data.mensaje, true);
+        }).catch(err => {
+            mostrarResultado('❌ ' + err.message, false);
+        }).finally(() => { e.target.value = ''; });
+    });
+});
+</script>
+{% endblock %}

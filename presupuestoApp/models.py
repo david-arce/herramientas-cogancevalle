@@ -70,6 +70,26 @@ class Producto(models.Model):
     def __str__(self):
         return f"Producto {self.numero} - {self.sku_nom}"
 
+class BdVentasComercial(models.Model):
+    lapso = models.BigIntegerField(db_column='Lapso', blank=True, null=True, db_index=True)
+    centro_de_operacion = models.BigIntegerField(db_column='Centro de Operacion', blank=True, null=True)
+    nombre_centro_de_operacion = models.CharField(db_column='Nombre Centro de Operacion', blank=True, null=True)
+    linea_n1 = models.CharField(db_column='Linea N1', blank=True, null=True)
+    nombre_linea_n1 = models.CharField(db_column='Nombre Linea N1', blank=True, null=True)
+    cliente = models.CharField(db_column='Cliente', blank=True, null=True)
+    nombre_cliente = models.CharField(db_column='Nombre Cliente', blank=True, null=True)
+    clase_cliente = models.CharField(db_column='Clase Cliente', blank=True, null=True)
+    nombre_clase_cliente = models.CharField(db_column='Nombre Clase Cliente', blank=True, null=True)
+    valor_costo = models.FloatField(db_column='Valor Costo', blank=True, null=True)
+    valor_neto = models.FloatField(db_column='Valor Neto', blank=True, null=True)
+
+    class Meta:
+        managed = True
+        db_table = 'bd_ventas_comercial'
+        indexes = [
+            models.Index(fields=['lapso', 'centro_de_operacion']),
+        ]
+
 class BdVentas2020(models.Model):
     lapso = models.BigIntegerField(db_column='Lapso', blank=True, null=True)  # Field name made lowercase.
     centro_de_operacion = models.BigIntegerField(db_column='Centro de Operacion', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.

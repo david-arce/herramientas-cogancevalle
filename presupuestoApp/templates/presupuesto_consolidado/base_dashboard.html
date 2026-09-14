@@ -171,9 +171,15 @@
     <main class="main-content" id="main" tabindex="-1">
       <header class="app-header">
         <div class="breadcrumb" aria-label="Ruta actual de navegación">Dashboard</div>
-        <div class="user-profile" tabindex="0" aria-label="Perfil de usuario">
-          <span class="material-icons">account_circle</span>
-          <span class="user-name">Nicolas</span>
+        
+        <div class="navbar-right">
+          {% if user.is_authenticated %}
+          Hola, {{ user.first_name }} {{ user.last_name }}
+          <form id="logout-form" action="{% url 'logout' %}" method="post" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="button-close-session" style="background-color:#dc3545; color:#fff; border:none; padding:8px 16px; border-radius:6px; cursor:pointer;">Cerrar Sesión</button>
+          </form>
+          {% endif %}
         </div>
       </header>
 
