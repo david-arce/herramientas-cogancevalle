@@ -98,7 +98,8 @@ def calcular_comercial():
 
     df_v = _pronostico_por_linea_centro_segmento('valor_neto', anio_inicio=year_actual - 1)
     df_c = _pronostico_por_linea_centro_segmento('valor_costo', anio_inicio=year_actual - 1)
-
+    if df_v.empty or df_c.empty:
+        return pd.DataFrame()
     df = pd.merge(df_v, df_c, on=CAMPOS_DETALLE + ['year'], suffixes=('_ventas', '_costos'))
     df = df.rename(columns={'suma_ventas': 'ventas', 'suma_costos': 'costos'})
     df = df[df['year'] == year_actual].reset_index(drop=True)
@@ -152,22 +153,24 @@ def calcular_comercial():
 def _participacion_mensual(anio=None):
     """
     % de las ventas anuales de cada (línea, centro, segmento) que cae en
-    cada mes. Antes leía BdVentas2025 hardcodeado; ahora usa el año que
-    se le pase (por defecto el actual, que ya viene completo gracias a la
-    replicación de meses).
+    cada mes. Usa el año pedido; si no tiene datos, cae al último año
+    disponible que sea anterior (antes solo probaba anio - 1).
     """
     from .views import ajustar_porcentaje
 
-    year_actual = timezone.now().year
-    anio = anio or year_actual
+    columnas_vacias = CAMPOS_DETALLE + [
+        'year', 'mes', 'suma', 'total_anual', 'porcentaje_participacion']
 
     df = _historico('valor_neto', CAMPOS_DETALLE)
-    df = df[df['year'] == anio]
-    if df.empty:                       # respaldo: año anterior
-        df = _historico('valor_neto', CAMPOS_DETALLE)
-        df = df[df['year'] == anio - 1]
     if df.empty:
-        return pd.DataFrame(columns=CAMPOS_DETALLE + ['mes', 'porcentaje_participacion'])
+        return pd.DataFrame(columns=columnas_vacias)
+
+    anio = anio or timezone.now().year
+    disponibles = [a for a in sorted(df['year'].unique()) if a <= anio]
+    if not disponibles:
+        return pd.DataFrame(columns=columnas_vacias)
+
+    df = df[df['year'] == disponibles[-1]]
 
     agr = df.groupby(CAMPOS_DETALLE + ['year', 'mes'])['suma'].sum().reset_index()
     totales = (agr.groupby(CAMPOS_DETALLE + ['year'])['suma'].sum()
@@ -176,7 +179,6 @@ def _participacion_mensual(anio=None):
     agr['porcentaje_participacion'] = (
         agr['suma'] / agr['total_anual'] * 100).fillna(0).round().astype(int)
     return agr.groupby(CAMPOS_DETALLE + ['year'], group_keys=False).apply(ajustar_porcentaje)
-
 
 def _proyeccion_mensual_detalle():
     """

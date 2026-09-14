@@ -246,9 +246,10 @@ def exportar_nomina_vertical(request):
 # BUGS_Y_MEJORAS.md 2.13). Con la tabla consolidada, ese mismo criterio
 # se aplica como un filtro de año — se deja como constante para que sea
 # fácil de cambiar en un solo lugar si el negocio decide usar más años.
-ANIO_DETALLE_LINEA = timezone.now().year
-
-CAMPOS_BASE = ['nombre_linea_n1', 'lapso', 'nombre_clase_cliente']
+def _anio_detalle_linea():
+    """Año del detalle por línea. Antes era una constante evaluada al
+    importar el módulo, así que no cambiaba al cruzar de año."""
+    return timezone.now().year
 
 # ----------------------------------------------------------------------
 # Mapeo fijo de código de centro de operación (columna MCNZONA del
@@ -663,6 +664,17 @@ def extraer_anio_mes(df, columna_lapso='lapso'):
     df['mes'] = df[columna_lapso] % 100
     return df
 
+def _merge_costos(df, df_costos, on, columnas):
+    """
+    merge que no revienta si la tabla de costos está vacía: en ese caso
+    pd.DataFrame([]) no tiene columnas y pd.merge(on='year') lanza KeyError.
+    """
+    if df_costos.empty:
+        for col in columnas:
+            df[col] = 0
+        return df
+    return pd.merge(df, df_costos, on=on, how='left')
+
 def indice_por_clave(queryset_values, campos_clave):
     """
     Convierte un queryset .values(...) en un diccionario indexado por
@@ -705,7 +717,7 @@ def cargar_presupuesto_general_ventas(request):
     df_costos = pd.DataFrame(list(
         PresupuestoGeneralCostos.objects.values('year', 'total_year')
     )).rename(columns={'total_year': 'total_year_costos'})
-    df_por_anio = pd.merge(df_por_anio, df_costos, on='year', how='left')
+    df_por_anio = _merge_costos(df_por_anio, df_costos, 'year', ['total_year_costos'])
 
     correlaciones = []
     for mes in range(1, 13):
@@ -809,8 +821,9 @@ def cargar_presupuesto_centro_ventas(request):
     df_costos = pd.DataFrame(list(
         PresupuestoCentroOperacionCostos.objects.values("year", "nombre_centro_operacion", "total_year")
     )).rename(columns={"total_year": "total_year_costos"})
-    df_total_year_centro = pd.merge(
-        df_total_year_centro, df_costos, on=["nombre_centro_operacion", "year"], how="left"
+    df_total_year_centro = _merge_costos(
+        df_total_year_centro, df_costos,
+        ['nombre_centro_operacion', 'year'], ['total_year_costos'],
     )
 
     df_proyeccion = pd.merge(
@@ -911,11 +924,14 @@ def cargar_presupuesto_centro_segmento_ventas(request):
     df_costos = pd.DataFrame(list(
         PresupuestoCentroSegmentoCostos.objects.values("year", "nombre_centro_operacion", "segmento", "total_year")
     )).rename(columns={"total_year": "total_year_costos"})
-    df_total_year = pd.merge(
-        df_total_year, df_costos,
-        left_on=["nombre_centro_de_operacion", "nombre_clase_cliente", "year"],
-        right_on=["nombre_centro_operacion", "segmento", "year"], how="left",
-    ).drop(columns=["nombre_centro_operacion", "segmento"], errors="ignore")
+    if df_costos.empty:
+        df_total_year['total_year_costos'] = 0
+    else:
+        df_total_year = pd.merge(
+            df_total_year, df_costos,
+            left_on=["nombre_centro_de_operacion", "nombre_clase_cliente", "year"],
+            right_on=["nombre_centro_operacion", "segmento", "year"], how="left",
+        ).drop(columns=["nombre_centro_operacion", "segmento"], errors="ignore")
 
     df_proyeccion = pd.merge(
         df_proyeccion,
@@ -1252,14 +1268,14 @@ def obtener_presupuesto_centro_segmento_linea_costos(request):
 def aux_presupuesto_centro_segmento_linea_costos():
     """
     Detalle mensual de costos por línea+centro+segmento del año
-    `ANIO_DETALLE_LINEA`, con el total anual (`total_year`) ya unido.
+    `_anio_detalle_linea`, con el total anual (`total_year`) ya unido.
     La usan tanto la vista de costos como la de ventas (para calcular
     la utilidad).
     """
     df = obtener_ventas_agrupadas(
         'valor_costo',
         ['nombre_linea_n1', 'nombre_clase_cliente', 'nombre_centro_de_operacion', 'lapso'],
-        anio=ANIO_DETALLE_LINEA,
+        anio=_anio_detalle_linea(),
     )
     df = extraer_anio_mes(df)
     df = df.sort_values(
@@ -1282,12 +1298,12 @@ def vista_presupuesto_centro_segmento_linea_costos(request):
 
 # --------------------------PRESUPUESTO CENTRO OPERACION - SEGMENTO - LINEA VENTAS---------------
 def cargar_presupuesto_centro_segmento_linea_ventas(request):
-    year_siguiente = ANIO_DETALLE_LINEA + 1  # antes: literal "2026"
+    year_siguiente = _anio_detalle_linea() + 1  # antes: literal "2026"
 
     df = obtener_ventas_agrupadas(
         'valor_neto',
         ['nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente'],
-        anio=ANIO_DETALLE_LINEA,
+        anio=_anio_detalle_linea(),
     )
     if df.empty:
         return JsonResponse([], safe=False)
@@ -1390,7 +1406,17 @@ def _pronostico_por_linea_centro_segmento(campo_valor, anio_inicio=2020):
         anio_desde=anio_inicio,
     )
     df = extraer_anio_mes(df)
-
+    COLUMNAS_PRONOSTICO = [
+        'nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente',
+        'year', 'suma', 'R2', 'suma_anterior', 'variacion_pct', 'variacion_valor',
+        'variacion_mes', 'variacion_precios', 'crecimiento_comercial',
+        'crecimiento_comercial_mes',
+    ]
+    if df.empty:
+        # Sin ventas en el rango pedido: se devuelve la estructura vacía pero
+        # con todas las columnas, para que los merge() de más abajo y los de
+        # calcular_comercial() no fallen con KeyError.
+        return pd.DataFrame(columns=COLUMNAS_PRONOSTICO)
     df_agrupado = (
         df.groupby(['nombre_linea_n1', 'year', 'nombre_centro_de_operacion', 'nombre_clase_cliente'])['suma']
         .sum().reset_index().sort_values(by=['nombre_linea_n1', 'year'])
@@ -1427,10 +1453,13 @@ def _pronostico_por_linea_centro_segmento(campo_valor, anio_inicio=2020):
             'nombre_clase_cliente': clase, 'R2': round(coef_abs_pct, 2),
         })
     df_correlaciones = pd.DataFrame(correlaciones)
-    df_final = pd.merge(
-        df_final, df_correlaciones,
-        on=['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente'], how='left',
-    )
+    if df_correlaciones.empty:
+        df_final['R2'] = 0.0
+    else:
+        df_final = pd.merge(
+            df_final, df_correlaciones,
+            on=['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente'], how='left',
+        )
 
     df_final['suma_anterior'] = df_final.groupby(
         ['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente']
@@ -1572,39 +1601,11 @@ def ajustar_porcentaje(grupo):
 
 def _obtener_df_participacion_mensual():
     """
-    Lógica común a las 4 funciones "actualizar_presupuesto_*": calcula
-    qué porcentaje de las ventas anuales de cada (línea, centro,
-    segmento) cae en cada mes, usando el histórico 2025. Estaba
-    duplicada casi línea por línea en las 4 funciones; ahora es un
-    solo lugar. Requiere que `ajustar_porcentaje` esté definida en
-    views.py (no se tocó, se sigue usando tal cual).
+    Qué porcentaje de las ventas anuales de cada (línea, centro, segmento)
+    cae en cada mes. La lógica vive en calculo._participacion_mensual, que
+    usa bd_ventas_comercial; antes esta función leía BdVentas2025 fijo.
     """
-    
-    df = pd.DataFrame(list(
-        BdVentas2025.objects.values(
-            'nombre_linea_n1', 'lapso', 'nombre_centro_de_operacion', 'nombre_clase_cliente'
-        ).annotate(suma=Sum('valor_neto'))
-    ))
-    df = extraer_anio_mes(df)
-
-    df_agrupado = df.groupby(
-        ['year', 'mes', 'nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente']
-    )['suma'].sum().reset_index()
-
-    totales_anuales = (
-        df_agrupado.groupby(['year', 'nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente'])['suma']
-        .sum().reset_index().rename(columns={'suma': 'total_anual'})
-    )
-    df_final = df_agrupado.merge(
-        totales_anuales,
-        on=['year', 'nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente'],
-        how='left',
-    )
-    df_final['porcentaje_participacion'] = (df_final['suma'] / df_final['total_anual'] * 100).round().astype(int)
-    df_final = df_final.groupby(
-        ['year', 'nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente'], group_keys=False
-    ).apply(ajustar_porcentaje)
-    return df_final
+    return calculo._participacion_mensual()
 
 def actualizar_presupuesto_general_ventas(request):
     year_actual = timezone.now().year
@@ -2115,7 +2116,6 @@ def exportar_crecimiento_ventas(request):
     return response
 
 def obtener_presupuesto_comercial(request):
-    df = calculo.calcular_comercial()
     return JsonResponse(calculo._a_registros(calculo.calcular_comercial()), safe=False)
 
 def vista_presupuesto_comercial(request):
@@ -7101,7 +7101,7 @@ ORIGENES = {
 }
 
 # Campos que necesita el motor de ambas tablas de detalle
-CAMPOS_DETALLE = ('mcncuenta', 'mcnccosto', 'mcnfecha',
+CAMPOS_DETALLE_CONTABLE = ('mcncuenta', 'mcnccosto', 'mcnfecha',
                   'mcnvaldebi', 'mcnvalcred', 'mcndestino', 'ctanombre')
 
 CUENTAS_OMITIR = ['521020']
@@ -7156,7 +7156,8 @@ def q_cuentas_clave(cuentas=None):
     """Q amplio (por número o por palabra en el nombre) para pre-filtrar en BD."""
     cuentas = list(cuentas or ALIAS_CUENTAS_CLAVE)
     q = Q(mcncuenta__in=cuentas)
-    for palabra in {PALABRA_BUSQUEDA_CLAVE[c] for c in cuentas}:
+    palabras = {PALABRA_BUSQUEDA_CLAVE[c] for c in cuentas if c in PALABRA_BUSQUEDA_CLAVE}
+    for palabra in palabras:
         q |= Q(ctanombre__icontains=palabra)
     return q
 
@@ -7305,7 +7306,7 @@ def calcular_movimientos(origen='ejecutado', sede='total'):
             modelos['cuenta5'].objects
             .filter(**filtro_detalle)
             .exclude(mcncuenta__in=CUENTAS_OMITIR)
-            .values(*CAMPOS_DETALLE)
+            .values(*CAMPOS_DETALLE_CONTABLE)
         )
 
         # Cuentas 4x desde su propia tabla + cuentas clave reconocidas por nombre
@@ -7313,7 +7314,7 @@ def calcular_movimientos(origen='ejecutado', sede='total'):
             modelos['cuenta4'].objects
             .filter(**filtro_detalle)
             .filter(Q(mcncuenta__startswith='4') | q_cuentas_clave())
-            .values(*CAMPOS_DETALLE)
+            .values(*CAMPOS_DETALLE_CONTABLE)
         )
 
         queryset_consolidado = (
@@ -7378,14 +7379,17 @@ def calcular_movimientos(origen='ejecutado', sede='total'):
             else:
                 saldo = vals['total_debito'] - vals['total_credito'] + vals['total_valor']
 
-            nombre = (NOMBRES_ESPECIALES.get(cuenta)
-                      or cuentas_dict.get(cuenta)
-                      or NOMBRES_CUENTAS_CLAVE.get(cuenta)
-                      or 'SIN NOMBRE')
+            especial = NOMBRES_ESPECIALES.get(cuenta)
+            if especial:
+                nombre = especial                       # ya viene bien escrito
+            else:
+                crudo = cuentas_dict.get(cuenta) or NOMBRES_CUENTAS_CLAVE.get(cuenta) or 'SIN NOMBRE'
+                # Solo se normaliza lo que viene TODO EN MAYÚSCULAS desde la base
+                nombre = crudo.capitalize() if crudo.isupper() else crudo
 
             reg = registros[cuenta]
             reg['mcncuenta'] = cuenta
-            reg['ctanombre'] = nombre.capitalize()
+            reg['ctanombre'] = nombre
             reg['meses'][mes] = round(reg['meses'].get(mes, 0) + saldo)
 
         return {'success': True, 'data': registros}
@@ -7435,7 +7439,8 @@ def _responder_movimientos(request, origen):
                 entry['total'] += valor
         filas.append(entry)
 
-    filas.sort(key=lambda item: ORDEN_PERSONALIZADO.index(item['mcncuenta']))
+    posicion = {cta: i for i, cta in enumerate(ORDEN_PERSONALIZADO)}
+    filas.sort(key=lambda item: posicion[item['mcncuenta']])
 
     return JsonResponse({'data': filas,
                          'orden': ORDEN_PERSONALIZADO,
@@ -8411,8 +8416,14 @@ def eliminar_fila_consolidado_total_base(request):
 def _to_bigint(value):
     if value is None or value == '':
         return None
+    if isinstance(value, (int, float)):
+        return int(value)
+    texto = str(value).strip()
+    # Formato colombiano ("1.234.567,89") solo si trae coma decimal
+    if ',' in texto:
+        texto = texto.replace('.', '').replace(',', '.')
     try:
-        return int(float(str(value).replace('.', '').replace(',', '.')))
+        return int(float(texto))
     except (ValueError, TypeError):
         return None
 
@@ -8603,6 +8614,29 @@ def _participacion_ventas_sede(anio_base, sede):
         for mes in range(1, 13)
     }
 
+def _anio_base_sede(sede, anio_pedido=None):
+    """
+    Último año con ventas ejecutadas de ESA sede. Antes se usaba un único
+    año global (el máximo entre todas las sedes), así que si una sede iba
+    más adelantada que el resto, las demás quedaban sin participación.
+    `anio_pedido` actúa como tope: nunca se usa un año posterior.
+    """
+    nombre = SEDE_CONFIG_CONSOLIDADO[sede]['nombre']
+    qs = (
+        ConsolidadoTotalBase.objects
+        .filter(origen='ejecutado', mcnfecha__isnull=False, sede__icontains=nombre)
+        .filter(q_cuentas_clave(CUENTAS_VENTAS))
+    )
+    if anio_pedido:
+        qs = qs.filter(mcnfecha__year__lte=anio_pedido)
+
+    anios = sorted({
+        fecha.year for cta, nom, fecha in
+        qs.values_list('mcncuenta', 'ctanombre', 'mcnfecha').iterator()
+        if resolver_cuenta_clave(cta, nom) in CUENTAS_VENTAS
+    })
+    return anios[-1] if anios else None
+
 def generar_presupuesto_ventas(anio_base=None):
     """
     anio_base: año del ejecutado del que se toma la participación.
@@ -8613,34 +8647,31 @@ def generar_presupuesto_ventas(anio_base=None):
     """
     anio_ppto = timezone.now().year + 1
 
-    if anio_base is None:
-        candidatas = (
-            ConsolidadoTotalBase.objects
-            .filter(origen='ejecutado', mcnfecha__isnull=False)
-            .filter(q_cuentas_clave(CUENTAS_VENTAS))
-            .order_by('-mcnfecha')
-            .values_list('mcncuenta', 'ctanombre', 'mcnfecha')
-        )
-        ultima_fecha = next(
-            (fecha for cta, nom, fecha in candidatas.iterator()
-             if resolver_cuenta_clave(cta, nom) in CUENTAS_VENTAS),
-            None,
-        )
-        if not ultima_fecha:
-            raise ValueError('No hay ventas ejecutadas en ConsolidadoTotalBase')
-        anio_base = ultima_fecha.year
-
     proyeccion = _proyeccion_ventas_por_centro()
     if not proyeccion:
+        year_actual = timezone.now().year
+        hay_recientes = BdVentasComercial.objects.filter(lapso__gte=(year_actual - 1) * 100 + 1).exists()
+        if not hay_recientes:
+            raise ValueError(
+                f'No hay ventas en bd_ventas_comercial desde {year_actual - 1}. '
+                f'Vuelve a importar el Excel de ventas comercial para poder proyectar {anio_ppto}.'
+            )
         raise ValueError(f'No hay proyección de ventas por centro de operación para {anio_ppto}')
 
     nuevos, procesadas, omitidas = [], [], {}
-    participacion_resp, detalle_resp = {}, {}
+    participacion_resp, detalle_resp, anios_usados = {}, {}, {}
 
     for sede, centro in SEDE_CENTRO_OPERACION.items():
-        participacion = _participacion_ventas_sede(anio_base, sede)
+        anio_sede = _anio_base_sede(sede, anio_base)
+        if anio_sede is None:
+            omitidas[sede] = (
+                f'sin ventas ejecutadas hasta {anio_base}' if anio_base
+                else 'sin ventas ejecutadas en ConsolidadoTotalBase'
+            )
+            continue
+        participacion = _participacion_ventas_sede(anio_sede, sede)
         if participacion is None:
-            omitidas[sede] = f'sin ventas ejecutadas en {anio_base}'
+            omitidas[sede] = f'sin ventas ejecutadas en {anio_sede}'
             continue
 
         proy_centro = proyeccion.get(centro, {})
@@ -8677,6 +8708,7 @@ def generar_presupuesto_ventas(anio_base=None):
                 ))
 
         procesadas.append(sede)
+        anios_usados[sede] = anio_sede
         participacion_resp[sede] = {
             MESES_ES[m]: {cta: round(p * 100, 4) for cta, p in pcts.items()}
             for m, pcts in participacion.items()
@@ -8717,7 +8749,7 @@ def generar_presupuesto_ventas(anio_base=None):
         ConsolidadoTotalBase.objects.bulk_create(nuevos)
 
     return {
-        'anio_base': anio_base,
+        'anio_base': anios_usados,
         'anio_presupuesto': anio_ppto,
         'registros': len(nuevos),
         'sedes_procesadas': procesadas,
