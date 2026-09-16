@@ -1,228 +1,43 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Comisiones</title>
-    <!-- DataTables CSS -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <!-- DataTables JS -->
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <!-- Select2 (para búsqueda dentro de select) -->
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <!-- 🔹 FixedHeader CSS -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
-    <!-- 🔹 FixedHeader JS -->
-    <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
+{% extends "presupuesto_nomina/base_tabla.html" %}
+{% comment %}
+  Tabla principal (datos definitivos).
+  Toda la mecánica (tabla, filtros, edición, totales, exportación, guardado)
+  vive en static/js/presupuesto_tabla.js. Aquí solo va la configuración.
+{% endcomment %}
 
-    <link rel="stylesheet" href="{% static 'css/nomina_principal.css' %}">
-</head>
-<body>
-    <h2>Presupuesto Nómina - seguridad social</h2>
-    <!-- Contenedor de botones -->
-    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-        <button id="btnTabla">Ir a tabla auxiliar de seguridad social</button>
-        <button id="btnHome"> Inicio</button>
-        <button id="btnBorrar" style="background-color:#dc3545; padding:8px 16px; border:none; color:white; border-radius:6px; cursor:pointer;">
-            Borrar Presupuesto
-        </button>
-    </div>
-    <table id="presupuestoTable" class="display">
-        <thead>
-            <tr>
-                <th>Nombre</th>
-                <th>Centro</th>
-                <th>Area</th>
-                <th>Concepto</th>
-                <th>Enero</th>
-                <th>Febrero</th>
-                <th>Marzo</th>
-                <th>Abril</th>
-                <th>Mayo</th>
-                <th>Junio</th>
-                <th>Julio</th>
-                <th>Agosto</th>
-                <th>Septiembre</th>
-                <th>Octubre</th>
-                <th>Noviembre</th>
-                <th>Diciembre</th>
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tfoot>
-            <tr>
-                <th colspan="16" style="text-align:right">Total visible:</th>
-                <th id="footer-total">0</th>
-            </tr>
-        </tfoot>
-    </table>
+{% block titulo %}Presupuesto Nómina - Seguridad social{% endblock %}
 
-    <script>   
-        $(document).ready(function () {
-            // Botón Ir al inicio
-            document.getElementById("btnHome").addEventListener("click", function () {
-                window.location.href = "{% url 'presupuestoNomina' %}";
-            });
-            function numberFormat(data, type, row) {
-                if (type === 'display' && !isNaN(data)) {
-                    return new Intl.NumberFormat('es-ES').format(data);
-                }
-            return data;
-            }
-            let table = $('#presupuestoTable').DataTable({
-                ajax: {url: '{% url "obtener_presupuesto_seguridad_social" %}',
-                },
-                columns: [
-                    { data: "nombre" },
-                    { data: "centro" },
-                    { data: "area" },
-                    { data: "concepto"},
-                    { data: "enero", render: numberFormat },
-                    { data: "febrero", render: numberFormat },
-                    { data: "marzo", render: numberFormat },
-                    { data: "abril", render: numberFormat },
-                    { data: "mayo", render: numberFormat },
-                    { data: "junio", render: numberFormat },
-                    { data: "julio", render: numberFormat },
-                    { data: "agosto", render: numberFormat },
-                    { data: "septiembre", render: numberFormat },
-                    { data: "octubre", render: numberFormat },
-                    { data: "noviembre", render: numberFormat },
-                    { data: "diciembre", render: numberFormat },
-                    { data: "total", render: numberFormat },
-                ],
-                footerCallback: function (row, data, start, end, display) {
-                    let api = this.api();
+{% block barra %}
+  {% include "presupuesto_nomina/_barra_principal.html" with texto_ir="Ir a la tabla auxiliar de seguridad social" %}
+{% endblock %}
 
-                    // 🔹 Convierte valores a números (limpia formato)
-                    let intVal = function (i) {
-                        return typeof i === 'string'
-                            ? parseFloat(i.replace(/[\$,.]/g, '').replace(',', '.')) || 0
-                            : typeof i === 'number'
-                                ? i
-                                : 0;
-                    };
+{% block datos %}
+  {% if centros %}{{ centros|json_script:"opt-centros" }}{% endif %}
+  {% if areas %}{{ areas|json_script:"opt-areas" }}{% endif %}
+  {% if cargos %}{{ cargos|json_script:"opt-cargos" }}{% endif %}
+{% endblock %}
 
-                    // 🔹 Nombres de columnas numéricas (ajusta si cambia el orden)
-                    let columnasMeses = [
-                        "enero","febrero","marzo","abril","mayo","junio",
-                        "julio","agosto","septiembre","octubre","noviembre","diciembre"
-                    ];
+{% block script %}
+  const opciones = {
+    centros: PT.listaJSON('opt-centros'),
+    areas:   PT.listaJSON('opt-areas'),
+    cargos:  PT.listaJSON('opt-cargos')
+  };
 
-                    // 🔹 Mapeo: nombre de columna → índice en la tabla
-                    let colIndex = {};
-                    api.columns().every(function(idx) {
-                        let name = api.column(idx).dataSrc();
-                        if (columnasMeses.includes(name)) {
-                            colIndex[name] = idx;
-                        }
-                        if (name === "total") {
-                            colIndex["total"] = idx;
-                        }
-                    });
+  const tabla = new PT.TablaPresupuesto({
+    montaje: '#tabla',
+    urlDatos: "{% url 'obtener_presupuesto_seguridad_social' %}",
+    columnas: PT.Columnas.estandar({ cedula: false, cargo: false, opciones: opciones }),
+    editable: false,
+    acciones: [],
+    seleccionable: false,
+    nombreArchivo: 'seguridad_social'
+  });
 
-                    // 🔹 Calcular total visible por cada mes
-                    let totalesMeses = {};
-                    columnasMeses.forEach(mes => {
-                        totalesMeses[mes] = api
-                            .column(colIndex[mes], { search: 'applied' })
-                            .data()
-                            .reduce((a, b) => a + intVal(b), 0);
-                    });
-
-                    // 🔹 Calcular total visible general
-                    let totalVisible = api
-                        .column(colIndex["total"], { search: 'applied' })
-                        .data()
-                        .reduce((a, b) => a + intVal(b), 0);
-
-                    // 🔹 Construir fila de totales
-                    let footerCells = [];
-                    for (let i = 0; i < api.columns().count(); i++) {
-                        let name = api.column(i).dataSrc();
-                        if (columnasMeses.includes(name)) {
-                            footerCells.push(new Intl.NumberFormat('es-ES').format(totalesMeses[name]));
-                        } else if (name === "total") {
-                            footerCells.push(new Intl.NumberFormat('es-ES').format(totalVisible));
-                        } else {
-                            footerCells.push(""); // columnas sin total
-                        }
-                    }
-
-                    // 🔹 Aplicar al footer (si existe)
-                    let $footerRow = $(api.table().footer()).find('tr');
-                    if ($footerRow.length === 0) {
-                        // crear si no existe
-                        $footerRow = $('<tr>').appendTo($(api.table().footer()));
-                    }
-
-                    $footerRow.empty();
-                    footerCells.forEach((cellValue, idx) => {
-                        let th = $('<th style="text-align:right;">').html(cellValue);
-                        $footerRow.append(th);
-                    });
-
-                    // 🔹 Primera columna con texto “Totales:”
-                    $footerRow.find('th').eq(1).html("<strong>Totales visibles:</strong>");
-                },
-                language: {
-                    url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
-                },
-                paging: false,
-            });
-            // Función para mostrar toasts
-            function showToast(message, type = "success", duration = 3000) {
-                let container = document.getElementById("toastContainer");
-
-                // Crear toast
-                let toast = document.createElement("div");
-                toast.className = `toast ${type}`;
-                toast.textContent = message;
-
-                // Insertar en el contenedor
-                container.appendChild(toast);
-
-                // Forzar reflow para animación
-                setTimeout(() => toast.classList.add("show"), 50);
-
-                // Ocultar y eliminar después de "duration"
-                setTimeout(() => {
-                    toast.classList.remove("show");
-                    setTimeout(() => toast.remove(), 500); // eliminar después de animación
-                }, duration);
-            }
-
-            // Botón Ir a la tabla de sueldos
-            document.getElementById("btnTabla").addEventListener("click", function () {
-                window.location.href = "{% url 'tabla_auxiliar_seguridad_social' %}";
-            });
-
-            // 🔴 Botón para borrar PresupuestoNomina
-            $("#btnBorrar").on("click", function () {
-                if (!confirm("⚠️ ¿Estás seguro de borrar todo el presupuesto? Esta acción no se puede deshacer.")) {
-                    return;
-                }
-
-                $.ajax({
-                    url: "{% url 'borrar_presupuesto_seguridad_social' %}", // 🔥 Nueva vista Django
-                    type: "POST",
-                    headers: { "X-CSRFToken": $("meta[name='csrf-token']").attr("content") },
-                    success: function (response) {
-                        showToast("Presupuesto eliminado correctamente ✅", "success");
-                        table.ajax.reload(null, false); // recarga sin perder paginación
-                    },
-                    error: function (xhr) {
-                        showToast("Error al borrar ❌: " + xhr.responseText, "error");
-                    }
-                });
-            });
-                    
-        });
-        
-
-    </script>
-</body>
-</html>
+  PT.conectarBarra(tabla, {
+    datos:  "{% url 'obtener_presupuesto_seguridad_social' %}",
+    borrar: "{% url 'borrar_presupuesto_seguridad_social' %}",
+    ir:     "{% url 'tabla_auxiliar_seguridad_social' %}",
+    inicio: "{% url 'presupuestoNomina' %}"
+  });
+{% endblock %}

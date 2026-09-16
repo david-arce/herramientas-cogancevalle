@@ -1,17 +1,15 @@
 from collections import defaultdict
 import datetime
-from decimal import Decimal, ROUND_DOWN
-from itertools import chain
-from pyexpat.errors import messages
+from functools import lru_cache
 import re
 import unicodedata
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 import pandas as pd
-from .models import BdVentas2020, BdVentas2021, BdVentas2022, BdVentas2023, BdVentas2024, BdVentas2025, BdVentasComercial, ComentarioComparativo, Cuenta4Base, Cuenta4Presupuestado, OrdenCuenta, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoBolsaConsumibles, PresupuestoBolsaConsumiblesAux, PresupuestoAuxilioTBCKIT, PresupuestoAuxilioTCBKITAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado, PresupuestoServiciosTecnicos, PresupuestoServiciosTecnicosAux, PresupuestoServiciosTecnicosAprobado, PresupuestoLogistica, PresupuestoLogisticaAux, PresupuestoLogisticaAprobado, PresupuestoGestionRiesgos, PresupuestoGestionRiesgosAux, PresupuestoGestionRiesgosAprobado, PresupuestoGH, PresupuestoGHAux, PresupuestoGHAprobado, PresupuestoAlmacenTulua, PresupuestoAlmacenTuluaAux, PresupuestoAlmacenTuluaAprobado, PresupuestoAlmacenBuga, PresupuestoAlmacenBugaAux, PresupuestoAlmacenBugaAprobado, PresupuestoAlmacenCartago, PresupuestoAlmacenCartagoAux, PresupuestoAlmacenCartagoAprobado, PresupuestoAlmacenCali, PresupuestoAlmacenCaliAux, PresupuestoAlmacenCaliAprobado, PresupuestoComunicaciones, PresupuestoComunicacionesAux, PresupuestoComunicacionesAprobado, PresupuestoComercialCostos, PresupuestoComercialCostosAux, PresupuestoComercialCostosAprobado, PresupuestoContabilidad, PresupuestoContabilidadAux, PresupuestoContabilidadAprobado, PresupuestoGerencia, PresupuestoGerenciaAux, PresupuestoGerenciaAprobado, Cuenta5, Cuenta5Base, PresupuestoCentroSegLineaCostos, PresupuestoCentroSegLineaVentas, ConsolidadoTotalBase, Cuenta5Presupuestado
+from .models import BdVentasComercial, ComentarioComparativo, Cuenta4Base, Cuenta4Presupuestado, OrdenCuenta, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoBolsaConsumibles, PresupuestoBolsaConsumiblesAux, PresupuestoAuxilioTBCKIT, PresupuestoAuxilioTCBKITAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado, PresupuestoServiciosTecnicos, PresupuestoServiciosTecnicosAux, PresupuestoServiciosTecnicosAprobado, PresupuestoLogistica, PresupuestoLogisticaAux, PresupuestoLogisticaAprobado, PresupuestoGestionRiesgos, PresupuestoGestionRiesgosAux, PresupuestoGestionRiesgosAprobado, PresupuestoGH, PresupuestoGHAux, PresupuestoGHAprobado, PresupuestoAlmacenTulua, PresupuestoAlmacenTuluaAux, PresupuestoAlmacenTuluaAprobado, PresupuestoAlmacenBuga, PresupuestoAlmacenBugaAux, PresupuestoAlmacenBugaAprobado, PresupuestoAlmacenCartago, PresupuestoAlmacenCartagoAux, PresupuestoAlmacenCartagoAprobado, PresupuestoAlmacenCali, PresupuestoAlmacenCaliAux, PresupuestoAlmacenCaliAprobado, PresupuestoComunicaciones, PresupuestoComunicacionesAux, PresupuestoComunicacionesAprobado, PresupuestoComercialCostos, PresupuestoComercialCostosAux, PresupuestoComercialCostosAprobado, PresupuestoContabilidad, PresupuestoContabilidadAux, PresupuestoContabilidadAprobado, PresupuestoGerencia, PresupuestoGerenciaAux, PresupuestoGerenciaAprobado, Cuenta5, Cuenta5Base, PresupuestoCentroSegLineaCostos, PresupuestoCentroSegLineaVentas, ConsolidadoTotalBase, Cuenta5Presupuestado
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.db.models.functions import Concat
-from django.db.models import Sum, Max, Q
+from django.db.models import Sum, Max, Q, Avg
 from django.db import transaction
 import numpy as np
 import json
@@ -19,77 +17,7 @@ from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.db import models
 from django.core.paginator import Paginator
-import calendar
-from django.db.models.functions import ExtractMonth, ExtractYear
 from django.views.decorators.http import require_http_methods, require_GET, require_POST
-
-def exportar_excel_nomina(request):
-    # Obtener datos de cada tabla
-    nomina = list(PresupuestoSueldos.objects.values())
-    comisiones = list(PresupuestoComisiones.objects.values())
-    horas_extra = list(PresupuestoHorasExtra.objects.values())
-    auxlio_transporte = list(PresupuestoAuxilioTransporte.objects.values())
-    medios_transporte = list(PresupuestoMediosTransporte.objects.values())
-    ayuda_transporte = list(PresupuestoAyudaTransporte.objects.values())
-    cesantias = list(PresupuestoCesantias.objects.values())
-    intereses_cesantias = list(PresupuestoInteresesCesantias.objects.values())  
-    prima = list(PresupuestoPrima.objects.values())
-    vacaciones = list(PresupuestoVacaciones.objects.values())
-    bonificaciones = list(PresupuestoBonificaciones.objects.values())
-    auxilio_movilidad = list(PresupuestoBolsaConsumibles.objects.values())
-    aprendiz = list(PresupuestoAprendiz.objects.values())
-    auxilio_TBCKIT = list(PresupuestoAuxilioTBCKIT.objects.values())
-    auxilio_educacion = list(PresupuestoAuxilioEducacion.objects.values())
-    bonificaciones_foco = list(PresupuestoBonificacionesFoco.objects.values())
-    bonos_kyrovet = list(PresupuestoBonosKyrovet.objects.values())
-    seguridad_social = list(PresupuestoSeguridadSocial.objects.values())
-
-    # Crear DataFrames con columna de origen
-    def prepare_df(data, origen):
-        df = pd.DataFrame(data)
-        if not df.empty:
-            df["origen"] = origen
-            # 🔹 Asegurar que no haya datetime con timezone
-            for col in df.select_dtypes(include=["datetimetz"]).columns:
-                df[col] = df[col].dt.tz_localize(None)
-        return df
-
-    df_nomina = prepare_df(nomina, "Nomina")
-    df_comisiones = prepare_df(comisiones, "Comisiones")
-    df_horas_extra = prepare_df(horas_extra, "Horas Extra")
-    df_auxilio_transporte = prepare_df(auxlio_transporte, "Auxilio Transporte")
-    df_medios_transporte = prepare_df(medios_transporte, "Medios Transporte")
-    df_ayuda_transporte = prepare_df(ayuda_transporte, "Ayuda Transporte")
-    df_cesantias = prepare_df(cesantias, "Cesantías")
-    df_intereses_cesantias = prepare_df(intereses_cesantias, "Intereses Cesantías")
-    df_prima = prepare_df(prima, "Prima")
-    df_vacaciones = prepare_df(vacaciones, "Vacaciones")
-    df_bonificaciones = prepare_df(bonificaciones, "Bonificaciones")
-    df_auxilio_movilidad = prepare_df(auxilio_movilidad, "Auxilio Movilidad")
-    df_aprendiz = prepare_df(aprendiz, "Aprendiz")
-    df_auxilio_TBCKIT = prepare_df(auxilio_TBCKIT, "Auxilio Movilidad")
-    df_auxilio_educacion = prepare_df(auxilio_educacion, "Auxilio Educación")
-    df_bonificaciones_foco = prepare_df(bonificaciones_foco, "Bonificaciones Foco")
-    df_bonos_kyrovet = prepare_df(bonos_kyrovet, "Bonos Kyrovet")
-    df_seguridad_social = prepare_df(seguridad_social, "Seguridad Social")
-
-    # Concatenar todos en un solo DataFrame
-    df_final = pd.concat(
-        [df_nomina, df_comisiones, df_horas_extra, df_auxilio_transporte, df_medios_transporte, df_ayuda_transporte, df_cesantias, df_intereses_cesantias, df_prima, df_vacaciones, df_bonificaciones, df_auxilio_movilidad, df_aprendiz, df_auxilio_TBCKIT, df_auxilio_educacion, df_bonificaciones_foco, df_bonos_kyrovet, df_seguridad_social],
-        ignore_index=True
-    )
-
-    # Crear la respuesta HTTP para Excel
-    response = HttpResponse(
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-    response["Content-Disposition"] = 'attachment; filename="Presupuestos_Todo.xlsx"'
-
-    # Exportar a una sola hoja
-    with pd.ExcelWriter(response, engine="openpyxl") as writer:
-        df_final.to_excel(writer, sheet_name="Presupuestos", index=False)
-
-    return response
 
 @login_required
 def dashboard_home(request):
@@ -97,148 +25,6 @@ def dashboard_home(request):
     if request.user.username not in USUARIOS_PERMITIDOS:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     return render(request, 'presupuesto_consolidado/dashboard_presupuestos.html')
-
-def exportar_excel_presupuestos(request):
-    # Obtener datos de cada tabla
-    tecnologia = PresupuestotecnologiaAprobado.objects.values()
-    servicios_tecnicos = PresupuestoServiciosTecnicosAprobado.objects.values()
-    logistica = PresupuestoLogisticaAprobado.objects.values()
-    gestion_riesgos = PresupuestoGestionRiesgosAprobado.objects.values()
-    gh = PresupuestoGHAprobado.objects.values()
-    almacen_tulua = PresupuestoAlmacenTuluaAprobado.objects.values()
-    almacen_buga = PresupuestoAlmacenBugaAprobado.objects.values()
-    almacen_cartago = PresupuestoAlmacenCartagoAprobado.objects.values()
-    almacen_cali = PresupuestoAlmacenCaliAprobado.objects.values()
-    comunicaciones = PresupuestoComunicacionesAprobado.objects.values()
-    comercial_costos = PresupuestoComercialCostosAprobado.objects.values()
-    contabilidad = PresupuestoContabilidadAprobado.objects.values()
-    gerencia = PresupuestoGerenciaAprobado.objects.values()
-    salud_ocupacional = PresupuestoOcupacionalAprobado.objects.values()
-    
-    # filtrar por ultima version todas las tablas
-    tecnologia = tecnologia.filter(version=tecnologia.aggregate(Max('version'))['version__max'])
-    servicios_tecnicos = servicios_tecnicos.filter(version=servicios_tecnicos.aggregate(Max('version'))['version__max'])
-    logistica = logistica.filter(version=logistica.aggregate(Max('version'))['version__max'])
-    gestion_riesgos = gestion_riesgos.filter(version=gestion_riesgos.aggregate(Max('version'))['version__max'])
-    gh = gh.filter(version=gh.aggregate(Max('version'))['version__max'])
-    almacen_tulua = almacen_tulua.filter(version=almacen_tulua.aggregate(Max('version'))['version__max'])
-    almacen_buga = almacen_buga.filter(version=almacen_buga.aggregate(Max('version'))['version__max'])
-    almacen_cartago = almacen_cartago.filter(version=almacen_cartago.aggregate(Max('version'))['version__max'])
-    almacen_cali = almacen_cali.filter(version=almacen_cali.aggregate(Max('version'))['version__max'])
-    comunicaciones = comunicaciones.filter(version=comunicaciones.aggregate(Max('version'))['version__max'])
-    comercial_costos = comercial_costos.filter(version=comercial_costos.aggregate(Max('version'))['version__max'])
-    contabilidad = contabilidad.filter(version=contabilidad.aggregate(Max('version'))['version__max'])
-    gerencia = gerencia.filter(version=gerencia.aggregate(Max('version'))['version__max'])
-    salud_ocupacional = salud_ocupacional.filter(version=salud_ocupacional.aggregate(Max('version'))['version__max'])
-    
-    # Crear DataFrames con columna de origen
-    def prepare_df(data, origen):
-        df = pd.DataFrame(data)
-        if not df.empty:
-            df["origen"] = origen # Agregar columna de origen
-        return df
-    df_tecnologia = prepare_df(tecnologia, "Tecnología")
-    df_servicios_tecnicos = prepare_df(servicios_tecnicos, "Servicios Técnicos")
-    df_logistica = prepare_df(logistica, "Logística")
-    df_gestion_riesgos = prepare_df(gestion_riesgos, "Gestión de Riesgos")
-    df_gh = prepare_df(gh, "GH")
-    df_almacen_tulua = prepare_df(almacen_tulua, "Almacén Tuluá")
-    df_almacen_buga = prepare_df(almacen_buga, "Almacén Buga")
-    df_almacen_cartago = prepare_df(almacen_cartago, "Almacén Cartago")
-    df_almacen_cali = prepare_df(almacen_cali, "Almacén Cali")
-    df_comunicaciones = prepare_df(comunicaciones, "Comunicaciones")
-    df_comercial_costos = prepare_df(comercial_costos, "Comercial Gastos")
-    df_contabilidad = prepare_df(contabilidad, "Contabilidad") 
-    df_gerencia = prepare_df(gerencia, "Gerencia")
-    df_salud_ocupacional = prepare_df(salud_ocupacional, "Salud Ocupacional")
-    
-    # Concatenar todos en un solo DataFrame
-    df_final = pd.concat(
-        [df_tecnologia, df_servicios_tecnicos, df_logistica, df_gestion_riesgos, df_gh, df_almacen_tulua, df_almacen_buga, df_almacen_cartago, df_almacen_cali, df_comunicaciones, df_comercial_costos, df_contabilidad, df_gerencia, df_salud_ocupacional],
-        ignore_index=True
-    )
-    
-    # pivot de columna que son meses a filas (enero, febrero, marzo, abril, mayo, junio, julio, agosto, septiembre, octubre, noviembre, diciembre) 
-    meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-    df_final = df_final.melt(id_vars=[col for col in df_final.columns if col not in meses], value_vars=meses, var_name='mes', value_name='valor')
-    
-    # Crear la respuesta HTTP para Excel
-    response = HttpResponse(
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-    response["Content-Disposition"] = 'attachment; filename="Presupuestos_Todo.xlsx"'
-    # Exportar a una sola hoja
-    with pd.ExcelWriter(response, engine="openpyxl") as writer:
-        df_final.to_excel(writer, sheet_name="Presupuestos", index=False)
-    return response
-
-def exportar_nomina_vertical(request):
-    nomina = PresupuestoSueldos.objects.values()
-    comisiones = PresupuestoComisiones.objects.values()
-    horas_extra = PresupuestoHorasExtra.objects.values()
-    auxlio_transporte = PresupuestoAuxilioTransporte.objects.values()
-    medios_transporte = PresupuestoMediosTransporte.objects.values()
-    ayuda_transporte = PresupuestoAyudaTransporte.objects.values()
-    cesantias = PresupuestoCesantias.objects.values()
-    intereses_cesantias = PresupuestoInteresesCesantias.objects.values()
-    prima = PresupuestoPrima.objects.values()
-    vacaciones = PresupuestoVacaciones.objects.values()
-    bonificaciones = PresupuestoBonificaciones.objects.values()
-    auxilio_movilidad = PresupuestoBolsaConsumibles.objects.values()
-    aprendiz = PresupuestoAprendiz.objects.values()
-    auxilio_TBCKIT = PresupuestoAuxilioTBCKIT.objects.values()
-    auxilio_educacion = PresupuestoAuxilioEducacion.objects.values()
-    bonificaciones_foco = PresupuestoBonificacionesFoco.objects.values()
-    bonos_kyrovet = PresupuestoBonosKyrovet.objects.values()
-    seguridad_social = PresupuestoSeguridadSocial.objects.values()
-    
-    # crear dataframes con columna de origen
-    def prepare_df(data, origen):
-        df = pd.DataFrame(data)
-        if not df.empty:
-            df["origen"] = origen
-            # asegurar que no haya datetime con timezone
-            for col in df.select_dtypes(include=["datetimetz"]).columns:
-                df[col] = df[col].dt.tz_localize(None)
-        return df
-    
-    df_nomina = prepare_df(nomina, "Sueldos")
-    df_comisiones = prepare_df(comisiones, "Comisiones")
-    df_horas_extra = prepare_df(horas_extra, "Horas Extra")
-    df_auxilio_transporte = prepare_df(auxlio_transporte, "Auxilio Transporte")
-    df_medios_transporte = prepare_df(medios_transporte, "Medios Transporte")
-    df_ayuda_transporte = prepare_df(ayuda_transporte, "Ayuda Transporte")
-    df_cesantias = prepare_df(cesantias, "Cesantías")
-    df_intereses_cesantias = prepare_df(intereses_cesantias, "Intereses Cesantías")
-    df_prima = prepare_df(prima, "Prima")
-    df_vacaciones = prepare_df(vacaciones, "Vacaciones")
-    df_bonificaciones = prepare_df(bonificaciones, "Bonificaciones")
-    df_auxilio_movilidad = prepare_df(auxilio_movilidad, "Auxilio Movilidad")
-    df_aprendiz = prepare_df(aprendiz, "Aprendiz")
-    df_auxilio_TBCKIT = prepare_df(auxilio_TBCKIT, "Auxilio Movilidad")
-    df_auxilio_educacion = prepare_df(auxilio_educacion, "Auxilio Educación")
-    df_bonificaciones_foco = prepare_df(bonificaciones_foco, "Bonificaciones Foco")
-    df_bonos_kyrovet = prepare_df(bonos_kyrovet, "Bonos Kyrovet")
-    df_seguridad_social = prepare_df(seguridad_social, "Seguridad Social")
-    
-    # concatenar todos en un solo dataframe
-    df_final = pd.concat(
-        [df_nomina, df_comisiones, df_horas_extra, df_auxilio_transporte, df_medios_transporte, df_ayuda_transporte, df_cesantias, df_intereses_cesantias, df_prima, df_vacaciones, df_bonificaciones, df_auxilio_movilidad, df_aprendiz, df_auxilio_TBCKIT, df_auxilio_educacion, df_bonificaciones_foco, df_bonos_kyrovet, df_seguridad_social],
-        ignore_index=True
-    )
-    # pivot de columna que son meses a filas (enero, febrero, marzo, abril, mayo, junio, julio, agosto, septiembre, octubre, noviembre, diciembre)
-    meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-    df_final = df_final.melt(id_vars=[col for col in df_final.columns if col not in meses], value_vars=meses, var_name='mes', value_name='valor')
-    
-    # Crear la respuesta HTTP para Excel
-    response = HttpResponse(
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-    response["Content-Disposition"] = 'attachment; filename="Presupuesto_Nomina_Vertical.xlsx"'
-    # Exportar a una sola hoja
-    with pd.ExcelWriter(response, engine="openpyxl") as writer:
-        df_final.to_excel(writer, sheet_name="Presupuesto Nómina", index=False)
-    return response
 
 # --------------COMERCIAL------------------------------------
 # Las vistas "por línea" (centro+segmento+línea) y el cálculo de
@@ -2122,4127 +1908,984 @@ def vista_presupuesto_comercial(request):
     return render(request, 'presupuesto_comercial/presupuesto_comercial_final.html')
 
 #  ---------------------NOMINA-------------------------------------------------------------
-def presupuestoNomina(request):
-    # Obtener o crear registro de parámetros
-    parametros, created = ParametrosPresupuestos.objects.get_or_create(id=1)
+# ══════════════════════════════════════════════════════════════════════
+#  Constantes y utilidades
+# ══════════════════════════════════════════════════════════════════════
 
-    # --- AJAX ---
-    if request.method == "POST" and request.headers.get("x-requested-with") == "XMLHttpRequest":
-        action = request.POST.get("action")
+MESES = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+]
 
-        # 🔹 Agregar un nuevo nombre de cargo
-        if action == "insertar_concepto":
-            nombrecar = request.POST.get("nombrecar", "").strip().upper()
-            if not nombrecar:
-                return JsonResponse({"status": "error", "msg": "Debe ingresar un nombre de cargo"})
+# Campos que nunca llegan (ni se aceptan) desde el navegador.
+CAMPOS_IGNORADOS = {'id', 'fecha_carga', 'version'}
 
-            ConceptosFijosYVariables.objects.create(
-                nombrecar=nombrecar,
-                centro_tra="", nombre_cen="", codcosto="", nomcosto="",
-                tipocpto="", cuenta="", concepto="", nombre_con="",
-                cargo="", cedula=0, nombre="",
-                arlporc=0, concepto_f=0, enero=0, febrero=0, marzo=0,
-                abril=0, mayo=0, junio=0, julio=0, agosto=0, septiembre=0,
-                total=0
-            )
-            return JsonResponse({"status": "ok", "msg": f"Cargo '{nombrecar}' agregado correctamente ✅"})
+# Las vistas de pantalla (tabla principal y auxiliar) quedan tras el login si
+# se pone en True. Se deja en False para que el comportamiento sea idéntico al
+# de antes; actívalo cuando definas LOGIN_URL.
+EXIGIR_LOGIN = False
 
-        # 🔹 Agregar un nuevo NOMCOSTO
-        elif action == "insertar_nomcosto":
-            nomcosto = request.POST.get("nomcosto", "").strip().upper()
-            if not nomcosto:
-                return JsonResponse({"status": "error", "msg": "Debe ingresar un nombre de costo"})
 
-            ConceptosFijosYVariables.objects.create(
-                nomcosto=nomcosto,
-                centro_tra="", nombre_cen="", codcosto="",
-                tipocpto="", cuenta="", concepto="", nombre_con="",
-                cargo="", nombrecar="", cedula=0, nombre="",
-                arlporc=0, concepto_f=0, enero=0, febrero=0, marzo=0,
-                abril=0, mayo=0, junio=0, julio=0, agosto=0, septiembre=0,
-                total=0
-            )
-            return JsonResponse({"status": "ok", "msg": f"NOMCOSTO '{nomcosto}' agregado correctamente ✅"})
+def proteger(vista):
+    return login_required(vista) if EXIGIR_LOGIN else vista
 
-        # 🔹 Actualización de parámetros
-        parametros.incremento_salarial = request.POST.get("incrementoSalarial") or None
-        parametros.incremento_ipc = request.POST.get("incrementoIPC") or None
-        parametros.auxilio_transporte = request.POST.get("auxilioTransporte") or None
-        parametros.cesantias = request.POST.get("cesantias") or None
-        parametros.intereses_cesantias = request.POST.get("interesesCesantias") or None
-        parametros.prima = request.POST.get("prima") or None
-        parametros.vacaciones = request.POST.get("vacaciones") or None
-        parametros.salario_minimo = request.POST.get("salarioMinimo") or None
-        parametros.incremento_comisiones = request.POST.get("incrementoComisiones") or None
-        parametros.save()
-        return JsonResponse({"status": "ok", "msg": "Parámetros actualizados correctamente ✅"})
 
-    # --- Cargar listas desplegables ---
-    nombres_cargos = ConceptosFijosYVariables.objects.values_list("nombrecar", flat=True).distinct()
-    nombres_costos = ConceptosFijosYVariables.objects.values_list("nomcosto", flat=True).distinct()
+@lru_cache(maxsize=None)
+def campos_modelo(modelo):
+    """Campos editables del modelo, deducidos del propio modelo.
 
-    return render(request, "presupuesto_nomina/dashboard_nomina.html", {
-        "parametros": parametros,
-        "nombres_cargos": [n for n in nombres_cargos if n],
-        "nombres_costos": [n for n in nombres_costos if n],
-    })
-
-def presupuesto_sueldos(request):
-    # 🔹 Obtener valores únicos de ambas tablas
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
-    }
-
-    return render(request, "presupuesto_nomina/presupuesto_nomina.html", context)
-
-def obtener_nomina_temp(request):
-    data = list(PresupuestoSueldosAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def tabla_auxiliar_sueldos(request):
-    parametros = ParametrosPresupuestos.objects.first()
-    incremento_salarial = parametros.incremento_salarial if parametros else 0
-    salario = parametros.salario_minimo if parametros else 0
-
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
-        'incrementoSalarial': incremento_salarial,
-        'salarioMinimo': salario,
-    }
-
-    return render(request, "presupuesto_nomina/aux_presupuesto_nomina.html", context)
-
-def cargar_nomina_base(request):
+    Antes cada vista repetía a mano el `campos_validos = {...}` con 20
+    nombres; si se agregaba una columna había que tocar 4 vistas.
     """
-    Llena la tabla auxiliar con datos de ConceptosFijosYVariables
-    """
-    PresupuestoSueldosAux.objects.all().delete()  # limpia tabla temporal
-    base_data = ConceptosFijosYVariables.objects.values(
-        "cedula","nombre","nombrecar","nomcosto","nombre_cen","concepto_f", "nombre_con"
+    return tuple(f.name for f in modelo._meta.fields if f.name not in CAMPOS_IGNORADOS)
+
+
+@lru_cache(maxsize=None)
+def campos_numericos(modelo):
+    numericos = (models.IntegerField, models.FloatField, models.DecimalField)
+    return tuple(
+        f.name for f in modelo._meta.fields
+        if isinstance(f, numericos) and f.name not in CAMPOS_IGNORADOS
     )
 
-    # filtrar solo concepto = 001
-    base_data = base_data.filter(concepto="001")
-    
-    for row in base_data:
-        PresupuestoSueldosAux.objects.create(
-            cedula=row["cedula"],
-            nombre=row["nombre"],
-            cargo=row["nombrecar"],
-            area=row["nomcosto"],
-            centro=row["nombre_cen"],
-            concepto=row["nombre_con"],
-            salario_base=row["concepto_f"],
-            enero=row["concepto_f"],
-            febrero=row["concepto_f"],
-        )
 
-    return JsonResponse({"status": "ok"})
+@lru_cache(maxsize=None)
+def tiene_campo(modelo, nombre):
+    return any(f.name == nombre for f in modelo._meta.fields)
 
-def guardar_nomina_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
 
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto",
-                "salario_base", "enero", "febrero", "marzo", "abril", "mayo",
-                "junio", "julio", "agosto", "septiembre", "octubre",
-                "noviembre", "diciembre", "total"
-            }
-            
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
+def fila_a_modelo(modelo, fila):
+    """Filtra la fila que llega del navegador y normaliza los numéricos."""
+    datos = {c: fila.get(c) for c in campos_modelo(modelo)}
+    for campo in campos_numericos(modelo):
+        if datos.get(campo) in (None, ''):
+            datos[campo] = 0
+    return modelo(**datos)
 
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "salario_base","enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
 
-                registros.append(PresupuestoSueldosAux(**row_filtrado))
+def reemplazar_todo(modelo, filas):
+    """delete() + bulk_create() dentro de una transacción."""
+    registros = [fila_a_modelo(modelo, fila) for fila in filas]
+    with transaction.atomic():
+        modelo.objects.all().delete()
+        modelo.objects.bulk_create(registros, batch_size=1000)
+    return len(registros)
 
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoSueldosAux.objects.all().delete()
-                PresupuestoSueldosAux.objects.bulk_create(registros)
 
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+def error(mensaje, codigo=400, **extra):
+    return JsonResponse({'status': 'error', 'message': mensaje, 'msg': mensaje, **extra}, status=codigo)
 
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+def metodo_no_permitido():
+    return error('Método no permitido', 405)
 
-def guardar_nomina(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
 
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto",
-                "salario_base", "enero", "febrero", "marzo", "abril", "mayo",
-                "junio", "julio", "agosto", "septiembre", "octubre",
-                "noviembre", "diciembre", "total"
-            }
-            
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
+def parametros():
+    """Parámetros del presupuesto (una sola fila en la tabla)."""
+    return ParametrosPresupuestos.objects.first()
 
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "salario_base","enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
 
-                registros.append(PresupuestoSueldos(**row_filtrado))
+def salario_minimo_incrementado():
+    p = parametros()
+    if not p or not p.salario_minimo:
+        return 0
+    return p.salario_minimo + (p.salario_minimo * (p.incremento_salarial or 0) / 100)
 
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoSueldos.objects.all().delete()
-                PresupuestoSueldos.objects.bulk_create(registros)
 
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+@lru_cache(maxsize=1)
+def _listas_cacheadas():
+    """Las tres listas de los desplegables en UNA consulta.
 
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    Antes cada vista hacía tres `values_list(...)` completos sobre
+    ConceptosFijosYVariables (3 escaneos de la tabla por pantalla).
+    """
+    centros, areas, cargos = set(), set(), set()
+    for centro, area, cargo in ConceptosFijosYVariables.objects.values_list(
+            'nombre_cen', 'nomcosto', 'nombrecar'):
+        centros.add(centro)
+        areas.add(area)
+        cargos.add(cargo)
+    ordenar = lambda valores: sorted(v for v in valores if v)  # noqa: E731
+    return ordenar(centros), ordenar(areas), ordenar(cargos)
 
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
-def subir_presupuesto_sueldos(request):
-    if request.method == "POST":
-        temporales = PresupuestoSueldosAux.objects.all()
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
+def contexto_listas():
+    centros, areas, cargos = _listas_cacheadas()
+    return {'centros': centros, 'areas': areas, 'cargos': cargos}
 
-        # Convertimos todas las cédulas existentes a string sin espacios
-        cedulas_existentes = set(
-            str(c).strip() for c in PresupuestoSueldos.objects.values_list("cedula", flat=True)
-        )
-        creados = 0
-        omitidos = 0
-        for temp in temporales:
-            if temp.cedula in cedulas_existentes:
-                omitidos += 1
-                continue  # ya existe → no crear
 
-            PresupuestoSueldos.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area=temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                salario_base=temp.salario_base,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-                fecha_carga=timezone.now()
-            )
-            creados += 1
+def limpiar_cache_listas():
+    """Llamar tras insertar un cargo o un NOMCOSTO nuevo."""
+    _listas_cacheadas.cache_clear()
 
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
 
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
+def indexar(modelo, claves, campos=MESES):
+    """{(clave1, clave2): {mes: valor}} en una sola consulta.
 
-def listar_versiones():
-    return (
-        PresupuestoSueldos.objects
-        .values("version")
-        .annotate(fecha=Max("fecha_carga"))
-        .order_by("-version")
-    )
+    Sustituye al patrón `modelo.objects.filter(cedula=..., area=...).first()`
+    dentro de un bucle. Se conserva la primera coincidencia, igual que el
+    `.first()` original.
+    """
+    indice = {}
+    for fila in modelo.objects.values(*claves, *campos):
+        clave = tuple(fila[c] for c in claves)
+        if clave not in indice:
+            indice[clave] = {campo: fila[campo] or 0 for campo in campos}
+    return indice
 
-def obtener_presupuesto_sueldos(request):
-    data = list(PresupuestoSueldos.objects.values())
-    return JsonResponse({"data": data}, safe=False)
 
-@csrf_exempt
-def borrar_presupuesto_sueldos(request):
-    if request.method == "POST":
-        PresupuestoSueldos.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-# -------------------------------COMISIONES---------------------------------
-def comisiones(request):
-    # 🔹 Obtener valores únicos de ambas tablas
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-    
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
+def sumar_por(modelo, clave='cedula', campos=MESES):
+    """{clave: {mes: suma}} agregando en la base de datos, no en Python."""
+    anotaciones = {campo: Sum(campo) for campo in campos}
+    return {
+        fila[clave]: {campo: fila[campo] or 0 for campo in campos}
+        for fila in modelo.objects.values(clave).annotate(**anotaciones)
     }
-    return render(request, "presupuesto_nomina/comisiones.html", context)
-
-def obtener_presupuesto_comisiones(request):
-    comisiones = list(PresupuestoComisiones.objects.values())
-    return JsonResponse({"data": comisiones}, safe=False)
-
-def tabla_auxiliar_comisiones(request):
-    # obtener el incremento de comisiones desde la tabla auxiliar
-    parametros = ParametrosPresupuestos.objects.first()
-    incremento_comisiones = parametros.incremento_comisiones if parametros else 0
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-    
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
-        'incrementoComisiones': incremento_comisiones,
-    }
-    return render(request, "presupuesto_nomina/aux_comisiones.html", context)
-
-def subir_presupuesto_comisiones(request):
-    if request.method == "POST":
-        temporales = PresupuestoComisionesAux.objects.all()
-
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # obtener las cédulas existentes en la tabla principal
-        cedulas_existentes = set(
-            PresupuestoComisiones.objects.values_list("cedula", flat=True)
-        )
-        creados = 0
-        omitidos = 0
-        for temp in temporales:
-            if temp.cedula in cedulas_existentes:
-                omitidos += 1
-                continue  # ya existe → no crear
-            PresupuestoComisiones.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area = temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-            )
-            creados += 1
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-
-def guardar_comisiones_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoComisionesAux(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoComisionesAux.objects.all().delete()
-                PresupuestoComisionesAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def guardar_comisiones(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoComisiones(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoComisiones.objects.all().delete()
-                PresupuestoComisiones.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
 
-def obtener_comisiones_temp(request):
-    data = list(PresupuestoComisionesAux.objects.values())
-    return JsonResponse(data, safe=False)
+def total_de(valores):
+    return sum(valores.get(mes, 0) or 0 for mes in MESES)
 
-def cargar_comisiones_base(request):
+
+# ══════════════════════════════════════════════════════════════════════
+#  Configuración: una entrada por concepto de nómina
+# ══════════════════════════════════════════════════════════════════════
+#
+#  modelo / aux        modelos definitivo y temporal
+#  etiqueta            texto para los mensajes
+#  clave_subir         campo con el que se detecta un registro repetido
+#  con_guardar         si la tabla principal es editable
+#  parametros          {variable_de_template: campo_de_ParametrosPresupuestos}
+#  nombres             solo cuando el nombre histórico de la vista no sigue
+#                      el patrón (el caso de "sueldos", que en varias
+#                      vistas se llama "nomina")
+#  carga               cómo se llena la tabla auxiliar (ver más abajo)
+#
+CONCEPTOS = {}
+
+
+def concepto(slug, **cfg):
+    cfg.setdefault('etiqueta', slug.replace('_', ' '))
+    cfg.setdefault('clave_subir', 'cedula')
+    cfg.setdefault('con_guardar', True)
+    cfg.setdefault('parametros', {})
+    cfg.setdefault('nombres', {})
+    cfg.setdefault('template', 'presupuesto_nomina/%s.html' % slug)
+    cfg.setdefault('template_aux', 'presupuesto_nomina/aux_%s.html' % slug)
+    cfg['slug'] = slug
+    CONCEPTOS[slug] = cfg
+    return cfg
+
+
+# --- 1. Conceptos que se cargan directamente desde ConceptosFijosYVariables
+#        `carga` = {'tipo': 'conceptos', ...}
+#           filtro          filtro sobre el modelo de origen
+#           origen          modelo de origen (por defecto ConceptosFijosYVariables)
+#           fijo            {campo_destino: 'concepto_f'} campos que toman concepto_f
+#           copiar          campos que se copian tal cual (meses, total)
+#           concepto        texto fijo para la columna "concepto"
+#           agrupar         True → se suman las filas repetidas por persona
+#           ajuste          callable(destino, origen, parametros)
+
+concepto(
+    'sueldos',
+    etiqueta='sueldos',
+    modelo=PresupuestoSueldos, aux=PresupuestoSueldosAux,
+    template='presupuesto_nomina/presupuesto_nomina.html',
+    template_aux='presupuesto_nomina/aux_presupuesto_nomina.html',
+    parametros={'incrementoSalarial': 'incremento_salarial', 'salarioMinimo': 'salario_minimo'},
+    nombres={
+        'principal': 'presupuesto_sueldos',
+        'obtener_temp': 'obtener_nomina_temp',
+        'guardar': 'guardar_nomina',
+        'guardar_temp': 'guardar_nomina_temp',
+        'cargar': 'cargar_nomina_base',
+    },
+    carga={'tipo': 'conceptos', 'filtro': {'concepto': '001'},
+           'fijo': {'salario_base': 'concepto_f', 'enero': 'concepto_f', 'febrero': 'concepto_f'}},
+)
+
+concepto(
+    'comisiones',
+    modelo=PresupuestoComisiones, aux=PresupuestoComisionesAux,
+    parametros={'incrementoComisiones': 'incremento_comisiones'},
+    carga={'tipo': 'conceptos', 'filtro': {'concepto': '389'},
+           'copiar': MESES[:9] + ['total']},
+)
+
+concepto(
+    'horas_extra',
+    modelo=PresupuestoHorasExtra, aux=PresupuestoHorasExtraAux,
+    parametros={'incrementoSalarial': 'incremento_salarial'},
+    carga={'tipo': 'conceptos', 'filtro': {'concepto__in': ['114', '110', '111']},
+           'copiar': MESES[:9] + ['total'], 'agrupar': True, 'concepto': 'HORAS EXTRA'},
+)
+
+concepto(
+    'medios_transporte',
+    modelo=PresupuestoMediosTransporte, aux=PresupuestoMediosTransporteAux,
+    parametros={'incrementoIPC': 'incremento_ipc'},
+    carga={'tipo': 'conceptos', 'filtro': {'concepto': '011'},
+           'fijo': {'base': 'concepto_f', 'enero': 'concepto_f', 'febrero': 'concepto_f'}},
+)
+
+concepto(
+    'ayuda_transporte',
+    modelo=PresupuestoAyudaTransporte, aux=PresupuestoAyudaTransporteAux,
+    parametros={'incrementoIPC': 'incremento_ipc'},
+    carga={'tipo': 'conceptos', 'filtro': {'concepto': '013'},
+           'fijo': {'base': 'concepto_f', 'enero': 'concepto_f', 'febrero': 'concepto_f'}},
+)
+
+concepto(
+    'bolsa_consumibles',
+    modelo=PresupuestoBolsaConsumibles, aux=PresupuestoBolsaConsumiblesAux,
+    parametros={'incrementoIPC': 'incremento_ipc'},
+    carga={'tipo': 'conceptos', 'filtro': {'concepto': 'E14'},
+           'copiar': MESES[:8] + ['total']},
+)
+
+concepto(
+    'auxilio_TBCKIT',
+    modelo=PresupuestoAuxilioTBCKIT, aux=PresupuestoAuxilioTCBKITAux,
+    parametros={'incrementoIPC': 'incremento_ipc'},
+    carga={'tipo': 'conceptos', 'filtro': {'concepto': 'E14'},
+           'copiar': MESES[:9] + ['total']},
+)
+
+concepto(
+    'aprendiz',
+    modelo=PresupuestoAprendiz, aux=PresupuestoAprendizAux,
+    parametros={'incrementoSalarial': 'incremento_salarial'},
+    carga={'tipo': 'conceptos', 'filtro': {'concepto__in': ['003', '006']},
+           'fijo': {'salario_base': 'concepto_f'}},
+)
+
+concepto(
+    'auxilio_educacion',
+    modelo=PresupuestoAuxilioEducacion, aux=PresupuestoAuxilioEducacionAux,
+    parametros={'incrementoIPC': 'incremento_ipc'},
+    carga={'tipo': 'conceptos', 'origen': ConceptoAuxilioEducacion,
+           'filtro': {'concepto': '016'}, 'copiar': ['diciembre', 'total']},
+)
+
+
+def _ajuste_bonos_kyrovet(destino, origen, params):
+    """Febrero = base + IPC (el resto del año queda en cero)."""
+    ipc = (params.incremento_ipc or 0) if params else 0
+    valor = (origen['concepto_f'] or 0) * (1 + ipc / 100)
+    destino['febrero'] = valor
+    destino['total'] = valor
+
+
+concepto(
+    'bonos_kyrovet',
+    modelo=PresupuestoBonosKyrovet, aux=PresupuestoBonosKyrovetAux,
+    parametros={'incrementoIPC': 'incremento_ipc'},
+    carga={'tipo': 'conceptos', 'filtro': {'nombre_con__icontains': 'BONOS CANASTA KYROVET'},
+           'fijo': {'base': 'concepto_f'}, 'ajuste': _ajuste_bonos_kyrovet},
+)
+
+# --- 2. Conceptos derivados de otras tablas auxiliares
+#        `carga` = {'tipo': 'derivado', 'concepto': ..., 'fuentes': [...],
+#                   'emparejar': ('cedula', 'area'), 'incluir_aprendices': bool}
+
+FUENTES_PRESTACIONES = [
+    PresupuestoSueldosAux, PresupuestoComisionesAux, PresupuestoMediosTransporteAux,
+    PresupuestoAuxilioTransporteAux, PresupuestoHorasExtraAux, PresupuestoAprendizAux,
+]
+
+concepto(
+    'cesantias',
+    modelo=PresupuestoCesantias, aux=PresupuestoCesantiasAux,
+    parametros={'cesantias': 'cesantias'},
+    carga={'tipo': 'derivado', 'concepto': 'CESANTÍAS', 'fuentes': FUENTES_PRESTACIONES,
+           'emparejar': ('cedula', 'area'), 'incluir_aprendices': True},
+)
+
+concepto(
+    'prima',
+    modelo=PresupuestoPrima, aux=PresupuestoPrimaAux,
+    parametros={'prima': 'prima'},
+    carga={'tipo': 'derivado', 'concepto': 'PRIMA LEGAL', 'fuentes': FUENTES_PRESTACIONES,
+           'emparejar': ('cedula', 'area'), 'incluir_aprendices': True},
+)
+
+concepto(
+    'vacaciones',
+    modelo=PresupuestoVacaciones, aux=PresupuestoVacacionesAux,
+    parametros={'vacaciones': 'vacaciones'},
+    carga={'tipo': 'derivado', 'concepto': 'VACACIONES',
+           'fuentes': [PresupuestoComisionesAux, PresupuestoMediosTransporteAux],
+           'emparejar': ('cedula',), 'incluir_aprendices': True, 'incluir_propia': True},
+)
+
+# --- 3. Conceptos con carga propia (funciones específicas más abajo)
+
+concepto(
+    'auxilio_transporte',
+    modelo=PresupuestoAuxilioTransporte, aux=PresupuestoAuxilioTransporteAux,
+    parametros={'auxilioTransporte': 'auxilio_transporte'},
+    carga={'tipo': 'propia'},
+)
+concepto(
+    'bonificaciones',
+    modelo=PresupuestoBonificaciones, aux=PresupuestoBonificacionesAux,
+    carga={'tipo': 'propia'},
+)
+concepto(
+    'bonificaciones_foco',
+    modelo=PresupuestoBonificacionesFoco, aux=PresupuestoBonificacionesFocoAux,
+    carga={'tipo': 'propia'},
+)
+concepto(
+    'intereses_cesantias',
+    modelo=PresupuestoInteresesCesantias, aux=PresupuestoInteresesCesantiasAux,
+    parametros={'interesesCesantias': 'intereses_cesantias'},
+    carga={'tipo': 'propia'},
+)
+concepto(
+    'seguridad_social',
+    modelo=PresupuestoSeguridadSocial, aux=PresupuestoSeguridadSocialAux,
+    clave_subir='nombre', con_guardar=False,
+    carga={'tipo': 'propia'},
+)
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  Vistas genéricas
+# ══════════════════════════════════════════════════════════════════════
+
+def vista_principal(cfg, request):
+    return render(request, cfg['template'], contexto_listas())
+
+
+def vista_auxiliar(cfg, request):
+    contexto = contexto_listas()
+    params = parametros()
+    for variable, campo in cfg['parametros'].items():
+        contexto[variable] = getattr(params, campo, 0) if params else 0
+    return render(request, cfg['template_aux'], contexto)
+
+
+def obtener(cfg, request):
+    return JsonResponse({'data': list(cfg['modelo'].objects.values())}, safe=False)
+
+
+def obtener_temp(cfg, request):
+    return JsonResponse(list(cfg['aux'].objects.values()), safe=False)
+
+
+def guardar(cfg, request, temporal=False):
+    if request.method != 'POST':
+        return metodo_no_permitido()
+    modelo = cfg['aux'] if temporal else cfg['modelo']
+    try:
+        filas = json.loads(request.body.decode('utf-8'))
+        cantidad = reemplazar_todo(modelo, filas)
+    except Exception as exc:                     # noqa: BLE001
+        return error(str(exc))
+    return JsonResponse({'status': 'ok', 'msg': '%d filas guardadas ✅' % cantidad})
+
+
+def subir(cfg, request):
+    """Copia la tabla temporal a la definitiva, sin repetir registros."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'msg': 'Método no permitido'}, status=405)
+
+    modelo, aux, clave = cfg['modelo'], cfg['aux'], cfg['clave_subir']
+    temporales = list(aux.objects.all())
+    if not temporales:
+        return JsonResponse({'success': False, 'msg': 'No hay datos temporales para subir ❌'}, status=400)
+
+    normalizar = lambda valor: str(valor).strip() if valor is not None else ''  # noqa: E731
+    existentes = {normalizar(v) for v in modelo.objects.values_list(clave, flat=True)}
+
+    comunes = [c for c in campos_modelo(modelo) if c in campos_modelo(aux)]
+    lleva_fecha = tiene_campo(modelo, 'fecha_carga')
+
+    nuevos, omitidos = [], 0
+    for temporal in temporales:
+        if normalizar(getattr(temporal, clave)) in existentes:
+            omitidos += 1
+            continue
+        datos = {campo: getattr(temporal, campo) for campo in comunes}
+        if lleva_fecha:
+            datos['fecha_carga'] = timezone.now()
+        nuevos.append(modelo(**datos))
+
+    if nuevos:
+        modelo.objects.bulk_create(nuevos, batch_size=1000)
+        mensaje = '%d registro(s) agregado(s) ✅' % len(nuevos)
+    else:
+        mensaje = 'No se agregó ningún registro. (%d ya existían) ⚠️' % omitidos
+
+    return JsonResponse({'success': True, 'msg': mensaje, 'creados': len(nuevos), 'omitidos': omitidos})
+
+
+def borrar(cfg, request):
+    if request.method != 'POST':
+        return metodo_no_permitido()
+    cfg['modelo'].objects.all().delete()
+    return JsonResponse({'status': 'ok', 'message': 'Presupuesto de %s eliminado' % cfg['etiqueta']})
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  Cargas de la tabla auxiliar
+# ══════════════════════════════════════════════════════════════════════
+
+MAPA_CONCEPTOS = {          # campo destino -> campo en ConceptosFijosYVariables
+    'cedula': 'cedula',
+    'nombre': 'nombre',
+    'cargo': 'nombrecar',
+    'area': 'nomcosto',
+    'centro': 'nombre_cen',
+    'concepto': 'nombre_con',
+}
+
+
+def cargar_desde_conceptos(cfg, request):
+    """Llena la tabla auxiliar desde ConceptosFijosYVariables (o similar)."""
+    carga = cfg['carga']
+    aux = cfg['aux']
+    origen = carga.get('origen', ConceptosFijosYVariables)
+    copiar = carga.get('copiar', [])
+    fijo = carga.get('fijo', {})
+    params = parametros()
+
+    agrupadores = [MAPA_CONCEPTOS[c] for c in ('cedula', 'nombre', 'cargo', 'area', 'centro')]
+    columnas = agrupadores + ['nombre_con'] + list(set(copiar) | set(fijo.values()))
+
+    if carga.get('agrupar'):
+        # Varias filas por persona (p. ej. tres códigos de horas extra) → se suman
+        consulta = (origen.objects.filter(**carga['filtro'])
+                    .values(*agrupadores)
+                    .annotate(**{campo: Sum(campo) for campo in copiar}))
+    else:
+        consulta = origen.objects.filter(**carga['filtro']).values(*columnas)
+
+    registros = []
+    for fila in consulta:
+        datos = {destino: fila.get(fuente) for destino, fuente in MAPA_CONCEPTOS.items()
+                 if tiene_campo(aux, destino) and fuente in fila}
+        if carga.get('concepto'):
+            datos['concepto'] = carga['concepto']
+        for destino, fuente in fijo.items():
+            datos[destino] = fila.get(fuente) or 0
+        for campo in copiar:
+            datos[campo] = fila.get(campo) or 0
+        if carga.get('ajuste'):
+            carga['ajuste'](datos, fila, params)
+        registros.append(aux(**{k: v for k, v in datos.items() if tiene_campo(aux, k)}))
+
+    with transaction.atomic():
+        aux.objects.all().delete()
+        aux.objects.bulk_create(registros, batch_size=1000)
+
+    return JsonResponse({'status': 'ok', 'creados': len(registros)})
+
+
+def personas_base():
+    """Empleados de la nómina auxiliar + aprendices con salario de reforma."""
+    empleados = list(PresupuestoSueldosAux.objects.all())
+    aprendices = list(PresupuestoAprendizAux.objects.filter(concepto='SALARIO APRENDIZ REFORMA'))
+    return empleados + aprendices
+
+
+def cargar_derivado(cfg, request):
+    """Cesantías, prima y vacaciones: suma de varias tablas auxiliares.
+
+    Antes: una consulta por persona y por tabla de origen.
+    Ahora: una consulta por tabla de origen, en total.
     """
-    Llena la tabla auxiliar con datos de conceptos
-    """
-    PresupuestoComisionesAux.objects.all().delete()  # limpia tabla temporal
-    base_data = ConceptosFijosYVariables.objects.values(
-        "cedula","nombre","nombrecar","nomcosto","nombre_cen", "nombre_con", "enero", "febrero", "marzo", "abril", "mayo",
-        "junio", "julio", "agosto", "septiembre", "total"
-    )
+    carga = cfg['carga']
+    aux = cfg['aux']
+    claves = carga['emparejar']
 
-    # filtrar solo concepto que sea igual a 389
-    base_data = base_data.filter(concepto="389")
-    
-    for row in base_data:
-        PresupuestoComisionesAux.objects.create(
-            cedula=row["cedula"],
-            nombre=row["nombre"],
-            cargo=row["nombrecar"],
-            area=row["nomcosto"],
-            centro=row["nombre_cen"],
-            concepto=row["nombre_con"],
-            enero=row["enero"] or 0,
-            febrero=row["febrero"] or 0,
-            marzo=row["marzo"] or 0,
-            abril=row["abril"] or 0,
-            mayo=row["mayo"] or 0,
-            junio=row["junio"] or 0,
-            julio=row["julio"] or 0,
-            agosto=row["agosto"] or 0,
-            septiembre=row["septiembre"] or 0,
-            total=row["total"] or 0,
-        )
+    indices = [(modelo, indexar(modelo, claves)) for modelo in carga['fuentes']]
 
-        
-    return JsonResponse({"status": "ok"})
+    registros = []
+    for persona in personas_base():
+        clave = tuple(getattr(persona, c) for c in claves)
+        valores = {mes: 0 for mes in MESES}
 
-@csrf_exempt
-def borrar_presupuesto_comisiones(request):
-    if request.method == "POST":
-        PresupuestoComisiones.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de comisiones eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+        if carga.get('incluir_propia'):
+            # vacaciones parte de los meses de la propia fila de nómina
+            for mes in MESES:
+                valores[mes] += getattr(persona, mes, 0) or 0
 
-# -------------------------------HORAS EXTRA---------------------------------
-def horas_extra(request):
-    # 🔹 Obtener valores únicos de ambas tablas
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
+        for _modelo, indice in indices:
+            fila = indice.get(clave)
+            if fila:
+                for mes in MESES:
+                    valores[mes] += fila.get(mes, 0) or 0
 
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
-    }
-    return render(request, "presupuesto_nomina/horas_extra.html", context)
+        registros.append(aux(
+            cedula=persona.cedula, nombre=persona.nombre, centro=persona.centro,
+            area=persona.area, cargo=persona.cargo, concepto=carga['concepto'],
+            total=total_de(valores), **valores,
+        ))
 
-def obtener_presupuesto_horas_extra(request):
-    horas_extra = list(PresupuestoHorasExtra.objects.values())
-    return JsonResponse({"data": horas_extra}, safe=False)
+    with transaction.atomic():
+        aux.objects.all().delete()
+        aux.objects.bulk_create(registros, batch_size=1000)
 
-def tabla_auxiliar_horas_extra(request):
-    # obtener el incremento de horas extra desde la tabla auxiliar
-    parametros = ParametrosPresupuestos.objects.first()
-    incremento_horas_extra = parametros.incremento_salarial if parametros else 0
-    return render(request, "presupuesto_nomina/aux_horas_extra.html", {'incrementoSalarial': incremento_horas_extra})
+    return JsonResponse({'status': 'ok', 'creados': len(registros)})
 
-def subir_presupuesto_horas_extra(request):
-    if request.method == "POST":
-        temporales = PresupuestoHorasExtraAux.objects.all()
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # obtener las cédulas existentes en la tabla principal
-        cedulas_existentes = set(
-            PresupuestoHorasExtra.objects.values_list("cedula", flat=True)
-        )
-        creados = 0
-        omitidos = 0
-        for temp in temporales:
-            if temp.cedula in cedulas_existentes:
-                omitidos += 1
-                continue  # ya existe → no crear
-            PresupuestoHorasExtra.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area = temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-            )
-            creados += 1
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
 
-def guardar_horas_extra_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
+# --------------------------------------------------- cargas específicas
 
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
+AUXILIO_TRANSPORTE_BASE = 200000
 
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoHorasExtraAux(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoHorasExtraAux.objects.all().delete()
-                PresupuestoHorasExtraAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def guardar_horas_extra(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoHorasExtra(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoHorasExtra.objects.all().delete()
-                PresupuestoHorasExtra.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-
-def obtener_horas_extra_temp(request):
-    data = list(PresupuestoHorasExtraAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_horas_extra_base(request):
-    """
-    Llena la tabla auxiliar con datos de conceptos
-    """
-    PresupuestoHorasExtraAux.objects.all().delete()  # limpia tabla temporal
-    base_data = ConceptosFijosYVariables.objects.values(
-        "cedula","nombre","nombrecar","nomcosto","nombre_cen", "nombre_con", "enero", "febrero", "marzo", "abril", "mayo",
-        "junio", "julio", "agosto", "septiembre", "total"
-    )
-
-    # Filtrar solo los conceptos que necesitamos
-    base_data = (
-        ConceptosFijosYVariables.objects
-        .filter(concepto__in=["114", "110", "111"])
-        .values("cedula", "nombre", "nombrecar", "nomcosto", "nombre_cen")  # agrupadores
-        .annotate(
-            enero=Sum("enero"),
-            febrero=Sum("febrero"),
-            marzo=Sum("marzo"),
-            abril=Sum("abril"),
-            mayo=Sum("mayo"),
-            junio=Sum("junio"),
-            julio=Sum("julio"),
-            agosto=Sum("agosto"),
-            septiembre=Sum("septiembre"),
-            total=Sum("total"),
-        )
-    )
-    
-    for row in base_data:
-        PresupuestoHorasExtraAux.objects.create(
-            cedula=row["cedula"],
-            nombre=row["nombre"],
-            cargo=row["nombrecar"],
-            area=row["nomcosto"],
-            centro=row["nombre_cen"],
-            concepto="HORAS EXTRA",
-            enero=row["enero"] or 0,
-            febrero=row["febrero"] or 0,
-            marzo=row["marzo"] or 0,
-            abril=row["abril"] or 0,
-            mayo=row["mayo"] or 0,
-            junio=row["junio"] or 0,
-            julio=row["julio"] or 0,
-            agosto=row["agosto"] or 0,
-            septiembre=row["septiembre"] or 0,
-            total=row["total"] or 0,
-        )
-
-        
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_horas_extra(request):
-    if request.method == "POST":
-        PresupuestoHorasExtra.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de horas extra eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-# -------------------------------MEDIOS DE TRANSPORTE---------------------------------
-def medios_transporte(request):
-    # 🔹 Obtener valores únicos de ambas tablas
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
-    }
-    return render(request, "presupuesto_nomina/medios_transporte.html", context)
-
-def obtener_presupuesto_medios_transporte(request):
-    medios_transporte = list(PresupuestoMediosTransporte.objects.values())
-    return JsonResponse({"data": medios_transporte}, safe=False)
-
-def tabla_auxiliar_medios_transporte(request):
-    # obtener el incremento de medios de transporte desde la tabla auxiliar
-    parametros = ParametrosPresupuestos.objects.first()
-    incremento_medios_transporte = parametros.incremento_ipc if parametros else 0
-    return render(request, "presupuesto_nomina/aux_medios_transporte.html", {'incrementoIPC': incremento_medios_transporte})
-
-def subir_presupuesto_medios_transporte(request):
-    if request.method == "POST":
-        temporales = PresupuestoMediosTransporteAux.objects.all()
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # obtener las cédulas existentes en la tabla principal
-        cedulas_existentes = set(
-            PresupuestoMediosTransporte.objects.values_list("cedula", flat=True)
-        )
-        creados = 0
-        omitidos = 0
-        for temp in temporales:
-            if temp.cedula in cedulas_existentes:
-                omitidos += 1
-                continue  # ya existe → no crear
-            PresupuestoMediosTransporte.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area = temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                base=temp.base,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-            )
-            creados += 1
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_medios_transporte_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoMediosTransporteAux(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoMediosTransporteAux.objects.all().delete()
-                PresupuestoMediosTransporteAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def guardar_medios_transporte(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoMediosTransporte(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoMediosTransporte.objects.all().delete()
-                PresupuestoMediosTransporte.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-
-def obtener_medios_transporte_temp(request):
-    data = list(PresupuestoMediosTransporteAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_medios_transporte_base(request):
-    """
-    Llena la tabla auxiliar con datos de conceptos
-    """
-    PresupuestoMediosTransporteAux.objects.all().delete()  # limpia tabla temporal
-    base_data = ConceptosFijosYVariables.objects.values(
-        "cedula","nombre","nombrecar","nomcosto","nombre_cen", "nombre_con", "concepto_f"
-    )
-
-    # filtrar solo concepto que sea igual a 389
-    base_data = base_data.filter(concepto="011")
-    
-    for row in base_data:
-        PresupuestoMediosTransporteAux.objects.create(
-            cedula=row["cedula"],
-            nombre=row["nombre"],
-            cargo=row["nombrecar"],
-            area=row["nomcosto"],
-            centro=row["nombre_cen"],
-            concepto=row["nombre_con"],
-            base=row["concepto_f"] or 0,
-            enero=row["concepto_f"] or 0,
-            febrero=row["concepto_f"] or 0,
-        )
-
-        
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_medios_transporte(request):
-    if request.method == "POST":
-        PresupuestoMediosTransporte.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de medios de transporte eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-# -------------------------------AUXILIO DE TRANSPORTE---------------------------------
-def auxilio_transporte(request):
-    # 🔹 Obtener valores únicos de ambas tablas
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
-    }
-    return render(request, "presupuesto_nomina/auxilio_transporte.html", context)
-
-def obtener_presupuesto_auxilio_transporte(request):
-    auxilio_transporte = list(PresupuestoAuxilioTransporte.objects.values())
-    return JsonResponse({"data": auxilio_transporte}, safe=False)
-
-def tabla_auxiliar_auxilio_transporte(request):
-    # obtener el auxilio de transporte desde la tabla auxiliar
-    parametros = ParametrosPresupuestos.objects.first()
-    auxilio_transporte = parametros.auxilio_transporte if parametros else 0
-    return render(request, "presupuesto_nomina/aux_auxilio_transporte.html", {'auxilioTransporte': auxilio_transporte})
-
-def subir_presupuesto_auxilio_transporte(request):
-    if request.method == "POST":
-        temporales = PresupuestoAuxilioTransporteAux.objects.all()
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-
-        # obtener cedulas de la tabla principal
-        cedulas_existentes = set(
-            PresupuestoAuxilioTransporte.objects.values_list("cedula", flat=True)
-        )
-        creados = 0
-        omitidos = 0
-        
-        for temp in temporales:
-            if temp.cedula in cedulas_existentes:
-                omitidos += 1
-                continue  # ya existe → no crear
-            PresupuestoAuxilioTransporte.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area = temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                base=temp.base,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-            )
-            creados += 1
-            
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-
-def guardar_auxilio_transporte_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoAuxilioTransporteAux(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoAuxilioTransporteAux.objects.all().delete()
-                PresupuestoAuxilioTransporteAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def guardar_auxilio_transporte(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoAuxilioTransporte(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoAuxilioTransporte.objects.all().delete()
-                PresupuestoAuxilioTransporte.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-
-def obtener_auxilio_transporte_temp(request):
-    data = list(PresupuestoAuxilioTransporteAux.objects.values())
-    return JsonResponse(data, safe=False)
 
 def cargar_auxilio_transporte_base(request):
-    """
-    Llena la tabla auxiliar con datos de conceptos y agrega auxilio de transporte
-    cuando el salario mensual consolidado es menor al SMMLV (1.423.500).
-    """
-    parametros = ParametrosPresupuestos.objects.first()
-    salarioIncremento = parametros.salario_minimo + (parametros.salario_minimo * (parametros.incremento_salarial / 100))
-    LIMITE_SMMLV = (salarioIncremento) * 2
-    AUXILIO_BASE = 200000
-    MESES = [
-        "enero", "febrero", "marzo", "abril", "mayo", "junio",
-        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    ]
-    PresupuestoAuxilioTransporteAux.objects.all().delete()  # limpia tabla temporal
-    # Obtener base de empleados
-    # base_data = ConceptosFijosYVariables.objects.filter(concepto__in=["001", "006"]).values(
-    #     "cedula", "nombre", "nombrecar", "nomcosto", "nombre_cen", "concepto_f"
-    # )
-    # Tomo todos los empleados desde nómina (puede ser tu base principal)
-    empleados = PresupuestoSueldosAux.objects.all().values(
-    "cedula", "nombre", "centro", "area", "cargo", "salario_base"
-    )
-    # Tomo también los aprendices
-    aprendices = PresupuestoAprendizAux.objects.filter(concepto="SALARIO APRENDIZ REFORMA").values(
-    "cedula", "nombre", "centro", "area", "cargo", "salario_base"
-    )
-    # Uno empleados y aprendices en una sola lista
-    base_data = list(empleados) + list(aprendices)
-    for row in base_data:
-        aux = PresupuestoAuxilioTransporteAux.objects.create(
-            cedula=row["cedula"],
-            nombre=row["nombre"],
-            cargo=row["cargo"],
-            area=row["area"],
-            centro=row["centro"],
-            concepto="AUXILIO DE TRANSPORTE",
-            base=AUXILIO_BASE,
-        )
+    """Auxilio de transporte para quien gane menos de 2 SMMLV.
 
-        # 🔹 recorrer meses
+    La versión anterior preguntaba a la base de datos 5 veces por cada
+    empleado y por cada mes. Aquí se traen los 5 totales mensuales de una
+    sola vez y el resto es aritmética en memoria.
+    """
+    cfg = CONCEPTOS['auxilio_transporte']
+    aux = cfg['aux']
+    limite = salario_minimo_incrementado() * 2
+
+    totales = [
+        sumar_por(PresupuestoMediosTransporteAux),
+        sumar_por(PresupuestoSueldosAux),
+        sumar_por(PresupuestoComisionesAux),
+        sumar_por(PresupuestoHorasExtraAux),
+        sumar_por(PresupuestoAprendizAux),
+    ]
+    sueldos_por_cedula = totales[1]
+
+    personas = list(PresupuestoSueldosAux.objects.values(
+        'cedula', 'nombre', 'centro', 'area', 'cargo'))
+    personas += list(PresupuestoAprendizAux.objects
+                     .filter(concepto='SALARIO APRENDIZ REFORMA')
+                     .values('cedula', 'nombre', 'centro', 'area', 'cargo'))
+
+    registros = []
+    for persona in personas:
+        cedula = persona['cedula']
+        valores = {mes: 0 for mes in MESES}
+
         for mes in MESES:
-            
-            total_mes = 0
-            if mes != "marzo":
-                # Sumar el valor del mes en todas las tablas
-                total_mes += PresupuestoMediosTransporteAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes += PresupuestoSueldosAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes += PresupuestoComisionesAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes += PresupuestoHorasExtraAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes += PresupuestoAprendizAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                # descargar en un archivo de texto los totales por mes y cédula
-                # with open("totales_auxilio_transporte.txt", "a") as f:
-                #     f.write(f"Cédula: {row['cedula']} - cargo: {row['cargo']} - Mes: {mes} - Total antes de aux: {total_mes}\n")  
-                # 🔹 Condición: si la suma < SMMLV, asignar 200000 a ese mes
-                if total_mes < LIMITE_SMMLV:
-                    setattr(aux, mes, AUXILIO_BASE)
-                # si total_mes es igual a cero poner cero en el mes
-                if total_mes == 0:
-                    setattr(aux, mes, 0)
-            else: 
-                # salario = row["salario_base"] or 0
-                # if salario < salarioIncremento:
-                #     salario = salarioIncremento
-                     
-                # nuevo_salario = salario + (salario * (parametros.incremento_salarial / 100))
-                # auxRetroactivo = (nuevo_salario - salario) * 2  # retroactivo de enero y febrero
-              
-                mes_temp = "abril"
-                total_mes += PresupuestoMediosTransporteAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes += PresupuestoSueldosAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes_temp))["s"] or 0
-                total_mes += PresupuestoComisionesAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes += PresupuestoHorasExtraAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes += PresupuestoAprendizAux.objects.filter(cedula=row["cedula"]).aggregate(s=Sum(mes))["s"] or 0
-                total_mes_marzo = total_mes
-                # total_mes_marzo -= auxRetroactivo
-                
-                # 🔹 Condición: si la suma < SMMLV, asignar 200000 a ese mes
-                if total_mes == 0:
-                    setattr(aux, mes, 0)
-                elif total_mes_marzo < LIMITE_SMMLV:
-                    setattr(aux, mes, AUXILIO_BASE)
+            # Regla original: en marzo el sueldo que se compara es el de abril,
+            # porque marzo trae el retroactivo y distorsionaría la comparación.
+            devengado = sum(t.get(cedula, {}).get(mes, 0) or 0 for t in totales)
+            if mes == 'marzo':
+                devengado -= sueldos_por_cedula.get(cedula, {}).get('marzo', 0) or 0
+                devengado += sueldos_por_cedula.get(cedula, {}).get('abril', 0) or 0
 
-        # Guardar cambios
-        aux.save()
+            if devengado and devengado < limite:
+                valores[mes] = AUXILIO_TRANSPORTE_BASE
 
-        
-    return JsonResponse({"status": "ok"})
+        registros.append(aux(
+            cedula=cedula, nombre=persona['nombre'], centro=persona['centro'],
+            area=persona['area'], cargo=persona['cargo'],
+            concepto='AUXILIO DE TRANSPORTE', base=AUXILIO_TRANSPORTE_BASE,
+            total=total_de(valores), **valores,
+        ))
 
-@csrf_exempt
-def borrar_presupuesto_auxilio_transporte(request):
-    if request.method == "POST":
-        PresupuestoAuxilioTransporte.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de auxilio de transporte eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-# -------------------------------AYUDA AL TRANSPORTE---------------------------------
-def ayuda_transporte(request):
-    # 🔹 Obtener valores únicos de ambas tablas
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
+    with transaction.atomic():
+        aux.objects.all().delete()
+        aux.objects.bulk_create(registros, batch_size=1000)
 
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
-    }
-    return render(request, "presupuesto_nomina/ayuda_transporte.html", context)
+    return JsonResponse({'status': 'ok', 'creados': len(registros)})
 
-def obtener_presupuesto_ayuda_transporte(request):
-    ayuda_transporte = list(PresupuestoAyudaTransporte.objects.values())
-    return JsonResponse({"data": ayuda_transporte}, safe=False)
 
-def tabla_auxiliar_ayuda_transporte(request):
-    # obtener la ayuda de transporte desde la tabla auxiliar
-    parametros = ParametrosPresupuestos.objects.first()
-    ayuda_transporte = parametros.incremento_ipc if parametros else 0
-    return render(request, "presupuesto_nomina/aux_ayuda_transporte.html", {'incrementoIPC': ayuda_transporte})
-
-def subir_presupuesto_ayuda_transporte(request):
-    if request.method == "POST":
-        temporales = PresupuestoAyudaTransporteAux.objects.all()
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # obtener las cédulas existentes en la tabla principal
-        cedulas_existentes = set(
-            PresupuestoAyudaTransporte.objects.values_list("cedula", flat=True)
-        )
-        creados = 0
-        omitidos = 0
-        for temp in temporales:
-            if temp.cedula in cedulas_existentes:
-                omitidos += 1
-                continue  # ya existe → no crear
-            PresupuestoAyudaTransporte.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area = temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                base=temp.base,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-            )
-            creados += 1
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_ayuda_transporte_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoAyudaTransporteAux(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoAyudaTransporteAux.objects.all().delete()
-                PresupuestoAyudaTransporteAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def guardar_ayuda_transporte(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoAyudaTransporte(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoAyudaTransporte.objects.all().delete()
-                PresupuestoAyudaTransporte.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-
-def obtener_ayuda_transporte_temp(request):
-    data = list(PresupuestoAyudaTransporteAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_ayuda_transporte_base(request):
-    """
-    Llena la tabla auxiliar con datos de conceptos
-    """
-    PresupuestoAyudaTransporteAux.objects.all().delete()  # limpia tabla temporal
-    base_data = ConceptosFijosYVariables.objects.values(
-        "cedula","nombre","nombrecar","nomcosto","nombre_cen", "nombre_con", "concepto_f"
-    )
-
-    # filtrar solo concepto que sea igual a 389
-    base_data = base_data.filter(concepto="013")
-    
-    for row in base_data:
-        PresupuestoAyudaTransporteAux.objects.create(
-            cedula=row["cedula"],
-            nombre=row["nombre"],
-            cargo=row["nombrecar"],
-            area=row["nomcosto"],
-            centro=row["nombre_cen"],
-            concepto=row["nombre_con"],
-            base=row["concepto_f"] or 0,
-            enero=row["concepto_f"] or 0,
-            febrero=row["concepto_f"] or 0,
-        )
-
-        
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_ayuda_transporte(request):
-    if request.method == "POST":
-        PresupuestoAyudaTransporte.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de ayuda de transporte eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-# -----------------------------Cesantias---------------------
-def cesantias(request):
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
-    }
-    return render(request, "presupuesto_nomina/cesantias.html", context)
-
-def obtener_presupuesto_cesantias(request):
-    cesantias = list(PresupuestoCesantias.objects.values())
-    return JsonResponse({"data": cesantias}, safe=False)
-
-def tabla_auxiliar_cesantias(request):
-    # obtener el auxilio de transporte desde la tabla auxiliar
-    parametros = ParametrosPresupuestos.objects.first()
-    cesantias = parametros.cesantias if parametros else 0
-    return render(request, "presupuesto_nomina/aux_cesantias.html", {'cesantias': cesantias})
-
-def subir_presupuesto_cesantias(request):
-    if request.method == "POST":
-        temporales = PresupuestoCesantiasAux.objects.all()
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-
-        # obtener cedulas de la tabla principal
-        cedulas_existentes = set(
-            PresupuestoCesantias.objects.values_list("cedula", flat=True)
-        )
-        creados = 0
-        omitidos = 0
-
-        for temp in temporales:
-            if temp.cedula in cedulas_existentes:
-                omitidos += 1
-                continue  # ya existe → no crear
-            PresupuestoCesantias.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area = temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-            )
-            creados += 1
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-
-def guardar_cesantias_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoCesantiasAux(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoCesantiasAux.objects.all().delete()
-                PresupuestoCesantiasAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def guardar_cesantias(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoCesantias(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoCesantias.objects.all().delete()
-                PresupuestoCesantias.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_cesantias_temp(request):
-    data = list(PresupuestoCesantiasAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_cesantias_base(request):
-    meses = [
-        "enero", "febrero", "marzo", "abril", "mayo", "junio",
-        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    ]
-
-    # Limpio la tabla de cesantías antes de recalcular
-    PresupuestoCesantiasAux.objects.all().delete()
-
-    # Tomo todos los empleados desde nómina (puede ser tu base principal)
-    empleados = PresupuestoSueldosAux.objects.all()
-    # Tomo también los aprendices
-    aprendices = PresupuestoAprendizAux.objects.filter(concepto="SALARIO APRENDIZ REFORMA")
-    
-    # # Uno empleados y aprendices en una sola lista
-    personas = list(empleados) + list(aprendices)
-    for emp in personas:
-        # Inicializo acumuladores por mes
-        data_meses = {mes: 0 for mes in meses}
-
-        # Sumo de sueldos
-        sueldos = PresupuestoSueldosAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
-        if sueldos:
-            for mes in meses:
-                data_meses[mes] += getattr(sueldos, mes, 0)
-
-        # Sumo de comisiones
-        comision = PresupuestoComisionesAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
-        if comision:
-            for mes in meses:
-                data_meses[mes] += getattr(comision, mes, 0)
-                
-        # Sumo de medios de transporte
-        medio = PresupuestoMediosTransporteAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
-        if medio:
-            for mes in meses:
-                data_meses[mes] += getattr(medio, mes, 0)
-
-        # Sumo de auxilio transporte
-        aux = PresupuestoAuxilioTransporteAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
-        if aux:
-            for mes in meses:
-                data_meses[mes] += getattr(aux, mes, 0)
-
-        # Sumo de horas extra
-        extra = PresupuestoHorasExtraAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
-        if extra:
-            for mes in meses:
-                data_meses[mes] += getattr(extra, mes, 0)
-        
-        # Sumo de aprendices
-        aprendiz = PresupuestoAprendizAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
-        if aprendiz:
-            for mes in meses:
-                data_meses[mes] += getattr(aprendiz, mes, 0)
-
-        # Creo el registro en cesantías con la suma
-        PresupuestoCesantiasAux.objects.create(
-            cedula=emp.cedula,
-            nombre=emp.nombre,
-            centro=emp.centro,
-            area=emp.area,
-            cargo=emp.cargo,
-            concepto="CESANTÍAS",
-            **data_meses,
-            total=sum(data_meses.values())
-        )
-
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_cesantias(request):
-    if request.method == "POST":
-        PresupuestoCesantias.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de cesantías eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-# ------------------------Prima------------------
-def prima(request):
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
-    }
-    return render(request, "presupuesto_nomina/prima.html", context)
-
-def obtener_presupuesto_prima(request):
-    prima = list(PresupuestoPrima.objects.values())
-    return JsonResponse({"data": prima}, safe=False)
-
-def tabla_auxiliar_prima(request):
-    # obtener la prima desde la tabla auxiliar
-    parametros = ParametrosPresupuestos.objects.first()
-    prima = parametros.prima if parametros else 0
-    return render(request, "presupuesto_nomina/aux_prima.html", {'prima': prima})
-
-def subir_presupuesto_prima(request):
-    if request.method == "POST":
-        temporales = PresupuestoPrimaAux.objects.all()
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # obtener cedulas de la tabla principal
-        cedulas_existentes = set(
-            PresupuestoPrima.objects.values_list("cedula", flat=True)
-        )
-        creados = 0
-        omitidos = 0
-
-        for temp in temporales:
-            if temp.cedula in cedulas_existentes:
-                omitidos += 1
-                continue  # ya existe → no crear
-            PresupuestoPrima.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area = temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-            )
-            creados += 1
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_prima_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoPrimaAux(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoPrimaAux.objects.all().delete()
-                PresupuestoPrimaAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def guardar_prima(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoPrima(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoPrima.objects.all().delete()
-                PresupuestoPrima.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_prima_temp(request):
-    data = list(PresupuestoPrimaAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_prima_base(request):
-    meses = [
-        "enero", "febrero", "marzo", "abril", "mayo", "junio",
-        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    ]
-
-    # Limpio la tabla de cesantías antes de recalcular
-    PresupuestoPrimaAux.objects.all().delete()
-
-    # Tomo todos los empleados desde nómina (puede ser tu base principal)
-    empleados = PresupuestoSueldosAux.objects.all()
-    # Tomo también los aprendices
-    aprendices = PresupuestoAprendizAux.objects.filter(concepto="SALARIO APRENDIZ REFORMA")
-    # Uno empleados y aprendices en una sola lista
-    personas = list(empleados) + list(aprendices)
-    
-    for emp in personas:
-        # Inicializo acumuladores por mes
-        data_meses = {mes: 0 for mes in meses}
-
-        # Sumo de sueldos
-        sueldos = PresupuestoSueldosAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
-        if sueldos:
-            for mes in meses:
-                data_meses[mes] += getattr(sueldos, mes, 0)
-
-        # Sumo de comisiones
-        comision = PresupuestoComisionesAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
-        if comision:
-            for mes in meses:
-                data_meses[mes] += getattr(comision, mes, 0)
-                
-        # Sumo de medios de transporte
-        medio = PresupuestoMediosTransporteAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
-        if medio:
-            for mes in meses:
-                data_meses[mes] += getattr(medio, mes, 0)
-
-        # Sumo de auxilio transporte
-        aux = PresupuestoAuxilioTransporteAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
-        if aux:
-            for mes in meses:
-                data_meses[mes] += getattr(aux, mes, 0)
-
-        # Sumo de horas extra
-        extra = PresupuestoHorasExtraAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
-        if extra:
-            for mes in meses:
-                data_meses[mes] += getattr(extra, mes, 0)
-        
-        # Sumo de aprendices
-        aprendiz = PresupuestoAprendizAux.objects.filter(cedula=emp.cedula, area=emp.area).first()
-        if aprendiz:
-            for mes in meses:
-                data_meses[mes] += getattr(aprendiz, mes, 0)
-
-        # Creo el registro en cesantías con la suma
-        PresupuestoPrimaAux.objects.create(
-            cedula=emp.cedula,
-            nombre=emp.nombre,
-            centro=emp.centro,
-            area=emp.area,
-            cargo=emp.cargo,
-            concepto="PRIMA LEGAL",
-            **data_meses,
-            total=sum(data_meses.values())
-        )
-    
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_prima(request):
-    if request.method == "POST":
-        PresupuestoPrima.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de prima eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-# ------------------------Vacaciones------------------
-def vacaciones(request):
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
-    }
-    return render(request, "presupuesto_nomina/vacaciones.html", context)
-
-def obtener_presupuesto_vacaciones(request):
-    vacaciones = list(PresupuestoVacaciones.objects.values())
-    return JsonResponse({"data": vacaciones}, safe=False)
-
-def tabla_auxiliar_vacaciones(request):
-    # obtener la vacaciones desde la tabla auxiliar
-    parametros = ParametrosPresupuestos.objects.first()
-    vacaciones = parametros.vacaciones if parametros else 0
-    return render(request, "presupuesto_nomina/aux_vacaciones.html", {'vacaciones': vacaciones})
-
-def subir_presupuesto_vacaciones(request):
-    if request.method == "POST":
-        temporales = PresupuestoVacacionesAux.objects.all()
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # obtener cedulas de la tabla principal
-        cedulas_existentes = set(
-            PresupuestoVacaciones.objects.values_list("cedula", flat=True)
-        )
-        creados = 0
-        omitidos = 0
-
-        for temp in temporales:
-            if temp.cedula in cedulas_existentes:
-                omitidos += 1
-                continue  # ya existe → no crear
-            PresupuestoVacaciones.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area = temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-            )
-            creados += 1
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_vacaciones_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoVacacionesAux(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoVacacionesAux.objects.all().delete()
-                PresupuestoVacacionesAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def guardar_vacaciones(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoVacaciones(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoVacaciones.objects.all().delete()
-                PresupuestoVacaciones.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_vacaciones_temp(request):
-    data = list(PresupuestoVacacionesAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_vacaciones_base(request):
-    meses = [
-        "enero", "febrero", "marzo", "abril", "mayo", "junio",
-        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    ]
-
-    # Limpio la tabla de cesantías antes de recalcular
-    PresupuestoVacacionesAux.objects.all().delete()
-
-    # Tomo todos los empleados desde nómina (puede ser tu base principal)
-    empleados = PresupuestoSueldosAux.objects.all()
-    # Tomo también los aprendices
-    aprendices = PresupuestoAprendizAux.objects.filter(concepto="SALARIO APRENDIZ REFORMA")
-    # Uno empleados y aprendices en una sola lista
-    personas = list(empleados) + list(aprendices)
-    for emp in personas:
-        # Inicializo acumuladores por mes
-        data_meses = {mes: 0 for mes in meses}
-
-        # Sumo de nómina
-        for mes in meses:
-            data_meses[mes] += getattr(emp, mes, 0)
-
-        # Sumo de comisiones
-        comision = PresupuestoComisionesAux.objects.filter(cedula=emp.cedula).first()
-        if comision:
-            for mes in meses:
-                data_meses[mes] += getattr(comision, mes, 0)
-                
-        # Sumo de medios de transporte
-        medio = PresupuestoMediosTransporteAux.objects.filter(cedula=emp.cedula).first()
-        if medio:
-            for mes in meses:
-                data_meses[mes] += getattr(medio, mes, 0)
-
-        # Creo el registro en cesantías con la suma
-        PresupuestoVacacionesAux.objects.create(
-            cedula=emp.cedula,
-            nombre=emp.nombre,
-            centro=emp.centro,
-            area=emp.area,
-            cargo=emp.cargo,
-            concepto="VACACIONES",
-            **data_meses,
-            total=sum(data_meses.values())
-        )
-
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_vacaciones(request):
-    if request.method == "POST":
-        PresupuestoVacaciones.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de vacaciones eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-#----------------------------BONIFICACIONES----------------------
-def bonificaciones(request):
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
-    }
-    return render(request, "presupuesto_nomina/bonificaciones.html", context)
-
-def obtener_presupuesto_bonificaciones(request):
-    bonificaciones = list(PresupuestoBonificaciones.objects.values())
-    return JsonResponse({"data": bonificaciones}, safe=False)
-
-def tabla_auxiliar_bonificaciones(request):
-    return render(request, "presupuesto_nomina/aux_bonificaciones.html")
-
-def subir_presupuesto_bonificaciones(request):
-    if request.method == "POST":
-        temporales = PresupuestoBonificacionesAux.objects.all()
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # obtener cedulas de la tabla principal
-        cedulas_existentes = set(
-            PresupuestoBonificaciones.objects.values_list("cedula", flat=True)
-        )
-        creados = 0
-        omitidos = 0
-        for temp in temporales:
-            if temp.cedula in cedulas_existentes:
-                omitidos += 1
-                continue  # ya existe → no crear
-            PresupuestoBonificaciones.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area = temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-            )
-            creados += 1
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_bonificaciones_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoBonificacionesAux(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoBonificacionesAux.objects.all().delete()
-                PresupuestoBonificacionesAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def guardar_bonificaciones(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoBonificaciones(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoBonificaciones.objects.all().delete()
-                PresupuestoBonificaciones.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_bonificaciones_temp(request):
-    data = list(PresupuestoBonificacionesAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-# para la carga de bonificaciones se toma el valor de cada mes de la nomina se divide entre 2 y luego entre 12
 def cargar_bonificaciones_base(request):
-    meses = [
-        "enero", "febrero", "marzo", "abril", "mayo", "junio",
-        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    ]
+    """Media prestación mensual: (valor del mes / 2) / 12."""
+    aux = PresupuestoBonificacionesAux
+    registros = []
+    for emp in PresupuestoSueldosAux.objects.all():
+        valores = {mes: (getattr(emp, mes, 0) or 0) / 2 / 12 for mes in MESES}
+        registros.append(aux(
+            cedula=emp.cedula, nombre=emp.nombre, centro=emp.centro, area=emp.area,
+            cargo=emp.cargo, concepto='BONIFICACIÓN', total=total_de(valores), **valores,
+        ))
+
+    with transaction.atomic():
+        aux.objects.all().delete()
+        aux.objects.bulk_create(registros, batch_size=1000)
+    return JsonResponse({'status': 'ok', 'creados': len(registros)})
+
+
+CARGOS_SIN_BONIFICACION_FOCO = [
+    'ASESOR COMERCIAL',
+    'AUXILIAR COMERCIAL',
+    'JEFE DE ALMACEN',
+    'DIRECTOR COMERCIAL SUBDISTRIBUCION Y DIGITAL',
+    'DIRECTOR COMERCIAL GRANDES ESPECIES Y PUNTO VENTA',
+]
+BONIFICACION_FOCO_FIJA = 220000
 
-    # Limpio la tabla de bonificaciones antes de recalcular
-    PresupuestoBonificacionesAux.objects.all().delete()
 
-    # Tomo todos los empleados desde nómina (puede ser tu base principal)
-    empleados = PresupuestoSueldosAux.objects.all()
-
-    for emp in empleados:
-        # Inicializo acumuladores por mes
-        data_meses = {mes: 0 for mes in meses}
-
-        # Sumo de nómina y calculo bonificación
-        for mes in meses:
-            valor_mes = getattr(emp, mes, 0)
-            bonificacion_mes = (valor_mes / 2) / 12  # Bonificación es la mitad del salario anual dividido entre 12
-            data_meses[mes] += bonificacion_mes
-
-        # Creo el registro en bonificaciones con la suma
-        PresupuestoBonificacionesAux.objects.create(
-            cedula=emp.cedula,
-            nombre=emp.nombre,
-            centro=emp.centro,
-            area=emp.area,
-            cargo=emp.cargo,
-            concepto="BONIFICACIÓN",
-            **data_meses,
-            total=sum(data_meses.values())
-        )
-
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_bonificaciones(request):
-    if request.method == "POST":
-        PresupuestoBonificaciones.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de bonificaciones eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-#------------bolsa consumibles (novedad de nomina extra, consumibles y tuberculina)----------------
-def bolsa_consumibles(request):
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-    
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
-    }
-    
-    return render(request, "presupuesto_nomina/bolsa_consumibles.html", context)
-
-def obtener_presupuesto_bolsa_consumibles(request):
-    auxilio_movilidad = list(PresupuestoBolsaConsumibles.objects.values())
-    return JsonResponse({"data": auxilio_movilidad}, safe=False)
-
-def tabla_auxiliar_bolsa_consumibles(request):
-    parametros = ParametrosPresupuestos.objects.first()
-    incremento_ipc = parametros.incremento_ipc if parametros else 0
-    return render(request, "presupuesto_nomina/aux_bolsa_consumibles.html", {'incrementoIPC': incremento_ipc})
-
-def subir_presupuesto_bolsa_consumibles(request):
-    if request.method == "POST":
-        temporales = PresupuestoBolsaConsumiblesAux.objects.all()
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # obtener cedulas de la tabla principal
-        cedulas_existentes = set(
-            PresupuestoBolsaConsumibles.objects.values_list("cedula", flat=True)
-        )
-        creados = 0
-        omitidos = 0
-        for temp in temporales:
-            if temp.cedula in cedulas_existentes:
-                omitidos += 1
-                continue  # ya existe → no crear
-            PresupuestoBolsaConsumibles.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area = temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-            )
-            creados += 1
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_bolsa_consumibles_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoBolsaConsumiblesAux(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoBolsaConsumiblesAux.objects.all().delete()
-                PresupuestoBolsaConsumiblesAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def guardar_bolsa_consumibles(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoBolsaConsumibles(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoBolsaConsumibles.objects.all().delete()
-                PresupuestoBolsaConsumibles.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_bolsa_consumibles_temp(request):
-    data = list(PresupuestoBolsaConsumiblesAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_bolsa_consumibles_base(request):
-    PresupuestoBolsaConsumiblesAux.objects.all().delete()  # limpia tabla temporal
-    base_data = ConceptosFijosYVariables.objects.values(
-        "cedula","nombre","nombrecar","nomcosto","nombre_cen", "nombre_con", "enero", "febrero", "marzo", "abril", "mayo",
-        "junio", "julio", "agosto", "total"
-    )
-
-    # filtrar solo concepto que sea igual a 389
-    base_data = base_data.filter(concepto="E14")
-    
-    for row in base_data:
-        PresupuestoBolsaConsumiblesAux.objects.create(
-            cedula=row["cedula"],
-            nombre=row["nombre"],
-            cargo=row["nombrecar"],
-            area=row["nomcosto"],
-            centro=row["nombre_cen"],
-            concepto=row["nombre_con"],
-            enero=row["enero"] or 0,
-            febrero=row["febrero"] or 0,
-            marzo=row["marzo"] or 0,
-            abril=row["abril"] or 0,
-            mayo=row["mayo"] or 0,
-            junio=row["junio"] or 0,
-            julio=row["julio"] or 0,
-            agosto=row["agosto"] or 0,
-            total=row["total"] or 0,
-        )
-
-        
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_bolsa_consumibles(request):
-    if request.method == "POST":
-        PresupuestoBolsaConsumibles.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de auxilio de movilidad eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-#-----------------------Auxilio TBC y KIT----------------------------
-def auxilio_TBCKIT(request):
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
-    }
-    return render(request, "presupuesto_nomina/auxilio_TBCKIT.html", context)
-
-def obtener_presupuesto_auxilio_TBCKIT(request):
-    auxilio_movilidad = list(PresupuestoAuxilioTBCKIT.objects.values())
-    return JsonResponse({"data": auxilio_movilidad}, safe=False)
-
-def tabla_auxiliar_auxilio_TBCKIT(request):
-    parametros = ParametrosPresupuestos.objects.first()
-    incremento_ipc = parametros.incremento_ipc if parametros else 0
-    return render(request, "presupuesto_nomina/aux_auxilio_TBCKIT.html", {'incrementoIPC': incremento_ipc})
-
-def subir_presupuesto_auxilio_TBCKIT(request):
-    if request.method == "POST":
-        temporales = PresupuestoAuxilioTCBKITAux.objects.all()
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # obtener cedulas de la tabla principal
-        cedulas_existentes = set(
-            PresupuestoAuxilioTBCKIT.objects.values_list("cedula", flat=True)
-        )
-        creados = 0
-        omitidos = 0
-        for temp in temporales:
-            if temp.cedula in cedulas_existentes:
-                omitidos += 1
-                continue  # ya existe → no crear
-            PresupuestoAuxilioTBCKIT.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area = temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-            )
-            creados += 1
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_auxilio_TBCKIT_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoAuxilioTCBKITAux(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoAuxilioTCBKITAux.objects.all().delete()
-                PresupuestoAuxilioTCBKITAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def guardar_auxilio_TBCKIT(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoAuxilioTBCKIT(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoAuxilioTBCKIT.objects.all().delete()
-                PresupuestoAuxilioTBCKIT.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_auxilio_TBCKIT_temp(request):
-    data = list(PresupuestoAuxilioTCBKITAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_auxilio_TBCKIT_base(request):
-    PresupuestoAuxilioTCBKITAux.objects.all().delete()  # limpia tabla temporal
-    base_data = ConceptosFijosYVariables.objects.values(
-        "cedula","nombre","nombrecar","nomcosto","nombre_cen", "nombre_con", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "total"
-    )
-
-    # filtrar solo concepto que sea igual a 389
-    base_data = base_data.filter(concepto="E14")
-    
-    for row in base_data:
-        PresupuestoAuxilioTCBKITAux.objects.create(
-            cedula=row["cedula"],
-            nombre=row["nombre"],
-            cargo=row["nombrecar"],
-            area=row["nomcosto"],
-            centro=row["nombre_cen"],
-            concepto=row["nombre_con"],
-            enero=row["enero"] or 0,
-            febrero=row["febrero"] or 0,
-            marzo=row["marzo"] or 0,
-            abril=row["abril"] or 0,
-            mayo=row["mayo"] or 0,
-            junio=row["junio"] or 0,
-            julio=row["julio"] or 0,
-            agosto=row["agosto"] or 0,
-            septiembre=row["septiembre"] or 0,
-            total=row["total"] or 0,
-        )
-
-        
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_auxilio_TBCKIT(request):
-    if request.method == "POST":
-        PresupuestoAuxilioTBCKIT.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de auxilio de movilidad eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-
-# ----------------------------SEGURIDAD SOCIAL---------------------
-def seguridad_social(request):
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-    }
-    return render(request, "presupuesto_nomina/seguridad_social.html", context)
-
-def obtener_presupuesto_seguridad_social(request):
-    seguridad_social = list(PresupuestoSeguridadSocial.objects.values())
-    return JsonResponse({"data": seguridad_social}, safe=False)
-
-def tabla_auxiliar_seguridad_social(request):
-    return render(request, "presupuesto_nomina/aux_seguridad_social.html")
-
-def subir_presupuesto_seguridad_social(request):
-    if request.method == "POST":
-        temporales = PresupuestoSeguridadSocialAux.objects.all()
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # obtener nombres de la tabla principal
-        nombres_existentes = set(
-            PresupuestoSeguridadSocial.objects.values_list("nombre", flat=True)
-        )
-        creados = 0
-        omitidos = 0
-        for temp in temporales:
-            if temp.nombre in nombres_existentes:
-                omitidos += 1
-                continue  # ya existe → no crear
-            PresupuestoSeguridadSocial.objects.create(
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area = temp.area,
-                concepto=temp.concepto,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-            )
-            creados += 1
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_seguridad_social_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "nombre", "centro", "area", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoSeguridadSocialAux(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoSeguridadSocialAux.objects.all().delete()
-                PresupuestoSeguridadSocialAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_seguridad_social_temp(request):
-    data = list(PresupuestoSeguridadSocialAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-# para obtener la seguridad social se debe agrupar las tablas de nomina, comisiones, horas extra y medios de transporte por sede(centro) y por area y sumar los valores de cada mes
-from django.db.models import Avg
-def cargar_seguridad_social_base(request):
-    # Promedios agrupados por sede y área
-    promedios_arl = ConceptosFijosYVariables.objects.values(
-        "nombre_cen", "nomcosto"
-    ).annotate(
-        promedio_arl=Avg("arlporc")
-    )
-    
-    # Diccionario: {(sede, area): promedio_arl}
-    arl_porcentajes = {
-        (item["nombre_cen"], item["nomcosto"]): (item["promedio_arl"] / 100.0)
-        for item in promedios_arl if item["promedio_arl"] is not None
-    }
-    # tomar 2 decimales
-    arl_porcentajes = {key: round(value, 4) for key, value in arl_porcentajes.items()}
-    
-    # imprimir el diccionario
-    print(arl_porcentajes)
-    
-    meses = [
-        "enero", "febrero", "marzo", "abril", "mayo", "junio",
-        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    ]
-
-    # Diccionario de conceptos con su porcentaje
-    conceptos = {
-        "APORTE PENSIÓN": 0.12,               # 12%
-        "APORTE SALUD": 0.085,                # 8.5%
-        "APORTE CAJAS DE COMPENSACIÓN": 0.04, # 4%
-        "APORTE A.R.L": None,              # 0.93%
-        "APORTE SENA": 0.02,                  # 2%
-        "APORTE I.C.B.F": 0.03                # 3%
-    }
-
-    # Salario mínimo (ajusta según el año correspondiente)
-    parametros = ParametrosPresupuestos.objects.first()
-    salarioIncremento = parametros.salario_minimo + (parametros.salario_minimo * (parametros.incremento_salarial / 100))
-   
-    TOPE = (salarioIncremento) * 10
-    
-    # Limpio tabla antes de recalcular
-    PresupuestoSeguridadSocialAux.objects.all().delete()
-
-    # Diccionarios separados para acumulación
-    acumulados_generales = defaultdict(lambda: {mes: 0 for mes in meses})  # pensión, cajas, ARL, SENA
-    acumulados_salud_icbf = defaultdict(lambda: {mes: 0 for mes in meses})  # solo > 10 SMMLV
-    acumulados_aprendiz_salud = defaultdict(lambda: {mes: 0 for mes in meses}) # aprendices con salario aprendiz
-   
-    empleados = PresupuestoSueldos.objects.all()
-    aprendices = PresupuestoAprendiz.objects.all()
-    medios = PresupuestoMediosTransporte.objects.all()
-    comisiones = PresupuestoComisiones.objects.all()
-    horas_extra = PresupuestoHorasExtra.objects.all()
-    bandera = False
-    # Primero agrupar las bases de sueldos por centro y área
-    for emp in empleados:
-        key = (emp.centro, emp.area)
-        salario_base = emp.salario_base
-        nuevo_salario = salario_base + (salario_base * (parametros.incremento_salarial / 100))
-        for mes in meses:
-            # Base mensual del sueldo
-            base_mes = getattr(emp, mes, 0)
-            acumulados_generales[key][mes] += base_mes
-
-            if nuevo_salario > TOPE:
-                bandera = True
-                acumulados_salud_icbf[key][mes] += base_mes
-    
-    # Luego agrupar los medios de transporte por centro y área
-    for medio in medios:
-        cc = medio.cedula
-        key = (medio.centro, medio.area)
-        for mes in meses:
-            acumulados_generales[key][mes] += getattr(medio, mes, 0)
-           
-            if bandera and cc == "31793592":
-                acumulados_salud_icbf[key][mes] += getattr(medio, mes, 0)
-    
-    # Luego agrupar las comisiones por centro y área
-    for comi in comisiones:
-        cc = comi.cedula
-        key = (comi.centro, comi.area)
-        for mes in meses:
-            acumulados_generales[key][mes] += getattr(comi, mes, 0)
-            if bandera and cc == "31793592":
-                acumulados_salud_icbf[key][mes] += getattr(comi, mes, 0)
-    
-    # Luego agrupar las horas extra por centro y área
-    for hora in horas_extra:
-        cc = hora.cedula
-        key = (hora.centro, hora.area)
-        for mes in meses:
-            acumulados_generales[key][mes] += getattr(hora, mes, 0)
-            if bandera and cc == "31793592":
-                acumulados_salud_icbf[key][mes] += getattr(hora, mes, 0)
-    
-    # print("acumulados icbf:", acumulados_salud_icbf)
-    # === APRENDICES (tabla aparte) ===
-    # cambiar los valores (lo que esta en cero se deja en cero) por el salario minimo incremento
-    for apr in aprendices:
-        for mes in meses:
-            if getattr(apr, mes, 0) > 0:
-                setattr(apr, mes, salarioIncremento)
-    
-    for apr in aprendices:
-        cc = apr.cedula
-        if apr.concepto == "SALARIO APRENDIZ":
-            key = (apr.centro, apr.area)
-            for mes in meses:
-                acumulados_aprendiz_salud[key][mes] += getattr(apr, mes, 0)
-                if bandera and cc == "31793592":
-                    acumulados_salud_icbf[key][mes] += getattr(apr, mes, 0)
-        if apr.concepto == "SALARIO APRENDIZ REFORMA":
-            # además suman a todos los aportes (como parte de la base general)
-            key = (apr.centro, apr.area)
-            for mes in meses:
-                acumulados_generales[key][mes] += getattr(apr, mes, 0)
-                if bandera and cc == "31793592":
-                    acumulados_salud_icbf[key][mes] += getattr(apr, mes, 0)
-
-    # Crear registros en la tabla
-    for (centro, area), data_meses in acumulados_generales.items():
-        for concepto, porcentaje in conceptos.items():
-            if concepto in ["APORTE SALUD", "APORTE SENA", "APORTE I.C.B.F"]:
-                data = None
-
-                # 1. Si hay empleados > 10 SMMLV
-                if (centro, area) in acumulados_salud_icbf:
-                    data = acumulados_salud_icbf[(centro, area)]
-
-                # 2. Si son aprendices con SALARIO APRENDIZ → solo para SALUD
-                if concepto == "APORTE SALUD" and (centro, area) in acumulados_aprendiz_salud:
-                    aprendiz_data = acumulados_aprendiz_salud[(centro, area)]
-                    if data:
-                        data = {mes: data[mes] + aprendiz_data[mes] for mes in meses}
-                    else:
-                        data = aprendiz_data
-                    # sobrescribo el porcentaje SOLO para aprendices
-                    porcentaje = 0.125 
-
-                # Si no aplica, salto
-                if not data:
-                    continue
-            elif concepto == "APORTE A.R.L":
-                # Los aprendices con SALARIO APRENDIZ también deben aportar ARL
-                data = data_meses.copy()
-                if (centro, area) in acumulados_aprendiz_salud:
-                    aprendiz_data = acumulados_aprendiz_salud[(centro, area)]
-                    data = {mes: data[mes] + aprendiz_data[mes] for mes in meses}
-                # aquí reemplazamos el porcentaje fijo con el promedio real
-                porcentaje = arl_porcentajes.get((centro, area), 0.0093)
-            else:
-                data = data_meses
-
-            valores_mensuales = {mes: data[mes] * porcentaje for mes in meses} 
-            PresupuestoSeguridadSocialAux.objects.create(
-                nombre="SEGURIDAD SOCIAL",
-                centro=centro,
-                area=area,
-                concepto=concepto,
-                **valores_mensuales,
-                total=round(sum(valores_mensuales.values()))
-            )
-    
-    # === AGRUPAR POR ÁREA LOS DE ASISTENCIA TÉCNICA ===
-    asistencia = (
-        PresupuestoSeguridadSocialAux.objects
-        .filter(area__in=["ASISTENCIA TECNICA PROPIA", "ASISTENCIA TECNICA CONVENIO"])
-        .values("area", "concepto")  # agrupamos por área y concepto
-        .annotate(
-            enero=Sum("enero"),
-            febrero=Sum("febrero"),
-            marzo=Sum("marzo"),
-            abril=Sum("abril"),
-            mayo=Sum("mayo"),
-            junio=Sum("junio"),
-            julio=Sum("julio"),
-            agosto=Sum("agosto"),
-            septiembre=Sum("septiembre"),
-            octubre=Sum("octubre"),
-            noviembre=Sum("noviembre"),
-            diciembre=Sum("diciembre"),
-            total=Sum("total"),
-        )
-    )
-    
-    # agrupar por area PROYECTO AFTOSA GASTOS DE PERSONAL
-    aftosa = (PresupuestoSeguridadSocialAux.objects
-        .filter(area__in=["PROYECTO AFTOSA GASTOS DE PERSONAL"])
-        .values("area", "concepto")  # agrupamos por área y concepto
-        .annotate(
-            enero=Sum("enero"),
-            febrero=Sum("febrero"),
-            marzo=Sum("marzo"),
-            abril=Sum("abril"),
-            mayo=Sum("mayo"),
-            junio=Sum("junio"),
-            julio=Sum("julio"),
-            agosto=Sum("agosto"),
-            septiembre=Sum("septiembre"),
-            octubre=Sum("octubre"),
-            noviembre=Sum("noviembre"),
-            diciembre=Sum("diciembre"),
-            total=Sum("total"),
-        )
-    )
-    
-    # Insertar en la tabla como "ASISTENCIA TECNICA AGRUPADA"
-    for item in asistencia:
-        PresupuestoSeguridadSocialAux.objects.create(
-            nombre="SEGURIDAD SOCIAL",
-            centro="",  # omitimos centro
-            area=item["area"],  # mantenemos el nombre de área original (PROPIA o CONVENIO)
-            concepto=item["concepto"],
-            enero=item["enero"] or 0,
-            febrero=item["febrero"] or 0,
-            marzo=item["marzo"] or 0,
-            abril=item["abril"] or 0,
-            mayo=item["mayo"] or 0,
-            junio=item["junio"] or 0,
-            julio=item["julio"] or 0,
-            agosto=item["agosto"] or 0,
-            septiembre=item["septiembre"] or 0,
-            octubre=item["octubre"] or 0,
-            noviembre=item["noviembre"] or 0,
-            diciembre=item["diciembre"] or 0,
-            total=item["total"] or 0,
-        )
-    # 2. Eliminamos las filas originales (con centro)
-    PresupuestoSeguridadSocialAux.objects.filter(
-        area__in=["ASISTENCIA TECNICA PROPIA", "ASISTENCIA TECNICA CONVENIO"]
-    ).exclude(centro="").delete()
-    
-    # insertar AFTOSA
-    for item in aftosa:
-        PresupuestoSeguridadSocialAux.objects.create(
-            nombre="SEGURIDAD SOCIAL",
-            centro="",  # omitimos centro
-            area=item["area"],  # mantenemos el nombre de área original
-            concepto=item["concepto"],
-            enero=item["enero"] or 0,
-            febrero=item["febrero"] or 0,
-            marzo=item["marzo"] or 0,
-            abril=item["abril"] or 0,
-            mayo=item["mayo"] or 0,
-            junio=item["junio"] or 0,
-            julio=item["julio"] or 0,
-            agosto=item["agosto"] or 0,
-            septiembre=item["septiembre"] or 0,
-            octubre=item["octubre"] or 0,
-            noviembre=item["noviembre"] or 0,
-            diciembre=item["diciembre"] or 0,
-            total=item["total"] or 0,
-        )
-    # 2. Eliminamos las filas originales (con centro)
-    PresupuestoSeguridadSocialAux.objects.filter(
-        area__in=["PROYECTO AFTOSA GASTOS DE PERSONAL"]
-    ).exclude(centro="").delete()
-
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_seguridad_social(request):
-    if request.method == "POST":
-        PresupuestoSeguridadSocial.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de seguridad social eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-#--------------------------INTERESES DE CESANTIAS----------------------
-def intereses_cesantias(request):
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
-    }
-    return render(request, "presupuesto_nomina/intereses_cesantias.html", context)
-
-def obtener_presupuesto_intereses_cesantias(request):
-    intereses_cesantias = list(PresupuestoInteresesCesantias.objects.values())
-    return JsonResponse({"data": intereses_cesantias}, safe=False)
-
-def tabla_auxiliar_intereses_cesantias(request):
-    # obtener la cesantías desde la tabla auxiliar
-    parametros = ParametrosPresupuestos.objects.first()
-    interesesCesantias = parametros.intereses_cesantias if parametros else 0
-    return render(request, "presupuesto_nomina/aux_intereses_cesantias.html", {'interesesCesantias': interesesCesantias})
-
-def subir_presupuesto_intereses_cesantias(request):
-    if request.method == "POST":
-        temporales = PresupuestoInteresesCesantiasAux.objects.all()
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-
-        # obtener cedulas de la tabla principal
-        cedulas_existentes = set(
-            PresupuestoInteresesCesantias.objects.values_list('cedula', flat=True)
-        )
-        creados = 0
-        omitidos = 0
-        for temp in temporales:
-            if temp.cedula in cedulas_existentes:
-                omitidos += 1
-                continue  # omitir si ya existe
-            PresupuestoInteresesCesantias.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area = temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-            )
-            creados += 1
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_intereses_cesantias_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoInteresesCesantiasAux(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoInteresesCesantiasAux.objects.all().delete()
-                PresupuestoInteresesCesantiasAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def guardar_intereses_cesantias(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoInteresesCesantias(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoInteresesCesantias.objects.all().delete()
-                PresupuestoInteresesCesantias.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_intereses_cesantias_temp(request):
-    data = list(PresupuestoInteresesCesantiasAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-# para la carga de intereses de cesantías se toma el valor de cada mes de la tabla de cesantias, esto para enero o sea el primer mes y para el mes siguiente se toma el valor de enero, se multiplica por el 200% y se suma el valor del mes anterior, esto hasta completar los 12 meses
-def cargar_intereses_cesantias_base(request):
-    meses = [
-        "enero", "febrero", "marzo", "abril", "mayo", "junio",
-        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-    ]
-
-    # Parametrización
-    parametros = ParametrosPresupuestos.objects.first()
-    interesCesantias = parametros.intereses_cesantias if parametros else 0
-    print(f"Intereses cesantías parámetro: {interesCesantias}")
-
-    # Limpiar tabla auxiliar antes de recalcular
-    PresupuestoInteresesCesantiasAux.objects.all().delete()
-
-    cesantias_qs = PresupuestoCesantiasAux.objects.all()
-
-    # cargar las cesantias en intereses de cesantias auxiliar
-    for reg in cesantias_qs:
-        PresupuestoInteresesCesantiasAux.objects.create(
-            cedula=reg.cedula,
-            nombre=reg.nombre,
-            centro=reg.centro,
-            area=reg.area,
-            cargo=reg.cargo,
-            concepto="INTERESES CESANTÍAS",
-            enero=reg.enero,
-            febrero=reg.febrero,
-            marzo=reg.marzo,
-            abril=reg.abril,
-            mayo=reg.mayo,
-            junio=reg.junio,
-            julio=reg.julio,
-            agosto=reg.agosto,
-            septiembre=reg.septiembre,
-            octubre=reg.octubre,
-            noviembre=reg.noviembre,
-            diciembre=reg.diciembre,
-            total=reg.total,
-        )
-    
-    # for reg in cesantias_qs:
-    #     cesantias_base = [getattr(reg, m) or 0 for m in meses]
-    #     valores = {}
-
-    #     # Variables de control
-    #     suma_cesantias = 0
-    #     consecutivo_valores = 0
-    #     bloque_activo = False
-    #     intereses_acumulados = 0
-
-    #     for i, mes in enumerate(meses):
-    #         valor_mes = cesantias_base[i]
-
-    #         if valor_mes == 0:
-    #             # Mes sin valor → 0 y termina el bloque
-    #             valores[mes] = 0
-    #             bloque_activo = False
-    #             continue
-
-    #         # Si inicia un nuevo bloque, reiniciar sumatoria, días e intereses
-    #         if not bloque_activo:
-    #             suma_cesantias = 0
-    #             consecutivo_valores = 0
-    #             intereses_acumulados = 0  # Reinicia intereses al iniciar bloque
-    #             bloque_activo = True
-
-    #         # Acumular dentro del bloque
-    #         suma_cesantias += valor_mes
-    #         consecutivo_valores += 1
-
-    #         # Días = 30 * posición dentro del bloque
-    #         dias = 30 * consecutivo_valores
-
-    #         # Cálculo del interés
-    #         interes_teorico = (suma_cesantias * dias * 0.12) / 360
-    #         interes_mes = interes_teorico - intereses_acumulados
-
-    #         valores[mes] = interes_mes
-    #         intereses_acumulados += interes_mes
-
-    #     # Totalizar y guardar en tabla auxiliar
-    #     total = sum(Decimal(valores[m]) for m in meses)
-    #     create_kwargs = {m: int(round(float(valores[m]))) for m in meses}
-
-    #     PresupuestoInteresesCesantiasAux.objects.create(
-    #         cedula=reg.cedula,
-    #         nombre=reg.nombre,
-    #         centro=reg.centro,
-    #         area=reg.area,
-    #         cargo=reg.cargo,
-    #         concepto="INTERESES CESANTÍAS",
-    #         **create_kwargs,
-    #         total=int(round(float(total)))
-    #     )
-
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_intereses_cesantias(request):
-    if request.method == "POST":
-        PresupuestoInteresesCesantias.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de intereses de cesantías eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-#----------------------------APRENDIZ------------------
-def aprendiz(request):
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
-    }
-    return render(request, "presupuesto_nomina/aprendiz.html", context)
-
-def obtener_presupuesto_aprendiz(request):
-    aprendiz = list(PresupuestoAprendiz.objects.values())
-    return JsonResponse({"data": aprendiz}, safe=False)
-
-def tabla_auxiliar_aprendiz(request):
-    parametros = ParametrosPresupuestos.objects.first()
-    incrementoSalarial = parametros.incremento_salarial if parametros else 0
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
-        'incrementoSalarial': incrementoSalarial,
-    }
-    return render(request, "presupuesto_nomina/aux_aprendiz.html", context)
-
-def subir_presupuesto_aprendiz(request):
-    if request.method == "POST":
-        temporales = PresupuestoAprendizAux.objects.all()
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # obtener cedulas de la tabla principal
-        cedulas_existentes = set(
-            PresupuestoAprendiz.objects.values_list('cedula', flat=True)
-        )
-        creados = 0
-        omitidos = 0
-        for temp in temporales:
-            if temp.cedula in cedulas_existentes:
-                omitidos += 1
-                continue  # omitir si ya existe
-            PresupuestoAprendiz.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area = temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                salario_base=temp.salario_base,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-            )
-            creados += 1
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)  
-    
-def guardar_aprendiz_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "salario_base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoAprendizAux(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoAprendizAux.objects.all().delete()
-                PresupuestoAprendizAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def guardar_aprendiz(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "salario_base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoAprendiz(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoAprendiz.objects.all().delete()
-                PresupuestoAprendiz.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-
-def obtener_aprendiz_temp(request):
-    data = list(PresupuestoAprendizAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_aprendiz_base(request):
-    PresupuestoAprendizAux.objects.all().delete()  # limpia tabla temporal
-    base_data = ConceptosFijosYVariables.objects.values(
-        "cedula","nombre","nombrecar","nomcosto","nombre_cen", "nombre_con", "concepto_f")
-    
-    # filtrar solo concepto que sea igual a 003 y 006
-    base_data = base_data.filter(concepto__in=["003", "006"])
-    
-    for row in base_data:
-        PresupuestoAprendizAux.objects.create(
-            cedula=row["cedula"],
-            nombre=row["nombre"],
-            cargo=row["nombrecar"],
-            area=row["nomcosto"],
-            centro=row["nombre_cen"],
-            concepto=row["nombre_con"],
-            salario_base=row["concepto_f"],
-        )
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_aprendiz(request):
-    if request.method == "POST":
-        PresupuestoAprendiz.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de aprendices eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-#--------------------------BONIFICACIONES FOCO----------------------
-def bonificaciones_foco(request):
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
-    }
-    return render(request, "presupuesto_nomina/bonificaciones_foco.html", context)
-
-def obtener_presupuesto_bonificaciones_foco(request):
-    bonificaciones_foco = list(PresupuestoBonificacionesFoco.objects.values())
-    return JsonResponse({"data": bonificaciones_foco}, safe=False)
-
-def tabla_auxiliar_bonificaciones_foco(request):
-    return render(request, "presupuesto_nomina/aux_bonificaciones_foco.html")
-
-def subir_presupuesto_bonificaciones_foco(request):
-    if request.method == "POST":
-        temporales = PresupuestoBonificacionesFocoAux.objects.all()
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # obtener cedulas de la tabla principal
-        cedulas_existentes = set(
-            PresupuestoBonificacionesFoco.objects.values_list('cedula', flat=True)
-        )
-        creados = 0
-        omitidos = 0
-        for temp in temporales:
-            if temp.cedula in cedulas_existentes:
-                omitidos += 1
-                continue  # omitir si ya existe
-            PresupuestoBonificacionesFoco.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area = temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-            )
-            creados += 1
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_bonificaciones_foco_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoBonificacionesFocoAux(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoBonificacionesFocoAux.objects.all().delete()
-                PresupuestoBonificacionesFocoAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def guardar_bonificaciones_foco(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoBonificacionesFoco(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoBonificacionesFoco.objects.all().delete()
-                PresupuestoBonificacionesFoco.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_bonificaciones_foco_temp(request):
-    data = list(PresupuestoBonificacionesFocoAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-# para la carga de bonificaciones foco se el valor total del mes de la tabla comisiones y se agrega al mes correspondiente en la tabla temporal de bonificaciones foco
 def cargar_bonificaciones_foco_base(request):
-    # limpio tabla auxiliar de bonificaciones antes de recalcular
-    PresupuestoBonificacionesFocoAux.objects.all().delete()
+    aux = PresupuestoBonificacionesFocoAux
+    params = parametros()
+    ipc = (params.incremento_ipc or 0) if params else 0
+    incremento_comisiones = (params.incremento_comisiones or 0) if params else 0
+    factor = 1 + incremento_comisiones / 100
 
-    parametros = ParametrosPresupuestos.objects.first()
-    incrementoIpc = parametros.incremento_ipc if parametros else 0
-    incrementoComisiones = parametros.incremento_comisiones if parametros else 0
-    
-    # agrupamos por persona sumando los meses de enero a junio
-    comisiones_agrupadas = (
-        PresupuestoComisionesAux.objects
-        .values("cedula", "nombre", "centro", "area", "cargo")
-        .annotate(
-            total=Sum("total"),        # total de todos los meses
-            total_ene_jun=Sum("enero") + Sum("febrero") + Sum("marzo") + Sum("abril") + Sum("mayo") + Sum("junio"),
-            enero=Sum("enero"),
-            febrero=Sum("febrero"),
-            marzo=Sum("marzo"),
-            abril=Sum("abril"),
-            mayo=Sum("mayo"),
-            junio=Sum("junio"),
-            julio=Sum("julio"),
-            agosto=Sum("agosto"),
-            septiembre=Sum("septiembre"),
-            octubre=Sum("octubre"),
-            noviembre=Sum("noviembre"),
-            diciembre=Sum("diciembre"),
-        )
-    )
+    registros = []
 
-    for com in comisiones_agrupadas:
-        # -------------------------
-        # Cálculo para enero usando total anual / 12
-        if com["total"] > 0:
-            # Ajustar cada mes según incrementoComisiones
-            incremento_factor = 1 + (incrementoComisiones / 100)
-            enero_base = (com["enero"] or 0) / incremento_factor
-            febrero_base = (com["febrero"] or 0) / incremento_factor
-            marzo_base = (com["marzo"] or 0) / incremento_factor
-            abril_base = (com["abril"] or 0) / incremento_factor
-            mayo_base = (com["mayo"] or 0) / incremento_factor
-            junio_base = (com["junio"] or 0) / incremento_factor
-            julio_base = (com["julio"] or 0) / incremento_factor
-            agosto_base = (com["agosto"] or 0) / incremento_factor
-            septiembre_base = (com["septiembre"] or 0) / incremento_factor
-            octubre_base = (com["octubre"] or 0) / incremento_factor
-            noviembre_base = (com["noviembre"] or 0) / incremento_factor
-            diciembre_base = (com["diciembre"] or 0) / incremento_factor
-            total_ajustado = (
-                enero_base + febrero_base + marzo_base + abril_base +
-                mayo_base + junio_base + julio_base + agosto_base +
-                septiembre_base + octubre_base + noviembre_base + diciembre_base
-            )
-            enero_valor = total_ajustado / 12
+    # 1) Quien tiene comisiones: enero = promedio anual sin el incremento,
+    #    julio = mitad del promedio de enero–junio.
+    comisiones = (PresupuestoComisionesAux.objects
+                  .values('cedula', 'nombre', 'centro', 'area', 'cargo')
+                  .annotate(**{mes: Sum(mes) for mes in MESES}))
 
-        # -------------------------
-        # Cálculo para julio: promedio ene-jun / 2
-        julio_valor = 0
-        if com["total_ene_jun"] > 0:
-            promedio_ene_jun = com["total_ene_jun"] / 6
-            julio_valor = promedio_ene_jun / 2
+    for fila in comisiones:
+        meses = {mes: fila[mes] or 0 for mes in MESES}
+        total_ajustado = sum(meses.values()) / factor if factor else 0
+        enero = total_ajustado / 12 if total_ajustado else 0
 
-        PresupuestoBonificacionesFocoAux.objects.create(
-            cedula=com["cedula"],
-            nombre=com["nombre"],
-            centro=com["centro"],
-            area=com["area"],
-            cargo=com["cargo"],
-            concepto="BONIFICACIÓN FOCO",
-            enero=enero_valor,
-            febrero=0,
-            marzo=0,
-            abril=0,
-            mayo=0,
-            junio=0,
-            julio=julio_valor,
-            agosto=0,
-            septiembre=0,
-            octubre=0,
-            noviembre=0,
-            diciembre=0,
-            total=enero_valor + julio_valor,  # suma lo de enero y julio
-        )
-    
-    # 2️⃣ Empleados de ConceptosFijosYVariables filtrando COMISIONES y excluyendo ciertos cargos
-    cargos_excluidos = [
-        "ASESOR COMERCIAL",
-        "AUXILIAR COMERCIAL",
-        "JEFE DE ALMACEN",
-        "DIRECTOR COMERCIAL SUBDISTRIBUCION Y DIGITAL",
-        "DIRECTOR COMERCIAL GRANDES ESPECIES Y PUNTO VENTA",
+        primer_semestre = sum(meses[mes] for mes in MESES[:6])
+        julio = (primer_semestre / 6) / 2 if primer_semestre else 0
+
+        registros.append(aux(
+            cedula=fila['cedula'], nombre=fila['nombre'], centro=fila['centro'],
+            area=fila['area'], cargo=fila['cargo'], concepto='BONIFICACIÓN FOCO',
+            enero=enero, julio=julio, total=enero + julio,
+        ))
+
+    # 2) El resto de la planta: bonificación fija indexada al IPC en enero.
+    fijos = (PresupuestoSueldos.objects
+             .exclude(cargo__in=CARGOS_SIN_BONIFICACION_FOCO)
+             .values('cedula', 'nombre', 'centro', 'area', 'cargo'))
+    enero_fijo = BONIFICACION_FOCO_FIJA * (1 + ipc / 100)
+
+    for fila in fijos:
+        registros.append(aux(
+            concepto='BONIFICACIÓN FOCO', enero=enero_fijo, total=enero_fijo, **fila))
+
+    with transaction.atomic():
+        aux.objects.all().delete()
+        aux.objects.bulk_create(registros, batch_size=1000)
+    return JsonResponse({'status': 'ok', 'creados': len(registros)})
+
+
+def cargar_intereses_cesantias_base(request):
+    """Copia las cesantías; el cálculo del interés se hace en el navegador."""
+    aux = PresupuestoInteresesCesantiasAux
+    registros = [
+        aux(cedula=c.cedula, nombre=c.nombre, centro=c.centro, area=c.area, cargo=c.cargo,
+            concepto='INTERESES CESANTÍAS', total=c.total,
+            **{mes: getattr(c, mes) for mes in MESES})
+        for c in PresupuestoCesantiasAux.objects.all()
     ]
-    
-    empleados_fijos = (
-        PresupuestoSueldos.objects
-        .exclude(cargo__in=cargos_excluidos)
-        .values("cedula", "nombre", "centro", "area", "cargo")
-        .annotate(total=Sum("total"))
-    )
-    
-    # 2️⃣ Insertar en la tabla de bonificaciones con enero = 220000 + IPC
-    for emp in empleados_fijos:
-        enero_valor = 220000 * (1 + incrementoIpc / 100)
-        PresupuestoBonificacionesFocoAux.objects.create(
-            cedula=emp["cedula"],
-            nombre=emp["nombre"],
-            centro=emp["centro"],
-            area=emp["area"],
-            cargo=emp["cargo"],
-            concepto="BONIFICACIÓN FOCO",
-            enero=enero_valor,
-            febrero=0,
-            marzo=0,
-            abril=0,
-            mayo=0,
-            junio=0,
-            julio=0,
-            agosto=0,
-            septiembre=0,
-            octubre=0,
-            noviembre=0,
-            diciembre=0,
-            total=enero_valor,  # solo enero por ahora
-        )
+    with transaction.atomic():
+        aux.objects.all().delete()
+        aux.objects.bulk_create(registros, batch_size=1000)
+    return JsonResponse({'status': 'ok', 'creados': len(registros)})
 
 
-    return JsonResponse({"status": "ok"})
+# ----------------------------------------------------- seguridad social
 
-@csrf_exempt
-def borrar_presupuesto_bonificaciones_foco(request):
-    if request.method == "POST":
-        PresupuestoBonificacionesFoco.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de bonificaciones foco eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+APORTES = {
+    'APORTE PENSIÓN': 0.12,
+    'APORTE SALUD': 0.085,
+    'APORTE CAJAS DE COMPENSACIÓN': 0.04,
+    'APORTE A.R.L': None,        # sale del promedio real de arlporc
+    'APORTE SENA': 0.02,
+    'APORTE I.C.B.F': 0.03,
+}
+APORTES_SOLO_ALTOS = {'APORTE SALUD', 'APORTE SENA', 'APORTE I.C.B.F'}
+ARL_POR_DEFECTO = 0.0093
+APORTE_SALUD_APRENDIZ = 0.125
+AREAS_AGRUPADAS = [
+    ['ASISTENCIA TECNICA PROPIA', 'ASISTENCIA TECNICA CONVENIO'],
+    ['PROYECTO AFTOSA GASTOS DE PERSONAL'],
+]
+# Cédula con tratamiento especial heredado del cálculo original.
+CEDULA_ESPECIAL = '31793592'
 
-#------------------------AUXILIO EDUCACION----------------------
-def auxilio_educacion(request):
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
+
+def _porcentajes_arl():
+    promedios = (ConceptosFijosYVariables.objects
+                 .values('nombre_cen', 'nomcosto')
+                 .annotate(promedio=Avg('arlporc')))
+    return {
+        (p['nombre_cen'], p['nomcosto']): round((p['promedio'] or 0) / 100.0, 4)
+        for p in promedios if p['promedio'] is not None
     }
-    return render(request, "presupuesto_nomina/auxilio_educacion.html", context)
 
-def obtener_presupuesto_auxilio_educacion(request):
-    auxilio_educacion = list(PresupuestoAuxilioEducacion.objects.values())
-    return JsonResponse({"data": auxilio_educacion}, safe=False)
 
-def tabla_auxiliar_auxilio_educacion(request):
-    parametros = ParametrosPresupuestos.objects.first()
-    incremento_ipc = parametros.incremento_ipc if parametros else 0
-    return render(request, "presupuesto_nomina/aux_auxilio_educacion.html", {'incrementoIPC': incremento_ipc})
+def _acumular(destino, clave, fila):
+    acumulado = destino.setdefault(clave, {mes: 0 for mes in MESES})
+    for mes in MESES:
+        acumulado[mes] += getattr(fila, mes, 0) or 0
 
-def subir_presupuesto_auxilio_educacion(request):
-    if request.method == "POST":
-        temporales = PresupuestoAuxilioEducacionAux.objects.all()
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # obtener cedulas de la tabla principal
-        cedulas_existentes = set(
-            PresupuestoAuxilioEducacion.objects.values_list('cedula', flat=True)
-        )
-        creados = 0
-        omitidos = 0
-        for temp in temporales:
-            if temp.cedula in cedulas_existentes:
-                omitidos += 1
-                continue  # omitir si ya existe
-            PresupuestoAuxilioEducacion.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area = temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-            )
-            creados += 1
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
 
-def guardar_auxilio_educacion_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
+def cargar_seguridad_social_base(request):
+    """Bases de aportes agrupadas por centro y área.
 
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
+    Se conserva la lógica original (incluido el tope de 10 SMMLV y el
+    tratamiento del aprendiz), pero sin los `create()` fila por fila.
+    """
+    aux = PresupuestoSeguridadSocialAux
+    params = parametros()
+    incremento = (params.incremento_salarial or 0) if params else 0
+    minimo_incrementado = salario_minimo_incrementado()
+    tope = minimo_incrementado * 10
+    arl = _porcentajes_arl()
 
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
+    generales, altos, aprendices_salud = {}, {}, {}
+    hay_altos = False
 
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
+    for emp in PresupuestoSueldos.objects.all():
+        clave = (emp.centro, emp.area)
+        _acumular(generales, clave, emp)
+        nuevo_salario = (emp.salario_base or 0) * (1 + incremento / 100)
+        if nuevo_salario > tope:
+            hay_altos = True
+            _acumular(altos, clave, emp)
 
-                registros.append(PresupuestoAuxilioEducacionAux(**row_filtrado))
+    for modelo in (PresupuestoMediosTransporte, PresupuestoComisiones, PresupuestoHorasExtra):
+        for fila in modelo.objects.all():
+            clave = (fila.centro, fila.area)
+            _acumular(generales, clave, fila)
+            if hay_altos and str(fila.cedula) == CEDULA_ESPECIAL:
+                _acumular(altos, clave, fila)
 
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoAuxilioEducacionAux.objects.all().delete()
-                PresupuestoAuxilioEducacionAux.objects.bulk_create(registros)
+    for apr in PresupuestoAprendiz.objects.all():
+        # el aprendiz cotiza siempre sobre un salario mínimo incrementado
+        for mes in MESES:
+            if (getattr(apr, mes, 0) or 0) > 0:
+                setattr(apr, mes, minimo_incrementado)
+        clave = (apr.centro, apr.area)
+        destino = aprendices_salud if apr.concepto == 'SALARIO APRENDIZ' else generales
+        _acumular(destino, clave, apr)
+        if hay_altos and str(apr.cedula) == CEDULA_ESPECIAL:
+            _acumular(altos, clave, apr)
 
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+    registros = []
+    for (centro, area), base in generales.items():
+        for aporte, porcentaje in APORTES.items():
+            if aporte in APORTES_SOLO_ALTOS:
+                datos = altos.get((centro, area))
+                if aporte == 'APORTE SALUD' and (centro, area) in aprendices_salud:
+                    aprendiz = aprendices_salud[(centro, area)]
+                    datos = ({mes: datos[mes] + aprendiz[mes] for mes in MESES}
+                             if datos else aprendiz)
+                    porcentaje = APORTE_SALUD_APRENDIZ
+                if not datos:
+                    continue
+            elif aporte == 'APORTE A.R.L':
+                datos = dict(base)
+                aprendiz = aprendices_salud.get((centro, area))
+                if aprendiz:
+                    datos = {mes: datos[mes] + aprendiz[mes] for mes in MESES}
+                porcentaje = arl.get((centro, area), ARL_POR_DEFECTO)
+            else:
+                datos = base
 
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+            valores = {mes: datos[mes] * porcentaje for mes in MESES}
+            registros.append(aux(
+                nombre='SEGURIDAD SOCIAL', centro=centro, area=area, concepto=aporte,
+                total=round(total_de(valores)), **valores,
+            ))
 
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+    with transaction.atomic():
+        aux.objects.all().delete()
+        aux.objects.bulk_create(registros, batch_size=1000)
+        _agrupar_areas_seguridad_social()
 
-def guardar_auxilio_educacion(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
+    return JsonResponse({'status': 'ok', 'creados': aux.objects.count()})
 
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
 
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
+def _agrupar_areas_seguridad_social():
+    """Consolida ciertas áreas quitándoles el centro (asistencia técnica, aftosa)."""
+    aux = PresupuestoSeguridadSocialAux
+    for areas in AREAS_AGRUPADAS:
+        agrupado = (aux.objects.filter(area__in=areas)
+                    .values('area', 'concepto')
+                    .annotate(**{campo: Sum(campo) for campo in MESES + ['total']}))
+        nuevos = [
+            aux(nombre='SEGURIDAD SOCIAL', centro='', area=fila['area'], concepto=fila['concepto'],
+                **{campo: fila[campo] or 0 for campo in MESES + ['total']})
+            for fila in agrupado
+        ]
+        aux.objects.filter(area__in=areas).exclude(centro='').delete()
+        aux.objects.bulk_create(nuevos, batch_size=1000)
 
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
 
-                registros.append(PresupuestoAuxilioEducacion(**row_filtrado))
+CARGAS_PROPIAS = {
+    'auxilio_transporte': cargar_auxilio_transporte_base,
+    'bonificaciones': cargar_bonificaciones_base,
+    'bonificaciones_foco': cargar_bonificaciones_foco_base,
+    'intereses_cesantias': cargar_intereses_cesantias_base,
+    'seguridad_social': cargar_seguridad_social_base,
+}
 
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoAuxilioEducacion.objects.all().delete()
-                PresupuestoAuxilioEducacion.objects.bulk_create(registros)
 
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
+def cargar_base(cfg, request):
+    tipo = cfg['carga']['tipo']
+    if tipo == 'conceptos':
+        return cargar_desde_conceptos(cfg, request)
+    if tipo == 'derivado':
+        return cargar_derivado(cfg, request)
+    return CARGAS_PROPIAS[cfg['slug']](request)
 
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+# ══════════════════════════════════════════════════════════════════════
+#  Panel de parámetros
+# ══════════════════════════════════════════════════════════════════════
 
-def obtener_auxilio_educacion_temp(request):
-    data = list(PresupuestoAuxilioEducacionAux.objects.values())
-    return JsonResponse(data, safe=False)
+CAMPOS_PARAMETROS = {
+    'incrementoSalarial': 'incremento_salarial',
+    'incrementoIPC': 'incremento_ipc',
+    'auxilioTransporte': 'auxilio_transporte',
+    'cesantias': 'cesantias',
+    'interesesCesantias': 'intereses_cesantias',
+    'prima': 'prima',
+    'vacaciones': 'vacaciones',
+    'salarioMinimo': 'salario_minimo',
+    'incrementoComisiones': 'incremento_comisiones',
+}
 
-def cargar_auxilio_educacion_base(request):
-    # limpio tabla auxiliar de auxilio educación antes de recalcular
-    PresupuestoAuxilioEducacionAux.objects.all().delete()
-    base_data = ConceptoAuxilioEducacion.objects.values(
-        "cedula","nombre","nombrecar","nomcosto","nombre_cen","diciembre", "nombre_con", "total"
-    )
-    # filtrar solo concepto = 001
-    base_data = base_data.filter(concepto="016")
-    
-    for row in base_data:
-        PresupuestoAuxilioEducacionAux.objects.create(
-            cedula=row["cedula"],
-            nombre=row["nombre"],
-            cargo=row["nombrecar"],
-            area=row["nomcosto"],
-            centro=row["nombre_cen"],
-            concepto=row["nombre_con"],
-            diciembre=row["diciembre"],
-            total=row["total"],
-        )
-    
-    return JsonResponse({"status": "ok"})
+PLANTILLA_CONCEPTO_VACIO = dict(
+    centro_tra='', nombre_cen='', codcosto='', nomcosto='', tipocpto='', cuenta='',
+    concepto='', nombre_con='', cargo='', nombrecar='', cedula=0, nombre='',
+    arlporc=0, concepto_f=0, total=0,
+    **{mes: 0 for mes in MESES[:9]},
+)
 
-@csrf_exempt
-def borrar_presupuesto_auxilio_educacion(request):
-    if request.method == "POST":
-        PresupuestoAuxilioEducacion.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de auxilio de educación eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
-#------------------------BONOS KYROVET----------------------
-def bonos_kyrovet(request):
-    centros = set(ConceptosFijosYVariables.objects.values_list('nombre_cen', flat=True))
-    areas = set(ConceptosFijosYVariables.objects.values_list('nomcosto', flat=True))
-    cargos = set(ConceptosFijosYVariables.objects.values_list('nombrecar', flat=True))
-    context = {
-        'centros': sorted(list(filter(None, centros))),
-        'areas': sorted(list(filter(None, areas))),
-        'cargos': sorted(list(filter(None, cargos))),
+def presupuestoNomina(request):
+    params, _ = ParametrosPresupuestos.objects.get_or_create(id=1)
+
+    if request.method == 'POST' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        accion = request.POST.get('action')
+
+        # Alta de un cargo o de un NOMCOSTO: antes eran dos bloques idénticos
+        altas = {'insertar_concepto': ('nombrecar', 'cargo'), 'insertar_nomcosto': ('nomcosto', 'costo')}
+        if accion in altas:
+            campo, etiqueta = altas[accion]
+            valor = request.POST.get(campo, '').strip().upper()
+            if not valor:
+                return JsonResponse({'status': 'error', 'msg': 'Debe ingresar un nombre de %s' % etiqueta})
+            ConceptosFijosYVariables.objects.create(**{**PLANTILLA_CONCEPTO_VACIO, campo: valor})
+            limpiar_cache_listas()
+            return JsonResponse({'status': 'ok', 'msg': "'%s' agregado correctamente ✅" % valor})
+
+        for variable, campo in CAMPOS_PARAMETROS.items():
+            setattr(params, campo, request.POST.get(variable) or None)
+        params.save()
+        return JsonResponse({'status': 'ok', 'msg': 'Parámetros actualizados correctamente ✅'})
+
+    centros, areas, cargos = _listas_cacheadas()
+    return render(request, 'presupuesto_nomina/dashboard_nomina.html', {
+        'parametros': params, 'nombres_cargos': cargos, 'nombres_costos': areas,
+    })
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  Exportación a Excel
+# ══════════════════════════════════════════════════════════════════════
+
+ORIGEN_EXPORTACION = [
+    ('sueldos', 'Sueldos'), ('comisiones', 'Comisiones'), ('horas_extra', 'Horas Extra'),
+    ('auxilio_transporte', 'Auxilio Transporte'), ('medios_transporte', 'Medios Transporte'),
+    ('ayuda_transporte', 'Ayuda Transporte'), ('cesantias', 'Cesantías'),
+    ('intereses_cesantias', 'Intereses Cesantías'), ('prima', 'Prima'),
+    ('vacaciones', 'Vacaciones'), ('bonificaciones', 'Bonificaciones'),
+    ('bolsa_consumibles', 'Auxilio Movilidad'), ('aprendiz', 'Aprendiz'),
+    ('auxilio_TBCKIT', 'Auxilio TBC y KIT'), ('auxilio_educacion', 'Auxilio Educación'),
+    ('bonificaciones_foco', 'Bonificaciones Foco'), ('bonos_kyrovet', 'Bonos Kyrovet'),
+    ('seguridad_social', 'Seguridad Social'),
+]
+
+
+def respuesta_excel(df, nombre_archivo, hoja):
+    respuesta = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    respuesta['Content-Disposition'] = 'attachment; filename="%s"' % nombre_archivo
+    with pd.ExcelWriter(respuesta, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name=hoja, index=False)
+    return respuesta
+
+
+def _dataframe_nomina(vertical):
+    marcos = []
+    for slug, etiqueta in ORIGEN_EXPORTACION:
+        df = pd.DataFrame(list(CONCEPTOS[slug]['modelo'].objects.values()))
+        if df.empty:
+            continue
+        df['origen'] = etiqueta
+        for columna in df.select_dtypes(include=['datetimetz']).columns:
+            df[columna] = df[columna].dt.tz_localize(None)
+        marcos.append(df)
+
+    if not marcos:
+        return pd.DataFrame()
+
+    df = pd.concat(marcos, ignore_index=True)
+    if vertical:
+        fijas = [c for c in df.columns if c not in MESES]
+        df = df.melt(id_vars=fijas, value_vars=MESES, var_name='mes', value_name='valor')
+    return df
+
+
+def exportar_excel_nomina(request):
+    """Una fila por registro, con los 12 meses en columnas."""
+    return respuesta_excel(_dataframe_nomina(False), 'Presupuestos_Todo.xlsx', 'Presupuestos')
+
+
+def exportar_nomina_vertical(request):
+    """Una fila por registro y mes (formato largo, para tablas dinámicas)."""
+    return respuesta_excel(_dataframe_nomina(True),
+                           'Presupuesto_Nomina_Vertical.xlsx', 'Presupuesto Nómina')
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  Registro de las vistas con sus nombres históricos
+# ══════════════════════════════════════════════════════════════════════
+#
+#  A partir de aquí no hay lógica: solo se crean las funciones que
+#  `urls.py` espera encontrar (`guardar_comisiones`, `obtener_prima_temp`,
+#  `subir_presupuesto_aprendiz`, …) apuntando a las vistas genéricas.
+
+def _publicar(nombre, funcion):
+    funcion.__name__ = nombre
+    globals()[nombre] = funcion
+    return funcion
+
+
+def _nombres_de(cfg):
+    slug = cfg['slug']
+    predeterminados = {
+        'principal': slug,
+        'auxiliar': 'tabla_auxiliar_%s' % slug,
+        'obtener': 'obtener_presupuesto_%s' % slug,
+        'obtener_temp': 'obtener_%s_temp' % slug,
+        'guardar': 'guardar_%s' % slug,
+        'guardar_temp': 'guardar_%s_temp' % slug,
+        'subir': 'subir_presupuesto_%s' % slug,
+        'borrar': 'borrar_presupuesto_%s' % slug,
+        'cargar': 'cargar_%s_base' % slug,
     }
-    return render(request, "presupuesto_nomina/bonos_kyrovet.html", context)
+    predeterminados.update(cfg['nombres'])
+    return predeterminados
 
-def obtener_presupuesto_bonos_kyrovet(request):
-    bonos_kyrovet = list(PresupuestoBonosKyrovet.objects.values())
-    return JsonResponse({"data": bonos_kyrovet}, safe=False)
 
-def tabla_auxiliar_bonos_kyrovet(request):
-    parametros = ParametrosPresupuestos.objects.first()
-    incrementoIPC = parametros.incremento_ipc if parametros else 0
-    return render(request, "presupuesto_nomina/aux_bonos_kyrovet.html", {'incrementoIPC': incrementoIPC})
+for _cfg in CONCEPTOS.values():
+    _n = _nombres_de(_cfg)
 
-def subir_presupuesto_bonos_kyrovet(request):
-    if request.method == "POST":
-        temporales = PresupuestoBonosKyrovetAux.objects.all()
-        if not temporales.exists():
-            return JsonResponse({
-                "success": False,
-                "msg": "No hay datos temporales para subir ❌"
-            }, status=400)
-        # obtener cedulas de la tabla principal
-        cedulas_existentes = set(
-            PresupuestoBonosKyrovet.objects.values_list('cedula', flat=True)
-        )
-        creados = 0
-        omitidos = 0
-        for temp in temporales:
-            if temp.cedula in cedulas_existentes:
-                omitidos += 1
-                continue  # omitir si ya existe
-            PresupuestoBonosKyrovet.objects.create(
-                cedula=temp.cedula,
-                nombre=temp.nombre,
-                centro=temp.centro,
-                area = temp.area,
-                cargo=temp.cargo,
-                concepto=temp.concepto,
-                base=temp.base,
-                enero=temp.enero,
-                febrero=temp.febrero,
-                marzo=temp.marzo,
-                abril=temp.abril,
-                mayo=temp.mayo,
-                junio=temp.junio,
-                julio=temp.julio,
-                agosto=temp.agosto,
-                septiembre=temp.septiembre,
-                octubre=temp.octubre,
-                noviembre=temp.noviembre,
-                diciembre=temp.diciembre,
-                total=temp.total,
-            )
-            creados += 1
-        if creados == 0:
-            msg = f"No se agregó ningún registro. ({omitidos} ya existían) ⚠️"
-        else:
-            msg = f"{creados} registro(s) agregado(s) ✅"
-        return JsonResponse({
-            "success": True,
-            "msg": msg
-        })
-    return JsonResponse({
-        "success": False,
-        "msg": "Método no permitido"
-    }, status=405)
-    
-def guardar_bonos_kyrovet_temp(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
+    _publicar(_n['principal'], (lambda c: proteger(lambda request: vista_principal(c, request)))(_cfg))
+    _publicar(_n['auxiliar'], (lambda c: proteger(lambda request: vista_auxiliar(c, request)))(_cfg))
+    _publicar(_n['obtener'], (lambda c: lambda request: obtener(c, request))(_cfg))
+    _publicar(_n['obtener_temp'], (lambda c: lambda request: obtener_temp(c, request))(_cfg))
+    _publicar(_n['guardar_temp'], (lambda c: lambda request: guardar(c, request, temporal=True))(_cfg))
+    _publicar(_n['subir'], (lambda c: lambda request: subir(c, request))(_cfg))
+    _publicar(_n['borrar'], (lambda c: lambda request: borrar(c, request))(_cfg))
+    _publicar(_n['cargar'], (lambda c: lambda request: cargar_base(c, request))(_cfg))
 
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto","base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
+    if _cfg['con_guardar']:
+        _publicar(_n['guardar'], (lambda c: lambda request: guardar(c, request))(_cfg))
 
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoBonosKyrovetAux(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoBonosKyrovetAux.objects.all().delete()
-                PresupuestoBonosKyrovetAux.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def guardar_bonos_kyrovet(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-
-            # Definir los campos válidos en el modelo temporal
-            campos_validos = {
-                "cedula", "nombre", "centro", "area", "cargo", "concepto","base", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre", "total"
-            }
-
-            registros = []
-            for row in data:
-                # Filtrar solo los campos válidos
-                row_filtrado = {k: row.get(k) for k in campos_validos}
-
-                # Reemplazar None por 0 en numéricos
-                for mes in [
-                    "enero","febrero","marzo","abril","mayo",
-                    "junio","julio","agosto","septiembre","octubre",
-                    "noviembre","diciembre","total"
-                ]:
-                    if row_filtrado.get(mes) in [None, ""]:
-                        row_filtrado[mes] = 0
-
-                registros.append(PresupuestoBonosKyrovet(**row_filtrado))
-
-            # Inserción masiva optimizada
-            with transaction.atomic():
-                PresupuestoBonosKyrovet.objects.all().delete()
-                PresupuestoBonosKyrovet.objects.bulk_create(registros)
-
-            return JsonResponse({"status": "ok", "msg": f"{len(registros)} filas guardadas ✅"})
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
-
-def obtener_bonos_kyrovet_temp(request):
-    data = list(PresupuestoBonosKyrovetAux.objects.values())
-    return JsonResponse(data, safe=False)
-
-def cargar_bonos_kyrovet_base(request):
-    # limpio tabla auxiliar de bonos kyrovet antes de recalcular
-    PresupuestoBonosKyrovetAux.objects.all().delete()
-    base_data = ConceptosFijosYVariables.objects.values(
-        "cedula","nombre","nombrecar","nomcosto","nombre_cen", "nombre_con", "concepto_f"
-    )
-    # filtrar solo concepto = 001
-    base_data = base_data.filter(nombre_con__icontains="BONOS CANASTA KYROVET")
-    parametros = ParametrosPresupuestos.objects.first()
-    incrementoIPC = parametros.incremento_ipc if parametros else 0
-   
-    for row in base_data:
-        febreroIncremento = row["concepto_f"] * (1 + incrementoIPC / 100)
-        PresupuestoBonosKyrovetAux.objects.create(
-            cedula=row["cedula"],
-            nombre=row["nombre"],
-            cargo=row["nombrecar"],
-            area=row["nomcosto"],
-            centro=row["nombre_cen"],
-            concepto=row["nombre_con"],
-            base=row["concepto_f"],
-            febrero=febreroIncremento,
-            total=febreroIncremento,
-        )
-    
-    return JsonResponse({"status": "ok"})
-
-@csrf_exempt
-def borrar_presupuesto_bonos_kyrovet(request):
-    if request.method == "POST":
-        PresupuestoBonosKyrovet.objects.all().delete()
-        return JsonResponse({"status": "ok", "message": "Presupuesto de bonos Kyrovet eliminado"})
-    return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+del _cfg, _n
 
 
 # -----------------------------PRESUPUESTO GENERAL----------------------------------------------------------------------
@@ -6423,6 +3066,41 @@ SEDE_CONFIG = {
     },
 }
  
+MESES = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+]
+
+def ultima_version(modelo):
+    """Filas del presupuesto aprobado en su versión más reciente."""
+    version = modelo.objects.aggregate(maxima=Max('version'))['maxima']
+    if version is None:
+        return modelo.objects.none()
+    return modelo.objects.filter(version=version)
+
+def exportar_excel_presupuestos(request):
+    marcos = []
+    for config in SEDE_CONFIG.values():                      # noqa: F821 (vive en views.py)
+        df = pd.DataFrame(list(ultima_version(config['model_aprobado']).values()))
+        if df.empty:
+            continue
+        df['origen'] = config['label']
+        marcos.append(df)
+
+    df = pd.concat(marcos, ignore_index=True) if marcos else pd.DataFrame()
+
+    if not df.empty:
+        fijas = [c for c in df.columns if c not in MESES]
+        df = df.melt(id_vars=fijas, value_vars=MESES, var_name='mes', value_name='valor')
+
+    respuesta = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    respuesta['Content-Disposition'] = 'attachment; filename="Presupuestos_Todo.xlsx"'
+    with pd.ExcelWriter(respuesta, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='Presupuestos', index=False)
+    return respuesta
+
+
 def _config_sede(sede):
     """Devuelve la configuración de la sede o None si no existe."""
     return SEDE_CONFIG.get(sede)

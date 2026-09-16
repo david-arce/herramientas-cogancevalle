@@ -1,0 +1,15 @@
+{% comment %}
+Barra de botones estándar de las tablas auxiliares.
+Uso:  {% include "presupuesto_nomina/_barra_auxiliar.html" with texto_subir="Subir presupuesto de comisiones" con_calcular=1 con_pegar=1 %}
+{% endcomment %}
+<button type="button" class="pt-btn" data-rol="cargar-base">Cargar desde Conceptos</button>
+{% if con_calcular %}<button type="button" class="pt-btn pt-btn--primario" data-rol="calcular">{{ texto_calcular|default:"Calcular" }}</button>{% endif %}
+{% if con_calcular2 %}<button type="button" class="pt-btn pt-btn--primario" data-rol="calcular-2">{{ texto_calcular2 }}</button>{% endif %}
+<button type="button" class="pt-btn" data-rol="agregar">➕ Agregar fila</button>
+{% if con_pegar %}<button type="button" class="pt-btn" data-rol="pegar">📋 Pegar fila copiada</button>{% endif %}
+<button type="button" class="pt-btn" data-rol="exportar">📥 Exportar</button>
+<span class="pt-espaciador"></span>
+<button type="button" class="pt-btn pt-btn--aviso" data-rol="guardar-temp">Guardar en BD (temporal)</button>
+<button type="button" class="pt-btn pt-btn--exito" data-rol="subir">{{ texto_subir|default:"Subir presupuesto" }}</button>
+<button type="button" class="pt-btn" data-rol="ir">Ir a la tabla principal</button>
+<button type="button" class="pt-btn" data-rol="inicio">Inicio</button>

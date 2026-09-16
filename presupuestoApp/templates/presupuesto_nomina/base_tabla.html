@@ -1,0 +1,51 @@
+{% load static %}<!DOCTYPE html>
+{% comment %}
+==============================================================================
+ base_tabla.html — esqueleto único de todas las pantallas de presupuesto.
+
+ Cada template hijo solo define:
+   {% block titulo %}      texto del <h2> y del <title>
+   {% block barra %}       botones de la barra superior (con data-rol)
+   {% block panel %}       paneles opcionales (distribución de porcentajes…)
+   {% block datos %}       {{ lista|json_script:"…" }} para selects/parámetros
+   {% block script %}      unas pocas líneas de configuración de la tabla
+
+ Nada de DataTables, Select2, jQuery, JSZip ni FixedHeader: todo se resuelve
+ con presupuesto_tabla.css + presupuesto_tabla.js.
+==============================================================================
+{% endcomment %}
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{% block titulo %}Presupuesto{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/presupuesto_tabla.css' %}">
+  {% block estilos %}{% endblock %}
+</head>
+<body>
+
+  <h2 id="pt-titulo"></h2>
+
+  <div class="pt-barra">
+    {% block barra %}{% endblock %}
+  </div>
+
+  {% block panel %}{% endblock %}
+
+  <div id="tabla"></div>
+
+  {% block datos %}{% endblock %}
+
+  <script src="{% static 'js/presupuesto_tabla.js' %}"></script>
+  <script src="{% static 'js/presupuesto_calculos.js' %}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // el <h2> siempre repite el <title>: un solo bloque que mantener
+      document.getElementById('pt-titulo').textContent = document.title;
+
+      {% block script %}{% endblock %}
+    });
+  </script>
+</body>
+</html>

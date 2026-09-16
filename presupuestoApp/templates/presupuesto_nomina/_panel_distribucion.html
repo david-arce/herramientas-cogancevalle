@@ -1,0 +1,21 @@
+{% comment %}
+Panel de distribución por porcentajes (idéntico en las 18 tablas principales).
+El centro y el área de destino viajan en data-centro / data-area, así que
+la configuración deja de estar duplicada en JavaScript.
+{% endcomment %}
+<div class="pt-panel">
+  <h3>Distribuir valores (porcentajes)</h3>
+  <p>Marca las filas a distribuir e ingresa los porcentajes: deben sumar 100%.</p>
+  <div class="pt-panel__campos">
+    <input type="number" min="0" max="100" step="0.1" placeholder="Ventas Tuluá"   data-centro="ALMACEN TULUA"   data-area="VENTAS GASTOS DE PERSONAL">
+    <input type="number" min="0" max="100" step="0.1" placeholder="Ventas Buga"    data-centro="ALMACEN BUGA"    data-area="VENTAS GASTOS DE PERSONAL">
+    <input type="number" min="0" max="100" step="0.1" placeholder="Ventas Cartago" data-centro="ALMACEN CARTAGO" data-area="VENTAS GASTOS DE PERSONAL">
+    <input type="number" min="0" max="100" step="0.1" placeholder="Ventas Cali"    data-centro="ALMACEN CALI"    data-area="VENTAS GASTOS DE PERSONAL">
+    <input type="number" min="0" max="100" step="0.1" placeholder="Administración" data-centro="ALMACEN TULUA"   data-area="ADMINISTRACION DE PERSONAL">
+    <input type="number" min="0" max="100" step="0.1" placeholder="AT-1"           data-centro="ALMACEN TULUA"   data-area="ASISTENCIA TECNICA CONVENIO">
+    <input type="number" min="0" max="100" step="0.1" placeholder="AT-4"           data-centro="ALMACEN TULUA"   data-area="ASISTENCIA TECNICA PROPIA">
+  </div>
+  <p style="margin:10px 0 0">
+    <button type="button" class="pt-btn pt-btn--primario" data-rol="distribuir">Distribuir filas seleccionadas</button>
+  </p>
+</div>

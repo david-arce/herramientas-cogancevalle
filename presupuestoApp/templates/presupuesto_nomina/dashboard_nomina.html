@@ -1,361 +1,184 @@
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
+{% comment %}
+  Panel de parámetros. No usaba DataTables, pero se reescribe para:
+   - usar la hoja de estilos común (adiós al <style> embebido de 90 líneas)
+   - eliminar los id="btnTabla" repetidos (HTML inválido) → ahora es una clase
+   - unificar en una sola función los dos bloques idénticos de "agregar"
+   - usar los toasts compartidos en vez del <div id="resultado">
+{% endcomment %}
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Presupuesto - Configuración</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 30px;
-        }
-        h2 {
-            text-align: center;
-            margin-bottom: 10px;
-        }
-        a.exportar {
-            float: right;
-            background-color: #28a745;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            margin-bottom: 20px;
-        }
-        a.exportar-vertical {
-            float: right;
-            background-color: #17a2b8;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            margin-right: 10px;
-            margin-bottom: 20px;
-        }
-        .grid-acciones {
-            max-width: 900px;
-            margin: 20px auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 15px;
-        }
-        .acciones {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .acciones label {
-            font-size: 14px;
-            font-weight: bold;
-        }
-        input[type="number"] {
-            padding: 6px;
-            width: 120px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        .btn-section {
-            margin-top: 30px;
-            border-top: 2px solid #eee;
-            padding-top: 15px;
-        }
-        .btn-section h3 {
-            text-align: center;
-            color: #333;
-            font-size: 16px;
-            margin-bottom: 10px;
-        }
-        .btn-group {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 8px;
-        }
-        button {
-            padding: 8px 16px;
-            background: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 4px;
-            font-size: 14px;
-            transition: background 0.2s;
-        }
-        button:hover {
-            background: #0056b3;
-        }
-        #btnTabla {
-            background: #6c757d;
-        }
-        #btnTabla:hover {
-            background: #5a6268;
-        }
-        #resultado {
-            margin-top: 20px;
-            text-align: center;
-            font-weight: bold;
-            color: green;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Presupuesto Nómina - Parámetros</title>
+  <link rel="stylesheet" href="{% static 'css/presupuesto_tabla.css' %}">
+  <style>
+    .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+    .dash-campo { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .dash-campo label { font-size: 13px; font-weight: 600; }
+    .dash-campo input { width: 130px; padding: 6px 8px; border: 1px solid var(--pt-borde-fuerte); border-radius: var(--pt-radio); font: inherit; }
+    .dash-seccion { margin-top: 16px; }
+    .dash-seccion h3 { margin-bottom: 8px; }
+    .dash-botones { display: flex; flex-wrap: wrap; gap: 8px; }
+    .dash-alta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .dash-alta input, .dash-alta select { padding: 6px 8px; min-width: 230px; border: 1px solid var(--pt-borde-fuerte); border-radius: var(--pt-radio); font: inherit; text-transform: uppercase; }
+  </style>
 </head>
 <body>
-    <h2>Presupuesto Nómina - Parámetros</h2>
 
-    <a href="{% url 'exportar_excel' %}" class="exportar">📊 Exportar Todo a Excel</a>
-    <a href="{% url 'exportar_nomina_vertical' %}" class="exportar-vertical">Exportar Todo a Excel Vertical</a>
+  <h2>Presupuesto Nómina - Parámetros</h2>
 
-    <!-- Modal Confirmación añadir nuevo cargo -->
-    <div id="modalConfirmar" class="modal" style="display:none;" aria-hidden="true">
-        <div class="modal-content">
-            <div class="modal-header">⚠️ Confirmar</div>
-            <p>¿Estás seguro de agregar un nuevo cargo?</p>
-            <div class="modal-footer">
-            <button type="button" class="btn-cancel" data-modal="modalConfirmar">Cancelar</button>
-            <button type="button" class="btn-confirm" id="confirm">Eliminar</button>
-            </div>
-        </div>
+  <div class="pt-barra">
+    <a class="pt-btn pt-btn--exito" href="{% url 'exportar_excel' %}">📊 Exportar todo a Excel</a>
+    <a class="pt-btn pt-btn--primario" href="{% url 'exportar_nomina_vertical' %}">📊 Exportar todo a Excel vertical</a>
+    <span class="pt-espaciador"></span>
+    <button type="button" class="pt-btn pt-btn--exito" id="btnActualizar">Guardar parámetros</button>
+  </div>
+
+  <form id="formTabla" method="get">
+    <div class="pt-panel">
+      <h3>Parámetros del presupuesto</h3>
+      <div class="dash-grid">
+        {% comment %}(id de input, etiqueta, valor) — el JS los recorre por su atributo name{% endcomment %}
+        <div class="dash-campo"><label for="incrementoSalarial">Incremento salarial (%)</label>
+          <input type="number" id="incrementoSalarial" name="incrementoSalarial" min="0" step="0.01" value="{{ parametros.incremento_salarial|default_if_none:''|cut:',' }}"></div>
+        <div class="dash-campo"><label for="incrementoIPC">Incremento IPC (%)</label>
+          <input type="number" id="incrementoIPC" name="incrementoIPC" min="0" step="0.01" value="{{ parametros.incremento_ipc|default_if_none:''|cut:',' }}"></div>
+        <div class="dash-campo"><label for="incrementoComisiones">Incremento comisiones (%)</label>
+          <input type="number" id="incrementoComisiones" name="incrementoComisiones" min="0" step="0.01" value="{{ parametros.incremento_comisiones|default_if_none:''|cut:',' }}"></div>
+        <div class="dash-campo"><label for="auxilioTransporte">Auxilio de transporte (%)</label>
+          <input type="number" id="auxilioTransporte" name="auxilioTransporte" min="0" step="0.01" value="{{ parametros.auxilio_transporte|default_if_none:''|cut:',' }}"></div>
+        <div class="dash-campo"><label for="cesantias">Cesantías (%)</label>
+          <input type="number" id="cesantias" name="cesantias" min="0" step="0.01" value="{{ parametros.cesantias|default_if_none:''|cut:',' }}"></div>
+        <div class="dash-campo"><label for="interesesCesantias">Intereses cesantías (%)</label>
+          <input type="number" id="interesesCesantias" name="interesesCesantias" min="0" step="0.01" value="{{ parametros.intereses_cesantias|default_if_none:''|cut:',' }}"></div>
+        <div class="dash-campo"><label for="prima">Prima (%)</label>
+          <input type="number" id="prima" name="prima" min="0" step="0.01" value="{{ parametros.prima|default_if_none:''|cut:',' }}"></div>
+        <div class="dash-campo"><label for="vacaciones">Vacaciones (%)</label>
+          <input type="number" id="vacaciones" name="vacaciones" min="0" step="0.01" value="{{ parametros.vacaciones|default_if_none:''|cut:',' }}"></div>
+        <div class="dash-campo"><label for="salarioMinimo">Salario mínimo</label>
+          <input type="number" id="salarioMinimo" name="salarioMinimo" min="0" step="0.01" value="{{ parametros.salario_minimo|default_if_none:''|cut:',' }}"></div>
+      </div>
     </div>
-    <!-- Formulario -->
-    <form id="formTabla" method="get">
-        <div class="grid-acciones">
-            <div class="acciones">
-                <label for="incrementoSalarial">Incremento salarial (%):</label>
-                <input type="number" id="incrementoSalarial" name="incrementoSalarial" value="{{ parametros.incremento_salarial|default_if_none:''|cut:','}}" min="0" step="0.01">
-            </div>
-            <div class="acciones">
-                <label for="incrementoIPC">Incremento IPC (%):</label>
-                <input type="number" id="incrementoIPC" name="incrementoIPC" value="{{ parametros.incremento_ipc|default_if_none:''|cut:','}}" min="0" step="0.01">
-            </div>
-            <div class="acciones">
-                <label for="incrementoComisiones">Incremento comisiones (%):</label>
-                <input type="number" id="incrementoComisiones" name="incrementoComisiones" value="{{ parametros.incremento_comisiones|default_if_none:''|cut:','}}" min="0" step="0.01">
-            </div>
-            <div class="acciones">
-                <label for="auxilioTransporte">Auxilio de transporte (%):</label>
-                <input type="number" id="auxilioTransporte" name="auxilioTransporte" value="{{ parametros.auxilio_transporte|default_if_none:''|cut:','}}" min="0" step="0.01">
-            </div>
-            <div class="acciones">
-                <label for="cesantias">Cesantías (%):</label>
-                <input type="number" id="cesantias" name="cesantias" value="{{ parametros.cesantias|default_if_none:''|cut:','}}" min="0" step="0.01">
-            </div>
-            <div class="acciones">
-                <label for="interesesCesantias">Intereses cesantías (%):</label>
-                <input type="number" id="interesesCesantias" name="interesesCesantias" value="{{ parametros.intereses_cesantias|default_if_none:''|cut:','}}" min="0" step="0.01">
-            </div>
-            <div class="acciones">
-                <label for="prima">Prima (%):</label>
-                <input type="number" id="prima" name="prima" value="{{ parametros.prima|default_if_none:''|cut:','}}" min="0" step="0.01">
-            </div>
-            <div class="acciones">
-                <label for="vacaciones">Vacaciones (%):</label>
-                <input type="number" id="vacaciones" name="vacaciones" value="{{ parametros.vacaciones|default_if_none:''|cut:','}}" min="0" step="0.01">
-            </div>
-            <div class="acciones">
-                <label for="salarioMinimo">Salario mínimo:</label>
-                <input type="number" id="salarioMinimo" name="salarioMinimo" value="{{ parametros.salario_minimo|default_if_none:''|cut:','}}" min="0" step="0.01">
-            </div>
-        </div>
 
-        <!-- Botones -->
-        <div class="btn-section">
-            <h3>📋 Operaciones principales</h3>
-            <div class="btn-group">
-                <button type="button" id="btnActualizar">Actualizar datos</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'sueldos' %}">Sueldos</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'comisiones' %}">Comisiones</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'horas_extra' %}">Horas extras</button>
-            </div>
-        </div>
+    <div class="pt-panel dash-seccion">
+      <h3>📋 Operaciones principales</h3>
+      <div class="dash-botones">
+        <button type="submit" class="pt-btn" formaction="{% url 'sueldos' %}">Sueldos</button>
+        <button type="submit" class="pt-btn" formaction="{% url 'comisiones' %}">Comisiones</button>
+        <button type="submit" class="pt-btn" formaction="{% url 'horas_extra' %}">Horas extra</button>
+      </div>
+    </div>
 
-        <div class="btn-section">
-            <h3>🚗 Transporte y auxilios</h3>
-            <div class="btn-group">
-                <button type="submit" id="btnTabla" formaction="{% url 'medios_transporte' %}">Medios de transporte</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'auxilio_transporte' %}">Auxilio transporte</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'ayuda_transporte' %}">Ayuda transporte</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'bolsa_consumibles' %}">Bolsa consumibles</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'auxilio_TBCKIT' %}">Auxilio TBC y KIT</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'auxilio_educacion' %}">Auxilio educación</button>
-            </div>
-        </div>
+    <div class="pt-panel dash-seccion">
+      <h3>🚗 Transporte y auxilios</h3>
+      <div class="dash-botones">
+        <button type="submit" class="pt-btn" formaction="{% url 'medios_transporte' %}">Medios de transporte</button>
+        <button type="submit" class="pt-btn" formaction="{% url 'auxilio_transporte' %}">Auxilio de transporte</button>
+        <button type="submit" class="pt-btn" formaction="{% url 'ayuda_transporte' %}">Ayuda de transporte</button>
+        <button type="submit" class="pt-btn" formaction="{% url 'bolsa_consumibles' %}">Bolsa de consumibles</button>
+        <button type="submit" class="pt-btn" formaction="{% url 'auxilio_TBCKIT' %}">Auxilio TBC y KIT</button>
+        <button type="submit" class="pt-btn" formaction="{% url 'auxilio_educacion' %}">Auxilio de educación</button>
+      </div>
+    </div>
 
-        <div class="btn-section">
-            <h3>💰 Prestaciones y bonos</h3>
-            <div class="btn-group">
-                <button type="submit" id="btnTabla" formaction="{% url 'cesantias' %}">Cesantías</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'intereses_cesantias' %}">Intereses cesantías</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'prima' %}">Prima</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'vacaciones' %}">Vacaciones</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'bonificaciones' %}">Bonificaciones</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'bonificaciones_foco' %}">Bonificaciones foco</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'bonos_kyrovet' %}">Bonos Kyrovet</button>
-            </div>
-        </div>
+    <div class="pt-panel dash-seccion">
+      <h3>💰 Prestaciones y bonos</h3>
+      <div class="dash-botones">
+        <button type="submit" class="pt-btn" formaction="{% url 'cesantias' %}">Cesantías</button>
+        <button type="submit" class="pt-btn" formaction="{% url 'intereses_cesantias' %}">Intereses de cesantías</button>
+        <button type="submit" class="pt-btn" formaction="{% url 'prima' %}">Prima</button>
+        <button type="submit" class="pt-btn" formaction="{% url 'vacaciones' %}">Vacaciones</button>
+        <button type="submit" class="pt-btn" formaction="{% url 'bonificaciones' %}">Bonificaciones</button>
+        <button type="submit" class="pt-btn" formaction="{% url 'bonificaciones_foco' %}">Bonificaciones foco</button>
+        <button type="submit" class="pt-btn" formaction="{% url 'bonos_kyrovet' %}">Bonos Kyrovet</button>
+      </div>
+    </div>
 
-        <div class="btn-section">
-            <h3>👷 Seguridad y formación</h3>
-            <div class="btn-group">
-                <button type="submit" id="btnTabla" formaction="{% url 'seguridad_social' %}">Seguridad social</button>
-                <button type="submit" id="btnTabla" formaction="{% url 'aprendiz' %}">Aprendiz</button>
-            </div>
-        </div>
+    <div class="pt-panel dash-seccion">
+      <h3>👷 Seguridad y formación</h3>
+      <div class="dash-botones">
+        <button type="submit" class="pt-btn" formaction="{% url 'seguridad_social' %}">Seguridad social</button>
+        <button type="submit" class="pt-btn" formaction="{% url 'aprendiz' %}">Aprendices</button>
+      </div>
+    </div>
 
-        <div class="btn-section">
-            <h3>➕ Agregar nuevo cargo</h3>
-            <div class="btn-group" style="flex-direction: column; align-items: center;">
-                <input type="text" id="nuevoCargo" placeholder="Nombre del cargo" style="padding:8px; width:250px; margin-bottom:10px; text-transform:uppercase;">
-                <button type="button" id="btnAgregarCargo">Agregar cargo</button>
+    <div class="pt-panel dash-seccion">
+      <h3>➕ Agregar cargo o NOMCOSTO</h3>
+      <div class="dash-alta" style="margin-bottom:10px">
+        <input type="text" id="nuevoCargo" placeholder="Nombre del cargo">
+        <button type="button" class="pt-btn pt-btn--primario"
+                data-alta="insertar_concepto" data-campo="nombrecar"
+                data-entrada="nuevoCargo" data-lista="listaCargos">Agregar cargo</button>
+        <select id="listaCargos">
+          {% for nombre in nombres_cargos %}<option value="{{ nombre }}">{{ nombre }}</option>
+          {% empty %}<option disabled>No hay cargos registrados</option>{% endfor %}
+        </select>
+      </div>
+      <div class="dash-alta">
+        <input type="text" id="nuevoNomcosto" placeholder="Nombre del costo">
+        <button type="button" class="pt-btn pt-btn--primario"
+                data-alta="insertar_nomcosto" data-campo="nomcosto"
+                data-entrada="nuevoNomcosto" data-lista="listaNomcosto">Agregar NOMCOSTO</button>
+        <select id="listaNomcosto">
+          {% for nombre in nombres_costos %}<option value="{{ nombre }}">{{ nombre }}</option>
+          {% empty %}<option disabled>No hay NOMCOSTOS registrados</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+  </form>
 
-                <label style="margin-top:15px;">Lista de cargos existentes:</label>
-                <select id="listaCargos" style="padding:6px; width:250px;">
-                    {% for nombre in nombres_cargos %}
-                        <option value="{{ nombre }}">{{ nombre }}</option>
-                    {% empty %}
-                        <option disabled>No hay cargos registrados</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
-        <div class="btn-section">
-            <h3>🏢 Agregar nuevo NOMCOSTO</h3>
-            <div class="btn-group" style="flex-direction: column; align-items: center;">
-                <input 
-                    type="text" 
-                    id="nuevoNomcosto" 
-                    placeholder="Nombre del costo" 
-                    style="padding:8px; width:250px; margin-bottom:10px; text-transform:uppercase;"
-                >
-                <button type="button" id="btnAgregarNomcosto">Agregar NOMCOSTO</button>
+  <script src="{% static 'js/presupuesto_tabla.js' %}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const token = document.querySelector('meta[name="csrf-token"]').content;
 
-                <label style="margin-top:15px;">Lista de NOMCOSTOS existentes:</label>
-                <select id="listaNomcosto" style="padding:6px; width:250px;">
-                    {% for nombre in nombres_costos %}
-                        <option value="{{ nombre }}">{{ nombre }}</option>
-                    {% empty %}
-                        <option disabled>No hay NOMCOSTOS registrados</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
+      const enviar = (datos) => fetch('', {
+        method: 'POST',
+        body: datos,
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': token }
+      }).then(r => r.json());
 
-    </form>
+      // Mayúsculas automáticas en los campos de alta
+      document.querySelectorAll('.dash-alta input').forEach(input => {
+        input.addEventListener('input', () => { input.value = input.value.toUpperCase(); });
+      });
 
-    <div id="resultado"></div>
+      // Un único handler para "agregar cargo" y "agregar NOMCOSTO"
+      document.querySelectorAll('[data-alta]').forEach(boton => {
+        boton.addEventListener('click', () => PT.conSpinner(boton, async () => {
+          const entrada = document.getElementById(boton.dataset.entrada);
+          const valor = entrada.value.trim();
+          if (!valor) { PT.toast('Escribe un nombre antes de agregar ⚠️', 'warning'); return; }
 
-    <script>
-        
-        // 🔹 Forzar mayúsculas en ambos inputs
-    const nuevoCargoInput = document.getElementById("nuevoCargo");
-    const nuevoNomcostoInput = document.getElementById("nuevoNomcosto");
+          const datos = new FormData();
+          datos.append('action', boton.dataset.alta);
+          datos.append(boton.dataset.campo, valor);
 
-    nuevoCargoInput.addEventListener("input", function() {
-        this.value = this.value.toUpperCase();
-    });
-    nuevoNomcostoInput.addEventListener("input", function() {
-        this.value = this.value.toUpperCase();
-    });
-
-    // 🔹 Agregar nuevo cargo
-    document.getElementById("btnAgregarCargo").addEventListener("click", function () {
-        const nombreCargo = nuevoCargoInput.value.trim();
-        if (!nombreCargo) {
-            alert("Debe ingresar un nombre de cargo");
-            return;
-        }
-
-        let formData = new FormData();
-        formData.append("action", "insertar_concepto");
-        formData.append("nombrecar", nombreCargo);
-
-        fetch("", {
-            method: "POST",
-            body: formData,
-            headers: {"X-Requested-With": "XMLHttpRequest", "X-CSRFToken": "{{ csrf_token }}"}
-        })
-        .then(r => r.json())
-        .then(data => {
-            document.getElementById("resultado").innerText = data.msg;
-            if (data.status === "ok") {
-                document.getElementById("resultado").style.color = "green";
-                const select = document.getElementById("listaCargos");
-                const option = document.createElement("option");
-                option.value = nombreCargo;
-                option.textContent = nombreCargo;
-                select.appendChild(option);
-                nuevoCargoInput.value = "";
-            } else {
-                document.getElementById("resultado").style.color = "red";
+          try {
+            const r = await enviar(datos);
+            PT.toast(r.msg, r.status === 'ok' ? 'success' : 'error');
+            if (r.status === 'ok') {
+              const opcion = new Option(valor, valor);
+              document.getElementById(boton.dataset.lista).appendChild(opcion);
+              entrada.value = '';
             }
-        })
-        .catch(() => {
-            document.getElementById("resultado").innerText = "❌ Error al agregar el cargo";
-            document.getElementById("resultado").style.color = "red";
-        });
+          } catch (e) { PT.toast('Error al guardar ❌', 'error'); }
+        }));
+      });
+
+      // Guardar parámetros: se recorren los inputs por su name, sin listarlos uno a uno
+      const btnActualizar = document.getElementById('btnActualizar');
+      btnActualizar.addEventListener('click', () => PT.conSpinner(btnActualizar, async () => {
+        const datos = new FormData();
+        document.querySelectorAll('.dash-campo input[name]').forEach(i => datos.append(i.name, i.value));
+        try {
+          const r = await enviar(datos);
+          PT.toast(r.msg || 'Parámetros actualizados ✅', r.status === 'error' ? 'error' : 'success');
+        } catch (e) { PT.toast('Error al guardar ❌', 'error'); }
+      }));
     });
-
-        // 🔹 Agregar nuevo NOMCOSTO
-        document.getElementById("btnAgregarNomcosto").addEventListener("click", function () {
-            const nombreNomcosto = nuevoNomcostoInput.value.trim();
-            if (!nombreNomcosto) {
-                alert("Debe ingresar un nombre de costo");
-                return;
-            }
-
-            let formData = new FormData();
-            formData.append("action", "insertar_nomcosto");
-            formData.append("nomcosto", nombreNomcosto);
-
-            fetch("", {
-                method: "POST",
-                body: formData,
-                headers: {"X-Requested-With": "XMLHttpRequest", "X-CSRFToken": "{{ csrf_token }}"}
-            })
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById("resultado").innerText = data.msg;
-                if (data.status === "ok") {
-                    document.getElementById("resultado").style.color = "green";
-                    const select = document.getElementById("listaNomcosto");
-                    const option = document.createElement("option");
-                    option.value = nombreNomcosto;
-                    option.textContent = nombreNomcosto;
-                    select.appendChild(option);
-                    nuevoNomcostoInput.value = "";
-                } else {
-                    document.getElementById("resultado").style.color = "red";
-                }
-            })
-            .catch(() => {
-                document.getElementById("resultado").innerText = "❌ Error al agregar el NOMCOSTO";
-                document.getElementById("resultado").style.color = "red";
-            });
-        });
-        document.getElementById("btnActualizar").addEventListener("click", function () {
-            let formData = new FormData();
-            formData.append("incrementoSalarial", document.getElementById("incrementoSalarial").value);
-            formData.append("incrementoIPC", document.getElementById("incrementoIPC").value);
-            formData.append("auxilioTransporte", document.getElementById("auxilioTransporte").value);
-            formData.append("cesantias", document.getElementById("cesantias").value);
-            formData.append("interesesCesantias", document.getElementById("interesesCesantias").value);
-            formData.append("prima", document.getElementById("prima").value);
-            formData.append("vacaciones", document.getElementById("vacaciones").value);
-            formData.append("salarioMinimo", document.getElementById("salarioMinimo").value);
-            formData.append("incrementoComisiones", document.getElementById("incrementoComisiones").value);
-
-            fetch("", {
-                method: "POST",
-                body: formData,
-                headers: {"X-Requested-With": "XMLHttpRequest", "X-CSRFToken": "{{ csrf_token }}"}
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById("resultado").innerText = data.msg;
-                document.getElementById("resultado").style.color = "green";
-            })
-            .catch(error => {
-                document.getElementById("resultado").innerText = "❌ Error al guardar";
-                document.getElementById("resultado").style.color = "red";
-            });
-        });
-    </script>
+  </script>
 </body>
 </html>
