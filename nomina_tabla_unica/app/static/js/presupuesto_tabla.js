@@ -257,6 +257,8 @@
      *  - acciones       ['duplicar','eliminar','copiar']
      *  - editable       permite edición en línea (por defecto true)
      *  - alSeleccionar  fn(filasSeleccionadas) cada vez que se repinta la tabla
+     *  - accionesExtra  [{rol, icono, titulo, mostrar(fila), clase(fila)}] botones propios por fila
+     *  - alAccion       fn(rol, fila) al pulsar uno de esos botones
      *  - filtros        campos con multiselect, p. ej. ['nombre','centro','area']
      *  - buscador       caja de búsqueda global (por defecto true)
      *  - camposTotal    columnas que se suman en el pie (por defecto meses + total)
@@ -348,8 +350,13 @@
     _columnasVisibles() {
       const cols = [];
       if (this.cfg.seleccionable) cols.push({ especial: 'check' });
-      if (this.cfg.acciones && this.cfg.acciones.length) cols.push({ especial: 'acciones' });
+      if (this._hayAcciones()) cols.push({ especial: 'acciones' });
       return cols.concat(this.columnas);
+    }
+
+    _hayAcciones() {
+      return !!((this.cfg.acciones && this.cfg.acciones.length) ||
+                (this.cfg.accionesExtra && this.cfg.accionesExtra.length));
     }
 
     _pintarCabecera() {
@@ -445,10 +452,16 @@
         if (this.cfg.seleccionable) {
           partes.push(`<td class="pt-col-check"><input type="checkbox" data-rol="check-fila" ${this.seleccion.has(fila) ? 'checked' : ''}></td>`);
         }
-        if (this.cfg.acciones && this.cfg.acciones.length) {
+        if (this._hayAcciones()) {
           partes.push('<td class="pt-col-acciones"><div class="pt-acciones-fila">');
           if (this.cfg.acciones.includes('duplicar')) partes.push('<button type="button" data-rol="duplicar" title="Duplicar fila">📑</button>');
           if (this.cfg.acciones.includes('copiar'))   partes.push('<button type="button" data-rol="copiar"   title="Copiar fila">📋</button>');
+          (this.cfg.accionesExtra || []).forEach(extra => {
+            if (extra.mostrar && !extra.mostrar(fila)) return;
+            const clase = extra.clase ? extra.clase(fila) : '';
+            const titulo = typeof extra.titulo === 'function' ? extra.titulo(fila) : (extra.titulo || '');
+            partes.push(`<button type="button" data-rol="${escapar(extra.rol)}" class="${escapar(clase)}" title="${escapar(titulo)}">${extra.icono}</button>`);
+          });
           if (this.cfg.acciones.includes('eliminar')) partes.push('<button type="button" data-rol="eliminar" title="Eliminar fila">❌</button>');
           partes.push('</div></td>');
         }
@@ -536,6 +549,9 @@
           if (boton.dataset.rol === 'duplicar') this.duplicar(fila);
           if (boton.dataset.rol === 'eliminar') this.eliminar(fila);
           if (boton.dataset.rol === 'copiar')   this.copiarAlPortapapeles(fila);
+          if ((this.cfg.accionesExtra || []).some(x => x.rol === boton.dataset.rol) && this.cfg.alAccion) {
+            this.cfg.alAccion(boton.dataset.rol, fila);
+          }
           return;
         }
         this.filaActiva = fila;
@@ -641,7 +657,8 @@
 
     /** Fila nueva escrita a mano: el sistema no la recalcula. */
     static filaManual(base = {}) {
-      return Object.assign({ origen: 'manual', factor: 1, historico: {}, clave: '' }, base, { id: null });
+      return Object.assign({ factor: 1, historico: {}, excluir_de: [], cuenta: '' }, base,
+                           { id: null, origen: 'manual', clave: '' });
     }
 
     /** Aplica una función a las filas marcadas. Devuelve cuántas cambiaron. */
@@ -835,7 +852,7 @@
     if (urls.cargarBase) al('cargar-base', accionServidor(urls.cargarBase));
     if (urls.borrar) al('borrar', accionServidor(urls.borrar));
 
-    al('agregar',  () => { tabla.agregarFila(); toast('Fila agregada ✅'); });
+    al('agregar',  extra.agregar || (() => { tabla.agregarFila(); toast('Fila agregada ✅'); }));
     al('pegar',    () => tabla.pegarDelPortapapeles());
     al('exportar', () => tabla.exportar());
     if (urls.guardar) {

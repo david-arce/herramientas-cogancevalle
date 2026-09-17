@@ -1,0 +1,71 @@
+{% extends "presupuesto_nomina/base_tabla.html" %}
+{% load static %}
+{% comment %}
+  Template único para los 18 conceptos de nómina y para la vista consolidada
+  ("todos"). Reemplaza a los 36 templates anteriores (tabla principal +
+  tabla auxiliar de cada concepto). Lo que cambia entre conceptos llega en
+  `config` desde views_nomina.nomina_tabla.
+{% endcomment %}
+
+{% block barra %}
+  <button type="button" class="pt-btn" data-rol="inicio">← Inicio</button>
+  {% if not config.soloLectura %}
+    <button type="button" class="pt-btn" data-rol="consolidado">Ver todo consolidado</button>
+  {% endif %}
+  <button type="button" class="pt-btn" data-rol="exportar">📥 Exportar</button>
+
+  {% for p in config.parametros %}
+    <span class="pt-parametro">{{ p.etiqueta }}: <strong>{{ p.valor|floatformat:"-2" }}</strong></span>
+  {% endfor %}
+
+  {% if not config.soloLectura %}
+    <span class="pt-espaciador"></span>
+    {% if config.derivado %}
+      <button type="button" class="pt-btn" data-rol="cargar-base" data-descarta
+              title="Vuelve a calcular las filas automáticas. Las filas manuales se conservan.">🔄 Recalcular</button>
+    {% else %}
+      <button type="button" class="pt-btn" data-rol="cargar-base" data-descarta
+              data-confirmar="Se reemplazarán TODAS las filas de {{ config.etiqueta }} (incluidas las manuales) con lo que hay en Conceptos. ¿Continuar?">📂 Cargar desde Conceptos</button>
+    {% endif %}
+    <button type="button" class="pt-btn" data-rol="agregar">➕ Agregar fila</button>
+    {% if config.conPegar %}<button type="button" class="pt-btn" data-rol="pegar">📋 Pegar fila copiada</button>{% endif %}
+    <button type="button" class="pt-btn pt-btn--primario" data-rol="recalcular"
+            title="Las filas seleccionadas vuelven a ser calculadas por el sistema">⚙️ Restablecer cálculo en seleccionadas</button>
+    <span class="pt-pendiente" data-rol="estado" hidden>● Cambios sin guardar</span>
+    <button type="button" class="pt-btn pt-btn--exito" data-rol="guardar" title="Ctrl + S">💾 Guardar</button>
+    {% if config.derivado %}
+      <button type="button" class="pt-btn pt-btn--peligro" data-rol="borrar" data-descarta
+              data-confirmar="Se descartarán todos los ajustes manuales de {{ config.etiqueta }} y se recalculará desde cero. ¿Continuar?">Descartar ajustes manuales</button>
+    {% else %}
+      <button type="button" class="pt-btn pt-btn--peligro" data-rol="borrar" data-descarta
+              data-confirmar="Se borrarán todas las filas de {{ config.etiqueta }} y se recalcularán los conceptos que dependen de él. Esta acción no se puede deshacer. ¿Continuar?">Borrar</button>
+    {% endif %}
+  {% endif %}
+{% endblock %}
+
+{% block aviso %}
+  <div class="pt-aviso">
+    {% if config.soloLectura %}
+      Vista de solo lectura con todos los conceptos. Para editar, entra al concepto desde el inicio.
+    {% else %}
+      <span><span class="pt-origen pt-origen--sistema">⚙️ Calculado</span> se actualiza solo · <span class="pt-origen pt-origen--manual">✋ Manual</span> se respeta tal cual.</span>
+      {% if config.depende %}<span>Se calcula a partir de: <strong>{{ config.depende|join:", " }}</strong>.</span>{% endif %}
+      {% if config.afecta %}<span>Al guardar se actualiza también: <strong>{{ config.afecta|join:", " }}</strong>.</span>{% endif %}
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block panel %}
+  {% if config.conDistribucion %}
+    {% include "presupuesto_nomina/_panel_distribucion.html" %}
+  {% endif %}
+{% endblock %}
+
+{% block datos %}
+  {{ config|json_script:"pt-config" }}
+  {{ listas|json_script:"pt-listas" }}
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'js/presupuesto_nomina.js' %}"></script>
+{% endblock %}

@@ -305,12 +305,14 @@
       </select>
     </div>
     <div class="dash-alta">
-      <input type="text" id="nuevoNomcosto" placeholder="Nombre del costo">
+      <input type="text" id="nuevoNomcosto" placeholder="Nombre del costo (NOMCOSTO)">
+      <input type="text" id="nuevaCuenta" placeholder="Cuenta" inputmode="numeric" style="min-width:130px;width:130px">
       <button type="button" class="pt-btn pt-btn--primario"
               data-alta="insertar_nomcosto" data-campo="nomcosto"
-              data-entrada="nuevoNomcosto" data-lista="listaNomcosto">Agregar NOMCOSTO</button>
+              data-entrada="nuevoNomcosto" data-lista="listaNomcosto"
+              data-extra="nuevaCuenta:cuenta">Agregar NOMCOSTO</button>
       <select id="listaNomcosto">
-        {% for nombre in nombres_costos %}<option value="{{ nombre }}">{{ nombre }}</option>
+        {% for nombre, cuenta in nombres_costos %}<option value="{{ nombre }}">{{ nombre }} · {{ cuenta|default:"sin cuenta" }}</option>
         {% empty %}<option disabled>No hay NOMCOSTOS registrados</option>{% endfor %}
       </select>
     </div>
@@ -340,13 +342,20 @@
           const datos = new FormData();
           datos.append('action', boton.dataset.alta);
           datos.append(boton.dataset.campo, valor);
+          const extra = boton.dataset.extra ? boton.dataset.extra.split(':') : null;
+          const entradaExtra = extra ? document.getElementById(extra[0]) : null;
+          if (entradaExtra) {
+            if (!entradaExtra.value.trim()) { PT.toast('Escribe la cuenta del NOMCOSTO ⚠️', 'warning'); return; }
+            datos.append(extra[1], entradaExtra.value.trim());
+          }
 
           try {
             const r = await enviar(datos);
             PT.toast(r.msg, r.status === 'ok' ? 'success' : 'error');
             if (r.status === 'ok') {
-              document.getElementById(boton.dataset.lista).appendChild(new Option(valor, valor));
+              document.getElementById(boton.dataset.lista).appendChild(new Option(r.texto || valor, valor));
               entrada.value = '';
+              if (entradaExtra) entradaExtra.value = '';
             }
           } catch (e) { PT.toast('Error al guardar ❌', 'error'); }
         }));

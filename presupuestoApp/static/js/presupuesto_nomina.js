@@ -1,0 +1,58 @@
+/* ==========================================================================
+ * presupuesto_nomina.js
+ * Arma la pantalla de cualquier concepto de nómina a partir de la
+ * configuración que envía la vista (views_nomina.nomina_tabla).
+ * Reemplaza los 36 templates que antes repetían este mismo código.
+ * ========================================================================== */
+(function (global) {
+  'use strict';
+
+  function iniciarPaginaNomina() {
+    const config = PT.listaJSON('pt-config') || {};
+    const listas = PT.listaJSON('pt-listas') || {};
+    const soloLectura = !!config.soloLectura;
+    const estado = document.querySelector('[data-rol="estado"]');
+
+    const tabla = new PT.TablaPresupuesto({
+      montaje: '#tabla',
+      urlDatos: config.urls.datos,
+      columnas: PT.Columnas.estandar({
+        cedula: config.conCedula !== false,
+        cargo: config.conCedula !== false,
+        base: config.tituloBase || null,
+        opciones: soloLectura ? {} : listas,
+        tipo: config.slug === 'todos'
+      }),
+      editable: !soloLectura,
+      seleccionable: !soloLectura || !!config.seleccionable,
+      acciones: soloLectura ? [] : (config.conCedula === false
+        ? ['duplicar', 'eliminar']
+        : ['duplicar', 'copiar', 'eliminar']),
+      filtros: config.slug === 'todos'
+        ? ['tipo_nombre', 'nombre', 'centro', 'area']
+        : (config.conCedula === false ? ['centro', 'area', 'concepto'] : ['nombre', 'centro', 'area']),
+      nombreArchivo: 'presupuesto_nomina_' + config.slug,
+      alCambiar: (pendiente) => {
+        if (!estado) return;
+        estado.hidden = !pendiente;
+      }
+    });
+
+    PT.conectarBarra(tabla, soloLectura ? { inicio: config.urls.inicio } : config.urls);
+
+    // Ctrl/Cmd + S guarda
+    if (!soloLectura) {
+      document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+          e.preventDefault();
+          const boton = document.querySelector('[data-rol="guardar"]');
+          if (boton) boton.click();
+        }
+      });
+    }
+
+    global.tablaNomina = tabla;   // lo usa presupuesto_distribucion.js (y sirve para depurar)
+  }
+
+  document.addEventListener('DOMContentLoaded', iniciarPaginaNomina);
+})(window);

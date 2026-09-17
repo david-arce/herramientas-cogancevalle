@@ -256,7 +256,6 @@
      *  - seleccionable  muestra la columna de checkbox (por defecto true)
      *  - acciones       ['duplicar','eliminar','copiar']
      *  - editable       permite edición en línea (por defecto true)
-     *  - alSeleccionar  fn(filasSeleccionadas) cada vez que se repinta la tabla
      *  - filtros        campos con multiselect, p. ej. ['nombre','centro','area']
      *  - buscador       caja de búsqueda global (por defecto true)
      *  - camposTotal    columnas que se suman en el pie (por defecto meses + total)
@@ -430,7 +429,6 @@
 
     pintar() {
       this._aplicarFiltros();
-      if (typeof this.cfg.alSeleccionar === 'function') this.cfg.alSeleccionar(this.filasSeleccionadas());
 
       const posicion = new Map(this.filas.map((f, i) => [f, i]));
       const partes = [];
@@ -867,27 +865,9 @@
     }));
   }
 
-  /**
-   * <details data-recordar="clave"> recuerda si quedó abierto u oculto.
-   * Se llama sola al cargar la página.
-   */
-  function recordarSecciones(raiz = document) {
-    raiz.querySelectorAll('details[data-recordar]').forEach(det => {
-      const clave = 'pt-seccion:' + det.dataset.recordar;
-      try {
-        const guardado = localStorage.getItem(clave);
-        if (guardado !== null) det.open = guardado === '1';
-      } catch (e) { /* sin almacenamiento: se usa el estado por defecto */ }
-      det.addEventListener('toggle', () => {
-        try { localStorage.setItem(clave, det.open ? '1' : '0'); } catch (e) { /* ignorar */ }
-      });
-    });
-  }
-  document.addEventListener('DOMContentLoaded', () => recordarSecciones());
-
   global.PT = {
     MESES, Columnas, TablaPresupuesto, MultiSelect,
     aNumero, formatearNumero, toast, pedir, enviarJSON, conSpinner,
-    conectarBarra, listaJSON, leerDistribucion, recordarSecciones
+    conectarBarra, listaJSON, leerDistribucion
   };
 })(window);

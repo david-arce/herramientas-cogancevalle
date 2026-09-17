@@ -1,0 +1,25 @@
+{% comment %}
+Diálogo "¿Qué se actualiza con esta fila?" — se abre al agregar una persona
+y desde el botón 🔗 de las filas manuales. Lo arma presupuesto_nomina.js
+con config.afectaDetalle.
+{% endcomment %}
+<dialog class="pt-dialogo" id="dlgActualiza" aria-labelledby="dlgActualizaTitulo">
+  <form method="dialog" class="pt-dialogo__caja">
+    <header class="pt-dialogo__cabecera">
+      <h3 id="dlgActualizaTitulo">Agregar persona</h3>
+      <p class="pt-dialogo__sub" id="dlgActualizaSub">Elija qué conceptos se deben actualizar automáticamente con esta fila.</p>
+    </header>
+    <div class="pt-dialogo__cuerpo">
+      <div class="da-atajos">
+        <button type="button" class="pt-btn pt-btn--enlace" data-marcar="todos">Marcar todos</button>
+        <button type="button" class="pt-btn pt-btn--enlace" data-marcar="ninguno">Ninguno</button>
+      </div>
+      <ul class="da-lista" id="dlgActualizaLista"></ul>
+      <p class="da-nota">Los conceptos desmarcados no tendrán en cuenta esta fila. Se puede cambiar después con el botón 🔗 de la fila.</p>
+    </div>
+    <footer class="pt-dialogo__pie">
+      <button type="submit" class="pt-btn" value="cancelar">Cancelar</button>
+      <button type="submit" class="pt-btn pt-btn--primario" value="aceptar" id="dlgActualizaAceptar">Agregar fila</button>
+    </footer>
+  </form>
+</dialog>

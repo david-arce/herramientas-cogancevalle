@@ -6,73 +6,7 @@ import unicodedata
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 import pandas as pd
-from .models import (
-    BdVentasComercial,
-    ComentarioComparativo,
-    Cuenta4Base,
-    Cuenta4Presupuestado,
-    OrdenCuenta,
-    ParametrosPresupuestos,
-    ConceptosFijosYVariables,
-    ConceptoAuxilioEducacion,
-    PresupuestoGeneralVentas,
-    PresupuestoCentroOperacionVentas,
-    PresupuestoCentroSegmentoVentas,
-    PresupuestoGeneralCostos,
-    PresupuestoCentroOperacionCostos,
-    PresupuestoCentroSegmentoCostos,
-    PresupuestoComercial,
-    Plantillagastos2025,
-    PresupuestoTecnologia,
-    PresupuestoTecnologiaAux,
-    CuentasContables,
-    PresupuestotecnologiaAprobado,
-    PresupuestoOcupacional,
-    PresupuestoOcupacionalAux,
-    PresupuestoOcupacionalAprobado,
-    PresupuestoServiciosTecnicos,
-    PresupuestoServiciosTecnicosAux,
-    PresupuestoServiciosTecnicosAprobado,
-    PresupuestoLogistica,
-    PresupuestoLogisticaAux,
-    PresupuestoLogisticaAprobado,
-    PresupuestoGestionRiesgos,
-    PresupuestoGestionRiesgosAux,
-    PresupuestoGestionRiesgosAprobado,
-    PresupuestoGH,
-    PresupuestoGHAux,
-    PresupuestoGHAprobado,
-    PresupuestoAlmacenTulua,
-    PresupuestoAlmacenTuluaAux,
-    PresupuestoAlmacenTuluaAprobado,
-    PresupuestoAlmacenBuga,
-    PresupuestoAlmacenBugaAux,
-    PresupuestoAlmacenBugaAprobado,
-    PresupuestoAlmacenCartago,
-    PresupuestoAlmacenCartagoAux,
-    PresupuestoAlmacenCartagoAprobado,
-    PresupuestoAlmacenCali,
-    PresupuestoAlmacenCaliAux,
-    PresupuestoAlmacenCaliAprobado,
-    PresupuestoComunicaciones,
-    PresupuestoComunicacionesAux,
-    PresupuestoComunicacionesAprobado,
-    PresupuestoComercialCostos,
-    PresupuestoComercialCostosAux,
-    PresupuestoComercialCostosAprobado,
-    PresupuestoContabilidad,
-    PresupuestoContabilidadAux,
-    PresupuestoContabilidadAprobado,
-    PresupuestoGerencia,
-    PresupuestoGerenciaAux,
-    PresupuestoGerenciaAprobado,
-    Cuenta5,
-    Cuenta5Base,
-    PresupuestoCentroSegLineaCostos,
-    PresupuestoCentroSegLineaVentas,
-    ConsolidadoTotalBase,
-    Cuenta5Presupuestado,
-)
+from .models import BdVentasComercial, ComentarioComparativo, Cuenta4Base, Cuenta4Presupuestado, OrdenCuenta, ParametrosPresupuestos, PresupuestoSueldos, PresupuestoSueldosAux, ConceptosFijosYVariables, PresupuestoComisiones, PresupuestoComisionesAux, PresupuestoHorasExtra, PresupuestoHorasExtraAux, PresupuestoMediosTransporte, PresupuestoMediosTransporteAux, PresupuestoAuxilioTransporte, PresupuestoAuxilioTransporteAux, PresupuestoAyudaTransporte, PresupuestoAyudaTransporteAux, PresupuestoCesantias, PresupuestoCesantiasAux, PresupuestoPrima, PresupuestoPrimaAux, PresupuestoVacaciones, PresupuestoVacacionesAux, PresupuestoBonificaciones, PresupuestoBonificacionesAux, PresupuestoAprendiz, PresupuestoAprendizAux, PresupuestoBolsaConsumibles, PresupuestoBolsaConsumiblesAux, PresupuestoAuxilioTBCKIT, PresupuestoAuxilioTCBKITAux, PresupuestoSeguridadSocial, PresupuestoSeguridadSocialAux, PresupuestoInteresesCesantias, PresupuestoInteresesCesantiasAux, PresupuestoBonificacionesFoco, PresupuestoBonificacionesFocoAux, PresupuestoAuxilioEducacion, PresupuestoAuxilioEducacionAux, ConceptoAuxilioEducacion, PresupuestoBonosKyrovet, PresupuestoBonosKyrovetAux, PresupuestoGeneralVentas, PresupuestoCentroOperacionVentas, PresupuestoCentroSegmentoVentas, PresupuestoGeneralCostos, PresupuestoCentroOperacionCostos, PresupuestoCentroSegmentoCostos, PresupuestoComercial, Plantillagastos2025, PresupuestoTecnologia, PresupuestoTecnologiaAux, CuentasContables, PresupuestotecnologiaAprobado, PresupuestoOcupacional, PresupuestoOcupacionalAux, PresupuestoOcupacionalAprobado, PresupuestoServiciosTecnicos, PresupuestoServiciosTecnicosAux, PresupuestoServiciosTecnicosAprobado, PresupuestoLogistica, PresupuestoLogisticaAux, PresupuestoLogisticaAprobado, PresupuestoGestionRiesgos, PresupuestoGestionRiesgosAux, PresupuestoGestionRiesgosAprobado, PresupuestoGH, PresupuestoGHAux, PresupuestoGHAprobado, PresupuestoAlmacenTulua, PresupuestoAlmacenTuluaAux, PresupuestoAlmacenTuluaAprobado, PresupuestoAlmacenBuga, PresupuestoAlmacenBugaAux, PresupuestoAlmacenBugaAprobado, PresupuestoAlmacenCartago, PresupuestoAlmacenCartagoAux, PresupuestoAlmacenCartagoAprobado, PresupuestoAlmacenCali, PresupuestoAlmacenCaliAux, PresupuestoAlmacenCaliAprobado, PresupuestoComunicaciones, PresupuestoComunicacionesAux, PresupuestoComunicacionesAprobado, PresupuestoComercialCostos, PresupuestoComercialCostosAux, PresupuestoComercialCostosAprobado, PresupuestoContabilidad, PresupuestoContabilidadAux, PresupuestoContabilidadAprobado, PresupuestoGerencia, PresupuestoGerenciaAux, PresupuestoGerenciaAprobado, Cuenta5, Cuenta5Base, PresupuestoCentroSegLineaCostos, PresupuestoCentroSegLineaVentas, ConsolidadoTotalBase, Cuenta5Presupuestado
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.db.models.functions import Concat
 from django.db.models import Sum, Max, Q, Avg
@@ -1974,8 +1908,984 @@ def vista_presupuesto_comercial(request):
     return render(request, 'presupuesto_comercial/presupuesto_comercial_final.html')
 
 #  ---------------------NOMINA-------------------------------------------------------------
-#  La nómina usa ahora una sola tabla (PresupuestoNomina). Las vistas están en
-#  views_nomina.py, la lógica en nomina_motor.py y las rutas en urls_nomina.py.
+# ══════════════════════════════════════════════════════════════════════
+#  Constantes y utilidades
+# ══════════════════════════════════════════════════════════════════════
+
+MESES = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+]
+
+# Campos que nunca llegan (ni se aceptan) desde el navegador.
+CAMPOS_IGNORADOS = {'id', 'fecha_carga', 'version'}
+
+# Las vistas de pantalla (tabla principal y auxiliar) quedan tras el login si
+# se pone en True. Se deja en False para que el comportamiento sea idéntico al
+# de antes; actívalo cuando definas LOGIN_URL.
+EXIGIR_LOGIN = False
+
+
+def proteger(vista):
+    return login_required(vista) if EXIGIR_LOGIN else vista
+
+
+@lru_cache(maxsize=None)
+def campos_modelo(modelo):
+    """Campos editables del modelo, deducidos del propio modelo.
+
+    Antes cada vista repetía a mano el `campos_validos = {...}` con 20
+    nombres; si se agregaba una columna había que tocar 4 vistas.
+    """
+    return tuple(f.name for f in modelo._meta.fields if f.name not in CAMPOS_IGNORADOS)
+
+
+@lru_cache(maxsize=None)
+def campos_numericos(modelo):
+    numericos = (models.IntegerField, models.FloatField, models.DecimalField)
+    return tuple(
+        f.name for f in modelo._meta.fields
+        if isinstance(f, numericos) and f.name not in CAMPOS_IGNORADOS
+    )
+
+
+@lru_cache(maxsize=None)
+def tiene_campo(modelo, nombre):
+    return any(f.name == nombre for f in modelo._meta.fields)
+
+
+def fila_a_modelo(modelo, fila):
+    """Filtra la fila que llega del navegador y normaliza los numéricos."""
+    datos = {c: fila.get(c) for c in campos_modelo(modelo)}
+    for campo in campos_numericos(modelo):
+        if datos.get(campo) in (None, ''):
+            datos[campo] = 0
+    return modelo(**datos)
+
+
+def reemplazar_todo(modelo, filas):
+    """delete() + bulk_create() dentro de una transacción."""
+    registros = [fila_a_modelo(modelo, fila) for fila in filas]
+    with transaction.atomic():
+        modelo.objects.all().delete()
+        modelo.objects.bulk_create(registros, batch_size=1000)
+    return len(registros)
+
+
+def error(mensaje, codigo=400, **extra):
+    return JsonResponse({'status': 'error', 'message': mensaje, 'msg': mensaje, **extra}, status=codigo)
+
+
+def metodo_no_permitido():
+    return error('Método no permitido', 405)
+
+
+def parametros():
+    """Parámetros del presupuesto (una sola fila en la tabla)."""
+    return ParametrosPresupuestos.objects.first()
+
+
+def salario_minimo_incrementado():
+    p = parametros()
+    if not p or not p.salario_minimo:
+        return 0
+    return p.salario_minimo + (p.salario_minimo * (p.incremento_salarial or 0) / 100)
+
+
+@lru_cache(maxsize=1)
+def _listas_cacheadas():
+    """Las tres listas de los desplegables en UNA consulta.
+
+    Antes cada vista hacía tres `values_list(...)` completos sobre
+    ConceptosFijosYVariables (3 escaneos de la tabla por pantalla).
+    """
+    centros, areas, cargos = set(), set(), set()
+    for centro, area, cargo in ConceptosFijosYVariables.objects.values_list(
+            'nombre_cen', 'nomcosto', 'nombrecar'):
+        centros.add(centro)
+        areas.add(area)
+        cargos.add(cargo)
+    ordenar = lambda valores: sorted(v for v in valores if v)  # noqa: E731
+    return ordenar(centros), ordenar(areas), ordenar(cargos)
+
+
+def contexto_listas():
+    centros, areas, cargos = _listas_cacheadas()
+    return {'centros': centros, 'areas': areas, 'cargos': cargos}
+
+
+def limpiar_cache_listas():
+    """Llamar tras insertar un cargo o un NOMCOSTO nuevo."""
+    _listas_cacheadas.cache_clear()
+
+
+def indexar(modelo, claves, campos=MESES):
+    """{(clave1, clave2): {mes: valor}} en una sola consulta.
+
+    Sustituye al patrón `modelo.objects.filter(cedula=..., area=...).first()`
+    dentro de un bucle. Se conserva la primera coincidencia, igual que el
+    `.first()` original.
+    """
+    indice = {}
+    for fila in modelo.objects.values(*claves, *campos):
+        clave = tuple(fila[c] for c in claves)
+        if clave not in indice:
+            indice[clave] = {campo: fila[campo] or 0 for campo in campos}
+    return indice
+
+
+def sumar_por(modelo, clave='cedula', campos=MESES):
+    """{clave: {mes: suma}} agregando en la base de datos, no en Python."""
+    anotaciones = {campo: Sum(campo) for campo in campos}
+    return {
+        fila[clave]: {campo: fila[campo] or 0 for campo in campos}
+        for fila in modelo.objects.values(clave).annotate(**anotaciones)
+    }
+
+
+def total_de(valores):
+    return sum(valores.get(mes, 0) or 0 for mes in MESES)
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  Configuración: una entrada por concepto de nómina
+# ══════════════════════════════════════════════════════════════════════
+#
+#  modelo / aux        modelos definitivo y temporal
+#  etiqueta            texto para los mensajes
+#  clave_subir         campo con el que se detecta un registro repetido
+#  con_guardar         si la tabla principal es editable
+#  parametros          {variable_de_template: campo_de_ParametrosPresupuestos}
+#  nombres             solo cuando el nombre histórico de la vista no sigue
+#                      el patrón (el caso de "sueldos", que en varias
+#                      vistas se llama "nomina")
+#  carga               cómo se llena la tabla auxiliar (ver más abajo)
+#
+CONCEPTOS = {}
+
+
+def concepto(slug, **cfg):
+    cfg.setdefault('etiqueta', slug.replace('_', ' '))
+    cfg.setdefault('clave_subir', 'cedula')
+    cfg.setdefault('con_guardar', True)
+    cfg.setdefault('parametros', {})
+    cfg.setdefault('nombres', {})
+    cfg.setdefault('template', 'presupuesto_nomina/%s.html' % slug)
+    cfg.setdefault('template_aux', 'presupuesto_nomina/aux_%s.html' % slug)
+    cfg['slug'] = slug
+    CONCEPTOS[slug] = cfg
+    return cfg
+
+
+# --- 1. Conceptos que se cargan directamente desde ConceptosFijosYVariables
+#        `carga` = {'tipo': 'conceptos', ...}
+#           filtro          filtro sobre el modelo de origen
+#           origen          modelo de origen (por defecto ConceptosFijosYVariables)
+#           fijo            {campo_destino: 'concepto_f'} campos que toman concepto_f
+#           copiar          campos que se copian tal cual (meses, total)
+#           concepto        texto fijo para la columna "concepto"
+#           agrupar         True → se suman las filas repetidas por persona
+#           ajuste          callable(destino, origen, parametros)
+
+concepto(
+    'sueldos',
+    etiqueta='sueldos',
+    modelo=PresupuestoSueldos, aux=PresupuestoSueldosAux,
+    template='presupuesto_nomina/presupuesto_nomina.html',
+    template_aux='presupuesto_nomina/aux_presupuesto_nomina.html',
+    parametros={'incrementoSalarial': 'incremento_salarial', 'salarioMinimo': 'salario_minimo'},
+    nombres={
+        'principal': 'presupuesto_sueldos',
+        'obtener_temp': 'obtener_nomina_temp',
+        'guardar': 'guardar_nomina',
+        'guardar_temp': 'guardar_nomina_temp',
+        'cargar': 'cargar_nomina_base',
+    },
+    carga={'tipo': 'conceptos', 'filtro': {'concepto': '001'},
+           'fijo': {'salario_base': 'concepto_f', 'enero': 'concepto_f', 'febrero': 'concepto_f'}},
+)
+
+concepto(
+    'comisiones',
+    modelo=PresupuestoComisiones, aux=PresupuestoComisionesAux,
+    parametros={'incrementoComisiones': 'incremento_comisiones'},
+    carga={'tipo': 'conceptos', 'filtro': {'concepto': '389'},
+           'copiar': MESES[:9] + ['total']},
+)
+
+concepto(
+    'horas_extra',
+    modelo=PresupuestoHorasExtra, aux=PresupuestoHorasExtraAux,
+    parametros={'incrementoSalarial': 'incremento_salarial'},
+    carga={'tipo': 'conceptos', 'filtro': {'concepto__in': ['114', '110', '111']},
+           'copiar': MESES[:9] + ['total'], 'agrupar': True, 'concepto': 'HORAS EXTRA'},
+)
+
+concepto(
+    'medios_transporte',
+    modelo=PresupuestoMediosTransporte, aux=PresupuestoMediosTransporteAux,
+    parametros={'incrementoIPC': 'incremento_ipc'},
+    carga={'tipo': 'conceptos', 'filtro': {'concepto': '011'},
+           'fijo': {'base': 'concepto_f', 'enero': 'concepto_f', 'febrero': 'concepto_f'}},
+)
+
+concepto(
+    'ayuda_transporte',
+    modelo=PresupuestoAyudaTransporte, aux=PresupuestoAyudaTransporteAux,
+    parametros={'incrementoIPC': 'incremento_ipc'},
+    carga={'tipo': 'conceptos', 'filtro': {'concepto': '013'},
+           'fijo': {'base': 'concepto_f', 'enero': 'concepto_f', 'febrero': 'concepto_f'}},
+)
+
+concepto(
+    'bolsa_consumibles',
+    modelo=PresupuestoBolsaConsumibles, aux=PresupuestoBolsaConsumiblesAux,
+    parametros={'incrementoIPC': 'incremento_ipc'},
+    carga={'tipo': 'conceptos', 'filtro': {'concepto': 'E14'},
+           'copiar': MESES[:8] + ['total']},
+)
+
+concepto(
+    'auxilio_TBCKIT',
+    modelo=PresupuestoAuxilioTBCKIT, aux=PresupuestoAuxilioTCBKITAux,
+    parametros={'incrementoIPC': 'incremento_ipc'},
+    carga={'tipo': 'conceptos', 'filtro': {'concepto': 'E14'},
+           'copiar': MESES[:9] + ['total']},
+)
+
+concepto(
+    'aprendiz',
+    modelo=PresupuestoAprendiz, aux=PresupuestoAprendizAux,
+    parametros={'incrementoSalarial': 'incremento_salarial'},
+    carga={'tipo': 'conceptos', 'filtro': {'concepto__in': ['003', '006']},
+           'fijo': {'salario_base': 'concepto_f'}},
+)
+
+concepto(
+    'auxilio_educacion',
+    modelo=PresupuestoAuxilioEducacion, aux=PresupuestoAuxilioEducacionAux,
+    parametros={'incrementoIPC': 'incremento_ipc'},
+    carga={'tipo': 'conceptos', 'origen': ConceptoAuxilioEducacion,
+           'filtro': {'concepto': '016'}, 'copiar': ['diciembre', 'total']},
+)
+
+
+def _ajuste_bonos_kyrovet(destino, origen, params):
+    """Febrero = base + IPC (el resto del año queda en cero)."""
+    ipc = (params.incremento_ipc or 0) if params else 0
+    valor = (origen['concepto_f'] or 0) * (1 + ipc / 100)
+    destino['febrero'] = valor
+    destino['total'] = valor
+
+
+concepto(
+    'bonos_kyrovet',
+    modelo=PresupuestoBonosKyrovet, aux=PresupuestoBonosKyrovetAux,
+    parametros={'incrementoIPC': 'incremento_ipc'},
+    carga={'tipo': 'conceptos', 'filtro': {'nombre_con__icontains': 'BONOS CANASTA KYROVET'},
+           'fijo': {'base': 'concepto_f'}, 'ajuste': _ajuste_bonos_kyrovet},
+)
+
+# --- 2. Conceptos derivados de otras tablas auxiliares
+#        `carga` = {'tipo': 'derivado', 'concepto': ..., 'fuentes': [...],
+#                   'emparejar': ('cedula', 'area'), 'incluir_aprendices': bool}
+
+FUENTES_PRESTACIONES = [
+    PresupuestoSueldosAux, PresupuestoComisionesAux, PresupuestoMediosTransporteAux,
+    PresupuestoAuxilioTransporteAux, PresupuestoHorasExtraAux, PresupuestoAprendizAux,
+]
+
+concepto(
+    'cesantias',
+    modelo=PresupuestoCesantias, aux=PresupuestoCesantiasAux,
+    parametros={'cesantias': 'cesantias'},
+    carga={'tipo': 'derivado', 'concepto': 'CESANTÍAS', 'fuentes': FUENTES_PRESTACIONES,
+           'emparejar': ('cedula', 'area'), 'incluir_aprendices': True},
+)
+
+concepto(
+    'prima',
+    modelo=PresupuestoPrima, aux=PresupuestoPrimaAux,
+    parametros={'prima': 'prima'},
+    carga={'tipo': 'derivado', 'concepto': 'PRIMA LEGAL', 'fuentes': FUENTES_PRESTACIONES,
+           'emparejar': ('cedula', 'area'), 'incluir_aprendices': True},
+)
+
+concepto(
+    'vacaciones',
+    modelo=PresupuestoVacaciones, aux=PresupuestoVacacionesAux,
+    parametros={'vacaciones': 'vacaciones'},
+    carga={'tipo': 'derivado', 'concepto': 'VACACIONES',
+           'fuentes': [PresupuestoComisionesAux, PresupuestoMediosTransporteAux],
+           'emparejar': ('cedula',), 'incluir_aprendices': True, 'incluir_propia': True},
+)
+
+# --- 3. Conceptos con carga propia (funciones específicas más abajo)
+
+concepto(
+    'auxilio_transporte',
+    modelo=PresupuestoAuxilioTransporte, aux=PresupuestoAuxilioTransporteAux,
+    parametros={'auxilioTransporte': 'auxilio_transporte'},
+    carga={'tipo': 'propia'},
+)
+concepto(
+    'bonificaciones',
+    modelo=PresupuestoBonificaciones, aux=PresupuestoBonificacionesAux,
+    carga={'tipo': 'propia'},
+)
+concepto(
+    'bonificaciones_foco',
+    modelo=PresupuestoBonificacionesFoco, aux=PresupuestoBonificacionesFocoAux,
+    carga={'tipo': 'propia'},
+)
+concepto(
+    'intereses_cesantias',
+    modelo=PresupuestoInteresesCesantias, aux=PresupuestoInteresesCesantiasAux,
+    parametros={'interesesCesantias': 'intereses_cesantias'},
+    carga={'tipo': 'propia'},
+)
+concepto(
+    'seguridad_social',
+    modelo=PresupuestoSeguridadSocial, aux=PresupuestoSeguridadSocialAux,
+    clave_subir='nombre', con_guardar=False,
+    carga={'tipo': 'propia'},
+)
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  Vistas genéricas
+# ══════════════════════════════════════════════════════════════════════
+
+def vista_principal(cfg, request):
+    return render(request, cfg['template'], contexto_listas())
+
+
+def vista_auxiliar(cfg, request):
+    contexto = contexto_listas()
+    params = parametros()
+    for variable, campo in cfg['parametros'].items():
+        contexto[variable] = getattr(params, campo, 0) if params else 0
+    return render(request, cfg['template_aux'], contexto)
+
+
+def obtener(cfg, request):
+    return JsonResponse({'data': list(cfg['modelo'].objects.values())}, safe=False)
+
+
+def obtener_temp(cfg, request):
+    return JsonResponse(list(cfg['aux'].objects.values()), safe=False)
+
+
+def guardar(cfg, request, temporal=False):
+    if request.method != 'POST':
+        return metodo_no_permitido()
+    modelo = cfg['aux'] if temporal else cfg['modelo']
+    try:
+        filas = json.loads(request.body.decode('utf-8'))
+        cantidad = reemplazar_todo(modelo, filas)
+    except Exception as exc:                     # noqa: BLE001
+        return error(str(exc))
+    return JsonResponse({'status': 'ok', 'msg': '%d filas guardadas ✅' % cantidad})
+
+
+def subir(cfg, request):
+    """Copia la tabla temporal a la definitiva, sin repetir registros."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'msg': 'Método no permitido'}, status=405)
+
+    modelo, aux, clave = cfg['modelo'], cfg['aux'], cfg['clave_subir']
+    temporales = list(aux.objects.all())
+    if not temporales:
+        return JsonResponse({'success': False, 'msg': 'No hay datos temporales para subir ❌'}, status=400)
+
+    normalizar = lambda valor: str(valor).strip() if valor is not None else ''  # noqa: E731
+    existentes = {normalizar(v) for v in modelo.objects.values_list(clave, flat=True)}
+
+    comunes = [c for c in campos_modelo(modelo) if c in campos_modelo(aux)]
+    lleva_fecha = tiene_campo(modelo, 'fecha_carga')
+
+    nuevos, omitidos = [], 0
+    for temporal in temporales:
+        if normalizar(getattr(temporal, clave)) in existentes:
+            omitidos += 1
+            continue
+        datos = {campo: getattr(temporal, campo) for campo in comunes}
+        if lleva_fecha:
+            datos['fecha_carga'] = timezone.now()
+        nuevos.append(modelo(**datos))
+
+    if nuevos:
+        modelo.objects.bulk_create(nuevos, batch_size=1000)
+        mensaje = '%d registro(s) agregado(s) ✅' % len(nuevos)
+    else:
+        mensaje = 'No se agregó ningún registro. (%d ya existían) ⚠️' % omitidos
+
+    return JsonResponse({'success': True, 'msg': mensaje, 'creados': len(nuevos), 'omitidos': omitidos})
+
+
+def borrar(cfg, request):
+    if request.method != 'POST':
+        return metodo_no_permitido()
+    cfg['modelo'].objects.all().delete()
+    return JsonResponse({'status': 'ok', 'message': 'Presupuesto de %s eliminado' % cfg['etiqueta']})
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  Cargas de la tabla auxiliar
+# ══════════════════════════════════════════════════════════════════════
+
+MAPA_CONCEPTOS = {          # campo destino -> campo en ConceptosFijosYVariables
+    'cedula': 'cedula',
+    'nombre': 'nombre',
+    'cargo': 'nombrecar',
+    'area': 'nomcosto',
+    'centro': 'nombre_cen',
+    'concepto': 'nombre_con',
+}
+
+
+def cargar_desde_conceptos(cfg, request):
+    """Llena la tabla auxiliar desde ConceptosFijosYVariables (o similar)."""
+    carga = cfg['carga']
+    aux = cfg['aux']
+    origen = carga.get('origen', ConceptosFijosYVariables)
+    copiar = carga.get('copiar', [])
+    fijo = carga.get('fijo', {})
+    params = parametros()
+
+    agrupadores = [MAPA_CONCEPTOS[c] for c in ('cedula', 'nombre', 'cargo', 'area', 'centro')]
+    columnas = agrupadores + ['nombre_con'] + list(set(copiar) | set(fijo.values()))
+
+    if carga.get('agrupar'):
+        # Varias filas por persona (p. ej. tres códigos de horas extra) → se suman
+        consulta = (origen.objects.filter(**carga['filtro'])
+                    .values(*agrupadores)
+                    .annotate(**{campo: Sum(campo) for campo in copiar}))
+    else:
+        consulta = origen.objects.filter(**carga['filtro']).values(*columnas)
+
+    registros = []
+    for fila in consulta:
+        datos = {destino: fila.get(fuente) for destino, fuente in MAPA_CONCEPTOS.items()
+                 if tiene_campo(aux, destino) and fuente in fila}
+        if carga.get('concepto'):
+            datos['concepto'] = carga['concepto']
+        for destino, fuente in fijo.items():
+            datos[destino] = fila.get(fuente) or 0
+        for campo in copiar:
+            datos[campo] = fila.get(campo) or 0
+        if carga.get('ajuste'):
+            carga['ajuste'](datos, fila, params)
+        registros.append(aux(**{k: v for k, v in datos.items() if tiene_campo(aux, k)}))
+
+    with transaction.atomic():
+        aux.objects.all().delete()
+        aux.objects.bulk_create(registros, batch_size=1000)
+
+    return JsonResponse({'status': 'ok', 'creados': len(registros)})
+
+
+def personas_base():
+    """Empleados de la nómina auxiliar + aprendices con salario de reforma."""
+    empleados = list(PresupuestoSueldosAux.objects.all())
+    aprendices = list(PresupuestoAprendizAux.objects.filter(concepto='SALARIO APRENDIZ REFORMA'))
+    return empleados + aprendices
+
+
+def cargar_derivado(cfg, request):
+    """Cesantías, prima y vacaciones: suma de varias tablas auxiliares.
+
+    Antes: una consulta por persona y por tabla de origen.
+    Ahora: una consulta por tabla de origen, en total.
+    """
+    carga = cfg['carga']
+    aux = cfg['aux']
+    claves = carga['emparejar']
+
+    indices = [(modelo, indexar(modelo, claves)) for modelo in carga['fuentes']]
+
+    registros = []
+    for persona in personas_base():
+        clave = tuple(getattr(persona, c) for c in claves)
+        valores = {mes: 0 for mes in MESES}
+
+        if carga.get('incluir_propia'):
+            # vacaciones parte de los meses de la propia fila de nómina
+            for mes in MESES:
+                valores[mes] += getattr(persona, mes, 0) or 0
+
+        for _modelo, indice in indices:
+            fila = indice.get(clave)
+            if fila:
+                for mes in MESES:
+                    valores[mes] += fila.get(mes, 0) or 0
+
+        registros.append(aux(
+            cedula=persona.cedula, nombre=persona.nombre, centro=persona.centro,
+            area=persona.area, cargo=persona.cargo, concepto=carga['concepto'],
+            total=total_de(valores), **valores,
+        ))
+
+    with transaction.atomic():
+        aux.objects.all().delete()
+        aux.objects.bulk_create(registros, batch_size=1000)
+
+    return JsonResponse({'status': 'ok', 'creados': len(registros)})
+
+
+# --------------------------------------------------- cargas específicas
+
+AUXILIO_TRANSPORTE_BASE = 200000
+
+
+def cargar_auxilio_transporte_base(request):
+    """Auxilio de transporte para quien gane menos de 2 SMMLV.
+
+    La versión anterior preguntaba a la base de datos 5 veces por cada
+    empleado y por cada mes. Aquí se traen los 5 totales mensuales de una
+    sola vez y el resto es aritmética en memoria.
+    """
+    cfg = CONCEPTOS['auxilio_transporte']
+    aux = cfg['aux']
+    limite = salario_minimo_incrementado() * 2
+
+    totales = [
+        sumar_por(PresupuestoMediosTransporteAux),
+        sumar_por(PresupuestoSueldosAux),
+        sumar_por(PresupuestoComisionesAux),
+        sumar_por(PresupuestoHorasExtraAux),
+        sumar_por(PresupuestoAprendizAux),
+    ]
+    sueldos_por_cedula = totales[1]
+
+    personas = list(PresupuestoSueldosAux.objects.values(
+        'cedula', 'nombre', 'centro', 'area', 'cargo'))
+    personas += list(PresupuestoAprendizAux.objects
+                     .filter(concepto='SALARIO APRENDIZ REFORMA')
+                     .values('cedula', 'nombre', 'centro', 'area', 'cargo'))
+
+    registros = []
+    for persona in personas:
+        cedula = persona['cedula']
+        valores = {mes: 0 for mes in MESES}
+
+        for mes in MESES:
+            # Regla original: en marzo el sueldo que se compara es el de abril,
+            # porque marzo trae el retroactivo y distorsionaría la comparación.
+            devengado = sum(t.get(cedula, {}).get(mes, 0) or 0 for t in totales)
+            if mes == 'marzo':
+                devengado -= sueldos_por_cedula.get(cedula, {}).get('marzo', 0) or 0
+                devengado += sueldos_por_cedula.get(cedula, {}).get('abril', 0) or 0
+
+            if devengado and devengado < limite:
+                valores[mes] = AUXILIO_TRANSPORTE_BASE
+
+        registros.append(aux(
+            cedula=cedula, nombre=persona['nombre'], centro=persona['centro'],
+            area=persona['area'], cargo=persona['cargo'],
+            concepto='AUXILIO DE TRANSPORTE', base=AUXILIO_TRANSPORTE_BASE,
+            total=total_de(valores), **valores,
+        ))
+
+    with transaction.atomic():
+        aux.objects.all().delete()
+        aux.objects.bulk_create(registros, batch_size=1000)
+
+    return JsonResponse({'status': 'ok', 'creados': len(registros)})
+
+
+def cargar_bonificaciones_base(request):
+    """Media prestación mensual: (valor del mes / 2) / 12."""
+    aux = PresupuestoBonificacionesAux
+    registros = []
+    for emp in PresupuestoSueldosAux.objects.all():
+        valores = {mes: (getattr(emp, mes, 0) or 0) / 2 / 12 for mes in MESES}
+        registros.append(aux(
+            cedula=emp.cedula, nombre=emp.nombre, centro=emp.centro, area=emp.area,
+            cargo=emp.cargo, concepto='BONIFICACIÓN', total=total_de(valores), **valores,
+        ))
+
+    with transaction.atomic():
+        aux.objects.all().delete()
+        aux.objects.bulk_create(registros, batch_size=1000)
+    return JsonResponse({'status': 'ok', 'creados': len(registros)})
+
+
+CARGOS_SIN_BONIFICACION_FOCO = [
+    'ASESOR COMERCIAL',
+    'AUXILIAR COMERCIAL',
+    'JEFE DE ALMACEN',
+    'DIRECTOR COMERCIAL SUBDISTRIBUCION Y DIGITAL',
+    'DIRECTOR COMERCIAL GRANDES ESPECIES Y PUNTO VENTA',
+]
+BONIFICACION_FOCO_FIJA = 220000
+
+
+def cargar_bonificaciones_foco_base(request):
+    aux = PresupuestoBonificacionesFocoAux
+    params = parametros()
+    ipc = (params.incremento_ipc or 0) if params else 0
+    incremento_comisiones = (params.incremento_comisiones or 0) if params else 0
+    factor = 1 + incremento_comisiones / 100
+
+    registros = []
+
+    # 1) Quien tiene comisiones: enero = promedio anual sin el incremento,
+    #    julio = mitad del promedio de enero–junio.
+    comisiones = (PresupuestoComisionesAux.objects
+                  .values('cedula', 'nombre', 'centro', 'area', 'cargo')
+                  .annotate(**{mes: Sum(mes) for mes in MESES}))
+
+    for fila in comisiones:
+        meses = {mes: fila[mes] or 0 for mes in MESES}
+        total_ajustado = sum(meses.values()) / factor if factor else 0
+        enero = total_ajustado / 12 if total_ajustado else 0
+
+        primer_semestre = sum(meses[mes] for mes in MESES[:6])
+        julio = (primer_semestre / 6) / 2 if primer_semestre else 0
+
+        registros.append(aux(
+            cedula=fila['cedula'], nombre=fila['nombre'], centro=fila['centro'],
+            area=fila['area'], cargo=fila['cargo'], concepto='BONIFICACIÓN FOCO',
+            enero=enero, julio=julio, total=enero + julio,
+        ))
+
+    # 2) El resto de la planta: bonificación fija indexada al IPC en enero.
+    fijos = (PresupuestoSueldos.objects
+             .exclude(cargo__in=CARGOS_SIN_BONIFICACION_FOCO)
+             .values('cedula', 'nombre', 'centro', 'area', 'cargo'))
+    enero_fijo = BONIFICACION_FOCO_FIJA * (1 + ipc / 100)
+
+    for fila in fijos:
+        registros.append(aux(
+            concepto='BONIFICACIÓN FOCO', enero=enero_fijo, total=enero_fijo, **fila))
+
+    with transaction.atomic():
+        aux.objects.all().delete()
+        aux.objects.bulk_create(registros, batch_size=1000)
+    return JsonResponse({'status': 'ok', 'creados': len(registros)})
+
+
+def cargar_intereses_cesantias_base(request):
+    """Copia las cesantías; el cálculo del interés se hace en el navegador."""
+    aux = PresupuestoInteresesCesantiasAux
+    registros = [
+        aux(cedula=c.cedula, nombre=c.nombre, centro=c.centro, area=c.area, cargo=c.cargo,
+            concepto='INTERESES CESANTÍAS', total=c.total,
+            **{mes: getattr(c, mes) for mes in MESES})
+        for c in PresupuestoCesantiasAux.objects.all()
+    ]
+    with transaction.atomic():
+        aux.objects.all().delete()
+        aux.objects.bulk_create(registros, batch_size=1000)
+    return JsonResponse({'status': 'ok', 'creados': len(registros)})
+
+
+# ----------------------------------------------------- seguridad social
+
+APORTES = {
+    'APORTE PENSIÓN': 0.12,
+    'APORTE SALUD': 0.085,
+    'APORTE CAJAS DE COMPENSACIÓN': 0.04,
+    'APORTE A.R.L': None,        # sale del promedio real de arlporc
+    'APORTE SENA': 0.02,
+    'APORTE I.C.B.F': 0.03,
+}
+APORTES_SOLO_ALTOS = {'APORTE SALUD', 'APORTE SENA', 'APORTE I.C.B.F'}
+ARL_POR_DEFECTO = 0.0093
+APORTE_SALUD_APRENDIZ = 0.125
+AREAS_AGRUPADAS = [
+    ['ASISTENCIA TECNICA PROPIA', 'ASISTENCIA TECNICA CONVENIO'],
+    ['PROYECTO AFTOSA GASTOS DE PERSONAL'],
+]
+# Cédula con tratamiento especial heredado del cálculo original.
+CEDULA_ESPECIAL = '31793592'
+
+
+def _porcentajes_arl():
+    promedios = (ConceptosFijosYVariables.objects
+                 .values('nombre_cen', 'nomcosto')
+                 .annotate(promedio=Avg('arlporc')))
+    return {
+        (p['nombre_cen'], p['nomcosto']): round((p['promedio'] or 0) / 100.0, 4)
+        for p in promedios if p['promedio'] is not None
+    }
+
+
+def _acumular(destino, clave, fila):
+    acumulado = destino.setdefault(clave, {mes: 0 for mes in MESES})
+    for mes in MESES:
+        acumulado[mes] += getattr(fila, mes, 0) or 0
+
+
+def cargar_seguridad_social_base(request):
+    """Bases de aportes agrupadas por centro y área.
+
+    Se conserva la lógica original (incluido el tope de 10 SMMLV y el
+    tratamiento del aprendiz), pero sin los `create()` fila por fila.
+    """
+    aux = PresupuestoSeguridadSocialAux
+    params = parametros()
+    incremento = (params.incremento_salarial or 0) if params else 0
+    minimo_incrementado = salario_minimo_incrementado()
+    tope = minimo_incrementado * 10
+    arl = _porcentajes_arl()
+
+    generales, altos, aprendices_salud = {}, {}, {}
+    hay_altos = False
+
+    for emp in PresupuestoSueldos.objects.all():
+        clave = (emp.centro, emp.area)
+        _acumular(generales, clave, emp)
+        nuevo_salario = (emp.salario_base or 0) * (1 + incremento / 100)
+        if nuevo_salario > tope:
+            hay_altos = True
+            _acumular(altos, clave, emp)
+
+    for modelo in (PresupuestoMediosTransporte, PresupuestoComisiones, PresupuestoHorasExtra):
+        for fila in modelo.objects.all():
+            clave = (fila.centro, fila.area)
+            _acumular(generales, clave, fila)
+            if hay_altos and str(fila.cedula) == CEDULA_ESPECIAL:
+                _acumular(altos, clave, fila)
+
+    for apr in PresupuestoAprendiz.objects.all():
+        # el aprendiz cotiza siempre sobre un salario mínimo incrementado
+        for mes in MESES:
+            if (getattr(apr, mes, 0) or 0) > 0:
+                setattr(apr, mes, minimo_incrementado)
+        clave = (apr.centro, apr.area)
+        destino = aprendices_salud if apr.concepto == 'SALARIO APRENDIZ' else generales
+        _acumular(destino, clave, apr)
+        if hay_altos and str(apr.cedula) == CEDULA_ESPECIAL:
+            _acumular(altos, clave, apr)
+
+    registros = []
+    for (centro, area), base in generales.items():
+        for aporte, porcentaje in APORTES.items():
+            if aporte in APORTES_SOLO_ALTOS:
+                datos = altos.get((centro, area))
+                if aporte == 'APORTE SALUD' and (centro, area) in aprendices_salud:
+                    aprendiz = aprendices_salud[(centro, area)]
+                    datos = ({mes: datos[mes] + aprendiz[mes] for mes in MESES}
+                             if datos else aprendiz)
+                    porcentaje = APORTE_SALUD_APRENDIZ
+                if not datos:
+                    continue
+            elif aporte == 'APORTE A.R.L':
+                datos = dict(base)
+                aprendiz = aprendices_salud.get((centro, area))
+                if aprendiz:
+                    datos = {mes: datos[mes] + aprendiz[mes] for mes in MESES}
+                porcentaje = arl.get((centro, area), ARL_POR_DEFECTO)
+            else:
+                datos = base
+
+            valores = {mes: datos[mes] * porcentaje for mes in MESES}
+            registros.append(aux(
+                nombre='SEGURIDAD SOCIAL', centro=centro, area=area, concepto=aporte,
+                total=round(total_de(valores)), **valores,
+            ))
+
+    with transaction.atomic():
+        aux.objects.all().delete()
+        aux.objects.bulk_create(registros, batch_size=1000)
+        _agrupar_areas_seguridad_social()
+
+    return JsonResponse({'status': 'ok', 'creados': aux.objects.count()})
+
+
+def _agrupar_areas_seguridad_social():
+    """Consolida ciertas áreas quitándoles el centro (asistencia técnica, aftosa)."""
+    aux = PresupuestoSeguridadSocialAux
+    for areas in AREAS_AGRUPADAS:
+        agrupado = (aux.objects.filter(area__in=areas)
+                    .values('area', 'concepto')
+                    .annotate(**{campo: Sum(campo) for campo in MESES + ['total']}))
+        nuevos = [
+            aux(nombre='SEGURIDAD SOCIAL', centro='', area=fila['area'], concepto=fila['concepto'],
+                **{campo: fila[campo] or 0 for campo in MESES + ['total']})
+            for fila in agrupado
+        ]
+        aux.objects.filter(area__in=areas).exclude(centro='').delete()
+        aux.objects.bulk_create(nuevos, batch_size=1000)
+
+
+CARGAS_PROPIAS = {
+    'auxilio_transporte': cargar_auxilio_transporte_base,
+    'bonificaciones': cargar_bonificaciones_base,
+    'bonificaciones_foco': cargar_bonificaciones_foco_base,
+    'intereses_cesantias': cargar_intereses_cesantias_base,
+    'seguridad_social': cargar_seguridad_social_base,
+}
+
+
+def cargar_base(cfg, request):
+    tipo = cfg['carga']['tipo']
+    if tipo == 'conceptos':
+        return cargar_desde_conceptos(cfg, request)
+    if tipo == 'derivado':
+        return cargar_derivado(cfg, request)
+    return CARGAS_PROPIAS[cfg['slug']](request)
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  Panel de parámetros
+# ══════════════════════════════════════════════════════════════════════
+
+CAMPOS_PARAMETROS = {
+    'incrementoSalarial': 'incremento_salarial',
+    'incrementoIPC': 'incremento_ipc',
+    'auxilioTransporte': 'auxilio_transporte',
+    'cesantias': 'cesantias',
+    'interesesCesantias': 'intereses_cesantias',
+    'prima': 'prima',
+    'vacaciones': 'vacaciones',
+    'salarioMinimo': 'salario_minimo',
+    'incrementoComisiones': 'incremento_comisiones',
+}
+
+PLANTILLA_CONCEPTO_VACIO = dict(
+    centro_tra='', nombre_cen='', codcosto='', nomcosto='', tipocpto='', cuenta='',
+    concepto='', nombre_con='', cargo='', nombrecar='', cedula=0, nombre='',
+    arlporc=0, concepto_f=0, total=0,
+    **{mes: 0 for mes in MESES[:9]},
+)
+
+
+def presupuestoNomina(request):
+    params, _ = ParametrosPresupuestos.objects.get_or_create(id=1)
+
+    if request.method == 'POST' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        accion = request.POST.get('action')
+
+        # Alta de un cargo o de un NOMCOSTO: antes eran dos bloques idénticos
+        altas = {'insertar_concepto': ('nombrecar', 'cargo'), 'insertar_nomcosto': ('nomcosto', 'costo')}
+        if accion in altas:
+            campo, etiqueta = altas[accion]
+            valor = request.POST.get(campo, '').strip().upper()
+            if not valor:
+                return JsonResponse({'status': 'error', 'msg': 'Debe ingresar un nombre de %s' % etiqueta})
+            ConceptosFijosYVariables.objects.create(**{**PLANTILLA_CONCEPTO_VACIO, campo: valor})
+            limpiar_cache_listas()
+            return JsonResponse({'status': 'ok', 'msg': "'%s' agregado correctamente ✅" % valor})
+
+        for variable, campo in CAMPOS_PARAMETROS.items():
+            setattr(params, campo, request.POST.get(variable) or None)
+        params.save()
+        return JsonResponse({'status': 'ok', 'msg': 'Parámetros actualizados correctamente ✅'})
+
+    centros, areas, cargos = _listas_cacheadas()
+    return render(request, 'presupuesto_nomina/dashboard_nomina.html', {
+        'parametros': params, 'nombres_cargos': cargos, 'nombres_costos': areas,
+    })
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  Exportación a Excel
+# ══════════════════════════════════════════════════════════════════════
+
+ORIGEN_EXPORTACION = [
+    ('sueldos', 'Sueldos'), ('comisiones', 'Comisiones'), ('horas_extra', 'Horas Extra'),
+    ('auxilio_transporte', 'Auxilio Transporte'), ('medios_transporte', 'Medios Transporte'),
+    ('ayuda_transporte', 'Ayuda Transporte'), ('cesantias', 'Cesantías'),
+    ('intereses_cesantias', 'Intereses Cesantías'), ('prima', 'Prima'),
+    ('vacaciones', 'Vacaciones'), ('bonificaciones', 'Bonificaciones'),
+    ('bolsa_consumibles', 'Auxilio Movilidad'), ('aprendiz', 'Aprendiz'),
+    ('auxilio_TBCKIT', 'Auxilio TBC y KIT'), ('auxilio_educacion', 'Auxilio Educación'),
+    ('bonificaciones_foco', 'Bonificaciones Foco'), ('bonos_kyrovet', 'Bonos Kyrovet'),
+    ('seguridad_social', 'Seguridad Social'),
+]
+
+
+def respuesta_excel(df, nombre_archivo, hoja):
+    respuesta = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    respuesta['Content-Disposition'] = 'attachment; filename="%s"' % nombre_archivo
+    with pd.ExcelWriter(respuesta, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name=hoja, index=False)
+    return respuesta
+
+
+def _dataframe_nomina(vertical):
+    marcos = []
+    for slug, etiqueta in ORIGEN_EXPORTACION:
+        df = pd.DataFrame(list(CONCEPTOS[slug]['modelo'].objects.values()))
+        if df.empty:
+            continue
+        df['origen'] = etiqueta
+        for columna in df.select_dtypes(include=['datetimetz']).columns:
+            df[columna] = df[columna].dt.tz_localize(None)
+        marcos.append(df)
+
+    if not marcos:
+        return pd.DataFrame()
+
+    df = pd.concat(marcos, ignore_index=True)
+    if vertical:
+        fijas = [c for c in df.columns if c not in MESES]
+        df = df.melt(id_vars=fijas, value_vars=MESES, var_name='mes', value_name='valor')
+    return df
+
+
+def exportar_excel_nomina(request):
+    """Una fila por registro, con los 12 meses en columnas."""
+    return respuesta_excel(_dataframe_nomina(False), 'Presupuestos_Todo.xlsx', 'Presupuestos')
+
+
+def exportar_nomina_vertical(request):
+    """Una fila por registro y mes (formato largo, para tablas dinámicas)."""
+    return respuesta_excel(_dataframe_nomina(True),
+                           'Presupuesto_Nomina_Vertical.xlsx', 'Presupuesto Nómina')
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  Registro de las vistas con sus nombres históricos
+# ══════════════════════════════════════════════════════════════════════
+#
+#  A partir de aquí no hay lógica: solo se crean las funciones que
+#  `urls.py` espera encontrar (`guardar_comisiones`, `obtener_prima_temp`,
+#  `subir_presupuesto_aprendiz`, …) apuntando a las vistas genéricas.
+
+def _publicar(nombre, funcion):
+    funcion.__name__ = nombre
+    globals()[nombre] = funcion
+    return funcion
+
+
+def _nombres_de(cfg):
+    slug = cfg['slug']
+    predeterminados = {
+        'principal': slug,
+        'auxiliar': 'tabla_auxiliar_%s' % slug,
+        'obtener': 'obtener_presupuesto_%s' % slug,
+        'obtener_temp': 'obtener_%s_temp' % slug,
+        'guardar': 'guardar_%s' % slug,
+        'guardar_temp': 'guardar_%s_temp' % slug,
+        'subir': 'subir_presupuesto_%s' % slug,
+        'borrar': 'borrar_presupuesto_%s' % slug,
+        'cargar': 'cargar_%s_base' % slug,
+    }
+    predeterminados.update(cfg['nombres'])
+    return predeterminados
+
+
+for _cfg in CONCEPTOS.values():
+    _n = _nombres_de(_cfg)
+
+    _publicar(_n['principal'], (lambda c: proteger(lambda request: vista_principal(c, request)))(_cfg))
+    _publicar(_n['auxiliar'], (lambda c: proteger(lambda request: vista_auxiliar(c, request)))(_cfg))
+    _publicar(_n['obtener'], (lambda c: lambda request: obtener(c, request))(_cfg))
+    _publicar(_n['obtener_temp'], (lambda c: lambda request: obtener_temp(c, request))(_cfg))
+    _publicar(_n['guardar_temp'], (lambda c: lambda request: guardar(c, request, temporal=True))(_cfg))
+    _publicar(_n['subir'], (lambda c: lambda request: subir(c, request))(_cfg))
+    _publicar(_n['borrar'], (lambda c: lambda request: borrar(c, request))(_cfg))
+    _publicar(_n['cargar'], (lambda c: lambda request: cargar_base(c, request))(_cfg))
+
+    if _cfg['con_guardar']:
+        _publicar(_n['guardar'], (lambda c: lambda request: guardar(c, request))(_cfg))
+
+del _cfg, _n
 
 
 # -----------------------------PRESUPUESTO GENERAL----------------------------------------------------------------------
