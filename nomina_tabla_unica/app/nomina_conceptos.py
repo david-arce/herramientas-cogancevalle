@@ -13,6 +13,7 @@ import datetime as dt
 import io
 import re
 import unicodedata
+from collections import Counter, defaultdict
 
 import pandas as pd
 from django.db import transaction
@@ -27,7 +28,7 @@ CAMPOS_TEXTO = ('centro_tra', 'nombre_cen', 'codcosto', 'nomcosto', 'tipocpto', 
 CAMPOS_CODIGO = ('centro_tra', 'codcosto', 'cuenta', 'cargo', 'concepto', 'tipocpto')
 COLUMNAS_PLANTILLA = ['CENTRO_TRA', 'NOMBRE_CEN', 'CODCOSTO', 'NOMCOSTO', 'TIPOCPTO', 'CUENTA',
                       'CONCEPTO', 'NOMBRE_CON', 'CARGO', 'NOMBRECAR', 'CEDULA', 'NOMBRE',
-                      'ARLPORC', 'CONCEPTO_F', *[m.upper() for m in MESES], 'TOTAL']
+                      'FECHA_INGRESO', 'ARLPORC', 'CONCEPTO_F', *[m.upper() for m in MESES], 'TOTAL']
 
 # Encabezado normalizado del Excel → campo del modelo
 ALIAS = {
@@ -40,6 +41,9 @@ ALIAS = {
     'NOMBRE_CENTRO': 'nombre_cen', 'NOMBRE_COSTO': 'nomcosto', 'NOMBRE_CONCEPTO': 'nombre_con',
     'NOMBRE_CARGO': 'nombrecar', 'ARL': 'arlporc', 'ARL_PORC': 'arlporc',
     'VALOR_FIJO': 'concepto_f', 'DOCUMENTO': 'cedula', 'IDENTIFICACION': 'cedula',
+    # fecha de ingreso (en el Excel viene como FECHAINGRE)
+    'FECHAINGRE': 'fecha_ingreso', 'FECHA_INGRE': 'fecha_ingreso', 'FECHA_INGRESO': 'fecha_ingreso',
+    'FECHA_DE_INGRESO': 'fecha_ingreso', 'INGRESO': 'fecha_ingreso', 'FEC_INGRESO': 'fecha_ingreso',
     # columnas opcionales de año / fecha
     'ANIO': '_anio', 'ANO': '_anio', 'YEAR': '_anio', 'PERIODO': '_anio', 'VIGENCIA': '_anio',
     'FECHA': '_fecha', 'FECHA_CORTE': '_fecha',
@@ -102,6 +106,9 @@ def resumen_anios():
     base = anio_base()
     filas = (ConceptosNomina.objects.values('anio')
              .annotate(filas=Count('id'), personas=Count('cedula', distinct=True),
+                       sin_cuenta=Count('id', filter=Q(cuenta='') & ~Q(nomcosto='')),
+                       con_ingreso=Count('id', filter=~Q(fecha_ingreso=None)),
+                       nomcostos=Count('nomcosto', distinct=True, filter=~Q(nomcosto='')),
                        total=Sum('total'), corte=Max('fecha_corte'), cargado=Max('cargado'))
              .order_by('-anio'))
     salida = []
@@ -201,6 +208,24 @@ def _fecha(valor):
     return None if pd.isna(fecha) else fecha.date()
 
 
+EXCEL_CERO = dt.date(1899, 12, 30)     # día 0 del calendario de Excel
+
+
+def _fecha_excel(valor):
+    """Fecha que puede venir como número de serie de Excel (44167 → 31/12/2020)."""
+    if _es_vacio(valor):
+        return None
+    if isinstance(valor, (int, float)) and not isinstance(valor, bool):
+        dias = int(round(float(valor)))
+        if not 1 <= dias <= 80000:        # fuera del rango razonable de fechas
+            return None
+        return EXCEL_CERO + dt.timedelta(days=dias)
+    texto = _texto(valor)
+    if re.fullmatch(r'\d{4,6}', texto):   # el mismo número, pero escrito como texto
+        return _fecha_excel(int(texto))
+    return _fecha(valor)
+
+
 def _anio_de(valor):
     if _es_vacio(valor):
         return None
@@ -256,6 +281,47 @@ def _tiene_obligatorias(encabezados):
     return all(c in campos for c in OBLIGATORIAS)
 
 
+def clave_nomcosto(valor):
+    """NOMCOSTO normalizado: sin tildes, mayúsculas y espacios simples."""
+    texto = unicodedata.normalize('NFKD', _texto(valor)).encode('ascii', 'ignore').decode()
+    return ' '.join(texto.upper().split())
+
+
+def completar_cuentas(registros):
+    """Pone la cuenta a los registros que no la traen, según su NOMCOSTO.
+
+    Primero usa las cuentas del mismo archivo; si el NOMCOSTO no tiene ninguna
+    ahí, usa la de los datos ya cargados (cualquier año, la más reciente).
+    Devuelve (completadas, sin_cuenta).
+    """
+    del_archivo = defaultdict(Counter)
+    for r in registros:
+        if r.cuenta and r.nomcosto:
+            del_archivo[clave_nomcosto(r.nomcosto)][r.cuenta] += 1
+
+    guardadas = {}
+    faltan = {clave_nomcosto(r.nomcosto) for r in registros if not r.cuenta and r.nomcosto}
+    faltan -= set(del_archivo)
+    if faltan:
+        for nomcosto, cuenta in (ConceptosNomina.objects.exclude(cuenta='').exclude(nomcosto='')
+                                 .order_by('-anio').values_list('nomcosto', 'cuenta')):
+            guardadas.setdefault(clave_nomcosto(nomcosto), cuenta)
+
+    completadas = sin_cuenta = 0
+    for r in registros:
+        if r.cuenta or not r.nomcosto:
+            continue
+        clave = clave_nomcosto(r.nomcosto)
+        cuenta = (del_archivo[clave].most_common(1)[0][0] if clave in del_archivo
+                  else guardadas.get(clave, ''))
+        if cuenta:
+            r.cuenta = cuenta
+            completadas += 1
+        else:
+            sin_cuenta += 1
+    return completadas, sin_cuenta
+
+
 def importar(archivo, anio, fecha_corte=None, reemplazar=True, usuario='', hoja=None):
     """Carga el Excel en conceptos_nomina.
 
@@ -294,6 +360,7 @@ def importar(archivo, anio, fecha_corte=None, reemplazar=True, usuario='', hoja=
         arl = fila.get('arlporc')
         registro = ConceptosNomina(
             anio=anio_fila, fecha_corte=corte, cedula=cedula,
+            fecha_ingreso=_fecha_excel(fila.get('fecha_ingreso')),
             arlporc=None if _es_vacio(arl) else _numero(arl),
             concepto_f=_entero(fila.get('concepto_f')),
             archivo=nombre_archivo, cargado_por=usuario,
@@ -305,6 +372,9 @@ def importar(archivo, anio, fecha_corte=None, reemplazar=True, usuario='', hoja=
     if not registros:
         raise ErrorImportacion('El archivo no tiene filas con cédula o concepto.')
 
+    # La cuenta va ligada al NOMCOSTO: se completa en las filas que no la traen
+    cuentas_completadas, sin_cuenta = completar_cuentas(registros)
+
     with transaction.atomic():
         borradas = 0
         if reemplazar:
@@ -314,6 +384,8 @@ def importar(archivo, anio, fecha_corte=None, reemplazar=True, usuario='', hoja=
     return {
         'filas': len(registros), 'omitidas': omitidas, 'borradas': borradas,
         'anios': sorted(anios), 'ignoradas': desconocidas,
+        'con_columna_cuenta': 'cuenta' in df.columns,
+        'cuentas_completadas': cuentas_completadas, 'sin_cuenta': sin_cuenta,
         'meses': {a: meses_detectados(a) for a in sorted(anios)},
     }
 

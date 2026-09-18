@@ -16,6 +16,7 @@
     .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
     .dash-campo { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
     .dash-campo label { font-size: 13px; font-weight: 600; }
+    .dash-aviso { margin: 6px 0 0; padding: 8px 12px; border-radius: 8px; background: #fffaeb; color: #7a5600; font-size: 13px; }
     .dash-campo input { width: 130px; padding: 6px 8px; border: 1px solid var(--pt-borde-fuerte); border-radius: var(--pt-radio); font: inherit; }
     .dash-seccion { margin-top: 16px; }
     .dash-seccion h3 { margin-bottom: 8px; }
@@ -52,6 +53,15 @@
     table.or-tabla .or-col-acciones { text-align: right; white-space: nowrap; width: 1%; }
     table.or-tabla .or-col-acciones .pt-btn { margin-left: 4px; text-decoration: none; }
     .or-vacio { text-align: center; padding: 18px !important; }
+    .or-ok { color: #0f5132; font-size: 12px; }
+    .foco-acciones { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+    .foco-acciones input { flex: 1; min-width: 200px; max-width: 320px; height: 34px; padding: 5px 8px; border: 1px solid var(--pt-borde-fuerte); border-radius: var(--pt-radio); font: inherit; font-size: 13px; }
+    .foco-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 4px 12px; max-height: 320px; overflow: auto; padding: 8px; border: 1px solid var(--pt-borde); border-radius: 8px; }
+    .foco-item { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+    .foco-item:hover { background: var(--pt-fondo-alt); }
+    .foco-item input { width: 16px; height: 16px; margin: 0; flex: none; }
+    .foco-item small { display: block; color: var(--pt-texto-suave); font-size: 11px; }
+    .or-alerta { display: inline-block; padding: 1px 8px; border-radius: 10px; background: #fff4d6; color: #7a5600; font-size: 12px; font-weight: 600; }
 
     .or-columnas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 16px; align-items: stretch; }
     .or-tarjeta { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid var(--pt-borde); border-radius: 8px; background: var(--pt-fondo-alt); }
@@ -99,7 +109,7 @@
       <span class="or-resumen">
         <span class="or-dato"><small>Año base</small><b>{{ origen.anio_base }}</b>{% if not origen.config_anio %}<em>auto</em>{% endif %}</span>
         <span class="or-dato"><small>Auxilio educación</small><b>{{ origen.anio_educacion }}</b></span>
-        <span class="or-dato"><small>Meses reales</small><b>Ene – {{ origen.mes_reales_nombre|slice:":3" }}</b>{% if not origen.config_meses %}<em>auto</em>{% endif %}</span>
+        <span class="or-dato"><small>Meses reales</small><b>{% if origen.meses_reales %}Ene – {{ origen.mes_reales_nombre|slice:":3" }}{% else %}—{% endif %}</b>{% if not origen.config_meses %}<em>auto</em>{% endif %}</span>
       </span>
       <span class="pt-seccion__toggle" aria-hidden="true"></span>
     </summary>
@@ -114,6 +124,8 @@
               <th class="num">Filas</th>
               <th class="num">Personas</th>
               <th>Datos hasta</th>
+              <th>Cuentas</th>
+              <th>Fecha de ingreso</th>
               <th>Fecha de corte</th>
               <th>Se usa para</th>
               <th>Última carga</th>
@@ -126,7 +138,15 @@
                 <td><strong>{{ a.anio }}</strong></td>
                 <td class="num">{{ a.filas }}</td>
                 <td class="num">{{ a.personas }}</td>
-                <td style="white-space:nowrap">{{ a.hasta }} <span class="dep">· {{ a.meses }} mes{{ a.meses|pluralize:"es" }}</span></td>
+                <td style="white-space:nowrap">{% if a.meses %}{{ a.hasta }} <span class="dep">· {{ a.meses }} mes{{ a.meses|pluralize:"es" }}</span>{% else %}<span class="vacio">Sin valores mensuales</span>{% endif %}</td>
+                <td style="white-space:nowrap">
+                  {% if a.sin_cuenta %}<span class="or-alerta" title="Filas con NOMCOSTO pero sin cuenta">⚠️ {{ a.sin_cuenta }} sin cuenta</span>
+                  {% else %}<span class="or-ok">✔ {{ a.nomcostos }} NOMCOSTO</span>{% endif %}
+                </td>
+                <td style="white-space:nowrap">
+                  {% if a.con_ingreso %}<span class="or-ok">✔ {{ a.con_ingreso }} de {{ a.filas }}</span>
+                  {% else %}<span class="vacio">Sin fecha</span>{% endif %}
+                </td>
                 <td>{{ a.corte|date:"d/m/Y"|default:"—" }}</td>
                 <td>{% for u in a.usos %}<span class="etiqueta-uso">{{ u }}</span>{% empty %}<span class="vacio">Sin uso</span>{% endfor %}</td>
                 <td class="dep" style="white-space:nowrap">{{ a.cargado|date:"d/m/Y H:i" }}</td>
@@ -136,7 +156,7 @@
                 </td>
               </tr>
             {% empty %}
-              <tr><td colspan="8" class="vacio or-vacio">Todavía no hay datos cargados. Suba el Excel de conceptos.</td></tr>
+              <tr><td colspan="10" class="vacio or-vacio">Todavía no hay datos cargados. Suba el Excel de conceptos.</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -224,9 +244,50 @@
     </div>
   </details>
 
+  <details class="pt-seccion" data-recordar="nomina-foco">
+    <summary class="pt-seccion__titulo">
+      <span>
+        <strong>Bonificación foco</strong>
+        <small>Quién se calcula con el promedio de comisiones y quién con la base por días trabajados</small>
+      </span>
+      <span class="or-resumen">
+        <span class="or-dato"><small>Comisionan</small><b>{{ foco_personas|length }}</b></span>
+        <span class="or-dato"><small>Como sin comisión</small><b>{{ foco_marcados }}</b></span>
+      </span>
+      <span class="pt-seccion__toggle" aria-hidden="true"></span>
+    </summary>
+    <div class="pt-seccion__cuerpo">
+      <p class="or-ayuda" style="margin-bottom:10px">
+        Marque a las personas que comisionan pero cuya bonificación foco se calcula como la de quienes
+        no comisionan (base mensual proporcional a los días trabajados desde su fecha de ingreso).
+        Las demás se calculan con el promedio de sus comisiones reales.
+      </p>
+      {% if foco_personas %}
+        <div class="foco-acciones">
+          <input type="search" id="focoBuscar" placeholder="Buscar persona…">
+          <button type="button" class="pt-btn pt-btn--enlace" data-foco="ninguno">Desmarcar todas</button>
+          <button type="button" class="pt-btn pt-btn--primario" id="btnFoco">Guardar y recalcular</button>
+        </div>
+        <div class="foco-lista" id="focoLista">
+          {% for persona in foco_personas %}
+            <label class="foco-item" data-texto="{{ persona.nombre|lower }} {{ persona.cedula }}">
+              <input type="checkbox" value="{{ persona.cedula }}" {% if persona.marcado %}checked{% endif %}>
+              <span>{{ persona.nombre|default:"Sin nombre" }}<small>{{ persona.cedula }}</small></span>
+            </label>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="vacio">No hay personas con comisiones en el presupuesto.</p>
+      {% endif %}
+    </div>
+  </details>
+
   <div class="pt-panel dash-seccion">
     <h3>Parámetros del presupuesto</h3>
-    <p>Al guardarlos se recalculan todas las filas calculadas de todos los conceptos. Las filas manuales no se tocan.</p>
+    <p>Se escriben en porcentaje: <strong>12</strong> son 12 %. Al guardarlos se recalculan todos los conceptos calculados.</p>
+    {% if avisos_parametros %}
+      <p class="dash-aviso">⚠️ Revise estos valores, están fuera de lo habitual: <strong>{{ avisos_parametros|join:" · " }}</strong></p>
+    {% endif %}
     <div class="dash-grid">
       <div class="dash-campo"><label for="incrementoSalarial">Incremento salarial (%)</label>
         <input type="number" id="incrementoSalarial" name="incrementoSalarial" min="0" step="0.01" value="{{ parametros.incremento_salarial|default_if_none:''|cut:',' }}"></div>
@@ -421,6 +482,30 @@
           });
         });
       });
+
+      const btnFoco = document.getElementById('btnFoco');
+      if (btnFoco) {
+        const lista = document.getElementById('focoLista');
+        document.getElementById('focoBuscar').addEventListener('input', (e) => {
+          const t = e.target.value.trim().toLowerCase();
+          lista.querySelectorAll('.foco-item').forEach(el => {
+            el.hidden = !!t && !el.dataset.texto.includes(t);
+          });
+        });
+        document.querySelector('[data-foco="ninguno"]').addEventListener('click', () => {
+          lista.querySelectorAll('input:checked').forEach(i => { i.checked = false; });
+        });
+        btnFoco.addEventListener('click', () => PT.conSpinner(btnFoco, async () => {
+          const datos = new FormData();
+          datos.append('action', 'foco_sin_comision');
+          lista.querySelectorAll('input:checked').forEach(i => datos.append('cedulas', i.value));
+          try {
+            const r = await PT.pedir("{% url 'presupuestoNomina' %}", { method: 'POST', body: datos });
+            PT.toast(r.msg, 'success', 6000);
+            recargar();
+          } catch (e) { PT.toast('❌ ' + e.message, 'error'); }
+        }));
+      }
 
       const btnRecargarBases = document.getElementById('btnRecargarBases');
       btnRecargarBases.addEventListener('click', () => {

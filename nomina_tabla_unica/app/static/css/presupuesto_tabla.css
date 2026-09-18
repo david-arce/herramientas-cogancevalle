@@ -308,7 +308,7 @@ td.pt-col-check, th.pt-col-check { text-align: center; width: 1%; }
 .pt-acciones-fila button:hover { background: rgba(0, 0, 0, .08); }
 
 .pt-entrada {
-  width: 100%; min-width: 60px;
+  width: 100%; min-width: 60px; box-sizing: border-box;
   padding: 3px 5px;
   border: 1px solid var(--pt-azul);
   border-radius: 4px;
@@ -316,6 +316,10 @@ td.pt-col-check, th.pt-col-check { text-align: center; width: 1%; }
   background: #fff;
 }
 select.pt-entrada { min-width: 140px; }
+.pt-entrada--num { text-align: right; font-variant-numeric: tabular-nums; }
+/* por si algún navegador deja las flechitas del campo numérico */
+.pt-entrada::-webkit-outer-spin-button,
+.pt-entrada::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
 .pt-vacio { padding: 26px; text-align: center; color: var(--pt-texto-suave); }
 
@@ -498,3 +502,28 @@ tr.pt-destello { animation: pt-destello .6s ease-in-out 3; }
 .da-nota { margin: 10px 0 0; font-size: 12px; color: var(--pt-texto-suave); }
 
 .pt-acciones-fila button.pt-accion--aviso { background: #fff4d6; border-radius: 4px; box-shadow: inset 0 0 0 1px #f0c36d; }
+
+/* ==========================================================================
+   Selección de celdas tipo Excel
+   ========================================================================== */
+.pt-tabla td[data-col] { position: relative; }
+.pt-tabla td.pt-celda--rango { background: rgba(26, 115, 232, .10); }
+.pt-tabla td.pt-celda--relleno { background: rgba(26, 115, 232, .06); outline: 1px dashed var(--pt-azul); outline-offset: -1px; }
+.pt-tabla td.pt-celda--cursor {
+  outline: 2px solid var(--pt-azul);
+  outline-offset: -2px;
+  background: rgba(26, 115, 232, .06);
+}
+.pt-arrastre {
+  position: absolute; right: -3px; bottom: -3px; width: 8px; height: 8px;
+  background: var(--pt-azul); border: 1px solid #fff; border-radius: 1px;
+  cursor: crosshair; z-index: 2;
+}
+.pt-tabla td.pt-celda--cursor .pt-entrada { outline: none; }
+.pt-tabla { user-select: none; }
+.pt-tabla .pt-entrada { user-select: text; }
+.pt-ayuda-excel { color: var(--pt-texto-suave); font-size: 12px; }
+.pt-ayuda-excel kbd {
+  display: inline-block; padding: 0 4px; border: 1px solid var(--pt-borde-fuerte);
+  border-bottom-width: 2px; border-radius: 4px; background: #fff; font-size: 11px; font-family: inherit;
+}

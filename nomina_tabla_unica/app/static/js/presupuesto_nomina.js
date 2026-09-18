@@ -95,6 +95,7 @@
         ? ['tipo_nombre', 'nombre', 'centro', 'area']
         : (config.conCedula === false ? ['centro', 'area', 'concepto'] : ['nombre', 'centro', 'area']),
       nombreArchivo: 'presupuesto_nomina_' + config.slug,
+      conceptoNuevo: config.conceptoNuevo || '',
       accionesExtra: abrirDialogo ? [{
         rol: 'actualiza',
         icono: '🔗',
@@ -138,7 +139,7 @@
         : 'Fila agregada ✅', 'success', 5000);
     } : undefined;
 
-    PT.conectarBarra(tabla, soloLectura ? { inicio: config.urls.inicio } : config.urls, { agregar });
+    PT.conectarBarra(tabla, config.urls, { agregar });
 
     // Ctrl/Cmd + S guarda
     if (!soloLectura) {

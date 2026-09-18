@@ -14,6 +14,7 @@ los cálculos del navegador (presupuesto_calculos.js) vive aquí:
 
 Regla de oro: una fila con origen='manual' nunca se sobrescribe.
 """
+import unicodedata
 from collections import Counter, defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -23,7 +24,8 @@ from django.db.models import Avg, Count, Q, Sum
 
 from . import nomina_conceptos as origen
 from .models import ParametrosPresupuestos
-from .models_nomina import MESES, ConceptosNomina, PresupuestoNomina
+from .models_nomina import (MESES, ConceptosNomina, DistribucionNomina, FocoSinComision,
+                            PresupuestoNomina)
 
 MESES = list(MESES)
 SISTEMA = PresupuestoNomina.ORIGEN_SISTEMA
@@ -172,10 +174,9 @@ _LISTA = [
     Concepto('bonificaciones', 'Bonificaciones', G_PRESTACIONES, derivado=True,
              depende=('sueldos',)),
     Concepto('bonificaciones_foco', 'Bonificaciones foco', G_PRESTACIONES, derivado=True,
-             parametros=('incremento_ipc', 'incremento_comisiones'),
-             depende=('sueldos', 'comisiones')),
-    Concepto('seguridad_social', 'Seguridad social', G_SEGURIDAD, derivado=True,
-             con_cedula=False, parametros=('incremento_salarial', 'salario_minimo'),
+             parametros=('incremento_ipc',),   # el IPC solo aplica a quienes no comisionan
+             depende=('sueldos', 'comisiones')),   # comisiones REALES, ver gen_bonificaciones_foco
+    Concepto('seguridad_social', 'Seguridad social', G_SEGURIDAD, derivado=True, parametros=('incremento_salarial', 'salario_minimo'),
              depende=('sueldos', 'medios_transporte', 'comisiones', 'horas_extra', 'aprendiz')),
 ]
 
@@ -282,8 +283,17 @@ def cuotas(filas, clave):
 
 def identidad(fila, **extra):
     datos = {campo: getattr(fila, campo) or '' for campo in CAMPOS_TEXTO}
+    # Lo que una fila excluye se hereda a lo que se calcula con ella
+    # (p. ej. cesantías → intereses de cesantías).
+    datos['excluir_de'] = list(getattr(fila, 'excluir_de', None) or [])
     datos.update(extra)
     return datos
+
+
+def excluciones_validas(slug, valores):
+    """Solo conceptos que realmente dependen de `slug`."""
+    posibles = set(afectados_por(slug))
+    return sorted({v for v in (valores or []) if v in posibles})
 
 
 def es_aprendiz_reforma(fila):
@@ -298,6 +308,52 @@ def bloqueo():
             with connection.cursor() as cursor:
                 cursor.execute('SELECT pg_advisory_xact_lock(%s)', [LOCK_NOMINA])
         yield
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  Cuentas contables (ligadas al NOMCOSTO)
+# ══════════════════════════════════════════════════════════════════════
+
+def _clave_area(area):
+    """Área normalizada para comparar: sin tildes, mayúsculas, espacios simples."""
+    return _sin_tildes(area)
+
+
+def mapa_cuentas(anio=None):
+    """{NOMCOSTO normalizado: cuenta}
+
+    Cada NOMCOSTO (en presupuesto_nomina: `area`) corresponde a una cuenta.
+    Si en los datos un NOMCOSTO aparece con varias cuentas, se toma la más
+    frecuente. Se leen los datos del año base; si no tiene, los de cualquier año.
+    """
+    qs = ConceptosNomina.objects.exclude(cuenta='').exclude(nomcosto='')
+    if anio is not None and qs.filter(anio=anio).exists():
+        qs = qs.filter(anio=anio)
+    conteo = defaultdict(Counter)
+    for nomcosto, cuenta, n in qs.values_list('nomcosto', 'cuenta').annotate(n=Count('id')):
+        conteo[_clave_area(nomcosto)][cuenta] += n
+    return {area: c.most_common(1)[0][0] for area, c in conteo.items()}
+
+
+def cuenta_para(mapa, area):
+    return mapa.get(_clave_area(area), '') if texto(area) else ''
+
+
+def asignar_cuentas(ctx=None, solo_vacias=False):
+    """Pone a cada fila guardada la cuenta de su área (NOMCOSTO).
+    Las áreas que no están en ConceptosNomina conservan su cuenta."""
+    ctx = ctx or Contexto()
+    qs = PresupuestoNomina.objects.exclude(area='')
+    if solo_vacias:
+        qs = qs.filter(cuenta='')
+    cambiadas = []
+    for fila in qs.only('id', 'area', 'cuenta'):
+        cuenta = ctx.cuenta(fila.area)
+        if cuenta and cuenta != fila.cuenta:
+            fila.cuenta = cuenta
+            cambiadas.append(fila)
+    PresupuestoNomina.objects.bulk_update(cambiadas, ['cuenta'], batch_size=1000)
+    return len(cambiadas)
 
 
 class Contexto:
@@ -327,10 +383,23 @@ class Contexto:
         n = self.meses_reales(self.anio_de(c)) - (c.carga.get('descartar') or 0)
         return MESES[:max(n, 1)]
 
+    derivado_actual = None   # lo fija regenerar(): las filas que lo excluyen no se ven
+
     def filas(self, slug):
         if slug not in self._cache:
             self._cache[slug] = list(PresupuestoNomina.objects.filter(tipo=slug).order_by('id'))
-        return self._cache[slug]
+        filas = self._cache[slug]
+        actual = self.derivado_actual
+        if actual and slug != actual:
+            filas = [f for f in filas if actual not in (f.excluir_de or [])]
+        return filas
+
+    # ---------------------------------------------------------- cuentas
+    def cuenta(self, area, tipo=None):
+        """Cuenta del área (NOMCOSTO). `tipo` se ignora: la cuenta depende solo del área."""
+        if not hasattr(self, '_cuentas'):
+            self._cuentas = mapa_cuentas(self.anio)
+        return cuenta_para(self._cuentas, area)
 
     def olvidar(self, slug):
         self._cache.pop(slug, None)
@@ -430,6 +499,7 @@ def filas_de_conceptos(c, ctx):
     historico = ctx.meses_historico(c)
     ident = ['cedula', 'nombre', 'nombrecar', 'nomcosto', 'nombre_cen']
     consulta = ConceptosNomina.objects.filter(anio=ctx.anio_de(c), **carga['filtro'])
+    campos_extra = [] if carga.get('agrupar') else ['cuenta']   # respaldo si el área no tiene mapa
 
     if carga.get('agrupar'):
         # alias con prefijo: anotar con el mismo nombre del campo ("enero")
@@ -439,14 +509,17 @@ def filas_de_conceptos(c, ctx):
         registros = consulta.values(*ident).annotate(**anotaciones).order_by(*ident)
         leer = lambda r, campo: r.get(f's_{campo}')  # noqa: E731
     else:
-        registros = consulta.values(*ident, 'nombre_con', 'concepto_f', *historico).order_by('pk')
+        registros = consulta.values(*ident, *campos_extra, 'nombre_con', 'concepto_f', *historico).order_by('pk')
         leer = lambda r, campo: r.get(campo)  # noqa: E731
 
     filas = []
-    for r in registros:
+    for i, r in enumerate(registros):
+        cedula = cedula_normalizada(r['cedula'])
         fila = PresupuestoNomina(
-            tipo=c.slug, origen=SISTEMA,
-            cedula=cedula_normalizada(r['cedula']), nombre=texto(r['nombre']),
+            tipo=c.slug, origen=SISTEMA, clave=f'{cedula}#{i}',
+            centro_origen=texto(r['nombre_cen']), area_origen=texto(r['nomcosto']),
+            cedula=cedula, nombre=texto(r['nombre']),
+            cuenta=ctx.cuenta(r['nomcosto']) or texto(r.get('cuenta')),
             cargo=texto(r['nombrecar']), area=texto(r['nomcosto']), centro=texto(r['nombre_cen']),
             concepto=carga.get('concepto') or texto(r.get('nombre_con')) or c.etiqueta.upper(),
             base=int(round(numero(leer(r, 'concepto_f')))) if carga.get('base') else 0,
@@ -454,7 +527,145 @@ def filas_de_conceptos(c, ctx):
         )
         aplicar_formula(fila, c, p)
         filas.append(fila)
-    return filas
+    # Las distribuciones por persona se aplican siempre al cargar
+    return distribuir_filas(c, filas, repartos(), p, ctx=ctx)
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  Distribución por persona (se define una vez, en la vista consolidada)
+# ══════════════════════════════════════════════════════════════════════
+
+def repartos(cedulas=None):
+    """{cedula: [(centro, area, porcentaje), ...]}"""
+    qs = DistribucionNomina.objects.all()
+    if cedulas is not None:
+        qs = qs.filter(cedula__in=list(cedulas))
+    salida = defaultdict(list)
+    for d in qs.order_by('cedula', 'id'):
+        salida[d.cedula].append((d.centro, d.area, d.porcentaje))
+    return dict(salida)
+
+
+def distribuir_filas(c, filas, reparto_por_cedula, p, usuario='', ctx=None):
+    """Reparte las filas de las personas de `reparto_por_cedula`.
+
+    Las filas que salieron de un mismo registro (misma `clave`) se tratan como
+    un todo: se juntan y se vuelven a repartir. Un reparto vacío devuelve la
+    fila completa a su centro/área de origen.
+      - filas calculadas → cada copia guarda su porcentaje en `factor` y sigue
+                            recalculándose sola.
+      - filas manuales   → se reparten sus valores y siguen siendo manuales.
+    """
+    if not reparto_por_cedula:
+        return filas
+    ctx = ctx or Contexto(p)
+    salida, grupos = [], {}
+    for fila in filas:
+        if fila.cedula and fila.cedula in reparto_por_cedula:
+            clave = fila.clave or f'{fila.cedula}#m{fila.pk or id(fila)}'
+            grupos.setdefault(clave, []).append(fila)
+        else:
+            salida.append(fila)
+
+    for clave, miembros in grupos.items():
+        ref = miembros[0]
+        centro0 = ref.centro_origen or ref.centro
+        area0 = ref.area_origen or ref.area
+        destinos = reparto_por_cedula[ref.cedula] or [(centro0, area0, 100.0)]
+        sistema = all(m.origen == SISTEMA for m in miembros)
+        entero = {mes: sum(getattr(m, mes) or 0 for m in miembros) for mes in MESES}
+        for centro, area, porcentaje in destinos:
+            parte = (porcentaje or 0) / 100
+            if parte <= 0:
+                continue
+            nueva = PresupuestoNomina(
+                tipo=ref.tipo, origen=SISTEMA if sistema else MANUAL, clave=clave,
+                cedula=ref.cedula, nombre=ref.nombre, cargo=ref.cargo, concepto=ref.concepto,
+                centro=centro, area=area, centro_origen=centro0, area_origen=area0,
+                base=ref.base or 0, historico=dict(ref.historico or {}), factor=parte,
+                excluir_de=list(ref.excluir_de or []),
+                cuenta=ctx.cuenta(area) or (ref.cuenta if _clave_area(area) == _clave_area(ref.area) else ''),
+                actualizado_por=usuario or ref.actualizado_por,
+            )
+            if sistema:
+                aplicar_formula(nueva, c, p)
+            else:
+                fijar_meses(nueva, {mes: entero[mes] * parte for mes in MESES})
+            salida.append(nueva)
+    return salida
+
+
+def _normalizar_reparto(reparto):
+    limpio = {}
+    for r in reparto or []:
+        porcentaje = numero(r.get('porcentaje'))
+        if porcentaje <= 0:
+            continue
+        area = texto(r.get('area')).upper()
+        if not area:
+            raise ValueError('Cada destino necesita un área (NOMCOSTO)')
+        clave = (texto(r.get('centro')).upper(), area)
+        limpio[clave] = limpio.get(clave, 0) + porcentaje
+    if limpio and abs(sum(limpio.values()) - 100) > 0.01:
+        raise ValueError(f'Los porcentajes deben sumar 100% (suman {sum(limpio.values()):g}%)')
+    return [(centro, area, pct) for (centro, area), pct in limpio.items()]
+
+
+def aplicar_distribucion(cedulas, usuario=''):
+    """Vuelve a repartir todas las filas base de esas personas y recalcula los derivados."""
+    cedulas = sorted({cedula_normalizada(c) for c in cedulas} - {''})
+    ctx = Contexto()
+    actual = repartos(cedulas)
+    por_cedula = {c: actual.get(c, []) for c in cedulas}
+    filas_nuevas = 0
+    with bloqueo():
+        for c in BASE:
+            filas = list(PresupuestoNomina.objects.filter(tipo=c.slug, cedula__in=cedulas).order_by('id'))
+            if not filas:
+                continue
+            nuevas = distribuir_filas(c, filas, por_cedula, ctx.p, usuario, ctx=ctx)
+            PresupuestoNomina.objects.filter(pk__in=[f.pk for f in filas]).delete()
+            PresupuestoNomina.objects.bulk_create(nuevas, batch_size=1000)
+            filas_nuevas += len(nuevas)
+        for c in DERIVADOS:
+            regenerar(ctx, c)
+    return {'personas': len(cedulas), 'filas': filas_nuevas, 'descartadas': 0}
+
+
+def guardar_distribucion(cedulas, reparto, usuario=''):
+    cedulas = sorted({cedula_normalizada(c) for c in cedulas} - {''})
+    if not cedulas:
+        raise ValueError('Seleccione al menos una persona con cédula')
+    destinos = _normalizar_reparto(reparto)
+    if not destinos:
+        raise ValueError('Ingrese al menos un porcentaje')
+    with transaction.atomic():
+        DistribucionNomina.objects.filter(cedula__in=cedulas).delete()
+        DistribucionNomina.objects.bulk_create([
+            DistribucionNomina(cedula=ced, centro=centro, area=area, porcentaje=pct,
+                               actualizado_por=usuario)
+            for ced in cedulas for centro, area, pct in destinos
+        ])
+        return aplicar_distribucion(cedulas, usuario)
+
+
+def quitar_distribucion(cedulas, usuario=''):
+    cedulas = sorted({cedula_normalizada(c) for c in cedulas} - {''})
+    with transaction.atomic():
+        DistribucionNomina.objects.filter(cedula__in=cedulas).delete()
+        return aplicar_distribucion(cedulas, usuario)
+
+
+def listar_distribuciones():
+    nombres = dict(PresupuestoNomina.objects.filter(tipo__in=[c.slug for c in BASE])
+                   .exclude(cedula='').values_list('cedula', 'nombre'))
+    salida = []
+    for cedula, destinos in repartos().items():
+        salida.append({
+            'cedula': cedula, 'nombre': nombres.get(cedula, ''),
+            'reparto': [{'centro': c, 'area': a, 'porcentaje': p} for c, a, p in destinos],
+        })
+    return sorted(salida, key=lambda d: d['nombre'] or d['cedula'])
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -533,12 +744,45 @@ def gen_vacaciones(ctx, c):
     return _prestacion(ctx, c, ('comisiones', 'medios_transporte'), 'VACACIONES')
 
 
+DIAS_MES = 30
+DIAS_ANIO = 360
+
+
+def intereses_acumulados(cesantias_mes, pct):
+    """Intereses mes a mes sobre las cesantías acumuladas.
+
+    interés del mes = cesantías acumuladas × días acumulados × % / 360
+                      − intereses causados en los meses anteriores
+
+    Los días se cuentan desde el primer mes con cesantías: quien entra en
+    marzo tiene 30 días en marzo, 60 en abril, etc.
+
+    Una persona puede tener varios periodos en el año (por ejemplo mayo–junio
+    y noviembre–diciembre). Un mes sin cesantías corta el periodo: no causa
+    intereses y el siguiente periodo vuelve a empezar en 30 días, con el
+    acumulado en cero.
+    """
+    salida, acumulado, causado, meses_trabajados = {}, 0.0, 0.0, 0
+    for mes in MESES:
+        valor = cesantias_mes.get(mes) or 0
+        if not valor:                 # no ha entrado, o terminó un periodo
+            salida[mes] = 0
+            acumulado = causado = 0.0
+            meses_trabajados = 0
+            continue
+        meses_trabajados += 1
+        acumulado += valor
+        total = acumulado * (DIAS_MES * meses_trabajados) * pct / DIAS_ANIO
+        salida[mes] = total - causado
+        causado = total
+    return salida
+
+
 def gen_intereses_cesantias(ctx, c):
-    """Interés mensual = cesantía del mes × % de intereses."""
     pct = ctx.p.pct(c.pct)
     for ces in ctx.filas('cesantias'):
         yield dict(identidad(ces, concepto='INTERESES CESANTÍAS'), clave=clave_persona(ces),
-                   **{mes: v * pct for mes, v in valores(ces).items()})
+                   **intereses_acumulados(valores(ces), pct))
 
 
 def gen_bonificaciones(ctx, c):
@@ -555,40 +799,117 @@ CARGOS_SIN_BONIFICACION_FOCO = {
     'DIRECTOR COMERCIAL SUBDISTRIBUCION Y DIGITAL',
     'DIRECTOR COMERCIAL GRANDES ESPECIES Y PUNTO VENTA',
 }
+# Base mensual de quienes no comisionan, cuando no se puede leer de los datos
 BONIFICACION_FOCO_FIJA = 220000
+CODIGO_COMISIONES = '389'          # concepto de comisiones en ConceptosNomina
+TEXTO_FOCO = 'FOCO'                # para reconocer la bonificación foco real
+
+
+def dias_360(desde, hasta_dia=30, hasta_mes=12):
+    """Días trabajados en el año hasta el 30 de diciembre, con meses de 30 días.
+
+    1 de enero → 360 · 1 de julio → 180 · 16 de septiembre → 105
+    """
+    dias = (hasta_mes - desde.month) * 30 + (hasta_dia - min(desde.day, 30)) + 1
+    return max(0, min(360, dias))
+
+
+def comisiones_reales(ctx):
+    """{cédula: {mes: valor}} de las comisiones REALES (no presupuestadas)."""
+    reales = defaultdict(lambda: dict.fromkeys(MESES, 0.0))
+    for r in (ConceptosNomina.objects.filter(anio=ctx.anio, concepto=CODIGO_COMISIONES)
+              .values('cedula', *MESES)):
+        destino = reales[cedula_normalizada(r['cedula'])]
+        for mes in MESES:
+            destino[mes] += numero(r[mes])
+    return reales
+
+
+def promedio_anual_comisiones(meses_reales_dict, n_meses):
+    """Promedio mensual del año completo.
+
+    Los meses que todavía no tienen dato real (por ejemplo de septiembre en
+    adelante) se llenan con el promedio de los meses reales; después se suman
+    los 12 meses y se divide entre 12, aunque solo haya valores en 2 o 3 meses.
+    """
+    n = max(1, min(12, n_meses))
+    reales = [meses_reales_dict.get(m) or 0 for m in MESES[:n]]
+    promedio_real = sum(reales) / n
+    total = sum(reales) + promedio_real * (12 - n)
+    return total / 12
+
+
+def fechas_ingreso(anio):
+    """{cédula: fecha de ingreso} tomada de ConceptosNomina."""
+    salida = {}
+    for cedula, fecha in (ConceptosNomina.objects.filter(anio=anio, fecha_ingreso__isnull=False)
+                          .values_list('cedula', 'fecha_ingreso')):
+        clave = cedula_normalizada(cedula)
+        if clave and (clave not in salida or fecha < salida[clave]):
+            salida[clave] = fecha
+    return salida
+
+
+def base_bonificacion_foco(ctx, comisionan, ingresos):
+    """Valor de enero de alguien que no comisiona y trabajó el año completo.
+
+    Se busca en ConceptosNomina el concepto de bonificación foco. Si no está
+    en los datos, se usa BONIFICACION_FOCO_FIJA.
+    """
+    candidatos = Counter()
+    for r in (ConceptosNomina.objects.filter(anio=ctx.anio, nombre_con__icontains=TEXTO_FOCO)
+              .values('cedula', 'enero')):
+        cedula = cedula_normalizada(r['cedula'])
+        valor = numero(r['enero'])
+        ingreso = ingresos.get(cedula)
+        anio_completo = not ingreso or ingreso.year < ctx.anio
+        if valor > 0 and cedula not in comisionan and anio_completo:
+            candidatos[round(valor)] += 1
+    return float(candidatos.most_common(1)[0][0]) if candidatos else float(BONIFICACION_FOCO_FIJA)
 
 
 def gen_bonificaciones_foco(ctx, c):
+    """Bonificación foco, en enero.
+
+    - Quien comisiona: promedio mensual de sus comisiones REALES del año base
+      (los meses que faltan se llenan con el promedio de los meses reales y el
+      total se divide entre 12). No se le aplica ningún incremento.
+    - Quien no comisiona (y quien esté en la lista "sin comisión"): la base
+      mensual más el IPC, proporcional a los días trabajados desde su fecha de
+      ingreso hasta el 30 de diciembre (base/360 × días).
+    """
     p = ctx.p
-    factor = 1 + p.pct('incremento_comisiones')
+    reales = comisiones_reales(ctx)
+    ingresos = fechas_ingreso(ctx.anio)
+    sin_comision = set(FocoSinComision.objects.values_list('cedula', flat=True))
 
-    # 1) Con comisiones: enero = promedio anual sin el incremento;
-    #    julio = mitad del promedio de enero–junio.
-    grupos = defaultdict(lambda: dict.fromkeys(MESES, 0))
-    ejemplo = {}
-    for fila in ctx.filas('comisiones'):
-        k = (fila.cedula, fila.nombre, fila.centro, fila.area, fila.cargo)
-        ejemplo.setdefault(k, fila)
-        for mes in MESES:
-            grupos[k][mes] += getattr(fila, mes) or 0
+    filas_comisiones = ctx.filas('comisiones')
+    comisionan = {f.cedula for f in filas_comisiones if f.cedula}
+    por_promedio = [f for f in filas_comisiones if f.cedula and f.cedula not in sin_comision]
 
-    for k, meses in grupos.items():
-        total_ajustado = sum(meses.values()) / factor if factor else 0
-        primer_semestre = sum(meses[m] for m in MESES[:6])
+    # 1) Quienes comisionan: el promedio de las comisiones reales, sin incremento
+    cuota = cuotas(por_promedio, lambda f: f.cedula)
+    vistos = set()
+    for fila in por_promedio:
+        promedio = promedio_anual_comisiones(reales.get(fila.cedula, {}), ctx.meses_reales())
         datos = dict.fromkeys(MESES, 0)
-        datos['enero'] = total_ajustado / 12
-        datos['julio'] = primer_semestre / 6 / 2
-        yield dict(identidad(ejemplo[k], concepto='BONIFICACIÓN FOCO'),
-                   clave=clave_persona(ejemplo[k]), **datos)
+        datos['enero'] = promedio * cuota[id(fila)]
+        vistos.add(fila.cedula)
+        yield dict(identidad(fila, concepto='BONIFICACIÓN FOCO'), clave=clave_persona(fila), **datos)
 
-    # 2) El resto de la planta: bonificación fija + IPC en enero.
+    # 2) Quienes no comisionan (y los de la lista): base proporcional a los días
+    base = base_bonificacion_foco(ctx, comisionan, ingresos) * (1 + p.pct('incremento_ipc'))
     fijos = [f for f in ctx.filas('sueldos')
-             if (f.cargo or '').strip().upper() not in CARGOS_SIN_BONIFICACION_FOCO]
+             if f.cedula not in vistos
+             # quien está en la lista la recibe aunque su cargo sea comercial
+             and (f.cedula in sin_comision
+                  or (f.cargo or '').strip().upper() not in CARGOS_SIN_BONIFICACION_FOCO)]
     cuota = cuotas(fijos, lambda f: f.cedula)
-    enero = BONIFICACION_FOCO_FIJA * (1 + p.pct('incremento_ipc'))
     for fila in fijos:
+        ingreso = ingresos.get(fila.cedula)
+        dias = dias_360(ingreso) if ingreso and ingreso.year >= ctx.anio else 360
         datos = dict.fromkeys(MESES, 0)
-        datos['enero'] = enero * cuota[id(fila)]
+        datos['enero'] = base / 360 * dias * cuota[id(fila)]
         yield dict(identidad(fila, concepto='BONIFICACIÓN FOCO'), clave=clave_persona(fila), **datos)
 
 
@@ -603,8 +924,10 @@ APORTES = {
 APORTES_SOLO_ALTOS = {'APORTE SALUD', 'APORTE SENA', 'APORTE I.C.B.F'}
 ARL_POR_DEFECTO = 0.0093
 APORTE_SALUD_APRENDIZ = 0.125
+# Técnicos: su seguridad social se calcula por persona (no se consolida por área)
+AREAS_POR_PERSONA = {'ASISTENCIA TECNICA PROPIA', 'ASISTENCIA TECNICA CONVENIO'}
+# Estas áreas se consolidan sin centro
 AREAS_AGRUPADAS = [
-    ['ASISTENCIA TECNICA PROPIA', 'ASISTENCIA TECNICA CONVENIO'],
     ['PROYECTO AFTOSA GASTOS DE PERSONAL'],
 ]
 CEDULA_ESPECIAL = '31793592'     # tratamiento heredado del cálculo original
@@ -620,6 +943,18 @@ def porcentajes_arl(anio):
     }
 
 
+def _sin_tildes(valor):
+    valor = unicodedata.normalize('NFKD', texto(valor)).encode('ascii', 'ignore').decode()
+    return ' '.join(valor.upper().split())
+
+
+def llave_seguridad_social(fila):
+    """(centro, área, cédula, nombre, cargo): la persona solo cuenta en áreas de técnicos."""
+    if _sin_tildes(fila.area) in AREAS_POR_PERSONA:
+        return (fila.centro, fila.area, fila.cedula, fila.nombre, fila.cargo)
+    return (fila.centro, fila.area, '', '', '')
+
+
 def gen_seguridad_social(ctx, c):
     p = ctx.p
     tope = p.minimo_incrementado * 10
@@ -631,7 +966,7 @@ def gen_seguridad_social(ctx, c):
     def sumar(destino, fila, meses=None):
         meses = meses or valores(fila)
         for mes in MESES:
-            destino[(fila.centro, fila.area)][mes] += meses[mes]
+            destino[llave_seguridad_social(fila)][mes] += meses[mes]
 
     hay_altos = False
     for emp in ctx.filas('sueldos'):
@@ -658,24 +993,30 @@ def gen_seguridad_social(ctx, c):
         return {m: a[m] + b[m] for m in MESES}
 
     filas = []
-    for (centro, area), base in generales.items():
+    llaves = list(generales) + [k for k in aprendices_salud if k not in generales]
+    for llave in llaves:
+        centro, area, cedula, nombre, cargo = llave
+        base = generales.get(llave, dict.fromkeys(MESES, 0))
         for aporte, porcentaje in APORTES.items():
             if aporte in APORTES_SOLO_ALTOS:
-                datos = altos.get((centro, area))
-                if aporte == 'APORTE SALUD' and (centro, area) in aprendices_salud:
-                    aprendiz = aprendices_salud[(centro, area)]
+                datos = altos.get(llave)
+                if aporte == 'APORTE SALUD' and llave in aprendices_salud:
+                    aprendiz = aprendices_salud[llave]
                     datos = mas(datos, aprendiz) if datos else aprendiz
                     porcentaje = APORTE_SALUD_APRENDIZ
                 if not datos:
                     continue
             elif aporte == 'APORTE A.R.L':
                 datos = base
-                if (centro, area) in aprendices_salud:
-                    datos = mas(base, aprendices_salud[(centro, area)])
+                if llave in aprendices_salud:
+                    datos = mas(base, aprendices_salud[llave])
                 porcentaje = arl.get((centro, area), ARL_POR_DEFECTO)
             else:
                 datos = base
+            if not any(datos.values()):
+                continue
             filas.append({'centro': centro, 'area': area, 'concepto': aporte,
+                          'cedula': cedula, 'nombre': nombre or 'SEGURIDAD SOCIAL', 'cargo': cargo,
                           **{m: datos[m] * porcentaje for m in MESES}})
 
     # Ciertas áreas se consolidan sin centro (asistencia técnica, aftosa)
@@ -683,18 +1024,18 @@ def gen_seguridad_social(ctx, c):
     agrupado = defaultdict(lambda: dict.fromkeys(MESES, 0))
     salida = []
     for fila in filas:
-        if fila['area'] in agrupables:
+        if fila['area'] in agrupables and not fila['cedula']:
             destino = agrupado[(fila['area'], fila['concepto'])]
             for m in MESES:
                 destino[m] += fila[m]
         else:
             salida.append(fila)
     for (area, concepto), meses in agrupado.items():
-        salida.append({'centro': '', 'area': area, 'concepto': concepto, **meses})
+        salida.append({'centro': '', 'area': area, 'concepto': concepto, 'cedula': '',
+                       'nombre': 'SEGURIDAD SOCIAL', 'cargo': '', **meses})
 
     for fila in salida:
-        yield dict(fila, cedula='', nombre='SEGURIDAD SOCIAL', cargo='',
-                   clave=f"{fila['centro']}|{fila['area']}|{fila['concepto']}")
+        yield dict(fila, clave=f"{fila['centro']}|{fila['area']}|{fila['cedula']}|{fila['concepto']}")
 
 
 GENERADORES = {
@@ -714,23 +1055,32 @@ GENERADORES = {
 # ══════════════════════════════════════════════════════════════════════
 
 def regenerar(ctx, c):
-    """Recalcula un concepto derivado respetando las filas manuales."""
-    bloqueadas = {f.clave for f in ctx.filas(c.slug) if f.origen == MANUAL and f.clave}
+    """Recalcula un concepto derivado por completo.
+
+    Los conceptos calculados (cesantías, prima, vacaciones, intereses,
+    bonificaciones, seguridad social, auxilio de transporte) se rehacen
+    siempre: no guardan filas manuales. Para que una persona no entre en
+    alguno de ellos se usa `excluir_de` en la fila de origen.
+    """
     vistas = Counter()
     nuevas = []
-    for datos in GENERADORES[c.slug](ctx, c):
+    ctx.derivado_actual = c.slug
+    try:
+        generados = list(GENERADORES[c.slug](ctx, c))
+    finally:
+        ctx.derivado_actual = None
+    for datos in generados:
         clave = datos.pop('clave')
         vistas[clave] += 1
         if vistas[clave] > 1:
             clave = f'{clave}#{vistas[clave]}'
-        if clave in bloqueadas:
-            continue
         meses = {m: datos.pop(m, 0) for m in MESES}
+        datos.setdefault('cuenta', ctx.cuenta(datos.get('area')))
         fila = PresupuestoNomina(tipo=c.slug, origen=SISTEMA, clave=clave, **datos)
         fijar_meses(fila, meses)
         nuevas.append(fila)
 
-    PresupuestoNomina.objects.filter(tipo=c.slug, origen=SISTEMA).delete()
+    PresupuestoNomina.objects.filter(tipo=c.slug).delete()
     PresupuestoNomina.objects.bulk_create(nuevas, batch_size=1000)
     ctx.olvidar(c.slug)
     return len(nuevas)
@@ -757,12 +1107,13 @@ def recalcular_todo():
             PresupuestoNomina.objects.bulk_update(automaticas, MESES + ['total'], batch_size=1000)
         for c in DERIVADOS:
             regenerar(ctx, c)
+        asignar_cuentas(ctx)
     return [c.slug for c in _LISTA]
 
 
 def cargar_base(slug):
     """Concepto base: reemplaza todo con lo de Conceptos.
-    Concepto derivado: lo regenera (conserva las filas manuales)."""
+    Concepto derivado: lo vuelve a calcular."""
     c = obtener(slug)
     ctx = Contexto()
     with bloqueo():
@@ -776,6 +1127,28 @@ def cargar_base(slug):
             creadas = len(filas)
         recalculados = propagar(slug, ctx)
     return creadas, recalculados
+
+
+def personas_que_comisionan():
+    """[(cédula, nombre)] de quienes tienen comisiones en el presupuesto."""
+    filas = (PresupuestoNomina.objects.filter(tipo='comisiones').exclude(cedula='')
+             .values_list('cedula', 'nombre').distinct())
+    return sorted({(c, n) for c, n in filas}, key=lambda x: (x[1] or '', x[0]))
+
+
+def guardar_foco_sin_comision(cedulas, usuario=''):
+    """Guarda a quiénes se les calcula la bonificación foco como si no comisionaran."""
+    cedulas = sorted({cedula_normalizada(c) for c in cedulas} - {''})
+    nombres = dict(personas_que_comisionan())
+    with transaction.atomic():
+        FocoSinComision.objects.exclude(cedula__in=cedulas).delete()
+        for cedula in cedulas:
+            FocoSinComision.objects.update_or_create(
+                cedula=cedula, defaults={'nombre': nombres.get(cedula, ''), 'actualizado_por': usuario})
+        ctx = Contexto()
+        with bloqueo():
+            regenerar(ctx, obtener('bonificaciones_foco'))
+    return len(cedulas)
 
 
 def recargar_bases():
@@ -793,6 +1166,7 @@ def recargar_bases():
             conteo[c.slug] = len(filas)
         for c in DERIVADOS:
             regenerar(ctx, c)
+        asignar_cuentas(ctx)      # también las filas manuales que quedaron
     return conteo
 
 
@@ -801,8 +1175,9 @@ def borrar(slug):
     ctx = Contexto()
     with bloqueo():
         eliminadas, _ = PresupuestoNomina.objects.filter(tipo=slug).delete()
-        if c.derivado:       # "borrar" un derivado = descartar ajustes manuales
-            regenerar(ctx, c)
+        if c.derivado:       # un derivado no se puede vaciar: se vuelve a calcular
+            ctx.olvidar(slug)
+            eliminadas = regenerar(ctx, c)
         recalculados = propagar(slug, ctx)
     return eliminadas, recalculados
 
@@ -815,15 +1190,18 @@ def _cambio(antes, fila):
 def guardar(slug, filas_json, usuario=''):
     """Guarda lo que el usuario editó en la tabla y propaga los cambios.
 
+    Solo se puede guardar en los conceptos base (los que se cargan desde
+    Conceptos). Los calculados se rehacen solos.
+
     - Fila nueva                              → manual
     - Fila calculada con meses editados       → ajusta el histórico si la
                                                 fórmula lo permite; si no, manual
-    - Fila calculada de un derivado editada   → manual (conserva su clave)
     - Fila con `_recalcular`                  → vuelve a ser calculada
-    - Fila calculada eliminada de un derivado → queda manual en cero, para que
-                                                el motor no la vuelva a crear
     """
     c = obtener(slug)
+    if c.derivado:
+        raise ValueError(f'{c.etiqueta} se calcula solo: edite el concepto de origen '
+                         f"({', '.join(CONCEPTOS[d].etiqueta for d in c.depende)})")
     ctx = Contexto()
     p = ctx.p
     resumen = Counter()
@@ -842,18 +1220,20 @@ def guardar(slug, filas_json, usuario=''):
             antes = None
             if nueva:
                 fila = PresupuestoNomina(tipo=slug, origen=MANUAL)
-                # copia de una distribución: sigue siendo calculada
-                if (not c.derivado and datos.get('origen') == SISTEMA
-                        and (datos.get('historico') or datos.get('base'))):
-                    fila.origen = SISTEMA
-                    fila.historico = {m: numero(v) for m, v in (datos.get('historico') or {}).items()
-                                      if m in MESES}
             else:
                 antes = {campo: getattr(fila, campo) for campo in (*CAMPOS_TEXTO, 'base', *MESES)}
 
             for campo in CAMPOS_TEXTO:
                 valor = texto(datos.get(campo))
                 setattr(fila, campo, cedula_normalizada(valor) if campo == 'cedula' else valor)
+            if 'excluir_de' in datos or nueva:
+                excluir = excluciones_validas(slug, datos.get('excluir_de'))
+                if not nueva and excluir != sorted(fila.excluir_de or []):
+                    resumen['exclusiones'] += 1
+                fila.excluir_de = excluir
+            # la cuenta la define el área (NOMCOSTO)
+            misma_area = not nueva and _clave_area(antes['area']) == _clave_area(fila.area)
+            fila.cuenta = ctx.cuenta(fila.area) or (fila.cuenta if misma_area else '')
             fila.base = int(round(numero(datos.get('base'))))
             factor = numero(datos.get('factor'), 1)
             fila.factor = factor if factor > 0 else 1
@@ -884,33 +1264,21 @@ def guardar(slug, filas_json, usuario=''):
                 fijar_meses(fila, calculado if fila.origen == SISTEMA else entrantes)
             else:
                 fijar_meses(fila, entrantes)
-                if c.derivado and not nueva and not forzar and fila.origen == SISTEMA and _cambio(antes, fila):
-                    fila.origen = MANUAL
 
             if fila.origen == MANUAL and (nueva or antes is None or _cambio(antes, fila)):
                 resumen['manuales'] += 1
             (crear if nueva else actualizar).append(fila)
 
         # Filas que el usuario quitó de la tabla
-        eliminar = []
-        for fila in existentes.values():
-            if c.derivado and fila.origen == SISTEMA:
-                fila.origen = MANUAL
-                fila.actualizado_por = usuario
-                fijar_meses(fila, {})
-                actualizar.append(fila)
-            else:
-                eliminar.append(fila.pk)
+        eliminar = [fila.pk for fila in existentes.values()]
 
-        campos = [*CAMPOS_TEXTO, 'base', 'factor', 'historico', *MESES, 'total',
-                  'origen', 'actualizado_por']
+        campos = [*CAMPOS_TEXTO, 'cuenta', 'excluir_de', 'base', 'factor', 'historico',
+                  *MESES, 'total', 'origen', 'actualizado_por']
         PresupuestoNomina.objects.filter(pk__in=eliminar).delete()
         PresupuestoNomina.objects.bulk_update(actualizar, campos, batch_size=1000)
         PresupuestoNomina.objects.bulk_create(crear, batch_size=1000)
         ctx.olvidar(slug)
 
-        if c.derivado and forzadas:
-            regenerar(ctx, c)
         recalculados = propagar(slug, ctx)
 
     resumen.update(creadas=len(crear), actualizadas=len(actualizar), eliminadas=len(eliminar))
@@ -921,7 +1289,7 @@ def guardar(slug, filas_json, usuario=''):
 #  Lectura
 # ══════════════════════════════════════════════════════════════════════
 
-CAMPOS_SALIDA = ('id', 'tipo', *CAMPOS_TEXTO, 'base', 'factor', 'historico',
+CAMPOS_SALIDA = ('id', 'tipo', *CAMPOS_TEXTO, 'cuenta', 'excluir_de', 'base', 'factor', 'historico',
                  *MESES, 'total', 'origen', 'clave', 'actualizado', 'actualizado_por')
 
 

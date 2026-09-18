@@ -16,6 +16,7 @@
     .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
     .dash-campo { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
     .dash-campo label { font-size: 13px; font-weight: 600; }
+    .dash-aviso { margin: 6px 0 0; padding: 8px 12px; border-radius: 8px; background: #fffaeb; color: #7a5600; font-size: 13px; }
     .dash-campo input { width: 130px; padding: 6px 8px; border: 1px solid var(--pt-borde-fuerte); border-radius: var(--pt-radio); font: inherit; }
     .dash-seccion { margin-top: 16px; }
     .dash-seccion h3 { margin-bottom: 8px; }
@@ -31,16 +32,49 @@
     table.resumen a { color: var(--pt-azul); font-weight: 600; text-decoration: none; }
     table.resumen a:hover { text-decoration: underline; }
     .dep { color: var(--pt-texto-suave); font-size: 12px; }
-    .origen-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px 14px; align-items: end; }
-    .origen-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
-    .origen-form input, .origen-form select { padding: 6px 8px; border: 1px solid var(--pt-borde-fuerte); border-radius: var(--pt-radio); font: inherit; font-weight: 400; }
-    .origen-form .check { flex-direction: row; align-items: center; font-weight: 400; }
-    .origen-form .ayuda { font-weight: 400; font-size: 11px; color: var(--pt-texto-suave); }
-    .origen-acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-    .origen-estado { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 4px 0 12px; font-size: 13px; }
-    .origen-estado strong { font-variant-numeric: tabular-nums; }
-    .etiqueta-uso { display: inline-block; padding: 1px 7px; margin: 1px 2px; border-radius: 10px; background: #e3eefc; color: #1d4f91; font-size: 11px; white-space: nowrap; }
-    .origen-sub { margin: 16px 0 8px; font-size: 14px; }
+    .etiqueta-uso { display: inline-block; padding: 2px 8px; margin: 1px 4px 1px 0; border-radius: 10px; background: #e3eefc; color: #1d4f91; font-size: 11px; font-weight: 600; white-space: nowrap; }
+
+    /* Datos de origen */
+    .or-resumen { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+    .or-dato { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 10px; border-radius: 8px; background: var(--pt-fondo-alt); border: 1px solid var(--pt-borde); font-size: 12px; }
+    .or-dato small { color: var(--pt-texto-suave); }
+    .or-dato b { font-size: 13px; font-variant-numeric: tabular-nums; }
+    .or-dato em { font-style: normal; font-size: 10px; color: var(--pt-texto-suave); background: #fff; border: 1px solid var(--pt-borde); border-radius: 6px; padding: 0 4px; }
+    .or-titulo { margin: 0 0 8px; font-size: 14px; }
+    .or-ayuda { margin: 0; font-size: 11.5px; line-height: 1.35; color: var(--pt-texto-suave); }
+    .or-opcional { font-weight: 400; font-size: 11px; color: var(--pt-texto-suave); }
+
+    .or-tabla-envoltura { overflow-x: auto; border: 1px solid var(--pt-borde); border-radius: 8px; }
+    table.or-tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.or-tabla th { background: var(--pt-cabecera); text-align: left; font-weight: 600; font-size: 12px; padding: 8px 12px; white-space: nowrap; }
+    table.or-tabla td { padding: 8px 12px; border-top: 1px solid var(--pt-borde); vertical-align: middle; }
+    table.or-tabla .num { text-align: right; font-variant-numeric: tabular-nums; }
+    table.or-tabla tr.or-en-uso td:first-child { box-shadow: inset 3px 0 0 var(--pt-azul); }
+    table.or-tabla .or-col-acciones { text-align: right; white-space: nowrap; width: 1%; }
+    table.or-tabla .or-col-acciones .pt-btn { margin-left: 4px; text-decoration: none; }
+    .or-vacio { text-align: center; padding: 18px !important; }
+    .or-ok { color: #0f5132; font-size: 12px; }
+    .or-alerta { display: inline-block; padding: 1px 8px; border-radius: 10px; background: #fff4d6; color: #7a5600; font-size: 12px; font-weight: 600; }
+
+    .or-columnas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 16px; align-items: stretch; }
+    .or-tarjeta { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid var(--pt-borde); border-radius: 8px; background: var(--pt-fondo-alt); }
+    .or-tarjeta header .or-titulo { margin-bottom: 2px; }
+    .or-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; align-content: start; flex: 1; }
+    .or-campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .or-campo--ancho { grid-column: 1 / -1; }
+    .or-campo label { font-size: 12.5px; font-weight: 600; }
+    .or-campo input, .or-campo select { height: 34px; padding: 5px 8px; border: 1px solid var(--pt-borde-fuerte); border-radius: var(--pt-radio); font: inherit; font-size: 13px; background: #fff; width: 100%; box-sizing: border-box; }
+    .or-campo input[type="file"] { height: auto; padding: 5px; }
+    .or-check { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+    .or-check input { width: 16px; height: 16px; margin: 0; flex: none; }
+    .or-check--alineado { align-self: center; margin-bottom: 14px; }
+    .or-acciones { display: flex; justify-content: flex-end; gap: 8px; padding-top: 12px; border-top: 1px solid var(--pt-borde); }
+    .or-nota { font-size: 12px; color: #7a5600; background: #fffaeb; border-radius: 0 0 10px 10px; }
+    @media (max-width: 720px) {
+      .or-form { grid-template-columns: 1fr; }
+      .or-columnas { grid-template-columns: 1fr; }
+      .or-resumen { display: none; }
+    }
     .vacio { color: #a0a8b1; }
   </style>
 </head>
@@ -59,111 +93,156 @@
     <button type="button" class="pt-btn pt-btn--exito" id="btnActualizar">Guardar parámetros y recalcular</button>
   </div>
 
-  <div class="pt-panel">
-    <h3>Datos de origen (conceptos fijos y variables)</h3>
-    <div class="origen-estado">
-      <span>Año base: <strong>{{ origen.anio_base }}</strong>{% if not origen.config_anio %} <span class="dep">(automático)</span>{% endif %}</span>
-      <span>Auxilio de educación usa: <strong>{{ origen.anio_educacion }}</strong></span>
-      <span>Meses reales: <strong>{{ origen.meses_reales }}</strong> (enero a {{ origen.mes_reales_nombre }}){% if not origen.config_meses %} <span class="dep">(automático)</span>{% endif %}</span>
-    </div>
+  <details class="pt-seccion or-seccion" data-recordar="nomina-origen" open>
+    <summary class="pt-seccion__titulo">
+      <span>
+        <strong>Datos de origen</strong>
+        <small>Conceptos fijos y variables que alimentan el presupuesto</small>
+      </span>
+      <span class="or-resumen">
+        <span class="or-dato"><small>Año base</small><b>{{ origen.anio_base }}</b>{% if not origen.config_anio %}<em>auto</em>{% endif %}</span>
+        <span class="or-dato"><small>Auxilio educación</small><b>{{ origen.anio_educacion }}</b></span>
+        <span class="or-dato"><small>Meses reales</small><b>{% if origen.meses_reales %}Ene – {{ origen.mes_reales_nombre|slice:":3" }}{% else %}—{% endif %}</b>{% if not origen.config_meses %}<em>auto</em>{% endif %}</span>
+      </span>
+      <span class="pt-seccion__toggle" aria-hidden="true"></span>
+    </summary>
 
-    <div class="pt-tabla-envoltura" style="max-height:none">
-      <table class="resumen">
-        <thead>
-          <tr>
-            <th>Año</th><th class="num">Filas</th><th class="num">Personas</th>
-            <th>Datos hasta</th><th>Fecha de corte</th><th>Se usa para</th>
-            <th>Última carga</th><th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for a in origen.anios %}
+    <div class="pt-seccion__cuerpo">
+      <h4 class="or-titulo">Años cargados</h4>
+      <div class="or-tabla-envoltura">
+        <table class="or-tabla">
+          <thead>
             <tr>
-              <td><strong>{{ a.anio }}</strong></td>
-              <td class="num">{{ a.filas }}</td>
-              <td class="num">{{ a.personas }}</td>
-              <td>{{ a.hasta }} <span class="dep">({{ a.meses }} meses)</span></td>
-              <td>{{ a.corte|date:"d/m/Y"|default:"—" }}</td>
-              <td>{% for u in a.usos %}<span class="etiqueta-uso">{{ u }}</span>{% empty %}<span class="vacio">—</span>{% endfor %}</td>
-              <td class="dep">{{ a.cargado|date:"d/m/Y H:i" }}</td>
-              <td style="white-space:nowrap">
-                <a href="{% url 'nomina_origen_exportar' a.anio %}" title="Descargar">📥</a>
-                <button type="button" class="pt-btn pt-btn--peligro" data-borrar-anio="{{ a.anio }}" title="Borrar los datos de este año">🗑️</button>
-              </td>
+              <th>Año</th>
+              <th class="num">Filas</th>
+              <th class="num">Personas</th>
+              <th>Datos hasta</th>
+              <th>Cuentas</th>
+              <th>Fecha de ingreso</th>
+              <th>Fecha de corte</th>
+              <th>Se usa para</th>
+              <th>Última carga</th>
+              <th class="or-col-acciones">Acciones</th>
             </tr>
-          {% empty %}
-            <tr><td colspan="8" class="vacio">Todavía no hay datos cargados. Suba el Excel de conceptos.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {% for a in origen.anios %}
+              <tr{% if a.usos %} class="or-en-uso"{% endif %}>
+                <td><strong>{{ a.anio }}</strong></td>
+                <td class="num">{{ a.filas }}</td>
+                <td class="num">{{ a.personas }}</td>
+                <td style="white-space:nowrap">{% if a.meses %}{{ a.hasta }} <span class="dep">· {{ a.meses }} mes{{ a.meses|pluralize:"es" }}</span>{% else %}<span class="vacio">Sin valores mensuales</span>{% endif %}</td>
+                <td style="white-space:nowrap">
+                  {% if a.sin_cuenta %}<span class="or-alerta" title="Filas con NOMCOSTO pero sin cuenta">⚠️ {{ a.sin_cuenta }} sin cuenta</span>
+                  {% else %}<span class="or-ok">✔ {{ a.nomcostos }} NOMCOSTO</span>{% endif %}
+                </td>
+                <td style="white-space:nowrap">
+                  {% if a.con_ingreso %}<span class="or-ok">✔ {{ a.con_ingreso }} de {{ a.filas }}</span>
+                  {% else %}<span class="vacio">Sin fecha</span>{% endif %}
+                </td>
+                <td>{{ a.corte|date:"d/m/Y"|default:"—" }}</td>
+                <td>{% for u in a.usos %}<span class="etiqueta-uso">{{ u }}</span>{% empty %}<span class="vacio">Sin uso</span>{% endfor %}</td>
+                <td class="dep" style="white-space:nowrap">{{ a.cargado|date:"d/m/Y H:i" }}</td>
+                <td class="or-col-acciones">
+                  <a class="pt-btn pt-btn--icono" href="{% url 'nomina_origen_exportar' a.anio %}" title="Descargar los datos de {{ a.anio }}">📥</a>
+                  <button type="button" class="pt-btn pt-btn--icono pt-btn--suave-peligro" data-borrar-anio="{{ a.anio }}" title="Borrar los datos de {{ a.anio }}">🗑️</button>
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="10" class="vacio or-vacio">Todavía no hay datos cargados. Suba el Excel de conceptos.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <h4 class="origen-sub">Subir Excel de conceptos</h4>
-    <form id="formOrigen" class="origen-form" action="{% url 'nomina_origen_subir' %}" enctype="multipart/form-data">
-      <label>Archivo (.xlsx, .xls, .csv)
-        <input type="file" name="archivo" accept=".xlsx,.xlsm,.xls,.csv" required>
-      </label>
-      <label>Año de los datos
-        <input type="number" name="anio" min="2000" max="2100" value="{{ origen.anio_sugerido }}" required>
-        <span class="ayuda">Si el archivo trae una columna AÑO o FECHA, se usa esa en las filas que la tengan.</span>
-      </label>
-      <label>Fecha de corte (opcional)
-        <input type="date" name="fecha_corte">
-        <span class="ayuda">Hasta dónde llegan los datos reales. Si la deja vacía se toma el último mes con valores.</span>
-      </label>
-      <label>Hoja (opcional)
-        <input type="text" name="hoja" placeholder="Primera hoja">
-      </label>
-      <label>Si ya hay datos de ese año
-        <select name="modo">
-          <option value="reemplazar" selected>Reemplazarlos</option>
-          <option value="agregar">Agregar a los existentes</option>
-        </select>
-      </label>
-      <label class="check">
-        <input type="checkbox" name="recargar" value="1">
-        Recargar el presupuesto con estos datos
-      </label>
-    </form>
-    <div class="origen-acciones">
-      <button type="button" class="pt-btn pt-btn--exito" id="btnSubirOrigen">⬆️ Subir archivo</button>
-      <a class="pt-btn" href="{% url 'nomina_origen_plantilla' %}">📄 Descargar plantilla</a>
+    <div class="pt-seccion__cuerpo or-columnas">
+      <section class="or-tarjeta">
+        <header>
+          <h4 class="or-titulo">Subir Excel de conceptos</h4>
+          <p class="or-ayuda">Los datos que ya existan para ese año se reemplazan por los del archivo.</p>
+        </header>
+        <form id="formOrigen" class="or-form" action="{% url 'nomina_origen_subir' %}" enctype="multipart/form-data">
+          <div class="or-campo or-campo--ancho">
+            <label for="orArchivo">Archivo</label>
+            <input type="file" id="orArchivo" name="archivo" accept=".xlsx,.xlsm,.xls,.csv" required>
+            <span class="or-ayuda">.xlsx, .xls o .csv</span>
+          </div>
+          <div class="or-campo">
+            <label for="orAnio">Año de los datos</label>
+            <input type="number" id="orAnio" name="anio" min="2000" max="2100" value="{{ origen.anio_sugerido }}" required>
+            <span class="or-ayuda">Si el archivo trae columna AÑO o FECHA, se usa esa.</span>
+          </div>
+          <div class="or-campo">
+            <label for="orCorte">Fecha de corte <span class="or-opcional">opcional</span></label>
+            <input type="date" id="orCorte" name="fecha_corte">
+            <span class="or-ayuda">Vacía = último mes con valores.</span>
+          </div>
+          <div class="or-campo">
+            <label for="orHoja">Hoja <span class="or-opcional">opcional</span></label>
+            <input type="text" id="orHoja" name="hoja" placeholder="Primera hoja">
+            <span class="or-ayuda">Nombre de la hoja del libro.</span>
+          </div>
+          <label class="or-check or-check--alineado">
+            <input type="checkbox" name="recargar" value="1">
+            <span>Recargar el presupuesto con estos datos al terminar</span>
+          </label>
+        </form>
+        <footer class="or-acciones">
+          <a class="pt-btn" href="{% url 'nomina_origen_plantilla' %}">📄 Descargar plantilla</a>
+          <button type="button" class="pt-btn pt-btn--exito" id="btnSubirOrigen">⬆️ Subir archivo</button>
+        </footer>
+      </section>
+
+      <section class="or-tarjeta">
+        <header>
+          <h4 class="or-titulo">Qué datos usar</h4>
+          <p class="or-ayuda">El auxilio de educación toma siempre el año anterior al año base.</p>
+        </header>
+        <form id="formConfigOrigen" class="or-form" action="{% url 'nomina_origen_config' %}">
+          <div class="or-campo">
+            <label for="orAnioBase">Año base</label>
+            <select id="orAnioBase" name="anio_base">
+              <option value="">Automático (el más reciente)</option>
+              {% for a in origen.anios %}
+                <option value="{{ a.anio }}" {% if origen.config_anio == a.anio %}selected{% endif %}>{{ a.anio }}</option>
+              {% endfor %}
+            </select>
+            <span class="or-ayuda">Año del que se leen los conceptos.</span>
+          </div>
+          <div class="or-campo">
+            <label for="orMeses">Meses con datos reales</label>
+            <select id="orMeses" name="meses_reales">
+              <option value="">Automático (último mes con datos)</option>
+              {% for n, nombre in origen.meses %}
+                <option value="{{ n }}" {% if origen.config_meses == n %}selected{% endif %}>Enero a {{ nombre }} ({{ n }})</option>
+              {% endfor %}
+            </select>
+            <span class="or-ayuda">Se incrementan; los siguientes se proyectan con el promedio.</span>
+          </div>
+          <label class="or-check or-campo--ancho">
+            <input type="checkbox" name="recargar" value="1" checked>
+            <span>Recargar el presupuesto al guardar</span>
+          </label>
+        </form>
+        <footer class="or-acciones">
+          <button type="button" class="pt-btn pt-btn--primario" id="btnConfigOrigen">Guardar selección</button>
+        </footer>
+      </section>
     </div>
 
-    <h4 class="origen-sub">Qué datos usar</h4>
-    <form id="formConfigOrigen" class="origen-form" action="{% url 'nomina_origen_config' %}">
-      <label>Año base
-        <select name="anio_base">
-          <option value="">Automático (el más reciente)</option>
-          {% for a in origen.anios %}
-            <option value="{{ a.anio }}" {% if origen.config_anio == a.anio %}selected{% endif %}>{{ a.anio }}</option>
-          {% endfor %}
-        </select>
-        <span class="ayuda">El auxilio de educación toma siempre el año anterior al base.</span>
-      </label>
-      <label>Meses con datos reales
-        <select name="meses_reales">
-          <option value="">Automático (último mes con datos)</option>
-          {% for n, nombre in origen.meses %}
-            <option value="{{ n }}" {% if origen.config_meses == n %}selected{% endif %}>Enero a {{ nombre }} ({{ n }})</option>
-          {% endfor %}
-        </select>
-        <span class="ayuda">Esos meses se incrementan; los siguientes se proyectan con el promedio.</span>
-      </label>
-      <label class="check">
-        <input type="checkbox" name="recargar" value="1" checked>
-        Recargar el presupuesto al guardar
-      </label>
-    </form>
-    <div class="origen-acciones">
-      <button type="button" class="pt-btn pt-btn--primario" id="btnConfigOrigen">Guardar selección</button>
+    <div class="pt-seccion__cuerpo or-nota">
+      ⚠️ Recargar reemplaza las filas de los conceptos base (sueldos, comisiones, horas extra…), incluidas las editadas a mano.
+      Los ajustes manuales de los conceptos calculados y las distribuciones por persona se conservan.
     </div>
-    <p class="dep" style="margin-top:10px">⚠️ Recargar reemplaza las filas de los conceptos base (sueldos, comisiones, horas extra…), incluidas las editadas a mano. Los ajustes manuales de los conceptos calculados se conservan.</p>
-  </div>
+  </details>
 
   <div class="pt-panel dash-seccion">
     <h3>Parámetros del presupuesto</h3>
-    <p>Al guardarlos se recalculan todas las filas calculadas de todos los conceptos. Las filas manuales no se tocan.</p>
+    <p>Se escriben en porcentaje: <strong>12</strong> son 12 %. Al guardarlos se recalculan todos los conceptos calculados.</p>
+    {% if avisos_parametros %}
+      <p class="dash-aviso">⚠️ Revise estos valores, están fuera de lo habitual: <strong>{{ avisos_parametros|join:" · " }}</strong></p>
+    {% endif %}
     <div class="dash-grid">
       <div class="dash-campo"><label for="incrementoSalarial">Incremento salarial (%)</label>
         <input type="number" id="incrementoSalarial" name="incrementoSalarial" min="0" step="0.01" value="{{ parametros.incremento_salarial|default_if_none:''|cut:',' }}"></div>
@@ -242,12 +321,14 @@
       </select>
     </div>
     <div class="dash-alta">
-      <input type="text" id="nuevoNomcosto" placeholder="Nombre del costo">
+      <input type="text" id="nuevoNomcosto" placeholder="Nombre del costo (NOMCOSTO)">
+      <input type="text" id="nuevaCuenta" placeholder="Cuenta" inputmode="numeric" style="min-width:130px;width:130px">
       <button type="button" class="pt-btn pt-btn--primario"
               data-alta="insertar_nomcosto" data-campo="nomcosto"
-              data-entrada="nuevoNomcosto" data-lista="listaNomcosto">Agregar NOMCOSTO</button>
+              data-entrada="nuevoNomcosto" data-lista="listaNomcosto"
+              data-extra="nuevaCuenta:cuenta">Agregar NOMCOSTO</button>
       <select id="listaNomcosto">
-        {% for nombre in nombres_costos %}<option value="{{ nombre }}">{{ nombre }}</option>
+        {% for nombre, cuenta in nombres_costos %}<option value="{{ nombre }}">{{ nombre }} · {{ cuenta|default:"sin cuenta" }}</option>
         {% empty %}<option disabled>No hay NOMCOSTOS registrados</option>{% endfor %}
       </select>
     </div>
@@ -277,13 +358,20 @@
           const datos = new FormData();
           datos.append('action', boton.dataset.alta);
           datos.append(boton.dataset.campo, valor);
+          const extra = boton.dataset.extra ? boton.dataset.extra.split(':') : null;
+          const entradaExtra = extra ? document.getElementById(extra[0]) : null;
+          if (entradaExtra) {
+            if (!entradaExtra.value.trim()) { PT.toast('Escribe la cuenta del NOMCOSTO ⚠️', 'warning'); return; }
+            datos.append(extra[1], entradaExtra.value.trim());
+          }
 
           try {
             const r = await enviar(datos);
             PT.toast(r.msg, r.status === 'ok' ? 'success' : 'error');
             if (r.status === 'ok') {
-              document.getElementById(boton.dataset.lista).appendChild(new Option(valor, valor));
+              document.getElementById(boton.dataset.lista).appendChild(new Option(r.texto || valor, valor));
               entrada.value = '';
+              if (entradaExtra) entradaExtra.value = '';
             }
           } catch (e) { PT.toast('Error al guardar ❌', 'error'); }
         }));
@@ -323,6 +411,7 @@
             formOrigen.fecha_corte.value.slice(0, 4) !== formOrigen.anio.value) {
           PT.toast('La fecha de corte no es del año indicado ⚠️', 'warning'); return;
         }
+        if (!confirm(`Se reemplazarán los datos de origen del ${formOrigen.anio.value || formOrigen.fecha_corte.value.slice(0, 4)}. ¿Continuar?`)) return;
         if (formOrigen.recargar.checked && !confirm(avisoRecarga)) return;
         enviarForm(btnSubirOrigen, formOrigen);
       });

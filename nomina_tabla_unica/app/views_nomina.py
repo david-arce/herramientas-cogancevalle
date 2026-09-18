@@ -36,6 +36,13 @@ DESTINOS = [
     {'etiqueta': 'AT-4 (propia)', 'centro': 'ALMACEN TULUA', 'area': 'ASISTENCIA TECNICA PROPIA'},
 ]
 
+# Valores habituales de cada porcentaje, para avisar si uno queda muy fuera de rango
+RANGOS_PARAMETROS = {
+    'incremento_salarial': (0, 30), 'incremento_ipc': (0, 30), 'incremento_comisiones': (0, 30),
+    'auxilio_transporte': (0, 30), 'cesantias': (5, 12), 'intereses_cesantias': (8, 15),
+    'prima': (5, 12), 'vacaciones': (2, 8),
+}
+
 CAMPOS_PARAMETROS = {
     'incrementoSalarial': 'incremento_salarial',
     'incrementoIPC': 'incremento_ipc',
@@ -87,15 +94,18 @@ def _listas():
     return {'centros': ordenar(centros), 'areas': ordenar(areas), 'cargos': ordenar(cargos)}
 
 
-def _urls(tipo):
-    return {
+def _urls(tipo, derivado=False, permite_manual=False):
+    urls = {
         'datos': reverse('nomina_datos', args=[tipo]),
-        'guardar': reverse('nomina_guardar', args=[tipo]),
         'cargarBase': reverse('nomina_cargar', args=[tipo]),
-        'borrar': reverse('nomina_borrar', args=[tipo]),
         'inicio': reverse('presupuestoNomina'),
         'consolidado': reverse('nomina_tabla', args=[TODOS]),
     }
+    if not derivado or permite_manual:
+        urls['guardar'] = reverse('nomina_guardar', args=[tipo])
+    if not derivado:      # los calculados no se vacían: se recalculan
+        urls['borrar'] = reverse('nomina_borrar', args=[tipo])
+    return urls
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -108,6 +118,12 @@ def presupuestoNomina(request):
 
     if request.method == 'POST' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
         accion = request.POST.get('action')
+
+        if accion == 'foco_sin_comision':
+            n = nomina.guardar_foco_sin_comision(request.POST.getlist('cedulas'),
+                                                 request.user.get_username())
+            return JsonResponse({'status': 'ok', 'msg': f'{n} persona(s) se calculan como sin comisión '
+                                                        '· bonificación foco recalculada ✅'})
 
         altas = {'insertar_concepto': ('nombrecar', 'cargo'), 'insertar_nomcosto': ('nomcosto', 'costo')}
         if accion in altas:
@@ -158,10 +174,19 @@ def presupuestoNomina(request):
         {'nombre': grupo, 'conceptos': [r for r in resumen if r['grupo'] == grupo]}
         for grupo in nomina.GRUPOS
     ]
+    marcados = set(nomina.FocoSinComision.objects.values_list('cedula', flat=True))
+    foco = [{'cedula': cedula, 'nombre': nombre, 'marcado': cedula in marcados}
+            for cedula, nombre in nomina.personas_que_comisionan()]
+    avisos = [f'{nomina.ETIQUETAS_PARAMETRO[campo]}: {getattr(params, campo):g}'
+              for campo, (bajo, alto) in RANGOS_PARAMETROS.items()
+              if getattr(params, campo, None) and not bajo <= getattr(params, campo) <= alto]
     config = origen.ConfiguracionNomina.actual()
     anio_base = origen.anio_base()
     return render(request, 'presupuesto_nomina/dashboard_nomina.html', {
         'parametros': params,
+        'avisos_parametros': avisos,
+        'foco_personas': foco,
+        'foco_marcados': len(marcados),
         'origen': {
             'anios': origen.resumen_anios(),
             'anio_base': anio_base,
@@ -229,11 +254,22 @@ def nomina_origen_subir(request):
         partes.append(f"{r['omitidas']} filas vacías omitidas")
     if r['ignoradas']:
         partes.append('columnas no reconocidas: ' + ', '.join(r['ignoradas'][:8]))
+    if not r['con_columna_cuenta']:
+        partes.append('el archivo no trae columna CUENTA')
+    if r['cuentas_completadas']:
+        partes.append(f"{r['cuentas_completadas']} filas sin cuenta la tomaron de su NOMCOSTO")
+    if r['sin_cuenta']:
+        partes.append(f"⚠️ {r['sin_cuenta']} filas quedaron sin cuenta (su NOMCOSTO no tiene ninguna)")
 
     recargados = None
     if request.POST.get('recargar') == '1':
         recargados = nomina.recargar_bases()
         partes.append('presupuesto recargado y recalculado')
+    else:
+        # sin recargar valores, el presupuesto igual toma las cuentas nuevas
+        n = nomina.asignar_cuentas()
+        if n:
+            partes.append(f'{n} filas del presupuesto con cuenta actualizada')
     return JsonResponse({'status': 'ok', 'msg': ' · '.join(partes),
                          'resultado': r, 'recargados': recargados})
 
@@ -308,10 +344,8 @@ def _json(request):
 
 
 def _mensaje_distribucion(r, accion):
-    msg = f"{accion} para {r['personas']} persona(s) · {r['filas']} filas repartidas · todos los conceptos recalculados ✅"
-    if r['descartadas']:
-        msg += f" · {r['descartadas']} ajustes manuales de conceptos calculados descartados"
-    return msg
+    return (f"{accion} para {r['personas']} persona(s) · {r['filas']} filas repartidas "
+            '· todos los conceptos recalculados ✅')
 
 
 @login_required
@@ -391,10 +425,14 @@ def nomina_tabla(request, tipo):
         'slug': c.slug,
         'etiqueta': c.etiqueta,
         'derivado': c.derivado,
-        'soloLectura': False,
+        # los calculados son de solo lectura, salvo los que admiten filas a mano
+        'soloLectura': c.derivado and not c.permite_manual,
+        'soloAgregar': c.derivado and c.permite_manual,
         'conCedula': c.con_cedula,
         'conPegar': c.con_pegar,
         'tituloBase': c.titulo_base,
+        # concepto que se pone solo al crear una fila en esta pantalla
+        'conceptoNuevo': (c.carga or {}).get('concepto') or c.etiqueta.upper(),
         'parametros': [{'etiqueta': nomina.ETIQUETAS_PARAMETRO[p], 'valor': getattr(params, p)}
                        for p in c.parametros],
         'depende': _nombres(c.depende),
@@ -406,7 +444,7 @@ def nomina_tabla(request, tipo):
                                         if s == c.slug or s in nomina.afectados_por(c.slug))}
             for d in nomina.afectados_por(c.slug)
         ],
-        'urls': _urls(c.slug),
+        'urls': _urls(c.slug, c.derivado, c.permite_manual),
     }
     return render(request, 'presupuesto_nomina/tabla_concepto.html', {
         'config': config,
@@ -448,12 +486,16 @@ def nomina_guardar(request, tipo):
 
     try:
         resumen, recalculados = nomina.guardar(tipo, filas, request.user.get_username())
+    except ValueError as exc:
+        return _error(str(exc))
     except Exception as exc:                      # noqa: BLE001
         return _error(f'No se pudo guardar: {exc}', 500)
 
     mensaje = (f"Guardado ✅ ({resumen.get('creadas', 0)} nuevas, "
                f"{resumen.get('actualizadas', 0)} actualizadas, "
                f"{resumen.get('eliminadas', 0)} eliminadas)")
+    if resumen.get('calculadas'):
+        mensaje += f" · {resumen['calculadas']} filas calculadas sin cambios"
     return _respuesta_cambio(tipo, mensaje, recalculados, resumen=resumen)
 
 
@@ -465,7 +507,7 @@ def nomina_cargar(request, tipo):
         creadas, recalculados = nomina.cargar_base(tipo)
     except Exception as exc:                      # noqa: BLE001
         return _error(f'No se pudo cargar: {exc}', 500)
-    origen = 'recalculadas' if c.derivado else 'cargadas desde Conceptos'
+    origen = 'calculadas' if c.derivado else 'cargadas desde Conceptos'
     return _respuesta_cambio(tipo, f'{creadas} filas {origen} ✅', recalculados)
 
 
@@ -474,7 +516,7 @@ def nomina_cargar(request, tipo):
 def nomina_borrar(request, tipo):
     c = _concepto_o_404(tipo)
     eliminadas, recalculados = nomina.borrar(tipo)
-    mensaje = ('Ajustes manuales descartados y concepto recalculado ✅' if c.derivado
+    mensaje = (f'Concepto recalculado: {eliminadas} filas ✅' if c.derivado
                else f'{eliminadas} filas eliminadas ✅')
     return _respuesta_cambio(tipo, mensaje, recalculados)
 

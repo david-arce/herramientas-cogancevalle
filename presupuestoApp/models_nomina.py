@@ -35,6 +35,9 @@ class PresupuestoNomina(models.Model):
     area = models.CharField(max_length=150, blank=True, default='')
     cargo = models.CharField(max_length=150, blank=True, default='')
     concepto = models.CharField(max_length=80, blank=True, default='')
+    # Cuenta contable. Sale de ConceptosNomina según el área (NOMCOSTO) y el
+    # concepto; se asigna sola al crear la fila o al cambiarle el área.
+    cuenta = models.CharField(max_length=30, blank=True, default='')
 
     # Antes: "salario_base" en sueldos/aprendiz y "base" en transporte/kyrovet.
     base = models.BigIntegerField(default=0)
@@ -68,6 +71,9 @@ class PresupuestoNomina(models.Model):
     # persona (DistribucionNomina). Permiten deshacer o cambiar el reparto.
     centro_origen = models.CharField(max_length=150, blank=True, default='')
     area_origen = models.CharField(max_length=150, blank=True, default='')
+    # Conceptos calculados (slugs) que NO deben tener en cuenta esta fila.
+    # Vacío = la fila actualiza todo lo que depende de su concepto.
+    excluir_de = models.JSONField(default=list, blank=True)
 
     creado = models.DateTimeField(auto_now_add=True)
     actualizado = models.DateTimeField(auto_now=True)
@@ -127,6 +133,8 @@ class ConceptosNomina(models.Model):
     nombrecar = models.CharField(max_length=150, blank=True, default='')
     cedula = models.BigIntegerField(null=True, blank=True)
     nombre = models.CharField(max_length=150, blank=True, default='')
+    # FECHAINGRE del Excel (llega como número de serie de Excel: 44167 = 31/12/2020)
+    fecha_ingreso = models.DateField('fecha de ingreso', null=True, blank=True)
     arlporc = models.FloatField(null=True, blank=True)
     concepto_f = models.BigIntegerField(default=0)
 
@@ -207,3 +215,19 @@ class DistribucionNomina(models.Model):
 
     def __str__(self):
         return f'{self.cedula} → {self.centro} / {self.area}: {self.porcentaje}%'
+
+
+class FocoSinComision(models.Model):
+    """Personas que comisionan pero cuya bonificación foco NO se calcula con
+    el promedio de comisiones, sino como la de quienes no comisionan."""
+    cedula = models.CharField(max_length=20, unique=True)
+    nombre = models.CharField(max_length=150, blank=True, default='')
+    actualizado = models.DateTimeField(auto_now=True)
+    actualizado_por = models.CharField(max_length=150, blank=True, default='')
+
+    class Meta:
+        db_table = 'foco_sin_comision'
+        ordering = ['nombre', 'cedula']
+
+    def __str__(self):
+        return f'{self.cedula} {self.nombre}'

@@ -285,6 +285,11 @@
       this.filtros = {};
       this.textoBusqueda = '';
       this.sinGuardar = false;
+      // Selección de celdas tipo Excel: índices sobre `visibles` y `columnas`
+      this.cursor = null;          // {f, c}
+      this.ancla = null;           // esquina fija del rango
+      this.relleno = null;         // arrastre del cuadrito de relleno
+      this._foco = false;
 
       this.raiz = typeof this.cfg.montaje === 'string'
         ? document.querySelector(this.cfg.montaje) : this.cfg.montaje;
@@ -441,7 +446,7 @@
 
       const posicion = new Map(this.filas.map((f, i) => [f, i]));
       const partes = [];
-      this.visibles.forEach(fila => {
+      this.visibles.forEach((fila, iv) => {
         const idx = posicion.get(fila);
         const clases = [];
         if (this.seleccion.has(fila)) clases.push('pt-fila--marcada');
@@ -466,10 +471,10 @@
           partes.push('</div></td>');
         }
 
-        this.columnas.forEach(col => {
+        this.columnas.forEach((col, ic) => {
           const editable = this.cfg.editable && col.editable !== false;
           const clase = [col.tipo === 'numero' ? 'pt-num' : '', editable ? 'pt-editable' : ''].filter(Boolean).join(' ');
-          partes.push(`<td class="${clase}" data-campo="${col.campo}">${this._celda(fila, col)}</td>`);
+          partes.push(`<td class="${clase}" data-campo="${col.campo}" data-fila="${iv}" data-col="${ic}">${this._celda(fila, col)}</td>`);
         });
 
         partes.push('</tr>');
@@ -478,6 +483,7 @@
       this.tbody.innerHTML = partes.join('') ||
         `<tr><td class="pt-vacio" colspan="${this._columnasVisibles().length}">Sin registros para mostrar</td></tr>`;
 
+      this._pintarSeleccionCeldas();
       this._pintarTotales();
       const manuales = this.filas.filter(f => f.origen === 'manual').length;
       this.contador.textContent =
@@ -561,7 +567,314 @@
 
       this.tbody.addEventListener('dblclick', (e) => {
         const td = e.target.closest('td.pt-editable');
-        if (td) this.editar(td);
+        if (td && !e.target.classList.contains('pt-arrastre')) this.editar(td);
+      });
+
+      this._conectarCeldas();
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    //  Selección de celdas tipo Excel
+    //  Flechas para moverse, Shift para extender, Ctrl+C/V/X, Supr para
+    //  borrar, escribir para editar y cuadrito de relleno para arrastrar.
+    // ══════════════════════════════════════════════════════════════════
+
+    _rango() {
+      if (!this.cursor) return null;
+      const a = this.ancla || this.cursor;
+      return {
+        f0: Math.min(a.f, this.cursor.f), f1: Math.max(a.f, this.cursor.f),
+        c0: Math.min(a.c, this.cursor.c), c1: Math.max(a.c, this.cursor.c),
+      };
+    }
+
+    _td(f, c) { return this.tbody.querySelector(`td[data-fila="${f}"][data-col="${c}"]`); }
+
+    _pintarSeleccionCeldas() {
+      this.tbody.querySelectorAll('td[data-col]').forEach(td => {
+        td.classList.remove('pt-celda--cursor', 'pt-celda--rango', 'pt-celda--relleno');
+        const handle = td.querySelector('.pt-arrastre');
+        if (handle) handle.remove();
+      });
+      const r = this._rango();
+      if (!r) return;
+      if (this.cursor.f >= this.visibles.length) { this.cursor.f = this.visibles.length - 1; }
+      for (let f = r.f0; f <= r.f1; f++) {
+        for (let c = r.c0; c <= r.c1; c++) {
+          const td = this._td(f, c);
+          if (td) td.classList.add('pt-celda--rango');
+        }
+      }
+      const activa = this._td(this.cursor.f, this.cursor.c);
+      if (activa) activa.classList.add('pt-celda--cursor');
+      if (this.relleno) {
+        const p = this.relleno.previo;
+        if (p) {
+          for (let f = p.f0; f <= p.f1; f++) {
+            for (let c = p.c0; c <= p.c1; c++) {
+              const td = this._td(f, c);
+              if (td) td.classList.add('pt-celda--relleno');
+            }
+          }
+        }
+      }
+      // cuadrito de relleno en la esquina inferior derecha
+      if (this.cfg.editable) {
+        const esquina = this._td(r.f1, r.c1);
+        if (esquina && !esquina.querySelector('.pt-entrada')) {
+          const punto = document.createElement('span');
+          punto.className = 'pt-arrastre';
+          punto.title = 'Arrastre para copiar · doble clic para llenar hacia abajo';
+          esquina.appendChild(punto);
+        }
+      }
+    }
+
+    irACelda(f, c, { extender = false, desplazar = true } = {}) {
+      if (!this.visibles.length || !this.columnas.length) return;
+      f = Math.max(0, Math.min(f, this.visibles.length - 1));
+      c = Math.max(0, Math.min(c, this.columnas.length - 1));
+      this.cursor = { f, c };
+      if (!extender || !this.ancla) this.ancla = extender ? (this.ancla || { f, c }) : { f, c };
+      this._pintarSeleccionCeldas();
+      const td = this._td(f, c);
+      if (td && desplazar && td.scrollIntoView) td.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+
+    _valorCelda(fila, col) {
+      const v = fila[col.campo];
+      return col.tipo === 'numero' ? String(aNumero(v)) : String(v ?? '');
+    }
+
+    /** El rango como texto TSV (lo entiende Excel). */
+    textoDelRango() {
+      const r = this._rango();
+      if (!r) return '';
+      const lineas = [];
+      for (let f = r.f0; f <= r.f1; f++) {
+        const fila = this.visibles[f];
+        const celdas = [];
+        for (let c = r.c0; c <= r.c1; c++) celdas.push(this._valorCelda(fila, this.columnas[c]));
+        lineas.push(celdas.join('\t'));
+      }
+      return lineas.join('\n');
+    }
+
+    _escribirCelda(fila, col, texto) {
+      if (!this.cfg.editable || col.editable === false) return false;
+      if (col.tipo === 'numero') {
+        this.setValor(fila, col.campo, aNumero(texto));
+      } else {
+        let valor = String(texto ?? '').trim();
+        if (col.tipo === 'select' && col.opciones && valor) {
+          const igual = col.opciones.find(o => normalizar(o) === normalizar(valor));
+          valor = igual || valor;
+        }
+        this.setValor(fila, col.campo, valor);
+      }
+      return true;
+    }
+
+    /** Pega un TSV (de Excel o de la misma tabla) desde la celda activa. */
+    pegarTexto(texto) {
+      if (!this.cursor || !this.cfg.editable) return 0;
+      const matriz = String(texto).replace(/\r/g, '').replace(/\n$/, '')
+        .split('\n').map(l => l.split('\t'));
+      if (!matriz.length) return 0;
+      const { f, c } = this.cursor;
+      let escritas = 0, agregadas = 0;
+      matriz.forEach((linea, df) => {
+        let fila = this.visibles[f + df];
+        if (!fila) {                       // más líneas que filas: se agregan al final
+          fila = this.agregarFila(this._baseFilaNueva());
+          agregadas++;
+        }
+        linea.forEach((valor, dc) => {
+          const col = this.columnas[c + dc];
+          if (col && this._escribirCelda(fila, col, valor)) escritas++;
+        });
+      });
+      this.pintar();
+      if (agregadas) {
+        this.irACelda(this.visibles.indexOf(this.visibles[this.visibles.length - 1]), c);
+        toast(`${escritas} celdas pegadas · ${agregadas} fila(s) nueva(s) ✅`);
+      } else {
+        this.cursor = { f, c };
+        this.ancla = { f: Math.min(f + matriz.length - 1, this.visibles.length - 1),
+                       c: Math.min(c + matriz[0].length - 1, this.columnas.length - 1) };
+        const fin = this.ancla; this.ancla = { f, c }; this.cursor = fin;
+        this._pintarSeleccionCeldas();
+        toast(`${escritas} celdas pegadas ✅`);
+      }
+      return escritas;
+    }
+
+    borrarRango() {
+      const r = this._rango();
+      if (!r || !this.cfg.editable) return 0;
+      let n = 0;
+      for (let f = r.f0; f <= r.f1; f++) {
+        for (let c = r.c0; c <= r.c1; c++) {
+          const col = this.columnas[c];
+          if (this._escribirCelda(this.visibles[f], col, col.tipo === 'numero' ? 0 : '')) n++;
+        }
+      }
+      this.pintar();
+      return n;
+    }
+
+    /** Copia los valores del rango sobre el área arrastrada (como Excel). */
+    rellenar(destino) {
+      const r = this._rango();
+      if (!r || !destino || !this.cfg.editable) return 0;
+      const altoOrigen = r.f1 - r.f0 + 1;
+      const anchoOrigen = r.c1 - r.c0 + 1;
+      let n = 0;
+      for (let f = destino.f0; f <= destino.f1; f++) {
+        for (let c = destino.c0; c <= destino.c1; c++) {
+          if (f >= r.f0 && f <= r.f1 && c >= r.c0 && c <= r.c1) continue;
+          const origen = this.visibles[r.f0 + ((f - r.f0) % altoOrigen + altoOrigen) % altoOrigen];
+          const colOrigen = this.columnas[r.c0 + ((c - r.c0) % anchoOrigen + anchoOrigen) % anchoOrigen];
+          const col = this.columnas[c];
+          if (col.tipo !== colOrigen.tipo) continue;
+          if (this._escribirCelda(this.visibles[f], col, this._valorCelda(origen, colOrigen))) n++;
+        }
+      }
+      this.cursor = { f: destino.f1, c: destino.c1 };
+      this.ancla = { f: Math.min(r.f0, destino.f0), c: Math.min(r.c0, destino.c0) };
+      this.pintar();
+      return n;
+    }
+
+    _conectarCeldas() {
+      const coords = (el) => {
+        const td = el.closest ? el.closest('td[data-col]') : null;
+        return td ? { f: Number(td.dataset.fila), c: Number(td.dataset.col) } : null;
+      };
+
+      document.addEventListener('mousedown', (e) => {
+        this._foco = this.raiz.contains(e.target);
+      }, true);
+
+      this.tbody.addEventListener('mousedown', (e) => {
+        if (e.target.closest('button, input, select, .pt-entrada')) return;
+        if (e.target.classList.contains('pt-arrastre')) {
+          e.preventDefault();
+          this.relleno = { previo: null };
+          return;
+        }
+        const p = coords(e.target);
+        if (!p) return;
+        this.irACelda(p.f, p.c, { extender: e.shiftKey });
+        this._arrastrando = !e.shiftKey;
+      });
+
+      this.tbody.addEventListener('mouseover', (e) => {
+        const p = coords(e.target);
+        if (!p) return;
+        if (this.relleno) {
+          const r = this._rango();
+          // el relleno se extiende en una sola dirección
+          const vertical = p.f < r.f0 || p.f > r.f1 || (p.c >= r.c0 && p.c <= r.c1);
+          this.relleno.previo = vertical
+            ? { f0: Math.min(r.f0, p.f), f1: Math.max(r.f1, p.f), c0: r.c0, c1: r.c1 }
+            : { f0: r.f0, f1: r.f1, c0: Math.min(r.c0, p.c), c1: Math.max(r.c1, p.c) };
+          this._pintarSeleccionCeldas();
+        } else if (this._arrastrando && (e.buttons & 1)) {
+          this.irACelda(p.f, p.c, { extender: true, desplazar: false });
+        }
+      });
+
+      document.addEventListener('mouseup', () => {
+        if (this.relleno) {
+          const destino = this.relleno.previo;
+          this.relleno = null;
+          if (destino) {
+            const n = this.rellenar(destino);
+            if (n) toast(`${n} celdas rellenadas ✅`);
+          } else {
+            this._pintarSeleccionCeldas();
+          }
+        }
+        this._arrastrando = false;
+      });
+
+      this.tbody.addEventListener('dblclick', (e) => {
+        if (!e.target.classList.contains('pt-arrastre')) return;
+        const r = this._rango();
+        if (r) {
+          const n = this.rellenar({ f0: r.f0, f1: this.visibles.length - 1, c0: r.c0, c1: r.c1 });
+          if (n) toast(`${n} celdas rellenadas hasta el final ✅`);
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (!this._foco || !this.cursor) return;
+        if (e.target.closest('.pt-entrada, input, select, textarea')) return;
+        const mover = (df, dc) => {
+          e.preventDefault();
+          this.irACelda(this.cursor.f + df, this.cursor.c + dc, { extender: e.shiftKey });
+        };
+        switch (e.key) {
+          case 'ArrowUp': return mover(-1, 0);
+          case 'ArrowDown': return mover(1, 0);
+          case 'ArrowLeft': return mover(0, -1);
+          case 'ArrowRight': return mover(0, 1);
+          case 'Home': return mover(0, -this.columnas.length);
+          case 'End': return mover(0, this.columnas.length);
+          case 'PageUp': return mover(-15, 0);
+          case 'PageDown': return mover(15, 0);
+          case 'Tab': return mover(0, e.shiftKey ? -1 : 1);
+          case 'Enter': case 'F2': {
+            e.preventDefault();
+            const td = this._td(this.cursor.f, this.cursor.c);
+            if (td && td.classList.contains('pt-editable')) this.editar(td);
+            return;
+          }
+          case 'Escape':
+            this.ancla = this.cursor; this._pintarSeleccionCeldas(); return;
+          case 'Delete': case 'Backspace': {
+            e.preventDefault();
+            const n = this.borrarRango();
+            if (n) toast(`${n} celdas borradas`);
+            return;
+          }
+          default: break;
+        }
+        // escribir directamente reemplaza el contenido, como en Excel
+        if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
+          const td = this._td(this.cursor.f, this.cursor.c);
+          if (td && td.classList.contains('pt-editable')) {
+            this.editar(td, { inicial: e.key });
+            e.preventDefault();
+          }
+        }
+      });
+
+      const enFoco = () => this._foco && this.cursor &&
+        !document.activeElement?.closest?.('.pt-entrada, input, select, textarea');
+
+      document.addEventListener('copy', (e) => {
+        if (!enFoco()) return;
+        const texto = this.textoDelRango();
+        if (!texto) return;
+        e.preventDefault();
+        e.clipboardData.setData('text/plain', texto);
+      });
+      document.addEventListener('cut', (e) => {
+        if (!enFoco() || !this.cfg.editable) return;
+        const texto = this.textoDelRango();
+        if (!texto) return;
+        e.preventDefault();
+        e.clipboardData.setData('text/plain', texto);
+        this.borrarRango();
+      });
+      document.addEventListener('paste', (e) => {
+        if (!enFoco() || !this.cfg.editable) return;
+        const texto = (e.clipboardData || global.clipboardData).getData('text');
+        if (!texto) return;
+        e.preventDefault();
+        this.pegarTexto(texto);
       });
     }
 
@@ -571,8 +884,12 @@
     }
 
     // ------------------------------------------------------------- edición
-    editar(td) {
+    editar(td, { inicial = null } = {}) {
       if (td.querySelector('.pt-entrada')) return;
+      if (td.dataset.fila !== undefined) {
+        this.cursor = { f: Number(td.dataset.fila), c: Number(td.dataset.col) };
+        this.ancla = { ...this.cursor };
+      }
       const campo = td.dataset.campo;
       const col = this.columnas.find(c => c.campo === campo);
       const fila = this._filaDe(td);
@@ -584,17 +901,30 @@
         entrada.innerHTML = '<option value=""></option>' +
           col.opciones.map(o => `<option value="${escapar(o)}">${escapar(o)}</option>`).join('');
         entrada.value = valorOriginal ?? '';
+        if (inicial !== null) {   // al escribir una letra se busca la opción
+          const op = col.opciones.find(o => normalizar(o).startsWith(normalizar(inicial)));
+          if (op) entrada.value = op;
+        }
       } else {
         entrada = document.createElement('input');
-        entrada.type = col.tipo === 'numero' ? 'number' : 'text';
+        entrada.type = 'text';          // sin las flechitas de <input type="number">
+        if (col.tipo === 'numero') {
+          entrada.inputMode = 'decimal';
+          entrada.classList.add('pt-entrada--num');
+        }
         entrada.value = col.tipo === 'numero' ? aNumero(valorOriginal) : (valorOriginal ?? '');
+        if (inicial !== null) entrada.value = inicial;   // escribir reemplaza, como en Excel
       }
       entrada.className = 'pt-entrada';
 
       td.textContent = '';
       td.appendChild(entrada);
+      this._pintarSeleccionCeldas();
       entrada.focus();
-      if (entrada.select) entrada.select();
+      if (entrada.select && inicial === null) entrada.select();
+      if (inicial !== null && entrada.setSelectionRange) {
+        try { entrada.setSelectionRange(entrada.value.length, entrada.value.length); } catch (e) { /* number input */ }
+      }
 
       const posFila = [...this.tbody.rows].indexOf(td.parentElement);
 
@@ -610,14 +940,34 @@
 
       entrada.addEventListener('blur', () => cerrar(true));
       entrada.addEventListener('keydown', (e) => {
-        const saltar = (dFila, dCol) => {
+        /* Guarda y mueve el cursor. `seguirEditando` solo para Tab, que en
+           Excel encadena la edición; con Enter se sale del modo edición. */
+        const saltar = (dFila, dCol, seguirEditando = false) => {
           e.preventDefault();
+          const destino = this.cursor
+            ? { f: this.cursor.f + dFila, c: this.cursor.c + dCol }
+            : null;
           cerrar(true);
-          this._enfocarCelda(posFila + dFila, campo, dCol);
+          if (!destino) { this._enfocarCelda(posFila + dFila, campo, dCol); return; }
+          this.irACelda(destino.f, destino.c);
+          if (!seguirEditando) return;
+          const td = this._td(this.cursor.f, this.cursor.c);
+          if (td && td.classList.contains('pt-editable')) this.editar(td);
         };
-        if (e.key === 'Enter') saltar(1, 0);
-        else if (e.key === 'Escape') { e.preventDefault(); cerrar(false); }
-        else if (e.key === 'Tab') saltar(0, e.shiftKey ? -1 : 1);
+        /* Como en Excel: las flechas cambian de celda salvo que se esté
+           moviendo el cursor dentro de un texto que ya existía. */
+        const enBorde = (haciaIzquierda) => {
+          if (entrada.tagName !== 'INPUT') return true;
+          if (inicial !== null) return true;               // valor recién escrito
+          const pos = entrada.selectionStart;
+          if (pos === null || pos === undefined) return true;
+          return haciaIzquierda ? pos === 0 : pos === entrada.value.length;
+        };
+        if (e.key === 'Enter') saltar(e.shiftKey ? -1 : 1, 0);
+        else if (e.key === 'Escape') { e.preventDefault(); cerrar(false); this._pintarSeleccionCeldas(); }
+        else if (e.key === 'Tab') saltar(0, e.shiftKey ? -1 : 1, true);
+        else if (e.key === 'ArrowLeft' && enBorde(true)) saltar(0, -1);
+        else if (e.key === 'ArrowRight' && enBorde(false)) saltar(0, 1);
         else if (['ArrowUp', 'ArrowDown'].includes(e.key) && entrada.tagName === 'INPUT') {
           saltar(e.key === 'ArrowUp' ? -1 : 1, 0);
         }
@@ -637,15 +987,21 @@
       let destino = campo;
       if (dCol) {
         const i = editables.findIndex(c => c.campo === campo) + dCol;
-        if (i < 0 || i >= editables.length) return;
+        if (i < 0 || i >= editables.length) { this._pintarSeleccionCeldas(); return; }
         destino = editables[i].campo;
       }
       const tr = this.tbody.rows[posFila];
-      if (!tr) return;
+      if (!tr) { this._pintarSeleccionCeldas(); return; }
       const td = tr.querySelector(`td[data-campo="${destino}"]`);
       if (td && td.classList.contains('pt-editable')) {
+        if (td.dataset.fila !== undefined) {
+          this.cursor = { f: Number(td.dataset.fila), c: Number(td.dataset.col) };
+          this.ancla = { ...this.cursor };
+        }
         if (td.scrollIntoView) td.scrollIntoView({ block: 'nearest', inline: 'nearest' });
         this.editar(td);
+      } else {
+        this._pintarSeleccionCeldas();
       }
     }
 
@@ -679,15 +1035,61 @@
       return this.aplicarASeleccionadas(fila => { fila._recalcular = true; }, { avisar: true });
     }
 
+    /** Valores que hereda una fila nueva (p. ej. el concepto de la pantalla). */
+    _baseFilaNueva() {
+      const base = Object.assign({}, this.cfg.valoresNuevos || {});
+      if (this.columnas.some(c => c.campo === 'concepto') && !base.concepto) {
+        // el concepto más usado en la tabla; si no hay filas, el de la configuración
+        const cuenta = new Map();
+        this.filas.forEach(f => {
+          const v = String(f.concepto || '').trim();
+          if (v) cuenta.set(v, (cuenta.get(v) || 0) + 1);
+        });
+        const comun = [...cuenta.entries()].sort((a, b) => b[1] - a[1])[0];
+        base.concepto = comun ? comun[0] : (this.cfg.conceptoNuevo || '');
+      }
+      return base;
+    }
+
     agregarFila(base = {}) {
       const fila = {};
       this.columnas.forEach(c => { fila[c.campo] = c.tipo === 'numero' ? 0 : ''; });
-      Object.assign(fila, TablaPresupuesto.filaManual(base));
+      Object.assign(fila, TablaPresupuesto.filaManual(Object.assign(this._baseFilaNueva(), base)));
       this.filas.push(fila);
       this._refrescarOpcionesFiltro();
+      this.filaActiva = fila;
       this.pintar();
+
+      // si algún filtro la esconde, se limpian para que se vea
+      if (!this.visibles.includes(fila)) {
+        this.limpiarFiltros();
+        toast('Se limpiaron los filtros para mostrar la fila nueva', 'warning');
+      }
       this.marcarCambios();
+      this._irAFila(fila);
       return fila;
+    }
+
+    limpiarFiltros() {
+      Object.values(this.filtros).forEach(ms => { ms.valores.clear(); ms.actualizarTexto(); ms.pintarOpciones(); });
+      const buscador = this.raiz.querySelector('.pt-buscador input');
+      if (buscador) buscador.value = '';
+      this.textoBusqueda = '';
+      this.pintar();
+    }
+
+    /** Lleva el scroll a una fila, la resalta y deja el cursor en su primera celda editable. */
+    _irAFila(fila) {
+      const f = this.visibles.indexOf(fila);
+      if (f < 0) return;
+      const primera = this.columnas.findIndex(c => this.cfg.editable && c.editable !== false);
+      this.irACelda(f, primera < 0 ? 0 : primera);
+      const tr = this.tbody.querySelector(`td[data-fila="${f}"]`)?.parentElement;
+      if (tr) {
+        tr.classList.add('pt-destello');
+        if (tr.scrollIntoView) tr.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        setTimeout(() => tr.classList.remove('pt-destello'), 2000);
+      }
     }
 
     duplicar(fila) {
@@ -699,11 +1101,7 @@
       this.filaActiva = copia;
       this.pintar();
       this.marcarCambios();
-      const tr = this.tbody.querySelector(`tr[data-indice="${this.filas.indexOf(copia)}"]`);
-      if (tr) {
-        tr.classList.add('pt-destello');
-        if (tr.scrollIntoView) tr.scrollIntoView({ block: 'nearest' });
-      }
+      this._irAFila(copia);
       toast('Fila duplicada 📑');
     }
 

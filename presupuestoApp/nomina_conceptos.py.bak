@@ -28,7 +28,7 @@ CAMPOS_TEXTO = ('centro_tra', 'nombre_cen', 'codcosto', 'nomcosto', 'tipocpto', 
 CAMPOS_CODIGO = ('centro_tra', 'codcosto', 'cuenta', 'cargo', 'concepto', 'tipocpto')
 COLUMNAS_PLANTILLA = ['CENTRO_TRA', 'NOMBRE_CEN', 'CODCOSTO', 'NOMCOSTO', 'TIPOCPTO', 'CUENTA',
                       'CONCEPTO', 'NOMBRE_CON', 'CARGO', 'NOMBRECAR', 'CEDULA', 'NOMBRE',
-                      'FECHA_INGRESO', 'ARLPORC', 'CONCEPTO_F', *[m.upper() for m in MESES], 'TOTAL']
+                      'ARLPORC', 'CONCEPTO_F', *[m.upper() for m in MESES], 'TOTAL']
 
 # Encabezado normalizado del Excel → campo del modelo
 ALIAS = {
@@ -41,9 +41,6 @@ ALIAS = {
     'NOMBRE_CENTRO': 'nombre_cen', 'NOMBRE_COSTO': 'nomcosto', 'NOMBRE_CONCEPTO': 'nombre_con',
     'NOMBRE_CARGO': 'nombrecar', 'ARL': 'arlporc', 'ARL_PORC': 'arlporc',
     'VALOR_FIJO': 'concepto_f', 'DOCUMENTO': 'cedula', 'IDENTIFICACION': 'cedula',
-    # fecha de ingreso (en el Excel viene como FECHAINGRE)
-    'FECHAINGRE': 'fecha_ingreso', 'FECHA_INGRE': 'fecha_ingreso', 'FECHA_INGRESO': 'fecha_ingreso',
-    'FECHA_DE_INGRESO': 'fecha_ingreso', 'INGRESO': 'fecha_ingreso', 'FEC_INGRESO': 'fecha_ingreso',
     # columnas opcionales de año / fecha
     'ANIO': '_anio', 'ANO': '_anio', 'YEAR': '_anio', 'PERIODO': '_anio', 'VIGENCIA': '_anio',
     'FECHA': '_fecha', 'FECHA_CORTE': '_fecha',
@@ -107,7 +104,6 @@ def resumen_anios():
     filas = (ConceptosNomina.objects.values('anio')
              .annotate(filas=Count('id'), personas=Count('cedula', distinct=True),
                        sin_cuenta=Count('id', filter=Q(cuenta='') & ~Q(nomcosto='')),
-                       con_ingreso=Count('id', filter=~Q(fecha_ingreso=None)),
                        nomcostos=Count('nomcosto', distinct=True, filter=~Q(nomcosto='')),
                        total=Sum('total'), corte=Max('fecha_corte'), cargado=Max('cargado'))
              .order_by('-anio'))
@@ -206,24 +202,6 @@ def _fecha(valor):
         return valor
     fecha = pd.to_datetime(str(valor), dayfirst=True, errors='coerce')
     return None if pd.isna(fecha) else fecha.date()
-
-
-EXCEL_CERO = dt.date(1899, 12, 30)     # día 0 del calendario de Excel
-
-
-def _fecha_excel(valor):
-    """Fecha que puede venir como número de serie de Excel (44167 → 31/12/2020)."""
-    if _es_vacio(valor):
-        return None
-    if isinstance(valor, (int, float)) and not isinstance(valor, bool):
-        dias = int(round(float(valor)))
-        if not 1 <= dias <= 80000:        # fuera del rango razonable de fechas
-            return None
-        return EXCEL_CERO + dt.timedelta(days=dias)
-    texto = _texto(valor)
-    if re.fullmatch(r'\d{4,6}', texto):   # el mismo número, pero escrito como texto
-        return _fecha_excel(int(texto))
-    return _fecha(valor)
 
 
 def _anio_de(valor):
@@ -360,7 +338,6 @@ def importar(archivo, anio, fecha_corte=None, reemplazar=True, usuario='', hoja=
         arl = fila.get('arlporc')
         registro = ConceptosNomina(
             anio=anio_fila, fecha_corte=corte, cedula=cedula,
-            fecha_ingreso=_fecha_excel(fila.get('fecha_ingreso')),
             arlporc=None if _es_vacio(arl) else _numero(arl),
             concepto_f=_entero(fila.get('concepto_f')),
             archivo=nombre_archivo, cargado_por=usuario,

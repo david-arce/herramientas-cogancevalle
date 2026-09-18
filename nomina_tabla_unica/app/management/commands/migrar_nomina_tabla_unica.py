@@ -3,7 +3,6 @@ Copia los datos de las 34 tablas antiguas de nómina a `presupuesto_nomina`.
 
     python manage.py migrar_nomina_tabla_unica                 # desde las tablas definitivas
     python manage.py migrar_nomina_tabla_unica --desde auxiliar
-    python manage.py migrar_nomina_tabla_unica --copiar-derivados
     python manage.py migrar_nomina_tabla_unica --simular
 
 Lee las tablas por nombre con SQL directo, así funciona aunque los modelos
@@ -13,9 +12,8 @@ Qué hace:
   - Conceptos base (sueldos, comisiones, ...): se copian como filas MANUALES,
     con sus valores exactos. No tienen histórico, así que el sistema no los
     recalcula hasta que se use "Cargar desde Conceptos" en cada uno.
-  - Conceptos derivados (cesantías, prima, seguridad social, ...): por defecto
-    NO se copian: se regeneran con el motor a partir de los base.
-    Con --copiar-derivados se copian como manuales (valores exactos).
+  - Conceptos derivados (cesantías, prima, seguridad social, ...): no se copian,
+    los calcula el motor a partir de los conceptos base.
 """
 from collections import Counter
 
@@ -65,13 +63,16 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--desde', choices=['principal', 'auxiliar'], default='principal',
                             help='Tablas de origen (por defecto las definitivas).')
-        parser.add_argument('--copiar-derivados', action='store_true',
-                            help='Copia también cesantías, prima, seguridad social, ... como manuales.')
+        parser.add_argument('--copiar-derivados', action='store_true',   # en desuso
+                            help='(en desuso) los conceptos calculados se rehacen siempre.')
         parser.add_argument('--simular', action='store_true', help='Solo muestra lo que haría.')
 
     def handle(self, *args, **opciones):
         indice = 0 if opciones['desde'] == 'principal' else 1
-        copiar_derivados = opciones['copiar_derivados']
+        if opciones['copiar_derivados']:
+            self.stdout.write(self.style.WARNING(
+                '  --copiar-derivados ya no tiene efecto: los conceptos calculados '
+                '(cesantías, prima, seguridad social…) se recalculan siempre.'))
 
         if PresupuestoNomina.objects.exists() and not opciones['simular']:
             raise CommandError('presupuesto_nomina ya tiene datos. Vacíala antes de migrar '
@@ -80,14 +81,13 @@ class Command(BaseCommand):
         nuevas, conteo = [], Counter()
         for slug, tablas in TABLAS.items():
             concepto = nomina.CONCEPTOS[slug]
-            if concepto.derivado and not copiar_derivados:
-                continue
+            if concepto.derivado:
+                continue     # los conceptos calculados se rehacen con el motor
             leido = leer_tabla(tablas[indice])
             if leido is None:
                 self.stdout.write(self.style.WARNING(f'  {tablas[indice]}: no existe, se omite'))
                 continue
             columnas, filas = leido
-            vistas = Counter()
             for fila in filas:
                 obj = PresupuestoNomina(
                     tipo=slug, origen=nomina.MANUAL,
@@ -101,12 +101,6 @@ class Command(BaseCommand):
                     actualizado_por='migración',
                 )
                 nomina.fijar_meses(obj, {m: nomina.numero(fila.get(m)) for m in MESES})
-                if concepto.derivado:
-                    # misma clave que usa el motor, para que no las duplique
-                    clave = (f'{obj.centro}|{obj.area}|{obj.concepto}' if slug == 'seguridad_social'
-                             else nomina.clave_persona(obj))
-                    vistas[clave] += 1
-                    obj.clave = clave if vistas[clave] == 1 else f'{clave}#{vistas[clave]}'
                 nuevas.append(obj)
             conteo[slug] = len(filas)
             self.stdout.write(f'  {tablas[indice]}: {len(filas)} filas → {slug}')
