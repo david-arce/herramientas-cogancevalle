@@ -12,7 +12,7 @@ import json
 
 import pandas as pd
 from django.contrib.auth.decorators import login_required
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
@@ -114,6 +114,9 @@ def _urls(tipo, derivado=False, permite_manual=False):
 
 @login_required
 def presupuestoNomina(request):
+    usuarios_permitidos = ['admin', 'PQUINTERO']
+    if request.user.username not in usuarios_permitidos:
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     params, _ = ParametrosPresupuestos.objects.get_or_create(id=1)
 
     if request.method == 'POST' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
