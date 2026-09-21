@@ -264,7 +264,7 @@ def nomina_origen_subir(request):
     recargados = None
     if request.POST.get('recargar') == '1':
         recargados = nomina.recargar_bases()
-        partes.append('presupuesto recargado y recalculado')
+        partes.append(f"presupuesto recargado ({recargados.get('_manuales', 0)} filas manuales conservadas)")
     else:
         # sin recargar valores, el presupuesto igual toma las cuentas nuevas
         n = nomina.asignar_cuentas()
@@ -305,10 +305,19 @@ def nomina_origen_borrar(request):
 @require_POST
 def nomina_recargar_bases(request):
     conteo = nomina.recargar_bases()
+    repetidos = conteo.pop('_repetidos', 0)
+    manuales = conteo.pop('_manuales', 0)
+    bloqueadas = conteo.pop('_bloqueadas', 0)
     total = sum(conteo.values())
-    return JsonResponse({'status': 'ok', 'conteo': conteo,
-                         'msg': f'{total} filas cargadas desde Conceptos {origen.anio_base()} '
-                                'y todo el presupuesto recalculado ✅'})
+    msg = (f'{total} filas cargadas desde Conceptos {origen.anio_base()} '
+           'y todo el presupuesto recalculado ✅')
+    if manuales:
+        msg += f' · {manuales} filas propias conservadas'
+    if bloqueadas:
+        msg += f' · {bloqueadas} persona(s) conservan su fila editada'
+    if repetidos:
+        msg += f' · {repetidos} repetidas omitidas (la misma persona en otra sede)'
+    return JsonResponse({'status': 'ok', 'conteo': conteo, 'msg': msg})
 
 
 @login_required
@@ -504,11 +513,18 @@ def nomina_guardar(request, tipo):
 def nomina_cargar(request, tipo):
     c = _concepto_o_404(tipo)
     try:
-        creadas, recalculados = nomina.cargar_base(tipo)
+        creadas, recalculados, repetidos, conservadas, bloqueadas = nomina.cargar_base(tipo)
     except Exception as exc:                      # noqa: BLE001
         return _error(f'No se pudo cargar: {exc}', 500)
     origen = 'calculadas' if c.derivado else 'cargadas desde Conceptos'
-    return _respuesta_cambio(tipo, f'{creadas} filas {origen} ✅', recalculados)
+    mensaje = f'{creadas} filas {origen} ✅'
+    if conservadas:
+        mensaje += f' · {conservadas} filas propias conservadas'
+    if bloqueadas:
+        mensaje += f' · {bloqueadas} persona(s) conservan su fila editada en lugar de la calculada'
+    if repetidos:
+        mensaje += f' · {repetidos} repetidas omitidas (la misma persona en otra sede)'
+    return _respuesta_cambio(tipo, mensaje, recalculados)
 
 
 @login_required

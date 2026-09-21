@@ -1974,4 +1974,4 @@ class OrdenCuenta(models.Model):
 # ── Nómina: tabla única ────────────────────────────────────────────────
 from .models_nomina import PresupuestoNomina  # noqa: E402,F401
 # TEMPORAL: borrar esta línea (y el archivo) después de migrar los datos
-from .models_nomina_legado import *  # noqa: E402,F401,F403
+# from .models_nomina_legado import *  # noqa: E402,F401,F403

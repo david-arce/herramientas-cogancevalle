@@ -99,7 +99,8 @@
       accionesExtra: abrirDialogo ? [{
         rol: 'actualiza',
         icono: '🔗',
-        mostrar: (fila) => fila.origen === 'manual',
+        // manuales + filas agregadas en pantalla aunque se les haya restablecido el cálculo
+        mostrar: (fila) => fila.origen === 'manual' || PT.TablaPresupuesto.esPropia(fila),
         clase: (fila) => (fila.excluir_de || []).length ? 'pt-accion--aviso' : '',
         titulo: (fila) => (fila.excluir_de || []).length
           ? 'No actualiza: ' + fila.excluir_de.map(nombreDe).join(', ')
@@ -109,7 +110,7 @@
         if (rol !== 'actualiza') return;
         const excluir = await abrirDialogo({
           titulo: 'Qué actualiza esta fila',
-          sub: [fila.nombre, fila.cedula, fila.area].filter(Boolean).join(' · ') || 'Fila manual',
+          sub: [fila.nombre, fila.cedula, fila.area].filter(Boolean).join(' · ') || 'Fila agregada',
           boton: 'Aplicar',
           excluir: fila.excluir_de || []
         });

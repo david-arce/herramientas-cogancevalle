@@ -239,8 +239,9 @@
     </div>
 
     <div class="pt-seccion__cuerpo or-nota">
-      ⚠️ Recargar reemplaza las filas de los conceptos base (sueldos, comisiones, horas extra…), incluidas las editadas a mano.
-      Los ajustes manuales de los conceptos calculados y las distribuciones por persona se conservan.
+      ⚠️ Recargar reemplaza las filas calculadas que vienen de Conceptos (sueldos, comisiones, horas extra…).
+      Se conservan las filas manuales y las agregadas en pantalla, aunque se les haya restablecido el cálculo.
+      Si una fila de Conceptos se editó, la editada reemplaza a la nueva.
     </div>
   </details>
 
@@ -258,9 +259,11 @@
     </summary>
     <div class="pt-seccion__cuerpo">
       <p class="or-ayuda" style="margin-bottom:10px">
-        Marque a las personas que comisionan pero cuya bonificación foco se calcula como la de quienes
-        no comisionan (base mensual proporcional a los días trabajados desde su fecha de ingreso).
-        Las demás se calculan con el promedio de sus comisiones reales.
+        La bonificación foco se paga en enero y en julio. Marque a las personas que comisionan pero cuya
+        bonificación se calcula como la de quienes no comisionan: reciben solo la de enero (base mensual
+        proporcional a los días trabajados desde su fecha de ingreso) y no reciben la de julio.
+        Las demás reciben en enero el promedio de sus comisiones reales y en julio la mitad del
+        promedio de sus comisiones presupuestadas de enero a junio.
       </p>
       {% if foco_personas %}
         <div class="foco-acciones">
@@ -435,7 +438,10 @@
         } catch (e) { PT.toast('Error al guardar ❌', 'error'); }
       }));
 
-      const avisoRecarga = '¿Recargar los conceptos base? Se reemplazan sus filas, incluidas las editadas a mano.';
+      const avisoRecarga = 'Se volverán a cargar los conceptos base desde los datos de origen. '
+                        + 'Se reemplazan las filas que vienen de Conceptos; las manuales y las '
+                        + 'agregadas en pantalla se conservan.';
+      const confirmarRecarga = () => PT.confirmarEscrito(avisoRecarga, 'CARGAR');
 
       const enviarForm = (boton, form, extra) => PT.conSpinner(boton, async () => {
         const datos = new FormData(form);
@@ -457,14 +463,14 @@
           PT.toast('La fecha de corte no es del año indicado ⚠️', 'warning'); return;
         }
         if (!confirm(`Se reemplazarán los datos de origen del ${formOrigen.anio.value || formOrigen.fecha_corte.value.slice(0, 4)}. ¿Continuar?`)) return;
-        if (formOrigen.recargar.checked && !confirm(avisoRecarga)) return;
+        if (formOrigen.recargar.checked && !confirmarRecarga()) return;
         enviarForm(btnSubirOrigen, formOrigen);
       });
 
       const formConfig = document.getElementById('formConfigOrigen');
       const btnConfig = document.getElementById('btnConfigOrigen');
       btnConfig.addEventListener('click', () => {
-        if (formConfig.recargar.checked && !confirm(avisoRecarga)) return;
+        if (formConfig.recargar.checked && !confirmarRecarga()) return;
         enviarForm(btnConfig, formConfig);
       });
 
@@ -509,7 +515,7 @@
 
       const btnRecargarBases = document.getElementById('btnRecargarBases');
       btnRecargarBases.addEventListener('click', () => {
-        if (!confirm(avisoRecarga)) return;
+        if (!confirmarRecarga()) return;
         PT.conSpinner(btnRecargarBases, async () => {
           try {
             const r = await PT.pedir(btnRecargarBases.dataset.url, { method: 'POST' });

@@ -30,15 +30,16 @@
   {% elif not config.soloLectura %}
     <span class="pt-espaciador"></span>
     <button type="button" class="pt-btn" data-rol="cargar-base" data-descarta
-            data-confirmar="Se reemplazarán TODAS las filas de {{ config.etiqueta }} (incluidas las manuales) con lo que hay en Conceptos. ¿Continuar?">📂 Cargar desde Conceptos</button>
+        data-palabra="CARGAR"
+        data-confirmar-escrito="Se volverán a cargar las filas de {{ config.etiqueta }} que vienen de Conceptos. Las filas manuales y las agregadas en pantalla se conservan.">📂 Cargar desde Conceptos</button>
     <button type="button" class="pt-btn" data-rol="agregar">➕ Agregar fila</button>
     {% if config.conPegar %}<button type="button" class="pt-btn" data-rol="pegar">📋 Pegar fila copiada</button>{% endif %}
     <button type="button" class="pt-btn pt-btn--primario" data-rol="recalcular"
             title="Las filas seleccionadas vuelven a ser calculadas por el sistema">⚙️ Restablecer cálculo en seleccionadas</button>
     <span class="pt-pendiente" data-rol="estado" hidden>● Cambios sin guardar</span>
     <button type="button" class="pt-btn pt-btn--exito" data-rol="guardar" title="Ctrl + S">💾 Guardar</button>
-    <button type="button" class="pt-btn pt-btn--peligro" data-rol="borrar" data-descarta
-            data-confirmar="Se borrarán todas las filas de {{ config.etiqueta }} y se recalcularán los conceptos que dependen de él. Esta acción no se puede deshacer. ¿Continuar?">Borrar</button>
+    {% comment %} <button type="button" class="pt-btn pt-btn--peligro" data-rol="borrar" data-descarta
+            data-confirmar="Se borrarán todas las filas de {{ config.etiqueta }} y se recalcularán los conceptos que dependen de él. Esta acción no se puede deshacer. ¿Continuar?">Borrar</button> {% endcomment %}
   {% endif %}
 {% endblock %}
 

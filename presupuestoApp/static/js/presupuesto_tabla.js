@@ -118,6 +118,20 @@
     }
   }
 
+    /**
+   * Pide que el usuario escriba una palabra para confirmar una acción delicada.
+   * Devuelve true solo si la escribe bien (sin importar mayúsculas).
+   */
+  function confirmarEscrito(mensaje, palabra = 'CONFIRMAR') {
+    palabra = String(palabra).trim().toUpperCase();
+    const escrito = prompt(`${mensaje}\n\nEscriba ${palabra} para confirmar:`);
+    if (escrito === null) return false;                       // canceló
+    if (escrito.trim().toUpperCase() !== palabra) {
+      toast('No se realizó la acción: el texto de confirmación no coincide ⚠️', 'warning', 5000);
+      return false;
+    }
+    return true;
+  }
   // ------------------------------------------------- multiselect con buscador
   class MultiSelect {
     constructor({ etiqueta, alCambiar }) {
@@ -524,12 +538,13 @@
     _conectarEventos() {
       this.thead.addEventListener('click', (e) => {
         const th = e.target.closest('th[data-campo]');
-        if (th) {
-          this.orden = this.orden.campo === th.dataset.campo
-            ? { campo: th.dataset.campo, dir: -this.orden.dir }
-            : { campo: th.dataset.campo, dir: 1 };
-          this.pintar();
-        }
+        if (!th) return;
+        const campo = th.dataset.campo;
+        // 1er clic ▲ · 2º clic ▼ · 3er clic: vuelve al orden por nombre y centro
+        if (this.orden.campo !== campo) this.orden = { campo, dir: 1 };
+        else if (this.orden.dir === 1) this.orden = { campo, dir: -1 };
+        else this.orden = { campo: null, dir: 1 };
+        this.pintar();
       });
 
       this.thead.addEventListener('change', (e) => {
@@ -1017,6 +1032,17 @@
                            { id: null, origen: 'manual', clave: '' });
     }
 
+    /**
+     * Fila agregada en pantalla (no salió de cargar Conceptos).
+     * Sin clave, o con '#m' si se distribuyó. Sigue siendo propia aunque se le
+     * haya restablecido el cálculo: es el mismo criterio que usa el servidor
+     * (_viene_de_conceptos) para conservarla al recargar.
+     */
+    static esPropia(fila) {
+      const clave = String(fila.clave ?? '');
+      return !clave || clave.includes('#m');
+    }
+
     /** Aplica una función a las filas marcadas. Devuelve cuántas cambiaron. */
     aplicarASeleccionadas(fn, { avisar = true } = {}) {
       const filas = this.filasSeleccionadas();
@@ -1223,6 +1249,7 @@
     const confirmar = (b) => {
       if (tabla.sinGuardar && b.dataset.descarta !== undefined &&
           !confirm('Hay cambios sin guardar que se perderán. ¿Continuar?')) return false;
+      if (b.dataset.confirmarEscrito) return confirmarEscrito(b.dataset.confirmarEscrito, b.dataset.palabra);
       return !b.dataset.confirmar || confirm(b.dataset.confirmar);
     };
     const al = (rol, fn) => {
@@ -1302,7 +1329,7 @@
 
   global.PT = {
     MESES, Columnas, TablaPresupuesto, MultiSelect,
-    aNumero, formatearNumero, toast, pedir, enviarJSON, conSpinner,
+    aNumero, formatearNumero, toast, pedir, enviarJSON, conSpinner, confirmarEscrito,
     conectarBarra, listaJSON, leerDistribucion, recordarSecciones
   };
 })(window);
