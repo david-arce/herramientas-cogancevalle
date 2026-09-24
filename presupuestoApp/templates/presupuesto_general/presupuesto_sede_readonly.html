@@ -31,6 +31,12 @@
     td.numeric { text-align: right; font-variant-numeric: tabular-nums; }
     #gridBody tr:nth-child(even) { background: #fafafa; }
     #gridBody tr:hover { background: #eef2fb; }
+    table.grid tfoot td {
+        position: sticky; bottom: 0; z-index: 2;
+        background: #e8ecf7; color: var(--color-primario); font-weight: 700;
+        border-top: 2px solid var(--color-primario);
+    }
+    table.grid tfoot td.total-general { background: var(--color-primario); color: #fff; }
     .aviso { font-size: 13px; color: #155724; background: #e9f9ee; border: 1px solid #b7ecc5;
              padding: 8px 12px; border-radius: 6px; margin-bottom: 14px; }
 </style>
@@ -52,6 +58,7 @@
     <table class="grid" id="gridTable">
         <thead><tr id="gridHeaderRow"></tr></thead>
         <tbody id="gridBody"></tbody>
+        <tfoot><tr id="gridFooterRow"></tr></tfoot>
     </table>
 </div>
 
@@ -93,7 +100,24 @@ function renderHeader() {
     document.getElementById("gridHeaderRow").innerHTML =
         COLUMNS.map(c => `<th>${escaparHtml(c.label)}</th>`).join("");
 }
+function renderTotales() {
+    const fila = document.getElementById("gridFooterRow");
+    if (!rows.length) { fila.innerHTML = ""; return; }
+    const sumas = {};
+    COLUMNS.forEach(c => { if (c.type === "number") sumas[c.key] = 0; });
+    rows.forEach(r => { for (const k in sumas) sumas[k] += parseFloat(r[k]) || 0; });
+    fila.innerHTML = COLUMNS.map((col, i) => {
+        if (i === 0) return `<td>TOTAL · ${rows.length} fila${rows.length === 1 ? "" : "s"}</td>`;
+        if (col.type === "number") {
+            const clase = col.key === "total" ? "numeric total-general" : "numeric";
+            return `<td class="${clase}">${fmt(sumas[col.key])}</td>`;
+        }
+        return "<td></td>";
+    }).join("");
+}
+
 function render() {
+    renderTotales();
     const tbody = document.getElementById("gridBody");
     if (!rows.length) {
         tbody.innerHTML = `<tr><td colspan="${COLUMNS.length}" style="text-align:center; padding:20px; color:#888;">Todavía no hay un presupuesto aprobado.</td></tr>`;

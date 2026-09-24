@@ -363,7 +363,36 @@ function init(opciones) {
         tbody.innerHTML = "";
         tbody.appendChild(frag);
         syncCheckAllState();
+        programarTotales();
         pintarSeleccion();
+    }
+
+    // Fila de totales al pie. Se recalcula como máximo una vez por cuadro de
+    // animación: operaciones como el IPC repintan cientos de filas seguidas y
+    // no tiene sentido sumar la tabla completa por cada una.
+    let totalesPendientes = false;
+    function programarTotales() {
+        if (totalesPendientes) return;
+        totalesPendientes = true;
+        requestAnimationFrame(() => { totalesPendientes = false; renderTotales(); });
+    }
+    function renderTotales() {
+        const fila = $("gridFooterRow");
+        if (!fila) return;
+        const sumas = {};
+        COLUMNS.forEach(c => { if (c.type === "number") sumas[c.key] = 0; });
+        rows.forEach(r => { for (const k in sumas) sumas[k] += parseFloat(r[k]) || 0; });
+
+        fila.innerHTML = COLUMNS.map((col, ci) => {
+            if (ci === COL_INI) {
+                return `<td class="total-etiqueta">TOTAL · ${rows.length} fila${rows.length === 1 ? "" : "s"}</td>`;
+            }
+            if (col.type === "number") {
+                const clase = col.key === "total" ? "numeric total-general" : "numeric";
+                return `<td class="${clase}">${fmt(sumas[col.key])}</td>`;
+            }
+            return "<td></td>";
+        }).join("");
     }
 
     function renderCell(row, rowIndex, col, colIdx) {
@@ -405,6 +434,7 @@ function init(opciones) {
             if (col.type === "acciones") return;
             td.textContent = col.type === "number" ? fmt(row[col.key]) : (row[col.key] ?? "");
         });
+        programarTotales();
     }
 
     function syncCheckAllState() {

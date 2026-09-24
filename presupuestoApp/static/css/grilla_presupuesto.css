@@ -73,6 +73,15 @@ table.grid thead th {
     border-bottom: 1px solid var(--color-primario);
 }
 table.grid thead th.col-activa { background: #16296b; }
+
+/* Fila de totales: queda fija al pie mientras se hace scroll */
+table.grid tfoot td {
+    position: sticky; bottom: 0; z-index: 3;
+    background: #e8ecf7; color: var(--color-primario); font-weight: 700;
+    border-top: 2px solid var(--color-primario);
+}
+table.grid tfoot td.total-etiqueta { letter-spacing: .3px; }
+table.grid tfoot td.total-general { background: var(--color-primario); color: #fff; }
 td.editable { background: #fdfdfd; cursor: cell; }
 td.locked { background: #eee; color: #777; cursor: cell; }
 td.numeric { text-align: right; font-variant-numeric: tabular-nums; }
