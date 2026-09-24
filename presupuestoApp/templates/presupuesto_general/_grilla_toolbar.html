@@ -1,0 +1,22 @@
+{# Herramientas comunes a la vista del área y a la del aprobador. #}
+<div id="autoSaveStatus" class="saved">
+    <span class="dot"></span>
+    <span id="autoSaveStatusText">Todo guardado</span>
+</div>
+<div class="toolbar-group">
+    <input type="number" id="ipcInput" placeholder="IPC %" step="0.01">
+    <button id="calcularIPCBtn" title="Aplica el IPC a las filas seleccionadas">📈 Calcular IPC</button>
+</div>
+<div class="toolbar-group">
+    <button id="deshacerBtn" title="Deshacer (Ctrl+Z)">↩️ Deshacer</button>
+    <button id="rehacerBtn" title="Rehacer (Ctrl+Y)">↪️ Rehacer</button>
+    <button id="agregarFilaBtn">➕ Agregar fila</button>
+    <button id="exportarExcelBtn">📥 Exportar a Excel</button>
+    <button id="verManualBtn">📘 Ver manual de cuentas</button>
+</div>
+<div class="toolbar-group">
+    <button id="descargarPlantillaBtn">📥 Descargar plantilla</button>
+    <button id="importarPlantillaBtn">📤 Importar plantilla</button>
+    <input type="file" id="importarPlantillaInput" accept=".xlsx" style="display:none">
+    <button id="verAtajosBtn" title="Atajos de teclado y mouse">⌨️ Atajos</button>
+</div>

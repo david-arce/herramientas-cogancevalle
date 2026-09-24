@@ -1,0 +1,149 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="csrf-token" content="{{ csrf_token }}">
+<title>Revisión · Presupuesto {{ sede_label }}</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<link rel="stylesheet" href="{% static 'css/grilla_presupuesto.css' %}">
+</head>
+<body>
+<h2>Presupuesto {{ sede_label }} — revisión</h2>
+<p class="subtitulo">
+    Versiones que envió el área. Puedes ajustarlas aquí mismo y aprobar la que quede en firme.
+</p>
+
+{% if versiones %}
+<div class="estado-version" id="estadoVersion">
+    <span id="estadoTexto"></span>
+    <span id="estadoBadge"></span>
+</div>
+
+<div class="toolbar">
+    <div class="toolbar-group">
+        <label for="versionSelect"><b>Versión:</b></label>
+        <select id="versionSelect">
+            {% for v in versiones %}
+            <option value="{{ v.numero }}"
+                    data-fecha="{{ v.fecha|date:'d/m/Y' }}"
+                    data-aprobada="{% if v.aprobada %}1{% else %}0{% endif %}"
+                    {% if v.numero == version_actual %}selected{% endif %}>
+                v{{ v.numero }} · {{ v.fecha|date:"d/m/Y" }} · {{ v.filas }} filas{% if v.aprobada %} ✅{% endif %}
+            </option>
+            {% endfor %}
+        </select>
+        <button id="aprobarBtn" class="btn-aprobar">✅ Aprobar versión</button>
+        <button id="borrarBtn" class="btn-peligro" title="Elimina esta versión (y su aprobación)">🗑️ Borrar versión</button>
+        <a href="{% url 'presupuesto_aprobado_sede' sede=sede %}" target="_blank" rel="noopener">
+            <button type="button">👁️ Ver aprobado</button>
+        </a>
+    </div>
+    {% include "presupuesto_general/_grilla_toolbar.html" %}
+</div>
+
+{% include "presupuesto_general/_grilla.html" %}
+{% include "presupuesto_general/_grilla_modales.html" %}
+
+<div id="modalAprobar" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">✅ Aprobar presupuesto</div>
+        <p>Se aprobará la versión <b id="versionAAprobar"></b> de {{ sede_label }} con los valores que ves en pantalla. Si ya había una versión aprobada, esta la reemplaza.</p>
+        <div class="modal-footer">
+            <button class="btn-cancel" data-modal="modalAprobar">Cancelar</button>
+            <button class="btn-confirm-aprobar" id="confirmAprobarBtn">Aprobar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalBorrarVersion" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">⚠️ Confirmar eliminación</div>
+        <p>¿Eliminar la versión <b id="versionABorrar"></b> del presupuesto? Esta acción no se puede deshacer.</p>
+        <div class="modal-footer">
+            <button class="btn-cancel" data-modal="modalBorrarVersion">Cancelar</button>
+            <button class="btn-confirm" id="confirmBorrarBtn">Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'js/grilla_presupuesto.js' %}"></script>
+<script>
+// Las URLs por versión se arman a partir de una plantilla con un número
+// ficticio, para no escribir rutas a mano.
+const URL_OBTENER = "{% url 'obtener_presupuesto_sede' sede=sede %}";
+const URL_GUARDAR = v => "{% url 'guardar_version_sede' sede=sede version=999999 %}".replace("999999", v);
+const URL_APROBAR = v => "{% url 'aprobar_version_sede' sede=sede version=999999 %}".replace("999999", v);
+const URL_BORRAR  = "{% url 'borrar_presupuesto_sede' sede=sede %}";
+
+const select = document.getElementById("versionSelect");
+const versionActual = () => select.value;
+
+function pintarEstado() {
+    const op = select.selectedOptions[0];
+    document.getElementById("estadoTexto").innerHTML =
+        `Viendo la versión <b>v${op.value}</b>, enviada el ${op.dataset.fecha}.`;
+    document.getElementById("estadoBadge").outerHTML = op.dataset.aprobada === "1"
+        ? '<span class="badge badge-aprobada" id="estadoBadge">Aprobada</span>'
+        : '<span class="badge badge-pendiente" id="estadoBadge">Pendiente de aprobación</span>';
+}
+pintarEstado();
+
+const grilla = GrillaPresupuesto.init({
+    sede: "{{ sede }}",
+    urlObtener: URL_OBTENER + "?version=" + versionActual(),
+    urlGuardar: URL_GUARDAR(versionActual()),
+    urlCuentas: "{% url 'seleccionCuentasContables' %}",
+    nombreExport: "presupuesto_{{ sede }}_v" + versionActual(),
+});
+
+select.addEventListener("change", async () => {
+    pintarEstado();
+    await grilla.cambiarFuente(URL_OBTENER + "?version=" + versionActual(), URL_GUARDAR(versionActual()));
+});
+
+// ── Aprobar ──
+document.getElementById("aprobarBtn").addEventListener("click", () => {
+    document.getElementById("versionAAprobar").textContent = "v" + versionActual();
+    GrillaPresupuesto.abrirModal("modalAprobar");
+});
+document.getElementById("confirmAprobarBtn").addEventListener("click", async () => {
+    GrillaPresupuesto.cerrarModal("modalAprobar");
+    const v = versionActual();
+    try {
+        await grilla.vaciarColaDeGuardado();   // aprobar lo que está en pantalla
+        const resp = await GrillaPresupuesto.apiPost(URL_APROBAR(v), {});
+        GrillaPresupuesto.showToast(resp.msg || resp.message, resp.success ? "success" : "error");
+        if (resp.success) setTimeout(() => window.location.reload(), 1200);
+    } catch (e) {
+        GrillaPresupuesto.showToast("Error al aprobar ❌", "error");
+    }
+});
+
+// ── Borrar versión ──
+document.getElementById("borrarBtn").addEventListener("click", () => {
+    document.getElementById("versionABorrar").textContent = "v" + versionActual();
+    GrillaPresupuesto.abrirModal("modalBorrarVersion");
+});
+document.getElementById("confirmBorrarBtn").addEventListener("click", async () => {
+    GrillaPresupuesto.cerrarModal("modalBorrarVersion");
+    try {
+        const resp = await GrillaPresupuesto.apiPost(URL_BORRAR, { version: versionActual() });
+        GrillaPresupuesto.showToast(resp.message || "Versión eliminada", resp.status === "ok" ? "success" : "error");
+        if (resp.status === "ok") setTimeout(() => window.location.reload(), 1000);
+    } catch (e) {
+        GrillaPresupuesto.showToast("Error al borrar ❌", "error");
+    }
+});
+</script>
+
+{% else %}
+<div class="estado-version">
+    <span class="badge badge-sinenviar">Sin versiones</span>
+    <span>El área todavía no ha subido ningún presupuesto para {{ sede_label }}.</span>
+</div>
+<div class="toast-container" id="toastContainer"></div>
+{% endif %}
+</body>
+</html>

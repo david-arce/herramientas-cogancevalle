@@ -1,0 +1,26 @@
+{# Contenedor de la grilla, overlays de selección y barra de estado. #}
+<div id="gridContainer">
+    <table class="grid" id="gridTable">
+        <thead><tr id="gridHeaderRow"></tr></thead>
+        <tbody id="gridBody"></tbody>
+    </table>
+    {# Los overlays van dentro del contenedor que hace scroll #}
+    <div class="overlay-copia" id="overlayCopia"></div>
+    <div class="overlay-relleno" id="overlayRelleno"></div>
+    <div class="overlay-sel" id="overlaySel">
+        <div class="fill-handle" id="fillHandle"
+             title="Arrastra para rellenar. Doble clic: rellena hasta el final de los datos."></div>
+    </div>
+</div>
+<div class="resize-handle" id="resizeHandle">⬍</div>
+
+<div id="barraEstado">
+    <span id="estadoCelda">—</span>
+    <span id="estadoRecuento"></span>
+    <span id="estadoSuma"></span>
+    <span id="estadoPromedio"></span>
+    <span class="hint">Arrastra el cuadrito azul de la esquina para rellenar · Ctrl+C / Ctrl+V · Ctrl+Z</span>
+</div>
+
+<button class="fab" id="expandBtn">Expandir</button>
+<div class="toast-container" id="toastContainer"></div>

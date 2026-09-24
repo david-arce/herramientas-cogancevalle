@@ -179,6 +179,9 @@ urlpatterns = [
     path('comparativo/comentarios/<str:sede>/', views.obtener_comentarios_comparativo,
          name='obtener_comentarios_comparativo'),
     
+    path('presupuesto/<str:sede>/version/<int:version>/guardar/', views.guardar_version_sede, name='guardar_version_sede'),
+    path('presupuesto/<str:sede>/version/<int:version>/aprobar/', views.aprobar_version_sede, name='aprobar_version_sede'),
+    
     #------------------PRESUPUESTO CONSOLIDADO---------------------------
     path('<str:area>/', views.presupuesto_consolidado, name='presupuesto_consolidado'),
     path('<str:area>/obtener-presupuesto-consolidado/', views.obtener_presupuesto_consolidado, name='obtener_presupuesto_consolidado'),

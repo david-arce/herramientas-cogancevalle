@@ -1,0 +1,76 @@
+{# Modales comunes de la grilla (eliminar fila, importación, manual, atajos). #}
+<div id="modalEliminar" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">⚠️ Confirmar eliminación</div>
+        <p>¿Estás seguro de eliminar esta fila?</p>
+        <div class="modal-footer">
+            <button class="btn-cancel" data-modal="modalEliminar">Cancelar</button>
+            <button class="btn-confirm" id="confirmEliminarBtn">Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalImportErrores" class="modal">
+    <div class="modal-content" style="width:600px; max-width:90%; text-align:left;">
+        <div class="modal-header" style="text-align:center;">⚠️ La plantilla tiene errores — no se importó ningún dato</div>
+        <div style="max-height:320px; overflow:auto; margin-top:10px;">
+            <table class="grid" style="width:100%; font-size:12px;">
+                <thead>
+                    <tr>
+                        <th style="width:60px;">Fila</th>
+                        <th>Nombre asignación</th>
+                        <th>Cuenta Mayor</th>
+                        <th>Motivo</th>
+                    </tr>
+                </thead>
+                <tbody id="importErroresBody"></tbody>
+            </table>
+        </div>
+        <div class="modal-footer" style="justify-content:center;">
+            <button class="btn-cancel" data-modal="modalImportErrores">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalConfirmarImport" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">⚠️ Confirmar importación</div>
+        <p>Esto <strong>borrará todos los datos actuales</strong> de la tabla y los reemplazará por los de la plantilla. ¿Deseas continuar?</p>
+        <div class="modal-footer">
+            <button class="btn-cancel" data-modal="modalConfirmarImport">Cancelar</button>
+            <button class="btn-confirm-upload" id="confirmImportBtn">Importar y reemplazar</button>
+        </div>
+    </div>
+</div>
+
+<div id="manualModal" class="modal manual-modal">
+    <div class="modal-content" style="width:80%; height:80%; margin:5% auto; position:relative;">
+        <span style="position:absolute; top:8px; right:12px; cursor:pointer;" id="cerrarManualBtn">❌</span>
+        <iframe src="/static/manuales/PUC.pdf"></iframe>
+    </div>
+</div>
+
+<div id="modalAtajos" class="modal">
+    <div class="modal-content" style="width:620px; max-width:92%; text-align:left;">
+        <div class="modal-header" style="text-align:center;">⌨️ La tabla funciona como Excel</div>
+        <table class="atajos">
+            <tr><td>Clic y arrastrar</td><td>Selecciona un rango de celdas</td></tr>
+            <tr><td>Arrastrar el cuadrito azul</td><td>Rellena hacia abajo, arriba, izquierda o derecha (copia o continúa la serie)</td></tr>
+            <tr><td>Doble clic en el cuadrito</td><td>Rellena hacia abajo hasta donde llegan los datos</td></tr>
+            <tr><td>Ctrl + arrastrar cuadrito</td><td>Invierte el comportamiento: copia en vez de serie (y viceversa)</td></tr>
+            <tr><td>Shift + clic / Shift + flechas</td><td>Extiende la selección</td></tr>
+            <tr><td>Ctrl + flechas</td><td>Salta al borde de los datos</td></tr>
+            <tr><td>Ctrl + C / Ctrl + X / Ctrl + V</td><td>Copiar, cortar y pegar rangos (también desde y hacia Excel)</td></tr>
+            <tr><td>Ctrl + Z / Ctrl + Y</td><td>Deshacer y rehacer</td></tr>
+            <tr><td>Ctrl + D / Ctrl + R</td><td>Rellenar hacia abajo / hacia la derecha dentro de la selección</td></tr>
+            <tr><td>Ctrl + A</td><td>Seleccionar toda la tabla</td></tr>
+            <tr><td>Escribir, F2 o doble clic</td><td>Edita la celda</td></tr>
+            <tr><td>Alt + ↓</td><td>Abre la lista desplegable de la celda</td></tr>
+            <tr><td>Enter / Tab</td><td>Confirma y se mueve abajo / a la derecha</td></tr>
+            <tr><td>Supr</td><td>Borra el contenido de todo el rango seleccionado</td></tr>
+        </table>
+        <div class="modal-footer" style="justify-content:center;">
+            <button class="btn-cancel" data-modal="modalAtajos">Cerrar</button>
+        </div>
+    </div>
+</div>
