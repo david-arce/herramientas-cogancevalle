@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from .urls_nomina import urlpatterns as urls_nomina
+from . import views_cuentas_contables as vcc
 
 urlpatterns = [
     *urls_nomina,
@@ -100,6 +101,13 @@ urlpatterns = [
     path('ajustes/orden-cuentas/sincronizar/', views.sincronizar_orden_cuentas, name='sincronizar_orden_cuentas'),
     path('ajustes/orden-cuentas/guardar/', views.guardar_orden_cuentas, name='guardar_orden_cuentas'),
     path('ajustes/orden-cuentas/eliminar/', views.eliminar_orden_cuenta, name='eliminar_orden_cuenta'),
+    
+    # ajustes: cuentas contables
+    path('ajustes/cuentas-contables/',            vcc.ajustes_cuentas_contables,  name='ajustes_cuentas_contables'),
+    path('ajustes/cuentas-contables/listar/',     vcc.listar_cuentas_contables,   name='listar_cuentas_contables'),
+    path('ajustes/cuentas-contables/crear/',      vcc.crear_cuenta_contable,      name='crear_cuenta_contable'),
+    path('ajustes/cuentas-contables/actualizar/', vcc.actualizar_cuenta_contable, name='actualizar_cuenta_contable'),
+    path('ajustes/cuentas-contables/eliminar/',   vcc.eliminar_cuenta_contable,   name='eliminar_cuenta_contable'),
     
     # -------------- PRESUPUESTO POR SEDE (genérico, escalable) --------------
     # Para agregar Buga/Cartago/Cali: solo agrega su entrada en SEDE_CONFIG

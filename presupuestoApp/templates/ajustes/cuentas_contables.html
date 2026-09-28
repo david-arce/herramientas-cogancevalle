@@ -1,0 +1,256 @@
+{% extends 'presupuesto_consolidado/dashboard_presupuestos.html' %}
+{% load static %}
+
+{% block css %}
+<style>
+  .cc-wrap { padding: 24px; max-width: 1000px; }
+  .cc-title { display:flex; align-items:center; gap:8px; margin:0 0 4px; font-size:1.4rem; }
+  .cc-sub { color:#6b7280; margin:0 0 20px; font-size:.9rem; }
+
+  .cc-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:16px; margin-bottom:16px; }
+  .cc-form { display:grid; grid-template-columns: 180px 1fr auto; gap:10px; align-items:end; }
+  .cc-form label { display:block; font-size:.8rem; color:#374151; margin-bottom:4px; font-weight:600; }
+  .cc-input { width:100%; box-sizing:border-box; padding:8px 10px; border:1px solid #d1d5db; border-radius:6px; font-size:.9rem; }
+  .cc-input:focus { outline:2px solid #2563eb33; border-color:#2563eb; }
+
+  .cc-btn { border:none; border-radius:6px; padding:8px 14px; cursor:pointer; font-size:.85rem;
+            display:inline-flex; align-items:center; gap:4px; }
+  .cc-btn .material-icons { font-size:18px; }
+  .cc-btn-primary { background:#2563eb; color:#fff; }
+  .cc-btn-primary:hover { background:#1d4ed8; }
+  .cc-btn-ghost { background:transparent; color:#374151; padding:6px; }
+  .cc-btn-ghost:hover { background:#f3f4f6; }
+  .cc-btn-danger { color:#dc2626; }
+  .cc-btn:disabled { opacity:.6; cursor:default; }
+
+  .cc-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; }
+  .cc-toolbar .cc-input { max-width:320px; }
+  .cc-count { color:#6b7280; font-size:.85rem; }
+
+  .cc-table { width:100%; border-collapse:collapse; font-size:.9rem; }
+  .cc-table th { text-align:left; background:#f9fafb; color:#374151; padding:8px 10px;
+                 border-bottom:1px solid #e5e7eb; position:sticky; top:0; }
+  .cc-table td { padding:6px 10px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+  .cc-table tr:hover td { background:#fafafa; }
+  .cc-col-cuenta { width:180px; font-variant-numeric: tabular-nums; }
+  .cc-col-acc { width:96px; text-align:right; white-space:nowrap; }
+  .cc-scroll { max-height:60vh; overflow:auto; }
+  .cc-empty { text-align:center; color:#9ca3af; padding:24px; }
+
+  .cc-toast { position:fixed; right:20px; bottom:20px; padding:10px 16px; border-radius:8px; color:#fff;
+              font-size:.9rem; opacity:0; transform:translateY(10px); transition:all .2s; z-index:9999; }
+  .cc-toast.show { opacity:1; transform:none; }
+  .cc-toast.ok { background:#16a34a; }
+  .cc-toast.err { background:#dc2626; }
+
+  @media (max-width: 640px) {
+    .cc-form { grid-template-columns: 1fr; }
+    .cc-toolbar { flex-direction:column; align-items:stretch; }
+    .cc-toolbar .cc-input { max-width:none; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cc-wrap">
+  <h2 class="cc-title"><span class="material-icons">account_tree</span> Cuentas contables</h2>
+  <p class="cc-sub">Catálogo de cuentas (tabla <code>cuentas_contables</code>).</p>
+
+  <!-- Crear -->
+  <div class="cc-card">
+    <form id="formNueva" class="cc-form" autocomplete="off">
+      <div>
+        <label for="nuevaCuenta">Cuenta</label>
+        <input id="nuevaCuenta" class="cc-input" inputmode="numeric" placeholder="Ej. 541001" required>
+      </div>
+      <div>
+        <label for="nuevoNombre">Nombre</label>
+        <input id="nuevoNombre" class="cc-input" maxlength="255" placeholder="Ej. Honorarios" required>
+      </div>
+      <button type="submit" class="cc-btn cc-btn-primary">
+        <span class="material-icons">add</span> Agregar
+      </button>
+    </form>
+  </div>
+
+  <!-- Listado -->
+  <div class="cc-card">
+    <div class="cc-toolbar">
+      <input id="buscar" class="cc-input" placeholder="Buscar por cuenta o nombre…">
+      <span id="contador" class="cc-count"></span>
+    </div>
+    <div class="cc-scroll">
+      <table class="cc-table">
+        <thead>
+          <tr>
+            <th class="cc-col-cuenta">Cuenta</th>
+            <th>Nombre</th>
+            <th class="cc-col-acc">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="3" class="cc-empty">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="cc-toast"></div>
+
+<script>
+(() => {
+  const URLS = {
+    listar:     "{% url 'listar_cuentas_contables' %}",
+    crear:      "{% url 'crear_cuenta_contable' %}",
+    actualizar: "{% url 'actualizar_cuenta_contable' %}",
+    eliminar:   "{% url 'eliminar_cuenta_contable' %}",
+  };
+
+  const tbody    = document.getElementById('tbody');
+  const buscar   = document.getElementById('buscar');
+  const contador = document.getElementById('contador');
+  const toastEl  = document.getElementById('toast');
+  let cuentas = [];
+  let editando = null;   // cuenta que está en modo edición
+
+  function getCookie(name) {
+    const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return m ? decodeURIComponent(m.pop()) : '';
+  }
+
+  function toast(msg, ok = true) {
+    toastEl.textContent = msg;
+    toastEl.className = 'cc-toast show ' + (ok ? 'ok' : 'err');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => toastEl.classList.remove('show'), 2800);
+  }
+
+  async function post(url, data) {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+      body: JSON.stringify(data),
+    });
+    const json = await r.json().catch(() => ({ success: false, error: 'Respuesta inválida del servidor' }));
+    if (!r.ok || !json.success) throw new Error(json.error || 'Error');
+    return json;
+  }
+
+  function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  async function cargar() {
+    try {
+      const r = await fetch(URLS.listar);
+      const json = await r.json();
+      if (!json.success) throw new Error(json.error || 'Error');
+      cuentas = json.data;
+      render();
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="3" class="cc-empty">No se pudo cargar: ${esc(e.message)}</td></tr>`;
+    }
+  }
+
+  function render() {
+    const q = buscar.value.trim().toLowerCase();
+    const filas = q
+      ? cuentas.filter(c => c.cuenta.includes(q) || c.nom_cuenta.toLowerCase().includes(q))
+      : cuentas;
+
+    contador.textContent = `${filas.length} de ${cuentas.length} cuentas`;
+
+    if (!filas.length) {
+      tbody.innerHTML = `<tr><td colspan="3" class="cc-empty">Sin resultados</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filas.map(c => c.cuenta === editando ? `
+      <tr data-cuenta="${esc(c.cuenta)}">
+        <td class="cc-col-cuenta"><input class="cc-input js-cuenta" inputmode="numeric" value="${esc(c.cuenta)}"></td>
+        <td><input class="cc-input js-nombre" maxlength="255" value="${esc(c.nom_cuenta)}"></td>
+        <td class="cc-col-acc">
+          <button class="cc-btn cc-btn-ghost js-guardar" title="Guardar"><span class="material-icons">check</span></button>
+          <button class="cc-btn cc-btn-ghost js-cancelar" title="Cancelar"><span class="material-icons">close</span></button>
+        </td>
+      </tr>` : `
+      <tr data-cuenta="${esc(c.cuenta)}">
+        <td class="cc-col-cuenta">${esc(c.cuenta)}</td>
+        <td>${esc(c.nom_cuenta)}</td>
+        <td class="cc-col-acc">
+          <button class="cc-btn cc-btn-ghost js-editar" title="Editar"><span class="material-icons">edit</span></button>
+          <button class="cc-btn cc-btn-ghost cc-btn-danger js-eliminar" title="Eliminar"><span class="material-icons">delete</span></button>
+        </td>
+      </tr>`).join('');
+
+    const inputNombre = tbody.querySelector('.js-nombre');
+    if (inputNombre) inputNombre.focus();
+  }
+
+  // ── Crear ──
+  document.getElementById('formNueva').addEventListener('submit', async e => {
+    e.preventDefault();
+    const inCta = document.getElementById('nuevaCuenta');
+    const inNom = document.getElementById('nuevoNombre');
+    const btn = e.target.querySelector('button');
+    btn.disabled = true;
+    try {
+      await post(URLS.crear, { cuenta: inCta.value.trim(), nom_cuenta: inNom.value.trim() });
+      toast('Cuenta creada');
+      inCta.value = ''; inNom.value = ''; inCta.focus();
+      await cargar();
+    } catch (err) { toast(err.message, false); }
+    finally { btn.disabled = false; }
+  });
+
+  // ── Acciones de la tabla ──
+  tbody.addEventListener('click', async e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const tr = btn.closest('tr');
+    const cuenta = tr.dataset.cuenta;
+
+    if (btn.classList.contains('js-editar'))   { editando = cuenta; render(); return; }
+    if (btn.classList.contains('js-cancelar')) { editando = null;   render(); return; }
+
+    if (btn.classList.contains('js-guardar')) {
+      btn.disabled = true;
+      try {
+        await post(URLS.actualizar, {
+          cuenta_original: cuenta,
+          cuenta: tr.querySelector('.js-cuenta').value.trim(),
+          nom_cuenta: tr.querySelector('.js-nombre').value.trim(),
+        });
+        editando = null;
+        toast('Cuenta actualizada');
+        await cargar();
+      } catch (err) { toast(err.message, false); btn.disabled = false; }
+      return;
+    }
+
+    if (btn.classList.contains('js-eliminar')) {
+      const item = cuentas.find(c => c.cuenta === cuenta);
+      if (!confirm(`¿Eliminar la cuenta ${cuenta} — ${item ? item.nom_cuenta : ''}?`)) return;
+      btn.disabled = true;
+      try {
+        await post(URLS.eliminar, { cuenta });
+        toast('Cuenta eliminada');
+        await cargar();
+      } catch (err) { toast(err.message, false); btn.disabled = false; }
+    }
+  });
+
+  // Enter guarda / Escape cancela en modo edición
+  tbody.addEventListener('keydown', e => {
+    if (!editando) return;
+    if (e.key === 'Enter')  { e.preventDefault(); tbody.querySelector('.js-guardar')?.click(); }
+    if (e.key === 'Escape') { editando = null; render(); }
+  });
+
+  buscar.addEventListener('input', render);
+  cargar();
+})();
+</script>
+{% endblock %}

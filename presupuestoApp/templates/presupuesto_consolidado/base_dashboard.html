@@ -157,11 +157,30 @@
         </div>
         {% endwith %}
         {% endwith %}
-        <a href="{% url 'ajustes_orden_cuentas' %}"
-          class="nav-link {% if request.resolver_match.url_name == 'ajustes_orden_cuentas' %}active{% endif %}">
-          <span class="material-icons nav-icon">settings</span>
-          <span class="nav-text">Ajustes · Orden de cuentas</span>
-        </a>
+        {% with ajustes_active="|ajustes_orden_cuentas|ajustes_cuentas_contables|" %}
+        {% with is_open_a="|"|add:request.resolver_match.url_name|add:"|" %}
+        <div class="nav-group {% if is_open_a in ajustes_active %}open{% endif %}" id="grupoAjustes">
+          <button class="nav-group-toggle" aria-expanded="false" aria-controls="ajustesMenu" id="ajustesToggle">
+            <span class="material-icons nav-icon">settings</span>
+            <span class="nav-text">Ajustes</span>
+            <span class="material-icons nav-chevron">expand_more</span>
+          </button>
+
+          <div class="nav-group-menu" id="ajustesMenu" role="menu">
+            <a href="{% url 'ajustes_orden_cuentas' %}" class="nav-link nav-child
+              {% if request.resolver_match.url_name == 'ajustes_orden_cuentas' %}active{% endif %}">
+              <span class="material-icons nav-icon">sort</span>
+              <span class="nav-text">Orden de cuentas</span>
+            </a>
+            <a href="{% url 'ajustes_cuentas_contables' %}" class="nav-link nav-child
+              {% if request.resolver_match.url_name == 'ajustes_cuentas_contables' %}active{% endif %}">
+              <span class="material-icons nav-icon">account_tree</span>
+              <span class="nav-text">Cuentas contables</span>
+            </a>
+          </div>
+        </div>
+        {% endwith %}
+        {% endwith %}
       </nav>
     </aside>
 
