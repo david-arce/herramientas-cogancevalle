@@ -99,7 +99,8 @@ document.getElementById('export-visible').addEventListener('click', async functi
 
     const exportData = [headers];
     let index = 1;
-
+    const hoy = new Date();
+    const fechaEntrega = `${hoy.getFullYear()}/${String(hoy.getMonth() + 1).padStart(2, '0')}/${String(hoy.getDate()).padStart(2, '0')}`;
     updatedData.forEach(row => {
         const rowData = [];
         columnsToExport.forEach((colIndex, i) => {
@@ -130,7 +131,7 @@ document.getElementById('export-visible').addEventListener('click', async functi
         // AUTOMATIZACION va antes de PRECIO_UNITARIO (índice 12 en la tabla)
         rowData.push(valorMultiplo);         // AUTOMATIZACION.C20
         rowData.push(row[12]);               // PRECIO_UNITARIO.N20
-        rowData.push(row[13]);               // FECHAENTREGA.C10
+        rowData.push(fechaEntrega);               // FECHAENTREGA.C10
 
         // Columna DETALLE
         const detalle = row[14] !== undefined && row[14] !== null ? row[14] : '';
