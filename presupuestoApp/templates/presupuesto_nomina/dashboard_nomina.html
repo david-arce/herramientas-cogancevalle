@@ -13,6 +13,12 @@
   <title>Presupuesto Nómina</title>
   <link rel="stylesheet" href="{% static_v 'css/presupuesto_tabla.css' %}">
   <style>
+    .conf-listo { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+                  margin: 0 0 12px; padding: 10px 14px; border-radius: 8px;
+                  background: #fff8e1; border: 1px solid #f3d27a; }
+    .conf-listo--ok { background: #e9f7ef; border-color: #a9dcbf; }
+    .conf-listo__texto { display: flex; flex-direction: column; gap: 2px; }
+    .conf-listo__texto small { color: var(--pt-texto-suave); }
     .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
     .dash-campo { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
     .dash-campo label { font-size: 13px; font-weight: 600; }
@@ -88,6 +94,22 @@
 <body>
 
   <h2>Presupuesto de nómina</h2>
+
+  <section class="conf-listo {% if confirmacion.listo %}conf-listo--ok{% endif %}" aria-live="polite">
+    {% if confirmacion.listo %}
+      <div class="conf-listo__texto">
+        <strong>✅ Presupuesto confirmado como listo</strong>
+        <small>{% if confirmacion.en %}el {{ confirmacion.en|date:"d/m/Y H:i" }}{% endif %}{% if confirmacion.por %} por {{ confirmacion.por }}{% endif %} · ya se puede subir a Cuenta 5 presupuestado desde el dashboard.</small>
+      </div>
+      <button type="button" class="pt-btn" id="btnConfirmarListo" data-listo="0">↩️ Quitar confirmación</button>
+    {% else %}
+      <div class="conf-listo__texto">
+        <strong>El presupuesto de nómina aún no está confirmado</strong>
+        <small>Mientras no lo confirmes, en el dashboard no se puede subir a Cuenta 5 presupuestado.</small>
+      </div>
+      <button type="button" class="pt-btn pt-btn--exito" id="btnConfirmarListo" data-listo="1">✅ Confirmar presupuesto listo</button>
+    {% endif %}
+  </section>
 
   <div class="pt-barra">
     <a class="pt-btn" href="{% url 'nomina_tabla' 'todos' %}">🗂️ Ver todo consolidado</a>
@@ -392,6 +414,28 @@
         body: datos,
         headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': token }
       }).then(r => r.json());
+
+      const botonListo = document.getElementById('btnConfirmarListo');
+      botonListo.addEventListener('click', async () => {
+        const confirmar = botonListo.dataset.listo === '1';
+        const pregunta = confirmar
+          ? '¿Confirmas que el presupuesto de nómina está listo? Después se podrá subir a Cuenta 5 presupuestado.'
+          : '¿Quitar la confirmación? No se podrá subir a Cuenta 5 hasta confirmarlo de nuevo.';
+        if (!window.confirm(pregunta)) return;
+        botonListo.disabled = true;
+        const datos = new FormData();
+        datos.append('action', 'confirmar_listo');
+        datos.append('listo', botonListo.dataset.listo);
+        try {
+          const r = await enviar(datos);
+          PT.toast(r.msg, r.status === 'ok' ? 'success' : 'error');
+          if (r.status === 'ok') setTimeout(() => location.reload(), 700);
+          else botonListo.disabled = false;
+        } catch (e) {
+          PT.toast('No se pudo guardar la confirmación ❌', 'error');
+          botonListo.disabled = false;
+        }
+      });
 
       document.querySelectorAll('.dash-alta input').forEach(input => {
         input.addEventListener('input', () => { input.value = input.value.toUpperCase(); });

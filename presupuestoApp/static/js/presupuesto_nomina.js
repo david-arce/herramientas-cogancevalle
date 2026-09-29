@@ -84,7 +84,8 @@
         cargo: config.conCedula !== false,
         base: config.tituloBase || null,
         opciones: soloLectura ? {} : listas,
-        tipo: config.slug === 'todos'
+        tipo: config.slug === 'todos',
+        codcosto: true
       }),
       editable: !soloLectura,
       seleccionable: !soloLectura || !!config.seleccionable,

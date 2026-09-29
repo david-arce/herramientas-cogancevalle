@@ -322,6 +322,18 @@ def _clave_area(area):
     return _sin_tildes(area)
 
 
+def _mapa_por_area(campo, anio=None):
+    """{NOMCOSTO normalizado: valor de `campo`} (el más frecuente de cada NOMCOSTO).
+    Se leen los datos del año base; si no tiene, los de cualquier año."""
+    qs = ConceptosNomina.objects.exclude(**{campo: ''}).exclude(nomcosto='')
+    if anio is not None and qs.filter(anio=anio).exists():
+        qs = qs.filter(anio=anio)
+    conteo = defaultdict(Counter)
+    for nomcosto, valor, n in qs.values_list('nomcosto', campo).annotate(n=Count('id')):
+        conteo[_clave_area(nomcosto)][texto(valor)] += n
+    return {area: c.most_common(1)[0][0] for area, c in conteo.items()}
+
+
 def mapa_cuentas(anio=None):
     """{NOMCOSTO normalizado: cuenta}
 
@@ -329,13 +341,12 @@ def mapa_cuentas(anio=None):
     Si en los datos un NOMCOSTO aparece con varias cuentas, se toma la más
     frecuente. Se leen los datos del año base; si no tiene, los de cualquier año.
     """
-    qs = ConceptosNomina.objects.exclude(cuenta='').exclude(nomcosto='')
-    if anio is not None and qs.filter(anio=anio).exists():
-        qs = qs.filter(anio=anio)
-    conteo = defaultdict(Counter)
-    for nomcosto, cuenta, n in qs.values_list('nomcosto', 'cuenta').annotate(n=Count('id')):
-        conteo[_clave_area(nomcosto)][cuenta] += n
-    return {area: c.most_common(1)[0][0] for area, c in conteo.items()}
+    return _mapa_por_area('cuenta', anio)
+
+
+def mapa_codcostos(anio=None):
+    """{NOMCOSTO normalizado: CODCOSTO}, con el mismo criterio que mapa_cuentas."""
+    return _mapa_por_area('codcosto', anio)
 
 
 def cuenta_para(mapa, area):
@@ -343,19 +354,23 @@ def cuenta_para(mapa, area):
 
 
 def asignar_cuentas(ctx=None, solo_vacias=False):
-    """Pone a cada fila guardada la cuenta de su área (NOMCOSTO).
-    Las áreas que no están en ConceptosNomina conservan su cuenta."""
+    """Pone a cada fila guardada la cuenta y el CODCOSTO de su área (NOMCOSTO).
+    Las áreas que no están en ConceptosNomina conservan lo que tenían."""
     ctx = ctx or Contexto()
     qs = PresupuestoNomina.objects.exclude(area='')
     if solo_vacias:
-        qs = qs.filter(cuenta='')
+        qs = qs.filter(Q(cuenta='') | Q(codcosto=''))
     cambiadas = []
-    for fila in qs.only('id', 'area', 'cuenta'):
-        cuenta = ctx.cuenta(fila.area)
+    for fila in qs.only('id', 'area', 'cuenta', 'codcosto'):
+        cuenta, codcosto = ctx.cuenta(fila.area), ctx.codcosto(fila.area)
+        cambio = False
         if cuenta and cuenta != fila.cuenta:
-            fila.cuenta = cuenta
+            fila.cuenta, cambio = cuenta, True
+        if codcosto and codcosto != fila.codcosto:
+            fila.codcosto, cambio = codcosto, True
+        if cambio:
             cambiadas.append(fila)
-    PresupuestoNomina.objects.bulk_update(cambiadas, ['cuenta'], batch_size=1000)
+    PresupuestoNomina.objects.bulk_update(cambiadas, ['cuenta', 'codcosto'], batch_size=1000)
     return len(cambiadas)
 
 
@@ -411,6 +426,12 @@ class Contexto:
         if not hasattr(self, '_cuentas'):
             self._cuentas = mapa_cuentas(self.anio)
         return cuenta_para(self._cuentas, area)
+
+    def codcosto(self, area):
+        """CODCOSTO del área (NOMCOSTO)."""
+        if not hasattr(self, '_codcostos'):
+            self._codcostos = mapa_codcostos(self.anio)
+        return cuenta_para(self._codcostos, area)
 
     def olvidar(self, slug):
         self._cache.pop(slug, None)
@@ -563,7 +584,7 @@ def filas_de_conceptos(c, ctx):
     historico = ctx.meses_historico(c)
     ident = ['cedula', 'nombre', 'nombrecar', 'nomcosto', 'nombre_cen']
     consulta = ConceptosNomina.objects.filter(anio=ctx.anio_de(c), **carga['filtro'])
-    campos_extra = [] if carga.get('agrupar') else ['cuenta']   # respaldo si el área no tiene mapa
+    campos_extra = [] if carga.get('agrupar') else ['cuenta', 'codcosto']   # respaldo si el área no tiene mapa
 
     if carga.get('agrupar'):
         # alias con prefijo: anotar con el mismo nombre del campo ("enero")
@@ -589,6 +610,7 @@ def filas_de_conceptos(c, ctx):
             centro_origen=texto(r['nombre_cen']), area_origen=texto(r['nomcosto']),
             cedula=cedula, nombre=texto(r['nombre']),
             cuenta=ctx.cuenta(r['nomcosto']) or texto(r.get('cuenta')),
+            codcosto=ctx.codcosto(r['nomcosto']) or texto(r.get('codcosto')),
             cargo=texto(r['nombrecar']), area=texto(r['nomcosto']), centro=texto(r['nombre_cen']),
             concepto=carga.get('concepto') or texto(r.get('nombre_con')) or c.etiqueta.upper(),
             base=int(round(numero(leer(r, 'concepto_f')))) if carga.get('base') else 0,
@@ -654,6 +676,7 @@ def distribuir_filas(c, filas, reparto_por_cedula, p, usuario='', ctx=None):
                 base=ref.base or 0, historico=dict(ref.historico or {}), factor=parte,
                 excluir_de=list(ref.excluir_de or []),
                 cuenta=ctx.cuenta(area) or (ref.cuenta if _clave_area(area) == _clave_area(ref.area) else ''),
+                codcosto=ctx.codcosto(area) or (ref.codcosto if _clave_area(area) == _clave_area(ref.area) else ''),
                 actualizado_por=usuario or ref.actualizado_por,
             )
             if sistema:
@@ -1173,6 +1196,7 @@ def regenerar(ctx, c):
             continue
         meses = {m: datos.pop(m, 0) for m in MESES}
         datos.setdefault('cuenta', ctx.cuenta(datos.get('area')))
+        datos.setdefault('codcosto', ctx.codcosto(datos.get('area')))
         fila = PresupuestoNomina(tipo=c.slug, origen=SISTEMA, clave=clave, **datos)
         fijar_meses(fila, meses)
         nuevas.append(fila)
@@ -1377,6 +1401,7 @@ def guardar(slug, filas_json, usuario=''):
             # la cuenta la define el área (NOMCOSTO)
             misma_area = not nueva and _clave_area(antes['area']) == _clave_area(fila.area)
             fila.cuenta = ctx.cuenta(fila.area) or (fila.cuenta if misma_area else '')
+            fila.codcosto = ctx.codcosto(fila.area) or (fila.codcosto if misma_area else '')
             if c.derivado:
                 # así bloquea la fila calculada de esa misma persona
                 fila.clave = clave_persona(fila)
@@ -1418,7 +1443,7 @@ def guardar(slug, filas_json, usuario=''):
         # Filas que el usuario quitó de la tabla
         eliminar = [fila.pk for fila in existentes.values()]
 
-        campos = [*CAMPOS_TEXTO, 'cuenta', 'excluir_de', 'base', 'factor', 'historico',
+        campos = [*CAMPOS_TEXTO, 'cuenta', 'codcosto', 'excluir_de', 'base', 'factor', 'historico',
                   *MESES, 'total', 'origen', 'actualizado_por']
         PresupuestoNomina.objects.filter(pk__in=eliminar).delete()
         PresupuestoNomina.objects.bulk_update(actualizar, campos, batch_size=1000)
@@ -1435,7 +1460,7 @@ def guardar(slug, filas_json, usuario=''):
 #  Lectura
 # ══════════════════════════════════════════════════════════════════════
 
-CAMPOS_SALIDA = ('id', 'tipo', *CAMPOS_TEXTO, 'cuenta', 'excluir_de', 'base', 'factor', 'historico',
+CAMPOS_SALIDA = ('id', 'tipo', *CAMPOS_TEXTO, 'cuenta', 'codcosto', 'excluir_de', 'base', 'factor', 'historico',
                  *MESES, 'total', 'origen', 'clave', 'actualizado', 'actualizado_por')
 
 

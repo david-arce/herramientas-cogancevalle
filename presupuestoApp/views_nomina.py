@@ -15,6 +15,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from . import nomina_conceptos as origen
@@ -128,6 +129,18 @@ def presupuestoNomina(request):
             return JsonResponse({'status': 'ok', 'msg': f'{n} persona(s) se calculan como sin comisión '
                                                         '· bonificación foco recalculada ✅'})
 
+        if accion == 'confirmar_listo':
+            # Confirmar (o quitar la confirmación de) que el presupuesto está listo.
+            # Sin confirmar, el dashboard no deja subirlo a Cuenta 5 presupuestado.
+            config = origen.ConfiguracionNomina.actual()
+            config.listo = request.POST.get('listo') == '1'
+            config.listo_por = request.user.get_username() if config.listo else ''
+            config.listo_en = timezone.now() if config.listo else None
+            config.save(update_fields=['listo', 'listo_por', 'listo_en'])
+            msg = ('Presupuesto de nómina confirmado como listo ✅' if config.listo
+                   else 'Se quitó la confirmación: el presupuesto de nómina queda en edición')
+            return JsonResponse({'status': 'ok', 'msg': msg, 'listo': config.listo})
+
         altas = {'insertar_concepto': ('nombrecar', 'cargo'), 'insertar_nomcosto': ('nomcosto', 'costo')}
         if accion in altas:
             campo, etiqueta = altas[accion]
@@ -206,6 +219,11 @@ def presupuestoNomina(request):
         'nombres_costos': [(area, nomina.cuenta_para(cuentas, area)) for area in listas['areas']],
         'grupos': grupos,
         'total_general': _pesos(sum(r['total'] for r in resumen)),
+        'confirmacion': {
+            'listo': config.listo,
+            'por': config.listo_por,
+            'en': timezone.localtime(config.listo_en) if config.listo_en else None,
+        },
     })
 
 

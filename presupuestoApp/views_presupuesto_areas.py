@@ -31,6 +31,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 
 from .models import Cuenta5Presupuestado
+from .models_nomina import ConfiguracionNomina, PresupuestoNominaMes
 from .models_presupuesto import (
     CAMPOS_LINEA, CAMPOS_NUMERICOS, CAMPOS_PRESUPUESTO, MESES, PlazoEdicionArea, PresupuestoArea,
     anio_elaboracion, fecha_mes, filas_verticales,
@@ -651,6 +652,8 @@ EXCEL_EPOCA = datetime.date(1899, 12, 30)
 
 ESTADOS_CUENTA5 = {
     "sin_aprobar": "Sin versión aprobada",
+    "sin_datos": "Sin datos de nómina",
+    "sin_confirmar": "Sin confirmar como listo",
     "pendiente": "Pendiente de subir",
     "desactualizado": "Desactualizado",
     "subido": "Subido a Cuenta 5",
@@ -747,6 +750,7 @@ def estado_cuenta5(area):
         "version_subida": sub["version"],
         "registros_subidos": sub["n"],
         "subido": subido.strftime("%d/%m/%Y %H:%M") if subido else None,
+        "descripcion": f"la versión aprobada v{ap['version']} de {SEDE_CONFIG[area]['label']}",
     }
 
 
@@ -837,4 +841,123 @@ def ajustes_plazos_edicion(request):
         "hoy": hoy,
         "guardado": request.GET.get("guardado") == "1",
         "errores": errores,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Enviar el presupuesto de NÓMINA a Cuenta 5 presupuestado
+# ---------------------------------------------------------------------------
+# Cada registro mensual de presupuesto_nomina (tabla vertical) con valor
+# distinto de 0 y con cuenta se convierte en un movimiento:
+#
+#   mcncuenta  <- cuenta          zonnombre  <- centro
+#   mcnvincula <- cedula          vinnombre  <- nombre
+#   mcnccosto  <- codcosto
+#   responsable <- "nomina" (fijo)
+#   mcnfecha   <- fecha (serial Excel)
+#   mcnvaldebi <- valor si es >= 0,  mcnvalcred <- -valor si es < 0
+#
+# El resto de columnas queda vacío. Subir otra vez REEMPLAZA lo que la nómina
+# había subido (origen_area = "nomina").
+ORIGEN_NOMINA = "nomina"
+RESPONSABLE_NOMINA = "nomina"
+
+
+def estado_cuenta5_nomina():
+    base = PresupuestoNominaMes.objects.all()
+    subible = base.exclude(valor=0).exclude(cuenta="")
+    nom = subible.aggregate(n=Count("id"), total=Coalesce(Sum("valor"), 0), ultimo=Max("actualizado"))
+    sub = Cuenta5Presupuestado.objects.filter(origen_area=ORIGEN_NOMINA).aggregate(
+        n=Count("id"), subido=Max("origen_subido"),
+        total=Coalesce(Sum(F("mcnvaldebi") - F("mcnvalcred")), 0.0),
+    )
+    config = ConfiguracionNomina.actual()
+    if not base.exists():
+        estado = "sin_datos"
+    elif not config.listo:
+        estado = "sin_confirmar"
+    elif not sub["n"]:
+        estado = "pendiente"
+    elif (sub["n"] == nom["n"] and round(sub["total"]) == nom["total"]
+          and (nom["ultimo"] is None or nom["ultimo"] <= sub["subido"])):
+        estado = "subido"
+    else:
+        estado = "desactualizado"
+
+    subido = timezone.localtime(sub["subido"]) if sub["subido"] else None
+    detalle = {
+        "sin_datos": "Aún no hay presupuesto de nómina",
+        "sin_confirmar": "Confírmalo como listo en el presupuesto de nómina",
+        "pendiente": f"{nom['n']} registros listos para subir",
+        "subido": f"{subido:%d/%m/%Y %H:%M} · {sub['n']} registros" if subido else "",
+        "desactualizado": "La nómina cambió después de subirla",
+    }[estado]
+    return {
+        "area": ORIGEN_NOMINA,
+        "estado": estado,
+        "texto": ESTADOS_CUENTA5[estado],
+        "detalle": detalle,
+        "version_aprobada": None,
+        "version_subida": None,
+        "registros_subidos": sub["n"],
+        "subido": subido.strftime("%d/%m/%Y %H:%M") if subido else None,
+        "descripcion": "el presupuesto de nómina",
+    }
+
+
+@login_required
+def subir_cuenta5_nomina(request):
+    """Sube (o reemplaza) el presupuesto de nómina en Cuenta 5 presupuestado."""
+    if not _es_aprobador(request):
+        return JsonResponse({"success": False, "msg": "Solo el aprobador puede subir a Cuenta 5"}, status=403)
+    if request.method != "POST":
+        return JsonResponse({"success": False, "msg": "Método no permitido"}, status=405)
+
+    if not ConfiguracionNomina.actual().listo:
+        return JsonResponse({
+            "success": False,
+            "msg": "El presupuesto de nómina no está confirmado como listo ❌",
+            "estado": estado_cuenta5_nomina(),
+        }, status=400)
+
+    ahora = timezone.now()
+    with transaction.atomic():
+        registros, sin_cuenta = [], set()
+        for r in PresupuestoNominaMes.objects.exclude(valor=0).order_by("linea", "fecha").values(
+            "linea", "cuenta", "codcosto", "centro", "cedula", "nombre", "fecha", "valor"
+        ):
+            if not (r["cuenta"] or "").strip():
+                sin_cuenta.add(r["linea"])
+                continue
+            valor = r["valor"]
+            registros.append(Cuenta5Presupuestado(
+                mcncuenta=r["cuenta"].strip(),
+                mcnccosto=(r["codcosto"] or "").strip() or None,
+                zonnombre=r["centro"] or None,
+                mcnvincula=r["cedula"] or None,
+                vinnombre=r["nombre"] or None,
+                responsable=RESPONSABLE_NOMINA,
+                mcnfecha=_serial_excel(r["fecha"]),
+                mcnvaldebi=float(valor) if valor >= 0 else 0.0,
+                mcnvalcred=0.0 if valor >= 0 else float(-valor),
+                origen_area=ORIGEN_NOMINA,
+                origen_subido=ahora,
+            ))
+        if not registros and not PresupuestoNominaMes.objects.exists():
+            return JsonResponse({
+                "success": False, "msg": "No hay presupuesto de nómina para subir ❌",
+                "estado": estado_cuenta5_nomina(),
+            }, status=400)
+        reemplazados, _ = Cuenta5Presupuestado.objects.filter(origen_area=ORIGEN_NOMINA).delete()
+        Cuenta5Presupuestado.objects.bulk_create(registros, batch_size=1000)
+
+    msg = f"Nómina: {len(registros)} registros subidos a Cuenta 5 ✅"
+    if reemplazados:
+        msg += f" (reemplazó {reemplazados} anteriores)"
+    if sin_cuenta:
+        msg += f" · {len(sin_cuenta)} fila(s) sin cuenta contable no se subieron"
+    return JsonResponse({
+        "success": True, "msg": msg, "registros": len(registros),
+        "reemplazados": reemplazados, "sin_cuenta": len(sin_cuenta),
+        "estado": estado_cuenta5_nomina(),
     })

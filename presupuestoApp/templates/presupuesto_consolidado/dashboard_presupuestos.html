@@ -24,7 +24,9 @@
     .c5-badge--subido         { color: #1b6e36; }
     .c5-badge--pendiente      { color: #8a5300; }
     .c5-badge--desactualizado { color: #b3261e; }
-    .c5-badge--sin_aprobar    { color: #555; background: rgba(255, 255, 255, .8); }
+    .c5-badge--sin_aprobar,
+    .c5-badge--sin_datos,
+    .c5-badge--sin_confirmar  { color: #555; background: rgba(255, 255, 255, .8); }
     .c5-detalle { font-size: .78rem; opacity: .95; }
 
     .c5-btn {
@@ -63,7 +65,7 @@
 <section aria-label="Presupuestos por área" class="dashboard-summary">
     {% for t in tarjetas %}
     <article class="card area-card" style="background:{{ t.color }};" aria-labelledby="lbl-{{ t.clave }}" data-area="{{ t.clave }}">
-        <a class="card-link" href="{% url 'presupuesto_sede' t.clave %}" target="_blank" rel="noopener noreferrer">
+        <a class="card-link" href="{{ t.url_ver }}" target="_blank" rel="noopener noreferrer">
             <span class="material-icons card-icon" aria-hidden="true">{{ t.icono }}</span>
             <h3 id="lbl-{{ t.clave }}" class="card-title">{{ t.titulo }}</h3>
             <p class="card-number">Haz clic para ver el presupuesto</p>
@@ -71,17 +73,17 @@
         <div class="c5-panel">
             <div class="c5-estado" aria-live="polite">
                 <span class="c5-badge c5-badge--{{ t.cuenta5.estado }}">
-                    <span class="material-icons" aria-hidden="true">{% if t.cuenta5.estado == 'subido' %}check_circle{% elif t.cuenta5.estado == 'pendiente' %}schedule{% elif t.cuenta5.estado == 'desactualizado' %}sync_problem{% else %}remove_circle_outline{% endif %}</span>
+                    <span class="material-icons" aria-hidden="true">{% if t.cuenta5.estado == 'subido' %}check_circle{% elif t.cuenta5.estado == 'pendiente' %}schedule{% elif t.cuenta5.estado == 'desactualizado' %}sync_problem{% elif t.cuenta5.estado == 'sin_confirmar' %}hourglass_empty{% else %}remove_circle_outline{% endif %}</span>
                     <span class="c5-texto">{{ t.cuenta5.texto }}</span>
                 </span>
                 <small class="c5-detalle">{{ t.cuenta5.detalle }}</small>
             </div>
             <button type="button" class="c5-btn"
-                    data-url="{% url 'subir_cuenta5_sede' t.clave %}"
+                    data-url="{{ t.url_subir }}"
                     data-titulo="{{ t.titulo }}"
-                    data-version="{{ t.cuenta5.version_aprobada|default_if_none:'' }}"
+                    data-descripcion="{{ t.cuenta5.descripcion }}"
                     data-estado="{{ t.cuenta5.estado }}"
-                    {% if t.cuenta5.estado == 'sin_aprobar' %}disabled title="Aún no hay una versión aprobada"{% endif %}>
+                    {% if t.cuenta5.estado == 'sin_aprobar' or t.cuenta5.estado == 'sin_datos' or t.cuenta5.estado == 'sin_confirmar' %}disabled title="{{ t.cuenta5.texto }}"{% endif %}>
                 <span class="material-icons" aria-hidden="true">cloud_upload</span>
                 <span class="c5-btn-texto">{% if t.cuenta5.estado == 'subido' or t.cuenta5.estado == 'desactualizado' %}Volver a subir a Cuenta 5{% else %}Subir a Cuenta 5{% endif %}</span>
             </button>
@@ -103,7 +105,9 @@
 <script>
 (() => {
     const ICONOS = { subido: "check_circle", pendiente: "schedule",
-                     desactualizado: "sync_problem", sin_aprobar: "remove_circle_outline" };
+                     desactualizado: "sync_problem", sin_aprobar: "remove_circle_outline",
+                     sin_datos: "remove_circle_outline", sin_confirmar: "hourglass_empty" };
+    const SIN_BOTON = ["sin_aprobar", "sin_datos", "sin_confirmar"];
     const dialogo = document.getElementById("dlgCuenta5");
     const aviso = document.getElementById("c5Aviso");
     let botonActual = null;
@@ -130,8 +134,8 @@
         tarjeta.querySelector(".c5-detalle").textContent = e.detalle;
         const boton = tarjeta.querySelector(".c5-btn");
         boton.dataset.estado = e.estado;
-        boton.dataset.version = e.version_aprobada ?? "";
-        boton.disabled = e.estado === "sin_aprobar";
+        boton.dataset.descripcion = e.descripcion || "";
+        boton.disabled = SIN_BOTON.includes(e.estado);
         boton.querySelector(".c5-btn-texto").textContent =
             (e.estado === "subido" || e.estado === "desactualizado") ? "Volver a subir a Cuenta 5" : "Subir a Cuenta 5";
     }
@@ -141,9 +145,8 @@
             botonActual = boton;
             const ya = boton.dataset.estado === "subido" || boton.dataset.estado === "desactualizado";
             document.getElementById("dlgCuenta5Texto").textContent =
-                `Se subirá la versión aprobada v${boton.dataset.version} de ${boton.dataset.titulo} ` +
-                `a Cuenta 5 presupuestado.` +
-                (ya ? " Reemplazará los registros que esta área ya había subido." : "");
+                `Se subirá ${boton.dataset.descripcion} a Cuenta 5 presupuestado.` +
+                (ya ? " Reemplazará los registros que ya se habían subido." : "");
             dialogo.showModal();
         });
     });
@@ -170,7 +173,7 @@
             mostrarAviso("Error de conexión al subir a Cuenta 5", true);
         } finally {
             boton.classList.remove("cargando");
-            boton.disabled = boton.dataset.estado === "sin_aprobar";
+            boton.disabled = SIN_BOTON.includes(boton.dataset.estado);
         }
     });
 })();

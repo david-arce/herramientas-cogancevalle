@@ -13,6 +13,7 @@ from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from unittest import mock
 
+from django.db.models import Sum
 from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -639,12 +640,14 @@ class Cuenta5EnvioTests(TestCase):
         r = self.client.get(reverse("dashboardPresupuesto"))
         self.assertEqual(r.status_code, 200)
         tarjetas = {t["clave"]: t for t in r.context["tarjetas"]}
-        self.assertEqual(len(tarjetas), 14)
+        self.assertEqual(len(tarjetas), 15)                     # 14 áreas + nómina
+        self.assertEqual(tarjetas["nomina"]["cuenta5"]["estado"], "sin_datos")
         self.assertEqual(tarjetas[AREA]["cuenta5"]["estado"], "pendiente")
         self.assertEqual(tarjetas["tecnologia"]["cuenta5"]["estado"], "sin_aprobar")
         self.assertContains(r, reverse("subir_cuenta5_sede", args=[AREA]))
         self.assertContains(r, "Pendiente de subir")
-        self.assertContains(r, "Sin versión aprobada", count=13)
+        self.assertContains(r, '<span class="c5-texto">Sin versión aprobada</span>', count=13)
+        self.assertContains(r, reverse("subir_cuenta5_nomina"))
 
     def test_pantalla_cuenta5_devuelve_comentario_y_responsable(self):
         self.aprobar([fila("A", comentario="nota")], 1)
@@ -671,3 +674,326 @@ class EstaticosVersionadosTests(TestCase):
         self.assertRegex(r.content.decode(), r"js/cuenta5_presupuestado\.js\?v=\d+")
         self.assertContains(r, "COMENTARIO")
         self.assertContains(r, "RESPONSABLE")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Nómina en vertical
+# ═══════════════════════════════════════════════════════════════════════
+from .models_nomina import (  # noqa: E402
+    ConceptosNomina, ConfiguracionNomina, PresupuestoNomina, PresupuestoNominaMes,
+)
+from . import nomina_motor  # noqa: E402
+
+
+def confirmar_nomina(listo):
+    ConfiguracionNomina.objects.update_or_create(pk=1, defaults={"listo": listo})
+
+MESES_N = list(MESES)
+
+
+def linea_nomina(**kw):
+    datos = dict(tipo="sueldos", cedula="1001", nombre="ANA PEREZ", centro="ALMACEN TULUA",
+                 area="VENTAS", cargo="ASESOR", concepto="SUELDO", cuenta="510506")
+    datos.update({m: 1000 * i for i, m in enumerate(MESES_N, 1)})
+    datos.update(kw)
+    return PresupuestoNomina(**datos)
+
+
+class NominaVerticalTests(TestCase):
+    """La tabla presupuesto_nomina es vertical; PresupuestoNomina (vista) la muestra horizontal."""
+
+    def test_guardar_crea_12_registros_con_fecha(self):
+        f = linea_nomina(); f.save()
+        regs = PresupuestoNominaMes.objects.filter(linea=f.pk).order_by("fecha")
+        self.assertEqual(regs.count(), 12)
+        self.assertEqual([r.fecha for r in regs], [datetime.date(ANIO, m, 1) for m in range(1, 13)])
+        self.assertEqual([r.valor for r in regs], [1000 * i for i in range(1, 13)])
+        self.assertEqual({r.cedula for r in regs}, {"1001"})
+        leida = PresupuestoNomina.objects.get(pk=f.pk)
+        self.assertEqual((leida.total, leida.anio), (78000, ANIO))
+
+    def test_editar_borrar_y_operaciones_en_lote(self):
+        a = linea_nomina(); a.save()
+        a.marzo = -5; a.nombre = "ANA P."; a.save()
+        self.assertEqual(PresupuestoNominaMes.objects.get(linea=a.pk, fecha__month=3).valor, -5)
+        self.assertEqual(set(PresupuestoNominaMes.objects.filter(linea=a.pk).values_list("nombre", flat=True)),
+                         {"ANA P."})
+
+        nuevas = PresupuestoNomina.objects.bulk_create([linea_nomina(cedula=str(i)) for i in range(3)])
+        self.assertEqual(len({n.pk for n in nuevas}), 3)
+        for n in nuevas:
+            n.enero = 1
+            n.cuenta = "520506"
+        PresupuestoNomina.objects.bulk_update(nuevas, MESES_N + ["total", "cuenta"])
+        self.assertEqual(PresupuestoNominaMes.objects.filter(cuenta="520506").count(), 36)
+        self.assertEqual(PresupuestoNominaMes.objects.filter(cuenta="520506", fecha__month=1, valor=1).count(), 3)
+
+        suma = PresupuestoNomina.objects.aggregate(e=Sum("enero"), t=Sum("total"))
+        self.assertEqual(suma["e"], 1000 + 3)
+
+        PresupuestoNomina.objects.filter(pk__in=[n.pk for n in nuevas]).delete()
+        a.delete()
+        self.assertFalse(PresupuestoNominaMes.objects.exists())
+
+    def test_json_se_conservan(self):
+        f = linea_nomina(historico={"enero": 5}, excluir_de=["prima"]); f.save()
+        leida = PresupuestoNomina.objects.get(pk=f.pk)
+        self.assertEqual((leida.historico, leida.excluir_de), ({"enero": 5}, ["prima"]))
+
+    def test_pantalla_guardar_edicion(self):
+        linea_nomina().save()
+        admin = User.objects.create_user("admin")
+        self.client.force_login(admin)
+        filas = self.client.get(reverse("nomina_datos", args=["sueldos"])).json()["data"]
+        self.assertEqual(len(filas), 1)
+        filas[0]["abril"] = 999
+        r = self.client.post(reverse("nomina_guardar", args=["sueldos"]), json.dumps(filas),
+                             content_type="application/json")
+        self.assertEqual(r.json()["status"], "ok", r.content)
+        self.assertEqual(PresupuestoNominaMes.objects.get(linea=filas[0]["id"], fecha__month=4).valor, 999)
+        self.assertEqual(self.client.get(reverse("nomina_resumen")).status_code, 200)
+
+
+class Cuenta5NominaTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.aprobador = User.objects.create_user("NICOLAS")
+
+    def setUp(self):
+        self.client.force_login(self.aprobador)
+        confirmar_nomina(True)
+
+    def subir(self):
+        return self.client.post(reverse("subir_cuenta5_nomina"))
+
+    def test_sin_datos(self):
+        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "sin_datos")
+        self.assertEqual(self.subir().status_code, 400)
+
+    def test_permisos(self):
+        self.client.force_login(User.objects.create_user("OTRO"))
+        self.assertEqual(self.subir().status_code, 403)
+        self.client.force_login(self.aprobador)
+        self.assertEqual(self.client.get(reverse("subir_cuenta5_nomina")).status_code, 405)
+
+    def test_sube_con_el_mapeo_pedido(self):
+        a = linea_nomina(codcosto="020202"); a.febrero = 0; a.marzo = -300; a.save()   # 0 no se sube; negativo -> crédito
+        linea_nomina(cedula="2002", nombre="LUIS", cuenta="").save()      # sin cuenta: no se sube
+        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "pendiente")
+
+        r = self.subir().json()
+        self.assertTrue(r["success"], r)
+        self.assertEqual((r["registros"], r["sin_cuenta"]), (11, 1))
+        self.assertEqual(r["estado"]["estado"], "subido")
+
+        qs = Cuenta5Presupuestado.objects.filter(origen_area="nomina")
+        enero = qs.get(mcnfecha=vpa._serial_excel(datetime.date(ANIO, 1, 1)))
+        self.assertEqual((enero.mcncuenta, enero.mcnccosto, enero.zonnombre, enero.mcnvincula, enero.vinnombre),
+                         ("510506", "020202", "ALMACEN TULUA", "1001", "ANA PEREZ"))
+        self.assertEqual((enero.mcnvaldebi, enero.mcnvalcred), (1000.0, 0.0))
+        # Solo esos campos: lo demás queda vacío.
+        self.assertEqual(set(qs.values_list("responsable", flat=True)), {"nomina"})
+        for campo in ("mcnzona", "ctanombre", "mcndetalle", "comentario"):
+            self.assertIsNone(getattr(enero, campo), campo)
+        marzo = qs.get(mcnfecha=vpa._serial_excel(datetime.date(ANIO, 3, 1)))
+        self.assertEqual((marzo.mcnvaldebi, marzo.mcnvalcred), (0.0, 300.0))
+        self.assertEqual(views.excel_serial_to_date(enero.mcnfecha), f"{ANIO}-01-01")
+
+    def test_sin_codcosto_queda_vacio(self):
+        linea_nomina(codcosto="").save()
+        self.subir()
+        self.assertEqual(set(Cuenta5Presupuestado.objects.values_list("mcnccosto", flat=True)), {None})
+
+    def test_reemplaza_y_detecta_cambios(self):
+        Cuenta5Presupuestado.objects.create(mcncuenta="510506", mcnvaldebi=1, mcnfecha=1)   # cargado por Excel
+        a = linea_nomina(); a.save()
+        self.subir()
+        self.assertEqual(self.subir().json()["reemplazados"], 12)
+        self.assertEqual(Cuenta5Presupuestado.objects.filter(origen_area="nomina").count(), 12)
+        self.assertEqual(Cuenta5Presupuestado.objects.filter(origen_area__isnull=True).count(), 1)
+
+        a.enero = 1; a.save()
+        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "desactualizado")
+        self.subir()
+        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "subido")
+
+    def test_no_se_mezcla_con_las_areas(self):
+        linea_nomina().save()
+        PresupuestoArea.objects.bulk_create(filas_verticales(
+            [fila("A")], area=AREA, etapa="aprobado", version=1, fecha_version=timezone.localdate()))
+        self.client.post(reverse("subir_cuenta5_sede", args=[AREA]))
+        self.subir()
+        self.assertEqual(Cuenta5Presupuestado.objects.filter(origen_area="nomina").count(), 12)
+        self.assertEqual(Cuenta5Presupuestado.objects.filter(origen_area=AREA).count(), 12)
+        self.assertEqual(vpa.estado_cuenta5(AREA)["estado"], "subido")
+
+
+class MigracionNominaVerticalTests(TransactionTestCase):
+    antes = [("presupuestoApp", "0033_plazo_edicion_area")]
+    despues = [("presupuestoApp", "0034_presupuesto_nomina_vertical")]
+
+    def migrar(self, destino):
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate(destino)
+
+    def tearDown(self):
+        self.migrar(MigrationExecutor(connection).loader.graph.leaf_nodes())
+
+    def test_ida_y_vuelta(self):
+        self.migrar(self.antes)
+        meses = ", ".join(MESES_N)
+        with connection.cursor() as cur:
+            for i, (tipo, marzo) in enumerate([("sueldos", 300), ("cesantias", -7)], start=1):
+                valores = [i * 10 + m for m in range(1, 13)]
+                valores[2] = marzo
+                cur.execute(
+                    f"INSERT INTO presupuesto_nomina (id, tipo, cedula, nombre, centro, area, cargo, concepto, "
+                    f"cuenta, base, factor, historico, {meses}, total, origen, clave, centro_origen, "
+                    f"area_origen, excluir_de, creado, actualizado, actualizado_por) VALUES "
+                    f"(%s, %s, '1', 'N', 'C', 'A', 'G', 'X', '510506', 0, 1, '{{\"enero\": 1}}', "
+                    f"{', '.join(['%s'] * 12)}, %s, 'sistema', 'k', '', '', '[]', now(), now(), '')",
+                    [40 + i, tipo, *valores, sum(valores)],
+                )
+        # (SQL directo: los modelos actuales tienen columnas de migraciones posteriores)
+        def uno(sql, params=()):
+            with connection.cursor() as cur:
+                cur.execute(sql, params)
+                return cur.fetchone()
+
+        self.migrar(self.despues)
+        self.assertEqual(uno("SELECT COUNT(*) FROM presupuesto_nomina")[0], 24)
+        self.assertEqual(uno("SELECT valor FROM presupuesto_nomina WHERE linea = 42 "
+                             "AND EXTRACT(MONTH FROM fecha) = 3")[0], -7)
+        tipo, marzo, historico = uno("SELECT tipo, marzo, historico FROM presupuesto_nomina_lineas WHERE id = 41")
+        self.assertEqual((tipo, marzo, json.loads(historico) if isinstance(historico, str) else historico),
+                         ("sueldos", 300, {"enero": 1}))
+        # Las filas nuevas continúan después de los ids que ya existían.
+        nueva = uno("INSERT INTO presupuesto_nomina_lineas (tipo, cedula, nombre, centro, area, cargo, "
+                    "concepto, cuenta, base, factor, historico, origen, clave, centro_origen, area_origen, "
+                    "excluir_de, creado, actualizado, actualizado_por, enero) VALUES ('t', '', '', '', '', '', "
+                    "'', '', 0, 1, '{}', 'manual', '', '', '', '[]', now(), now(), '', 5) RETURNING id")[0]
+        self.assertGreater(nueva, 42)
+        uno("DELETE FROM presupuesto_nomina_lineas WHERE id = %s RETURNING id", [nueva])
+
+        # 0035 borra la tabla de respaldo.
+        self.migrar([("presupuestoApp", "0035_borrar_presupuesto_nomina_respaldo")])
+        self.assertNotIn("presupuesto_nomina_respaldo", connection.introspection.table_names())
+        self.assertEqual(uno("SELECT COUNT(*) FROM presupuesto_nomina")[0], 24)
+
+        # Y todo se puede revertir: los datos vuelven a la tabla horizontal.
+        self.migrar(self.antes)
+        with connection.cursor() as cur:
+            cur.execute("SELECT id, tipo, marzo, total FROM presupuesto_nomina ORDER BY id")
+            filas = cur.fetchall()
+        self.assertEqual(filas[0][:3], (41, "sueldos", 300))
+        self.assertEqual(filas[1][:3], (42, "cesantias", -7))
+
+
+class NominaCodcostoTests(TestCase):
+    """codcosto sale de conceptos_nomina según el área (NOMCOSTO), igual que la cuenta."""
+
+    def setUp(self):
+        anio = timezone.localdate().year
+        for nomcosto, codcosto, cuenta in [("VENTAS", "020202", "510506"), ("Ventas", "020202", "510506"),
+                                           ("VENTAS", "999999", "510506"),        # minoritario: se ignora
+                                           ("ADMINISTRACIÓN", "0102", "510510")]:
+            ConceptosNomina.objects.create(anio=anio, archivo="prueba", nomcosto=nomcosto,
+                                           codcosto=codcosto, cuenta=cuenta)
+        self.client.force_login(User.objects.create_user("admin"))
+
+    def guardar(self, filas):
+        r = self.client.post(reverse("nomina_guardar", args=["sueldos"]), json.dumps(filas),
+                             content_type="application/json")
+        self.assertEqual(r.json()["status"], "ok", r.content)
+
+    def datos(self):
+        return self.client.get(reverse("nomina_datos", args=["sueldos"])).json()["data"]
+
+    def test_mapa_por_area(self):
+        mapa = nomina_motor.mapa_codcostos()
+        self.assertEqual(nomina_motor.cuenta_para(mapa, "ventas"), "020202")
+        self.assertEqual(nomina_motor.cuenta_para(mapa, "Administracion"), "0102")
+
+    def test_se_asigna_al_guardar_y_cambia_con_el_area(self):
+        self.guardar([{"cedula": "1", "nombre": "ANA", "area": "VENTAS", "centro": "TULUA",
+                       **{m: 10 for m in MESES_N}}])
+        fila = self.datos()[0]
+        self.assertEqual((fila["codcosto"], fila["cuenta"]), ("020202", "510506"))
+        self.assertEqual(set(PresupuestoNominaMes.objects.values_list("codcosto", flat=True)), {"020202"})
+
+        fila["area"] = "ADMINISTRACIÓN"
+        self.guardar([fila])
+        self.assertEqual(self.datos()[0]["codcosto"], "0102")
+
+    def test_asignar_cuentas_completa_codcosto(self):
+        linea_nomina(area="VENTAS", codcosto="", cuenta="").save()
+        n = nomina_motor.asignar_cuentas()
+        self.assertEqual(n, 1)
+        self.assertEqual(PresupuestoNomina.objects.get().codcosto, "020202")
+
+    def test_exportar_incluye_codcosto(self):
+        linea_nomina(codcosto="020202").save()
+        r = self.client.get(reverse("exportar_excel"))
+        df = pd.read_excel(io.BytesIO(r.content))
+        self.assertIn("codcosto", df.columns)
+
+
+class NominaConfirmacionTests(TestCase):
+    """Sin confirmar "presupuesto listo" no se puede subir la nómina a Cuenta 5."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_user("admin")
+        cls.aprobador = User.objects.create_user("NICOLAS")
+
+    def confirmar(self, listo, usuario=None):
+        self.client.force_login(usuario or self.admin)
+        return self.client.post(reverse("presupuestoNomina"), {"action": "confirmar_listo", "listo": "1" if listo else "0"},
+                                HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+
+    def test_sin_confirmar_no_se_sube(self):
+        linea_nomina().save()
+        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "sin_confirmar")
+        self.client.force_login(self.aprobador)
+        r = self.client.post(reverse("subir_cuenta5_nomina"))
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("no está confirmado", r.json()["msg"])
+        self.assertFalse(Cuenta5Presupuestado.objects.exists())
+
+        r = self.client.get(reverse("dashboardPresupuesto"))
+        tarjeta = {t["clave"]: t for t in r.context["tarjetas"]}["nomina"]
+        self.assertEqual(tarjeta["cuenta5"]["texto"], "Sin confirmar como listo")
+
+    def test_confirmar_y_quitar(self):
+        linea_nomina().save()
+        r = self.confirmar(True)
+        self.assertEqual(r.json()["status"], "ok")
+        config = ConfiguracionNomina.actual()
+        self.assertTrue(config.listo)
+        self.assertEqual(config.listo_por, "admin")
+        self.assertIsNotNone(config.listo_en)
+        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "pendiente")
+
+        self.client.force_login(self.aprobador)
+        self.assertTrue(self.client.post(reverse("subir_cuenta5_nomina")).json()["success"])
+        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "subido")
+
+        self.confirmar(False)
+        config.refresh_from_db()
+        self.assertEqual((config.listo, config.listo_por, config.listo_en), (False, "", None))
+        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "sin_confirmar")
+
+    def test_pantalla_muestra_boton(self):
+        self.client.force_login(self.admin)
+        r = self.client.get(reverse("presupuestoNomina"))
+        self.assertContains(r, "Confirmar presupuesto listo")
+        self.confirmar(True)
+        r = self.client.get(reverse("presupuestoNomina"))
+        self.assertContains(r, "Presupuesto confirmado como listo")
+        self.assertContains(r, "Quitar confirmación")
+
+    def test_solo_usuarios_de_nomina(self):
+        r = self.confirmar(True, usuario=User.objects.create_user("OTRO"))
+        self.assertEqual(r.status_code, 403)
+        self.assertFalse(ConfiguracionNomina.actual().listo)

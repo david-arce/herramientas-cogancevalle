@@ -242,8 +242,10 @@
      *  - opciones        {centros, areas, cargos} para los desplegables
      *  - origen          mostrar la columna Origen
      *  - tipo            mostrar la columna "Concepto de nómina" (vista consolidada)
+     *  - codcosto        mostrar la columna "Cód. costo" (solo lectura: sale del área)
      */
-    estandar({ cedula = true, cargo = true, base = null, opciones = {}, origen = true, tipo = false } = {}) {
+    estandar({ cedula = true, cargo = true, base = null, opciones = {}, origen = true, tipo = false,
+               codcosto = false } = {}) {
       const cols = [];
       if (origen) cols.push({ campo: 'origen', titulo: 'Origen', tipo: 'origen', editable: false });
       if (tipo) cols.push({ campo: 'tipo_nombre', titulo: 'Concepto de nómina', editable: false });
@@ -251,6 +253,7 @@
       cols.push({ campo: 'nombre', titulo: 'Nombre' });
       cols.push({ campo: 'centro', titulo: 'Centro', tipo: opciones.centros ? 'select' : 'texto', opciones: opciones.centros });
       cols.push({ campo: 'area', titulo: 'Área', tipo: opciones.areas ? 'select' : 'texto', opciones: opciones.areas });
+      if (codcosto) cols.push({ campo: 'codcosto', titulo: 'Cód. costo', editable: false });
       if (cargo) cols.push({ campo: 'cargo', titulo: 'Cargo', tipo: opciones.cargos ? 'select' : 'texto', opciones: opciones.cargos });
       cols.push({ campo: 'concepto', titulo: 'Concepto' });
       if (base) cols.push({ campo: 'base', titulo: base, tipo: 'numero' });

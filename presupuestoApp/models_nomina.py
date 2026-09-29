@@ -22,7 +22,13 @@ MESES = (
 )
 
 
-class PresupuestoNomina(models.Model):
+def _anio_presupuesto():
+    from .models_presupuesto import anio_presupuesto
+    return anio_presupuesto()
+
+
+class _CamposLineaNomina(models.Model):
+    """Campos que describen una fila de nómina (comunes a la tabla y a la vista)."""
     ORIGEN_SISTEMA = 'sistema'
     ORIGEN_MANUAL = 'manual'
     ORIGENES = [(ORIGEN_SISTEMA, 'Calculado'), (ORIGEN_MANUAL, 'Manual')]
@@ -38,6 +44,9 @@ class PresupuestoNomina(models.Model):
     # Cuenta contable. Sale de ConceptosNomina según el área (NOMCOSTO) y el
     # concepto; se asigna sola al crear la fila o al cambiarle el área.
     cuenta = models.CharField(max_length=30, blank=True, default='')
+    # Centro de costo (CODCOSTO de ConceptosNomina). Igual que la cuenta, sale
+    # del área (NOMCOSTO) y se asigna solo al crear la fila o al cambiarle el área.
+    codcosto = models.CharField(max_length=30, blank=True, default='')
 
     # Antes: "salario_base" en sueldos/aprendiz y "base" en transporte/kyrovet.
     base = models.BigIntegerField(default=0)
@@ -48,21 +57,6 @@ class PresupuestoNomina(models.Model):
     # Valores de origen (los que llegaron de ConceptosFijosYVariables) sobre
     # los que se aplica la fórmula. Permite recalcular sin acumular incrementos.
     historico = models.JSONField(default=dict, blank=True)
-    
-
-    enero = models.BigIntegerField(default=0)
-    febrero = models.BigIntegerField(default=0)
-    marzo = models.BigIntegerField(default=0)
-    abril = models.BigIntegerField(default=0)
-    mayo = models.BigIntegerField(default=0)
-    junio = models.BigIntegerField(default=0)
-    julio = models.BigIntegerField(default=0)
-    agosto = models.BigIntegerField(default=0)
-    septiembre = models.BigIntegerField(default=0)
-    octubre = models.BigIntegerField(default=0)
-    noviembre = models.BigIntegerField(default=0)
-    diciembre = models.BigIntegerField(default=0)
-    total = models.BigIntegerField(default=0)
 
     origen = models.CharField(max_length=10, choices=ORIGENES, default=ORIGEN_MANUAL)
     # Identifica de qué fila de origen salió una fila calculada. Si alguien la
@@ -81,12 +75,71 @@ class PresupuestoNomina(models.Model):
     actualizado_por = models.CharField(max_length=150, blank=True, default='')
 
     class Meta:
+        abstract = True
+
+
+class PresupuestoNominaMes(_CamposLineaNomina):
+    """TABLA presupuesto_nomina, guardada en VERTICAL.
+
+    Cada fila de nómina (lo que la pantalla muestra como UNA fila con 12
+    meses) son 12 registros de esta tabla, uno por mes:
+
+        linea -> identifica la fila (es el "id" que ven la pantalla y el motor)
+        fecha -> primer día del mes (AAAA-01-01 ... AAAA-12-01)
+        valor -> valor de ese mes
+
+    El total no se guarda: es la suma de los 12 valores.
+    No se escribe directamente: el motor y la pantalla usan PresupuestoNomina
+    (la vista horizontal) y la base de datos reparte los cambios aquí.
+    """
+    linea = models.BigIntegerField()
+    fecha = models.DateField()
+    valor = models.BigIntegerField(default=0)
+
+    class Meta:
         db_table = 'presupuesto_nomina'
-        ordering = ['tipo', 'id']
+        ordering = ['linea', 'fecha']
         indexes = [
             models.Index(fields=['tipo', 'origen'], name='nomina_tipo_origen_idx'),
             models.Index(fields=['tipo', 'cedula'], name='nomina_tipo_cedula_idx'),
+            models.Index(fields=['linea', 'fecha'], name='nomina_linea_fecha_idx'),
+            models.Index(fields=['fecha'], name='nomina_fecha_idx'),
         ]
+
+    def __str__(self):
+        return f'{self.tipo} · L{self.linea} · {self.fecha:%Y-%m} · {self.valor}'
+
+
+class PresupuestoNomina(_CamposLineaNomina):
+    """VISTA presupuesto_nomina_lineas: la tabla vertical vista en HORIZONTAL.
+
+    Una fila por línea con una columna por mes y el total, que es como
+    trabajan el motor de cálculo (nomina_motor.py) y la pantalla. Se puede
+    leer, crear, actualizar y borrar como una tabla normal: unos disparadores
+    de PostgreSQL (migración 0034) convierten cada operación en los 12
+    registros de presupuesto_nomina.
+    """
+    # Año del presupuesto: automático (año siguiente al actual) en filas nuevas.
+    anio = models.IntegerField(default=_anio_presupuesto)
+
+    enero = models.BigIntegerField(default=0)
+    febrero = models.BigIntegerField(default=0)
+    marzo = models.BigIntegerField(default=0)
+    abril = models.BigIntegerField(default=0)
+    mayo = models.BigIntegerField(default=0)
+    junio = models.BigIntegerField(default=0)
+    julio = models.BigIntegerField(default=0)
+    agosto = models.BigIntegerField(default=0)
+    septiembre = models.BigIntegerField(default=0)
+    octubre = models.BigIntegerField(default=0)
+    noviembre = models.BigIntegerField(default=0)
+    diciembre = models.BigIntegerField(default=0)
+    total = models.BigIntegerField(default=0)       # calculado (la vista lo suma)
+
+    class Meta:
+        managed = False
+        db_table = 'presupuesto_nomina_lineas'
+        ordering = ['tipo', 'id']
 
     def __str__(self):
         return f'{self.tipo} · {self.cedula or self.area} · {self.concepto}'
@@ -183,6 +236,11 @@ class ConfiguracionNomina(models.Model):
     """
     anio_base = models.PositiveSmallIntegerField(null=True, blank=True)
     meses_reales = models.PositiveSmallIntegerField(null=True, blank=True)
+    # Confirmación de que el presupuesto de nómina está listo. Mientras no esté
+    # confirmado no se puede subir a Cuenta 5 presupuestado.
+    listo = models.BooleanField(default=False)
+    listo_por = models.CharField(max_length=150, blank=True, default='')
+    listo_en = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = 'configuracion_nomina'

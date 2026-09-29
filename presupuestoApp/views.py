@@ -4,6 +4,7 @@ from functools import lru_cache
 import re
 import unicodedata
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.urls import reverse
 from django.shortcuts import redirect, render
 import pandas as pd
 from .models import (
@@ -65,9 +66,18 @@ def dashboard_home(request):
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     tarjetas = [
         {"clave": clave, "titulo": titulo, "color": color, "icono": icono,
+         "url_ver": reverse("presupuesto_sede", args=[clave]),
+         "url_subir": reverse("subir_cuenta5_sede", args=[clave]),
          "cuenta5": estado_cuenta5(clave)}
         for clave, titulo, color, icono in TARJETAS_DASHBOARD
     ]
+    # Nómina: mismo aviso y botón; su pantalla es el dashboard de nómina.
+    tarjetas.append({
+        "clave": "nomina", "titulo": "Nómina", "color": "#00838f", "icono": "payments",
+        "url_ver": reverse("presupuestoNomina"),
+        "url_subir": reverse("subir_cuenta5_nomina"),
+        "cuenta5": estado_cuenta5_nomina(),
+    })
     return render(request, 'presupuesto_consolidado/dashboard_presupuestos.html', {
         'tarjetas': tarjetas,
     })
@@ -1979,6 +1989,7 @@ from .views_presupuesto_areas import (  # noqa: F401
     borrar_presupuesto_sede, presupuesto_consolidado, obtener_presupuesto_consolidado,
     guardar_presupuesto_consolidado, guardar_version_sede, aprobar_version_sede,
     subir_cuenta5_sede, estado_cuenta5, ajustes_plazos_edicion,
+    subir_cuenta5_nomina, estado_cuenta5_nomina,
 )
 
 #---------------------Obtener, editar y guardar cuanta 5--------------
