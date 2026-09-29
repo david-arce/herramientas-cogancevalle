@@ -86,6 +86,9 @@ const COLUMNS = [
   { key: "ctanombre",  label: "CTANOMBRE",  num: false },
   { key: "docdetalle", label: "DOCDETALLE", num: false },
   { key: "infdetalle", label: "INFDETALLE", num: false },
+  // Vienen de los presupuestos por área; en el Excel son opcionales.
+  { key: "comentario",  label: "COMENTARIO",  num: false, opcional: true },
+  { key: "responsable", label: "RESPONSABLE", num: false, opcional: true },
 ];
 
 // Columnas que tienen filtro Excel (deben coincidir con data-filter en el HTML)
@@ -112,7 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // ─── Cargar datos ─────────────────────────────────────────────
 function loadData() {
   const tbody = document.getElementById("c5Tbody");
-  tbody.innerHTML = `<tr class="c5-loading-row"><td colspan="26">Cargando datos…</td></tr>`;
+  tbody.innerHTML = `<tr class="c5-loading-row"><td colspan="28">Cargando datos…</td></tr>`;
 
   const formData = new FormData();
   formData.append("draw", 1);
@@ -132,7 +135,7 @@ function loadData() {
       applyFilterAndRender();
     })
     .catch(err => {
-      tbody.innerHTML = `<tr><td colspan="26" class="c5-error">Error al cargar datos.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="28" class="c5-error">Error al cargar datos.</td></tr>`;
       console.error(err);
     });
 }
@@ -186,7 +189,7 @@ function renderTable() {
   const slice = filteredRows.slice(start, start + perPage);
 
   if (slice.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="26" class="c5-empty">Sin resultados.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="28" class="c5-empty">Sin resultados.</td></tr>`;
     renderTotals();
     return;
   }
@@ -437,7 +440,7 @@ function bindUI() {
           spinner.style.display = "none"; btn.disabled = false; return;
         }
 
-        const required = COLUMNS.map(c => c.label);
+        const required = COLUMNS.filter(c => !c.opcional).map(c => c.label);
         const missing  = required.filter(h => !(h in json[0]));
         if (missing.length) {
           alert("Faltan columnas obligatorias:\n" + missing.join(", "));
@@ -476,6 +479,8 @@ function bindUI() {
               ctanombre:  parseStr(row.CTANOMBRE),
               docdetalle: parseStr(row.DOCDETALLE),
               infdetalle: parseStr(row.INFDETALLE),
+              comentario:  parseStr(row.COMENTARIO ?? null),
+              responsable: parseStr(row.RESPONSABLE ?? null),
             });
           } catch (err) {
             errores.push(`Fila ${i + 2}: ${err.message}`);

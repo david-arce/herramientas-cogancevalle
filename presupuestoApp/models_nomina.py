@@ -48,6 +48,7 @@ class PresupuestoNomina(models.Model):
     # Valores de origen (los que llegaron de ConceptosFijosYVariables) sobre
     # los que se aplica la fórmula. Permite recalcular sin acumular incrementos.
     historico = models.JSONField(default=dict, blank=True)
+    
 
     enero = models.BigIntegerField(default=0)
     febrero = models.BigIntegerField(default=0)

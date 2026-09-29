@@ -29,10 +29,10 @@ const MESES = ["enero","febrero","marzo","abril","mayo","junio",
 const COLUMNS = [
     { key: "_check", label: "", type: "check", locked: false, width: 30 },
     { key: "_acciones", label: "Acciones", type: "acciones", locked: true, width: 60 },
-    { key: "nombre_cen", label: "Nombre asignación del gasto", type: "select-centro" },
-    { key: "cuenta", label: "Cuenta", type: "text", locked: true },
-    { key: "cuenta_mayor", label: "Cuenta Mayor", type: "select-cuenta" },
-    { key: "detalle_cuenta", label: "Detalle Cuenta", type: "text" },
+    { key: "zonnombre", label: "Nombre asignación del gasto", type: "select-centro" },
+    { key: "mcncuenta", label: "Cuenta", type: "text", locked: true },
+    { key: "ctanombre", label: "Cuenta Mayor", type: "select-cuenta" },
+    { key: "mcndetalle", label: "Detalle Cuenta", type: "text" },
     ...MESES.map(m => ({ key: m, label: m[0].toUpperCase() + m.slice(1), type: "number" })),
     { key: "total", label: "Total", type: "number", locked: true },
     { key: "comentario", label: "Comentario", type: "text" },
@@ -550,8 +550,8 @@ function init(opciones) {
     }
 
     function valorTextoCelda(row, col) {
-        if (col.key === "cuenta_mayor") {
-            return row.cuenta ? `${row.cuenta} - ${row.cuenta_mayor || ""}` : (row.cuenta_mayor || "");
+        if (col.key === "ctanombre") {
+            return row.mcncuenta ? `${row.mcncuenta} - ${row.ctanombre || ""}` : (row.ctanombre || "");
         }
         if (col.type === "number") return row[col.key] ?? 0;
         return row[col.key] ?? "";
@@ -563,9 +563,9 @@ function init(opciones) {
         const col = COLUMNS.find(c => c.key === colKey);
         if (!col || col.locked || col.type === "check" || col.type === "acciones") return false;
 
-        if (colKey === "cuenta_mayor") {
+        if (colKey === "ctanombre") {
             const crudo = String(valor ?? "").trim();
-            if (crudo === "") { row.cuenta = ""; row.cuenta_mayor = ""; return true; }
+            if (crudo === "") { row.mcncuenta = ""; row.ctanombre = ""; return true; }
             let codigo = crudo.split(" - ")[0].trim();
             if (mapaCuentaMayor[codigo] === undefined) {
                 // Pudo haberse pegado el nombre de la cuenta en vez del código
@@ -574,20 +574,20 @@ function init(opciones) {
                 if (!porNombre) return false;
                 codigo = porNombre;
             }
-            row.cuenta = codigo;
-            row.cuenta_mayor = mapaCuentaMayor[codigo] || "";
-            if (["510531", "51059503"].includes(codigo)) row.codcosto = "0101";
-            if (["540531", "54059503"].includes(codigo)) row.codcosto = "020201";
+            row.mcncuenta = codigo;
+            row.ctanombre = mapaCuentaMayor[codigo] || "";
+            if (["510531", "51059503"].includes(codigo)) row.mcnccosto = "0101";
+            if (["540531", "54059503"].includes(codigo)) row.mcnccosto = "020201";
             return true;
         }
-        if (colKey === "nombre_cen") {
+        if (colKey === "zonnombre") {
             const crudo = String(valor ?? "").trim();
-            if (crudo === "") { row.nombre_cen = ""; row.codcosto = ""; row.centro_tra = ""; return true; }
+            if (crudo === "") { row.zonnombre = ""; row.mcnccosto = ""; row.mcnzona = ""; return true; }
             const clave = Object.keys(OPCIONES_NOMBRE_CENTRO).find(k => k.toUpperCase() === crudo.toUpperCase());
             if (!clave) return false;
-            row.nombre_cen = clave;
-            row.codcosto = OPCIONES_NOMBRE_CENTRO[clave].codigoCosto;
-            row.centro_tra = OPCIONES_NOMBRE_CENTRO[clave].centro;
+            row.zonnombre = clave;
+            row.mcnccosto = OPCIONES_NOMBRE_CENTRO[clave].codigoCosto;
+            row.mcnzona = OPCIONES_NOMBRE_CENTRO[clave].centro;
             return true;
         }
         if (col.type === "number") {
@@ -653,8 +653,8 @@ function init(opciones) {
 
         if (esSelect) {
             // El valor actual se fija por DOM: el setter .value hace la coerción
-            // string/number, así que sirve aunque row.cuenta venga como number.
-            const actual = col.key === "cuenta_mayor" ? row.cuenta : row.nombre_cen;
+            // string/number, así que sirve aunque row.mcncuenta venga como number.
+            const actual = col.key === "ctanombre" ? row.mcncuenta : row.zonnombre;
             if (actual !== null && actual !== undefined && actual !== "") input.value = String(actual);
             if (valorInicial) {
                 const letra = String(valorInicial).toUpperCase();
@@ -705,13 +705,13 @@ function init(opciones) {
 
     function renderSelectCuentaMayor(row) {
         let opciones = Object.keys(mapaCuentaMayor);
-        const esAdmin = (row.nombre_cen || "").toUpperCase() === "ADMINISTRACIÓN";
+        const esAdmin = (row.zonnombre || "").toUpperCase() === "ADMINISTRACIÓN";
         opciones = opciones.filter(o => esAdmin ? o.startsWith("51") : !o.startsWith("51"));
         opciones = opciones.filter(o => !EXCLUIR_CUENTAS.includes(o));
 
-        // row.cuenta llega como number desde el backend; las claves del mapa
+        // row.mcncuenta llega como number desde el backend; las claves del mapa
         // son strings, así que se normaliza antes de comparar.
-        const actual = (row.cuenta !== null && row.cuenta !== undefined) ? String(row.cuenta) : "";
+        const actual = (row.mcncuenta !== null && row.mcncuenta !== undefined) ? String(row.mcncuenta) : "";
         if (actual && !opciones.includes(actual) && mapaCuentaMayor[actual] !== undefined) {
             opciones.push(actual); // dato legado: no se pierde silenciosamente
         }
@@ -1296,8 +1296,8 @@ function init(opciones) {
     // Agregar fila vacía
     // -----------------------------------------------------------------
     function nuevaFilaVacia() {
-        const nueva = { centro_tra: "", nombre_cen: "", codcosto: "", responsable: "",
-            cuenta: "", cuenta_mayor: "", detalle_cuenta: "", sede_distribucion: "", proveedor: "",
+        const nueva = { mcnzona: "", zonnombre: "", mcnccosto: "", responsable: "",
+            mcncuenta: "", ctanombre: "", mcndetalle: "", sede_distribucion: "", proveedor: "",
             comentario: "", total: 0, _checked: false };
         MESES.forEach(m => nueva[m] = 0);
         return nueva;
@@ -1347,7 +1347,7 @@ function init(opciones) {
             showToast("Las cuentas contables aún se están cargando, intenta de nuevo en un momento ⏳", "error");
             return;
         }
-        const cols = COLUMNS.filter(c => c.type !== "check" && c.type !== "acciones" && c.key !== "cuenta");
+        const cols = COLUMNS.filter(c => c.type !== "check" && c.type !== "acciones" && c.key !== "mcncuenta");
 
         const wb = new ExcelJS.Workbook();
         const hoja = wb.addWorksheet("Presupuesto");
@@ -1367,8 +1367,8 @@ function init(opciones) {
             c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F3A93" } };
         });
 
-        const idxNombre = cols.findIndex(c => c.key === "nombre_cen") + 1;
-        const idxCuentaMayor = cols.findIndex(c => c.key === "cuenta_mayor") + 1;
+        const idxNombre = cols.findIndex(c => c.key === "zonnombre") + 1;
+        const idxCuentaMayor = cols.findIndex(c => c.key === "ctanombre") + 1;
         const idxMesInicio = cols.findIndex(c => c.key === MESES[0]) + 1;
         const idxMesFin = cols.findIndex(c => c.key === MESES[MESES.length - 1]) + 1;
         const idxTotal = cols.findIndex(c => c.key === "total") + 1;
@@ -1398,8 +1398,8 @@ function init(opciones) {
 
         rows.forEach(row => {
             const valores = cols.map(c => {
-                if (c.key === "cuenta_mayor") {
-                    return row.cuenta ? `${row.cuenta} - ${row.cuenta_mayor || ""}` : (row.cuenta_mayor || "");
+                if (c.key === "ctanombre") {
+                    return row.mcncuenta ? `${row.mcncuenta} - ${row.ctanombre || ""}` : (row.ctanombre || "");
                 }
                 if (c.key === "total") return null; // se llena abajo con fórmula
                 return row[c.key] ?? "";
@@ -1558,13 +1558,13 @@ function init(opciones) {
             }
 
             const nueva = {
-                centro_tra: centroValido.centro,
-                nombre_cen: nombreCen,
-                codcosto: centroValido.codigoCosto,
+                mcnzona: centroValido.centro,
+                zonnombre: nombreCen,
+                mcnccosto: centroValido.codigoCosto,
                 responsable: "",
-                cuenta: codigoCuenta,
-                cuenta_mayor: cuentaValida,
-                detalle_cuenta: detalleCuenta,
+                mcncuenta: codigoCuenta,
+                ctanombre: cuentaValida,
+                mcndetalle: detalleCuenta,
                 sede_distribucion: "",
                 proveedor: "",
                 comentario: comentario,

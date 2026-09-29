@@ -1,4 +1,4 @@
-{% load static %}
+{% load static %}{% load estaticos %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -7,7 +7,7 @@
 <title>Presupuesto {{ sede_label }}</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
-<link rel="stylesheet" href="{% static 'css/grilla_presupuesto.css' %}">
+<link rel="stylesheet" href="{% static_v 'css/grilla_presupuesto.css' %}">
 </head>
 <body>
 <h2>Presupuesto {{ sede_label }}</h2>
@@ -28,6 +28,11 @@
     {% else %}
         <span class="badge badge-sinenviar">Sin enviar</span>
         <span>Todavía no has subido ninguna versión de este presupuesto.</span>
+    {% endif %}
+    {% if sin_limite %}
+        <span class="plazo-edicion">Aprobador: sin fecha límite de edición</span>
+    {% elif fecha_limite %}
+        <span class="plazo-edicion">Puedes editar hasta el <b>{{ fecha_limite|date:"d/m/Y" }}</b></span>
     {% endif %}
 </div>
 
@@ -52,7 +57,7 @@
     </div>
 </div>
 
-<script src="{% static 'js/grilla_presupuesto.js' %}"></script>
+<script src="{% static_v 'js/grilla_presupuesto.js' %}"></script>
 <script>
 const grilla = GrillaPresupuesto.init({
     sede: "{{ sede }}",

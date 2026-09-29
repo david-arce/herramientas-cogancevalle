@@ -1,5 +1,5 @@
 {% extends "presupuesto_nomina/base_tabla.html" %}
-{% load static %}
+{% load static %}{% load estaticos %}
 {% comment %}
   Template único para los 18 conceptos de nómina y para la vista consolidada
   ("todos"). Reemplaza a los 36 templates anteriores (tabla principal +
@@ -80,6 +80,6 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="{% static 'js/presupuesto_nomina.js' %}"></script>
-  {% if config.conDistribucion %}<script src="{% static 'js/presupuesto_distribucion.js' %}"></script>{% endif %}
+  <script src="{% static_v 'js/presupuesto_nomina.js' %}"></script>
+  {% if config.conDistribucion %}<script src="{% static_v 'js/presupuesto_distribucion.js' %}"></script>{% endif %}
 {% endblock %}

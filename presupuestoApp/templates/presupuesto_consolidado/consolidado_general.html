@@ -1,8 +1,8 @@
 {% extends 'presupuesto_consolidado/base_dashboard.html' %}
-{% load static %}
+{% load static %}{% load estaticos %}
 
 {% block css %}
-<link rel="stylesheet" href="{% static 'css/consolidado_total_base.css' %}">
+<link rel="stylesheet" href="{% static_v 'css/consolidado_total_base.css' %}">
 <style>
     .tabs-bar { display:flex; gap:.4rem; margin: .75rem 0 1rem; flex-wrap:wrap; }
     .tab-btn {

@@ -43,6 +43,7 @@ h2 { margin-bottom: 4px; }
 .badge-aprobada { background: #e9f9ee; color: #155724; border: 1px solid #b7ecc5; }
 .badge-pendiente { background: #fff8d6; color: #856404; border: 1px solid #ffe28a; }
 .badge-sinenviar { background: #fdecea; color: #721c24; border: 1px solid #f5c2c7; }
+.plazo-edicion { margin-left: auto; color: #333; }
 
 /* Indicador de guardado automático */
 #autoSaveStatus {

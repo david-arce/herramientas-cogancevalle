@@ -38,12 +38,39 @@ from django.db import models
 from django.core.paginator import Paginator
 from django.views.decorators.http import require_http_methods, require_GET, require_POST
 
+# Tarjetas del dashboard de presupuestos por área: (clave de SEDE_CONFIG,
+# título, color, ícono de Material Icons). El orden es el de la pantalla.
+TARJETAS_DASHBOARD = [
+    ("almacen-buga", "Almacen Buga", "#009688", "folder_open"),
+    ("almacen-cali", "Almacen Cali", "#2196f3", "note_alt"),
+    ("almacen-cartago", "Almacen Cartago", "#ff5722", "label"),
+    ("almacen-tulua", "Almacen Tulua", "#673ab7", "group"),
+    ("comercial-costos", "Comercial", "#e91e63", "group"),
+    ("comunicaciones", "Comunicaciones", "#ff9800", "group"),
+    ("contabilidad", "Contabilidad", "#4caf50", "group"),
+    ("gerencia", "Gerencia", "#795548", "group"),
+    ("gestion-riesgos", "Gestión de riesgos", "#9c27b0", "group"),
+    ("gestion-humana", "Gestión humana", "#f44336", "group"),
+    ("logistica", "Logística", "#607d8b", "group"),
+    ("salud-ocupacional", "Salud ocupacional", "#3f51b5", "group"),
+    ("servicios-tecnicos", "Servicios técnicos", "#2196f3", "group"),
+    ("tecnologia", "Tecnología", "#3f51b5", "note"),
+]
+
+
 @login_required
 def dashboard_home(request):
     USUARIOS_PERMITIDOS= ['admin', 'NICOLAS']
     if request.user.username not in USUARIOS_PERMITIDOS:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, 'presupuesto_consolidado/dashboard_presupuestos.html')
+    tarjetas = [
+        {"clave": clave, "titulo": titulo, "color": color, "icono": icono,
+         "cuenta5": estado_cuenta5(clave)}
+        for clave, titulo, color, icono in TARJETAS_DASHBOARD
+    ]
+    return render(request, 'presupuesto_consolidado/dashboard_presupuestos.html', {
+        'tarjetas': tarjetas,
+    })
 
 # --------------COMERCIAL------------------------------------
 # Las vistas "por línea" (centro+segmento+línea) y el cálculo de
@@ -1914,7 +1941,7 @@ def exportar_crecimiento_ventas(request):
 
     # 🔹 Crear archivo Excel
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = 'attachment; filename="crecimiento_ventas_2025.xlsx"'
+    response['Content-Disposition'] = f'attachment; filename="crecimiento_ventas_{year_actual}.xlsx"'
 
     df.to_excel(response, index=False)
 
@@ -1950,7 +1977,8 @@ from .views_presupuesto_areas import (  # noqa: F401
     presupuesto_aprobado_sede, obtener_presupuesto_aprobado_sede, tabla_auxiliar_sede,
     obtener_temp_sede, guardar_temp_sede, cargar_base_sede, subir_presupuesto_sede,
     borrar_presupuesto_sede, presupuesto_consolidado, obtener_presupuesto_consolidado,
-    guardar_presupuesto_consolidado, guardar_version_sede, aprobar_version_sede
+    guardar_presupuesto_consolidado, guardar_version_sede, aprobar_version_sede,
+    subir_cuenta5_sede, estado_cuenta5, ajustes_plazos_edicion,
 )
 
 #---------------------Obtener, editar y guardar cuanta 5--------------

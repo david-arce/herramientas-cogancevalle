@@ -90,33 +90,6 @@ class BdVentasComercial(models.Model):
             models.Index(fields=['lapso', 'centro_de_operacion']),
         ]
 
-class Plantillagastos2025(models.Model):
-    centro_tra = models.CharField(db_column='CENTRO_TRA', blank=True, null=True)  # Field name made lowercase.
-    nombre_cen = models.CharField(db_column='NOMBRE_CEN', blank=True, null=True)  # Field name made lowercase.
-    codcosto = models.CharField(db_column='CODCOSTO', blank=True, null=True)  # Field name made lowercase.
-    responsable = models.CharField(db_column='RESPONSABLE', blank=True, null=True)  # Field name made lowercase.
-    cuenta = models.BigIntegerField(db_column='CUENTA', blank=True, null=True)  # Field name made lowercase.
-    cuenta_mayor = models.CharField(db_column='CUENTA MAYOR', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    detalle_cuenta = models.CharField(db_column='DETALLE CUENTA', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    sede_distribucion = models.FloatField(db_column='SEDE  DISTRIBUCION', blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
-    proveedor = models.CharField(blank=True, null=True)
-    enero = models.BigIntegerField(blank=True, null=True)
-    febrero = models.BigIntegerField(blank=True, null=True)
-    marzo = models.BigIntegerField(blank=True, null=True)
-    abril = models.FloatField(blank=True, null=True)
-    mayo = models.BigIntegerField(blank=True, null=True)
-    junio = models.BigIntegerField(blank=True, null=True)
-    julio = models.BigIntegerField(blank=True, null=True)
-    agosto = models.FloatField(blank=True, null=True)
-    septiembre = models.FloatField(blank=True, null=True)
-    octubre = models.FloatField(blank=True, null=True)
-    noviembre = models.FloatField(blank=True, null=True)
-    diciembre = models.FloatField(blank=True, null=True)
-
-    class Meta:
-        managed = False
-        db_table = 'plantillagastos2025'
-
 class CuentasContables(models.Model):
     cuenta = models.BigIntegerField(blank=True, null=True)
     nom_cuenta = models.CharField(blank=True, null=True)
@@ -414,6 +387,14 @@ class Cuenta5Presupuestado(models.Model):
     ctanombre = models.CharField(db_column='CTANOMBRE', blank=True, null=True)  # Field name made lowercase.
     docdetalle = models.CharField(db_column='DOCDETALLE', blank=True, null=True)  # Field name made lowercase.
     infdetalle = models.CharField(db_column='INFDETALLE', blank=True, null=True)  # Field name made lowercase.
+    # Vienen de los presupuestos por área (presupuesto_area).
+    comentario = models.TextField(db_column='COMENTARIO', blank=True, null=True)
+    responsable = models.CharField(db_column='RESPONSABLE', blank=True, null=True)
+    # Trazabilidad: qué área/versión aprobada generó el registro y cuándo se
+    # subió. Vacíos en los registros cargados desde Excel.
+    origen_area = models.CharField(max_length=40, blank=True, null=True, db_index=True)
+    origen_version = models.PositiveIntegerField(blank=True, null=True)
+    origen_subido = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         db_table = 'cuenta_5_presupuestado'

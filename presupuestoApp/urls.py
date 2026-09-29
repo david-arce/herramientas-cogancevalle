@@ -108,6 +108,9 @@ urlpatterns = [
     path('ajustes/cuentas-contables/crear/',      vcc.crear_cuenta_contable,      name='crear_cuenta_contable'),
     path('ajustes/cuentas-contables/actualizar/', vcc.actualizar_cuenta_contable, name='actualizar_cuenta_contable'),
     path('ajustes/cuentas-contables/eliminar/',   vcc.eliminar_cuenta_contable,   name='eliminar_cuenta_contable'),
+
+    # ajustes: fecha límite de edición de los presupuestos por área
+    path('ajustes/plazos-edicion/', views.ajustes_plazos_edicion, name='ajustes_plazos_edicion'),
     
     # -------------- PRESUPUESTO POR SEDE (genérico, escalable) --------------
     # Para agregar Buga/Cartago/Cali: solo agrega su entrada en SEDE_CONFIG
@@ -122,6 +125,7 @@ urlpatterns = [
     path('presupuesto/<str:sede>/auxiliar/guardar/', views.guardar_temp_sede, name='guardar_temp_sede'),
     path('presupuesto/<str:sede>/subir/', views.subir_presupuesto_sede, name='subir_presupuesto_sede'),
     path('presupuesto/<str:sede>/borrar/', views.borrar_presupuesto_sede, name='borrar_presupuesto_sede'),
+    path('presupuesto/<str:sede>/subir-cuenta5/', views.subir_cuenta5_sede, name='subir_cuenta5_sede'),
     
     # consolidado general 
     path('obtener-consolidado/', views.obtener_consolidado, name='obtener_consolidado'),

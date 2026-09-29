@@ -1,9 +1,9 @@
 {% extends 'presupuesto_consolidado/base_dashboard.html' %}
-{% load static %}
+{% load static %}{% load estaticos %}
 
 {% block css %}
 <meta name="csrf-token" content="{{ csrf_token }}">
-<link rel="stylesheet" href="{% static 'css/consolidado_sedes.css' %}">
+<link rel="stylesheet" href="{% static_v 'css/consolidado_sedes.css' %}">
 <style>
     /* ── Pestañas de sede ── */
     .tabs-bar { display:flex; gap:.4rem; margin: .75rem 0 1rem; flex-wrap:wrap; }

@@ -1,9 +1,9 @@
 {% extends 'presupuesto_consolidado/base_dashboard.html' %}
-{% load static %}
+{% load static %}{% load estaticos %}
 
 {% block css %}
 <meta name="csrf-token" content="{{ csrf_token }}">
-<link rel="stylesheet" href="{% static 'css/cuentas.css' %}">
+<link rel="stylesheet" href="{% static_v 'css/cuentas.css' %}">
 <style>
   /* ══════════════════════════════════════════
     FILTROS ESTILO EXCEL
@@ -325,6 +325,8 @@
           </th>
           <th data-col="docdetalle">DOCDETALLE</th>
           <th data-col="infdetalle">INFDETALLE</th>
+          <th data-col="comentario">COMENTARIO</th>
+          <th data-col="responsable">RESPONSABLE</th>
         </tr>
       </thead>
       <tfoot id="c5Tfoot">
@@ -332,7 +334,7 @@
       </tfoot>
       <tbody id="c5Tbody">
         <tr class="c5-loading-row">
-          <td colspan="26">Cargando datos…</td>
+          <td colspan="28">Cargando datos…</td>
         </tr>
       </tbody>
     </table>
@@ -616,7 +618,7 @@
     };
   })();
 </script>
-<script src="{% static 'js/cuenta5_presupuestado.js' %}"></script>
+<script src="{% static_v 'js/cuenta5_presupuestado.js' %}"></script>
 {% endblock %}
 
 {% endblock %}

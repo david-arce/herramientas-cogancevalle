@@ -1,104 +1,178 @@
 {% extends 'presupuesto_consolidado/base_dashboard.html' %}
 {% load static %}
+{% block css %}
+<style>
+    .area-card { padding: 0; gap: 0; overflow: hidden; }
+    .area-card .card-link {
+        display: flex; flex-direction: column; gap: 6px;
+        padding: 16px 20px 12px; color: inherit; text-decoration: none; flex: 1;
+    }
+    .area-card .card-link:focus-visible { outline: 3px solid #fff; outline-offset: -3px; }
+
+    /* Panel inferior: estado en Cuenta 5 + botón */
+    .c5-panel {
+        display: flex; flex-direction: column; gap: 8px;
+        padding: 10px 14px 14px; background: rgba(0, 0, 0, .14);
+    }
+    .c5-estado { display: flex; flex-direction: column; gap: 3px; min-height: 42px; }
+    .c5-badge {
+        align-self: flex-start; display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 9px 3px 6px; border-radius: 999px;
+        background: #fff; font-size: .78rem; font-weight: 700; line-height: 1.3;
+    }
+    .c5-badge .material-icons { font-size: 16px; }
+    .c5-badge--subido         { color: #1b6e36; }
+    .c5-badge--pendiente      { color: #8a5300; }
+    .c5-badge--desactualizado { color: #b3261e; }
+    .c5-badge--sin_aprobar    { color: #555; background: rgba(255, 255, 255, .8); }
+    .c5-detalle { font-size: .78rem; opacity: .95; }
+
+    .c5-btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        width: 100%; padding: 7px 10px; border-radius: 8px; cursor: pointer;
+        border: 1px solid rgba(255, 255, 255, .85); background: rgba(255, 255, 255, .16);
+        color: #fff; font: inherit; font-size: .85rem; font-weight: 600;
+        transition: background .15s;
+    }
+    .c5-btn .material-icons { font-size: 18px; }
+    .c5-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .3); }
+    .c5-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+    .c5-btn:disabled { opacity: .55; cursor: not-allowed; }
+    .c5-btn.cargando .material-icons { animation: c5-giro 1s linear infinite; }
+    @keyframes c5-giro { to { transform: rotate(360deg); } }
+
+    /* Confirmación y aviso */
+    .c5-dialogo { border: none; border-radius: 12px; padding: 22px 24px; max-width: 440px;
+                  width: calc(100% - 32px); box-shadow: 0 16px 40px rgba(0, 0, 0, .25); }
+    .c5-dialogo::backdrop { background: rgba(0, 0, 0, .35); }
+    .c5-dialogo h2 { margin: 0 0 10px; font-size: 1.1rem; }
+    .c5-dialogo p { margin: 0 0 18px; line-height: 1.45; color: #333; }
+    .c5-dialogo-botones { display: flex; justify-content: flex-end; gap: 10px; }
+    .c5-dialogo-botones button { padding: 8px 16px; border-radius: 8px; border: 1px solid #ccc;
+                                 background: #fff; cursor: pointer; font: inherit; }
+    .c5-dialogo-botones .c5-confirmar { background: #1f3a93; border-color: #1f3a93; color: #fff; }
+    .c5-aviso { position: fixed; right: 20px; bottom: 20px; z-index: 1000; max-width: 380px;
+                padding: 12px 16px; border-radius: 10px; color: #fff; background: #1b6e36;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, .2); font-size: .9rem; display: none; }
+    .c5-aviso.error { background: #b3261e; }
+    .c5-aviso.visible { display: block; }
+</style>
+{% endblock %}
 {% block content %}
-<section aria-label="Resumen de datos" class="dashboard-summary">
-    <a href="{% url 'presupuesto_sede' 'almacen-buga' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="lblAlmacenBuga" role="region" style="background:#009688;">
-        <span class="material-icons card-icon" aria-hidden="true">folder_open</span>
-        <h3 id="lblAlmacenBuga" class="card-title">Almacen Buga</h3>
-        <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
-    </a>
-    <a href="{% url 'presupuesto_sede' 'almacen-cali' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="lblAlmacenCali" role="region" style="background:#2196f3;">
-        <span class="material-icons card-icon" aria-hidden="true">note_alt</span>
-        <h3 id="lblAlmacenCali" class="card-title">Almacen Cali</h3>
-        <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
-    </a>
-    <a href="{% url 'presupuesto_sede' 'almacen-cartago' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="lblAlmacenCartago" role="region" style="background:#ff5722;">
-        <span class="material-icons card-icon" aria-hidden="true">label</span>
-        <h3 id="lblAlmacenCartago" class="card-title">Almacen Cartago</h3>
-        <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
-    </a>
-    <a href="{% url 'presupuesto_sede' 'almacen-tulua' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="lblAlmacenTulua" role="region" style="background:#673ab7;">
-        <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="lblAlmacenTulua" class="card-title">Almacen Tulua</h3>
-        <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
-    </a>
-    <a href="{% url 'presupuesto_sede' 'comercial-costos' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="lblComercial" role="region" style="background:#e91e63;">
-        <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="lblComercial" class="card-title">Comercial</h3>
-        <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
-    </a>
-    <a href="{% url 'presupuesto_sede' 'comunicaciones' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="lblComunicaciones" role="region" style="background:#ff9800;">
-        <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="lblComunicaciones" class="card-title">Comunicaciones</h3>
-        <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
-    </a>
-    <a href="{% url 'presupuesto_sede' 'contabilidad' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="lblContabilidad" role="region" style="background:#4caf50;">
-        <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="lblContabilidad" class="card-title">Contabilidad</h3>
-        <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
-    </a>
-    <a href="{% url 'presupuesto_sede' 'gerencia' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="lblGerencia" role="region" style="background:#795548;">
-        <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="lblGerencia" class="card-title">Gerencia</h3>
-        <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
-    </a>
-    <a href="{% url 'presupuesto_sede' 'gestion-riesgos' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="lblGestionRiesgos" role="region" style="background:#9c27b0;">
-        <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="lblGestionRiesgos" class="card-title">Gestión de riesgos</h3>
-        <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
-    </a>
-    <a href="{% url 'presupuesto_sede' 'gestion-humana' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="lblGestionHumana" role="region" style="background:#f44336;">
-        <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="lblGestionHumana" class="card-title">Gestión humana</h3>
-        <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
-    </a>
-    <a href="{% url 'presupuesto_sede' 'logistica' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="lblLogistica" role="region" style="background:#607d8b;">
-        <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="lblLogistica" class="card-title">Logística</h3>
-        <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
-    </a>
-    <a href="{% url 'presupuesto_sede' 'salud-ocupacional' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="lblOcupacional" role="region" style="background:#3f51b5;">
-        <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="lblOcupacional" class="card-title">Salud ocupacional</h3>
-        <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
-    </a>
-    <a href="{% url 'presupuesto_sede' 'servicios-tecnicos' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="lblServiciosTecnicos" role="region" style="background:#2196f3;">
-        <span class="material-icons card-icon" aria-hidden="true">group</span>
-        <h3 id="lblServiciosTecnicos" class="card-title">Servicios técnicos</h3>
-        <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
-    </a>
-    <a href="{% url 'presupuesto_sede' 'tecnologia' %}" target="_blank" rel="noopener noreferrer">
-        <article class="card" tabindex="0" aria-labelledby="lblTecnologia" role="region">
-        <span class="material-icons card-icon" aria-hidden="true">note</span>
-        <h3 id="lblTecnologia" class="card-title">Tecnología</h3>
-        <p class="card-number">Haz clic para ver el presupuesto</p>
-        </article>
-    </a>
+{% csrf_token %}
+<section aria-label="Presupuestos por área" class="dashboard-summary">
+    {% for t in tarjetas %}
+    <article class="card area-card" style="background:{{ t.color }};" aria-labelledby="lbl-{{ t.clave }}" data-area="{{ t.clave }}">
+        <a class="card-link" href="{% url 'presupuesto_sede' t.clave %}" target="_blank" rel="noopener noreferrer">
+            <span class="material-icons card-icon" aria-hidden="true">{{ t.icono }}</span>
+            <h3 id="lbl-{{ t.clave }}" class="card-title">{{ t.titulo }}</h3>
+            <p class="card-number">Haz clic para ver el presupuesto</p>
+        </a>
+        <div class="c5-panel">
+            <div class="c5-estado" aria-live="polite">
+                <span class="c5-badge c5-badge--{{ t.cuenta5.estado }}">
+                    <span class="material-icons" aria-hidden="true">{% if t.cuenta5.estado == 'subido' %}check_circle{% elif t.cuenta5.estado == 'pendiente' %}schedule{% elif t.cuenta5.estado == 'desactualizado' %}sync_problem{% else %}remove_circle_outline{% endif %}</span>
+                    <span class="c5-texto">{{ t.cuenta5.texto }}</span>
+                </span>
+                <small class="c5-detalle">{{ t.cuenta5.detalle }}</small>
+            </div>
+            <button type="button" class="c5-btn"
+                    data-url="{% url 'subir_cuenta5_sede' t.clave %}"
+                    data-titulo="{{ t.titulo }}"
+                    data-version="{{ t.cuenta5.version_aprobada|default_if_none:'' }}"
+                    data-estado="{{ t.cuenta5.estado }}"
+                    {% if t.cuenta5.estado == 'sin_aprobar' %}disabled title="Aún no hay una versión aprobada"{% endif %}>
+                <span class="material-icons" aria-hidden="true">cloud_upload</span>
+                <span class="c5-btn-texto">{% if t.cuenta5.estado == 'subido' or t.cuenta5.estado == 'desactualizado' %}Volver a subir a Cuenta 5{% else %}Subir a Cuenta 5{% endif %}</span>
+            </button>
+        </div>
+    </article>
+    {% endfor %}
 </section>
+
+<dialog id="dlgCuenta5" class="c5-dialogo" aria-labelledby="dlgCuenta5Titulo">
+    <h2 id="dlgCuenta5Titulo">Subir a Cuenta 5 presupuestado</h2>
+    <p id="dlgCuenta5Texto"></p>
+    <div class="c5-dialogo-botones">
+        <button type="button" id="dlgCuenta5Cancelar">Cancelar</button>
+        <button type="button" id="dlgCuenta5Confirmar" class="c5-confirmar">Subir</button>
+    </div>
+</dialog>
+<div id="c5Aviso" class="c5-aviso" role="status"></div>
+
+<script>
+(() => {
+    const ICONOS = { subido: "check_circle", pendiente: "schedule",
+                     desactualizado: "sync_problem", sin_aprobar: "remove_circle_outline" };
+    const dialogo = document.getElementById("dlgCuenta5");
+    const aviso = document.getElementById("c5Aviso");
+    let botonActual = null;
+    let temporizadorAviso = null;
+
+    function csrf() {
+        const input = document.querySelector("[name=csrfmiddlewaretoken]");
+        return input ? input.value : "";
+    }
+
+    function mostrarAviso(texto, error = false) {
+        aviso.textContent = texto;
+        aviso.classList.toggle("error", error);
+        aviso.classList.add("visible");
+        clearTimeout(temporizadorAviso);
+        temporizadorAviso = setTimeout(() => aviso.classList.remove("visible"), 6000);
+    }
+
+    function pintarEstado(tarjeta, e) {
+        const badge = tarjeta.querySelector(".c5-badge");
+        badge.className = "c5-badge c5-badge--" + e.estado;
+        badge.querySelector(".material-icons").textContent = ICONOS[e.estado] || "info";
+        badge.querySelector(".c5-texto").textContent = e.texto;
+        tarjeta.querySelector(".c5-detalle").textContent = e.detalle;
+        const boton = tarjeta.querySelector(".c5-btn");
+        boton.dataset.estado = e.estado;
+        boton.dataset.version = e.version_aprobada ?? "";
+        boton.disabled = e.estado === "sin_aprobar";
+        boton.querySelector(".c5-btn-texto").textContent =
+            (e.estado === "subido" || e.estado === "desactualizado") ? "Volver a subir a Cuenta 5" : "Subir a Cuenta 5";
+    }
+
+    document.querySelectorAll(".c5-btn").forEach(boton => {
+        boton.addEventListener("click", () => {
+            botonActual = boton;
+            const ya = boton.dataset.estado === "subido" || boton.dataset.estado === "desactualizado";
+            document.getElementById("dlgCuenta5Texto").textContent =
+                `Se subirá la versión aprobada v${boton.dataset.version} de ${boton.dataset.titulo} ` +
+                `a Cuenta 5 presupuestado.` +
+                (ya ? " Reemplazará los registros que esta área ya había subido." : "");
+            dialogo.showModal();
+        });
+    });
+
+    document.getElementById("dlgCuenta5Cancelar").addEventListener("click", () => dialogo.close());
+
+    document.getElementById("dlgCuenta5Confirmar").addEventListener("click", async () => {
+        dialogo.close();
+        const boton = botonActual;
+        if (!boton) return;
+        const tarjeta = boton.closest(".area-card");
+        boton.disabled = true;
+        boton.classList.add("cargando");
+        try {
+            const resp = await fetch(boton.dataset.url, {
+                method: "POST",
+                headers: { "X-CSRFToken": csrf(), "Content-Type": "application/json" },
+                body: "{}",
+            });
+            const datos = await resp.json();
+            if (datos.estado) pintarEstado(tarjeta, datos.estado);
+            mostrarAviso(datos.msg || (resp.ok ? "Listo" : "No se pudo subir"), !datos.success);
+        } catch (e) {
+            mostrarAviso("Error de conexión al subir a Cuenta 5", true);
+        } finally {
+            boton.classList.remove("cargando");
+            boton.disabled = boton.dataset.estado === "sin_aprobar";
+        }
+    });
+})();
+</script>
 {% endblock %}

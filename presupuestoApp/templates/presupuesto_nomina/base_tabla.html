@@ -1,4 +1,4 @@
-{% load static %}<!DOCTYPE html>
+{% load static %}{% load estaticos %}<!DOCTYPE html>
 {% comment %}
 ==============================================================================
  base_tabla.html — esqueleto de las pantallas de presupuesto.
@@ -20,7 +20,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>{{ titulo|default:"Presupuesto" }}</title>
-  <link rel="stylesheet" href="{% static 'css/presupuesto_tabla.css' %}">
+  <link rel="stylesheet" href="{% static_v 'css/presupuesto_tabla.css' %}">
   {% block estilos %}{% endblock %}
 </head>
 <body>
@@ -38,7 +38,7 @@
 
   {% block datos %}{% endblock %}
 
-  <script src="{% static 'js/presupuesto_tabla.js' %}"></script>
+  <script src="{% static_v 'js/presupuesto_tabla.js' %}"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

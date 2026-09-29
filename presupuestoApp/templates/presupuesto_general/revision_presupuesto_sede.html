@@ -1,4 +1,4 @@
-{% load static %}
+{% load static %}{% load estaticos %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -7,7 +7,7 @@
 <title>Revisión · Presupuesto {{ sede_label }}</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
-<link rel="stylesheet" href="{% static 'css/grilla_presupuesto.css' %}">
+<link rel="stylesheet" href="{% static_v 'css/grilla_presupuesto.css' %}">
 </head>
 <body>
 <h2>Presupuesto {{ sede_label }} — revisión</h2>
@@ -68,7 +68,7 @@
     </div>
 </div>
 
-<script src="{% static 'js/grilla_presupuesto.js' %}"></script>
+<script src="{% static_v 'js/grilla_presupuesto.js' %}"></script>
 <script>
 // Las URLs por versión se arman a partir de una plantilla con un número
 // ficticio, para no escribir rutas a mano.

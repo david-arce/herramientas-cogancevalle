@@ -1,17 +1,18 @@
-{% load static %}
+{% load static %}{% load estaticos %}
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Presupuesto Comercial{% endblock %}</title>
-  <!-- Google Material Icons -->
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <!-- Íconos servidos localmente y precargados (ver static/css/material-icons.css) -->
+  <link rel="preload" href="{% static 'fonts/material-icons.woff2' %}" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="{% static_v 'css/material-icons.css' %}" />
 
   <!-- Estilos y componente de tabla propios (sin jQuery ni DataTables) -->
-  <link rel="stylesheet" href="{% static 'css/dashboard_comercial.css' %}" />
-  <link rel="stylesheet" href="{% static 'css/presupuesto-table.css' %}" />
-  <script src="{% static 'js/presupuesto-table.js' %}" defer></script>
+  <link rel="stylesheet" href="{% static_v 'css/dashboard_comercial.css' %}" />
+  <link rel="stylesheet" href="{% static_v 'css/presupuesto-table.css' %}" />
+  <script src="{% static_v 'js/presupuesto-table.js' %}" defer></script>
 
   <!--custom css-->
   {% block css %}{% endblock %}

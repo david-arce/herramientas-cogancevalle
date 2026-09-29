@@ -1,0 +1,125 @@
+{% extends 'presupuesto_consolidado/base_dashboard.html' %}
+{% block css %}
+<style>
+  .pl-wrap { padding: 24px; max-width: 980px; }
+  .pl-title { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 1.4rem; }
+  .pl-sub { color: #4b5563; margin: 0 0 18px; font-size: .92rem; line-height: 1.5; }
+  .pl-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .pl-todas { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+  .pl-todas label { display: block; font-size: .8rem; font-weight: 600; color: #374151; margin-bottom: 4px; }
+  .pl-input { padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px; font: inherit; font-size: .9rem; }
+  .pl-input:focus { outline: 2px solid #2563eb33; border-color: #2563eb; }
+  .pl-btn { border: 1px solid #d1d5db; background: #fff; color: #374151; border-radius: 6px; padding: 8px 14px;
+            cursor: pointer; font: inherit; font-size: .85rem; display: inline-flex; align-items: center; gap: 6px; }
+  .pl-btn .material-icons { font-size: 18px; }
+  .pl-btn:hover { background: #f3f4f6; }
+  .pl-btn-primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .pl-btn-primary:hover { background: #1d4ed8; }
+  .pl-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  .pl-table th { text-align: left; background: #f9fafb; color: #374151; padding: 9px 10px; border-bottom: 1px solid #e5e7eb; }
+  .pl-table td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  .pl-auto { color: #6b7280; font-size: .8rem; margin-top: 3px; }
+  .pl-estado { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; font-size: .82rem;
+               padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .pl-estado .material-icons { font-size: 16px; }
+  .pl-abierto { background: #e9f9ee; color: #155724; }
+  .pl-cerrado { background: #fdecea; color: #8a1c1c; }
+  .pl-origen { color: #6b7280; font-size: .82rem; }
+  .pl-acciones { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+  .pl-aviso { padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: .9rem; }
+  .pl-ok { background: #e9f9ee; color: #155724; border: 1px solid #b7ecc5; }
+  .pl-error { background: #fdecea; color: #8a1c1c; border: 1px solid #f5c2c7; }
+  .pl-quitar { border: none; background: none; color: #6b7280; cursor: pointer; padding: 4px; border-radius: 4px; }
+  .pl-quitar:hover { background: #f3f4f6; color: #111; }
+  .pl-quitar .material-icons { font-size: 18px; vertical-align: middle; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pl-wrap">
+  <h1 class="pl-title"><span class="material-icons" aria-hidden="true">event</span> Plazos de edición</h1>
+  <p class="pl-sub">
+    Último día en que cada área puede editar y subir su presupuesto. Después de esa fecha el área ya no
+    puede entrar a su pantalla de edición. <b>El aprobador no tiene fecha límite.</b><br>
+    Si dejas un área sin fecha se usa la automática del año en curso.
+  </p>
+
+  {% if guardado %}<div class="pl-aviso pl-ok" role="status">Plazos guardados ✅</div>{% endif %}
+  {% if errores %}
+  <div class="pl-aviso pl-error" role="alert">
+    No se guardó nada: {% for e in errores %}{{ e }}{% if not forloop.last %} · {% endif %}{% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" id="formPlazos">
+    {% csrf_token %}
+    <div class="pl-card pl-todas">
+      <div>
+        <label for="fechaTodas">Misma fecha para todas las áreas</label>
+        <input type="date" id="fechaTodas" class="pl-input">
+      </div>
+      <button type="button" class="pl-btn" id="aplicarTodas">
+        <span class="material-icons" aria-hidden="true">done_all</span> Aplicar a todas
+      </button>
+      <button type="button" class="pl-btn" id="automaticaTodas">
+        <span class="material-icons" aria-hidden="true">restart_alt</span> Todas en automático
+      </button>
+    </div>
+
+    <div class="pl-card">
+      <table class="pl-table">
+        <thead>
+          <tr><th>Área</th><th>Fecha límite</th><th>Estado hoy ({{ hoy|date:"d/m/Y" }})</th><th>Origen</th></tr>
+        </thead>
+        <tbody>
+          {% for f in filas %}
+          <tr>
+            <td><label for="fecha_{{ f.area }}">{{ f.label }}</label></td>
+            <td>
+              <input type="date" class="pl-input fecha-area" id="fecha_{{ f.area }}" name="fecha_{{ f.area }}"
+                     value="{{ f.configurada|date:'Y-m-d' }}" data-automatica="{{ f.automatica|date:'d/m/Y' }}">
+              <button type="button" class="pl-quitar" data-para="fecha_{{ f.area }}" title="Usar la fecha automática"
+                      aria-label="Usar la fecha automática para {{ f.label }}">
+                <span class="material-icons" aria-hidden="true">backspace</span>
+              </button>
+              <div class="pl-auto">Automática: {{ f.automatica|date:"d/m/Y" }}</div>
+            </td>
+            <td>
+              {% if f.abierto %}
+                <span class="pl-estado pl-abierto"><span class="material-icons" aria-hidden="true">lock_open</span>
+                  Abierto{% if f.dias == 0 %} · último día{% else %} · {{ f.dias }} día{{ f.dias|pluralize }}{% endif %}</span>
+              {% else %}
+                <span class="pl-estado pl-cerrado"><span class="material-icons" aria-hidden="true">lock</span>
+                  Cerrado desde {{ f.efectiva|date:"d/m/Y" }}</span>
+              {% endif %}
+            </td>
+            <td class="pl-origen">{% if f.configurada %}Configurada{% else %}Automática{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="pl-acciones">
+        <button type="submit" class="pl-btn pl-btn-primary">
+          <span class="material-icons" aria-hidden="true">save</span> Guardar plazos
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+(() => {
+  const campos = () => document.querySelectorAll(".fecha-area");
+  document.getElementById("aplicarTodas").addEventListener("click", () => {
+    const valor = document.getElementById("fechaTodas").value;
+    if (!valor) { document.getElementById("fechaTodas").focus(); return; }
+    campos().forEach(c => c.value = valor);
+  });
+  document.getElementById("automaticaTodas").addEventListener("click", () => {
+    campos().forEach(c => c.value = "");
+  });
+  document.querySelectorAll(".pl-quitar").forEach(b =>
+    b.addEventListener("click", () => { document.getElementById(b.dataset.para).value = ""; }));
+})();
+</script>
+{% endblock %}

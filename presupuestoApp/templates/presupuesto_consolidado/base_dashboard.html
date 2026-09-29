@@ -1,12 +1,14 @@
-{% load static %}
+{% load static %}{% load estaticos %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dashboard - Aplicación de Presupuesto</title>
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
+  <!-- Íconos servidos localmente y precargados (ver static/css/material-icons.css) -->
+  <link rel="preload" href="{% static 'fonts/material-icons.woff2' %}" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="{% static_v 'css/material-icons.css' %}" />
+  <link rel="stylesheet" href="{% static_v 'css/dashboard.css' %}" />
   {% block css %}{% endblock %}
 </head>
 <body>
@@ -157,7 +159,7 @@
         </div>
         {% endwith %}
         {% endwith %}
-        {% with ajustes_active="|ajustes_orden_cuentas|ajustes_cuentas_contables|" %}
+        {% with ajustes_active="|ajustes_orden_cuentas|ajustes_cuentas_contables|ajustes_plazos_edicion|" %}
         {% with is_open_a="|"|add:request.resolver_match.url_name|add:"|" %}
         <div class="nav-group {% if is_open_a in ajustes_active %}open{% endif %}" id="grupoAjustes">
           <button class="nav-group-toggle" aria-expanded="false" aria-controls="ajustesMenu" id="ajustesToggle">
@@ -176,6 +178,11 @@
               {% if request.resolver_match.url_name == 'ajustes_cuentas_contables' %}active{% endif %}">
               <span class="material-icons nav-icon">account_tree</span>
               <span class="nav-text">Cuentas contables</span>
+            </a>
+            <a href="{% url 'ajustes_plazos_edicion' %}" class="nav-link nav-child
+              {% if request.resolver_match.url_name == 'ajustes_plazos_edicion' %}active{% endif %}">
+              <span class="material-icons nav-icon">event</span>
+              <span class="nav-text">Plazos de edición</span>
             </a>
           </div>
         </div>
