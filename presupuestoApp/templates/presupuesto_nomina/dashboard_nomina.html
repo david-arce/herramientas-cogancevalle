@@ -89,11 +89,30 @@
       .or-resumen { display: none; }
     }
     .vacio { color: #a0a8b1; }
+    .app-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+              margin: 0 0 14px; padding: 8px 0; border-bottom: 1px solid var(--pt-borde); }
+    .app-header .breadcrumb { font-size: 13px; color: var(--pt-texto-suave); }
+    .app-header .navbar-right { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+    .button-close-session { background: #dc3545; color: #fff; border: none; padding: 8px 16px;
+                            border-radius: 6px; cursor: pointer; font: inherit; }
+    .button-close-session:hover { background: #bb2d3b; }
   </style>
 </head>
 <body>
 
-  <h2>Presupuesto de nómina</h2>
+  <header class="app-header">
+    <div class="breadcrumb" aria-label="Ruta actual de navegación">Dashboard › Presupuesto de nómina</div>
+
+    <div class="navbar-right">
+      {% if user.is_authenticated %}
+        Hola, {{ user.first_name }} {{ user.last_name }}
+        <form id="logout-form" action="{% url 'logout' %}" method="post" style="display: inline;">
+          {% csrf_token %}
+          <button type="submit" class="button-close-session">Cerrar Sesión</button>
+        </form>
+      {% endif %}
+    </div>
+  </header>
 
   <section class="conf-listo {% if confirmacion.listo %}conf-listo--ok{% endif %}" aria-live="polite">
     {% if confirmacion.listo %}
