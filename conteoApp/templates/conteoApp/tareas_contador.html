@@ -11,7 +11,7 @@
 {% if tareas %}
 <button type="button" name="update_tarea" id="update-tarea" class="button-generic">Actualizar conteo</button>
 <!-- Tabla de Tareas -->
-<form method="post" id="form-tareas">
+<form method="post" id="form-tareas" autocomplete="off">
     {% csrf_token %}
 <div class="table-container">
     <table id = "table-contador">

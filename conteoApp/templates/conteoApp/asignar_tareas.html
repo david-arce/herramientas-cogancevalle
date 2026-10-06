@@ -7,6 +7,14 @@
 
 {% block content %}
 
+{% if messages %}
+<div class="mensajes-app">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-{{ message.tags|default:'info' }}{% endif %}" role="alert">{{ message }}</div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <div class="container">
     <form method="post" id="assign_delete_activate_form">
         {% csrf_token %}
@@ -49,8 +57,7 @@
         </div>
     </form>
 
-    <form method="post" id="filter_users_form">
-        {% csrf_token %}
+    <form method="get" id="filter_users_form">
         <div class = "dropdown">
             <h3 style="max-width:350px">Historial</h3>
             <p style="max-width:350px; font-size:15px">Seleccione usuarios para buscar el historico de tareas asignadas</p>
@@ -65,7 +72,14 @@
                 </div>
                 <!-- Campo de selección de fecha -->
                 <label for="fecha_asignacion">Selecciona una fecha:</label>
-                <input type="date" id="fecha_asignacion" name="fecha_asignacion" required>
+                <input type="date" id="fecha_asignacion" name="fecha_asignacion" value="{{ request.GET.fecha_asignacion|default:'' }}" required>
+                {% if ciudad == 'Tulua' %}
+                <label for="tipo_bodega_historial">Tipo de conteo:</label>
+                <select id="tipo_bodega_historial" name="tipo_bodega">
+                    <option value="0101">Almacén</option>
+                    <option value="0105" {% if request.GET.tipo_bodega == '0105' %}selected{% endif %}>Bodega 0105</option>
+                </select>
+                {% endif %}
             <button name="filter_users" class="button-generic">Filtrar productos por usuario</button>
             <button name="filter_all_users" class="button-generic">Filtrar productos de todos los usuarios</button>
         </div>
@@ -103,21 +117,19 @@
         <p>Total productos disponibles: {{ total_tareas_hoy_almacen }} ----- Fecha de venta: {{ fecha_asignar }}</p>
         <ul>
             {% for usuario in usuarios_con_tareas_almacen %}
-            <form method="post">
-                <li>{{ usuario.usuario__first_name }} {{ usuario.usuario__last_name }}: {{ usuario.total_tareas }}
-                    {% csrf_token %}
+            <li>{{ usuario.usuario__first_name }} {{ usuario.usuario__last_name }}: {{ usuario.total_tareas }}
+                <form method="get" style="display:inline;">
                     <input type="hidden" name="usuario_id" value="{{ usuario.usuario__id }}">
                     <input type="hidden" name="tipo_bodega" value="0101">
                     <button class="button-view-task" name="view_user_tasks">Diferencias</button>
-                </li>
-            </form>
+                </form>
+            </li>
             {% empty %}
             <li>Sin usuarios con tareas asignadas en Almacén.</li>
             {% endfor %}
         </ul>
         <p>Total tareas asignadas hoy: {{ total_tareas_almacen }}</p>
-        <form method="post">
-            {% csrf_token %}
+        <form method="get">
             <input type="hidden" name="tipo_bodega" value="0101">
             <button class="button-view-task" name="view_all_tasks" title="ver todas las tareas de almacén">ver todo almacen</button>
             <button class="button-view-task" name="view_all_user_tasks" title="ver diferencias de almacén">ver todas las diferencias almacen</button>
@@ -129,21 +141,19 @@
         <p>Total productos disponibles: {{ total_tareas_hoy_bodega }} ----- Fecha de venta: {{ fecha_asignar }}</p>
         <ul>
             {% for usuario in usuarios_con_tareas_bodega %}
-            <form method="post">
-                <li>{{ usuario.usuario__first_name }} {{ usuario.usuario__last_name }}: {{ usuario.total_tareas }}
-                    {% csrf_token %}
+            <li>{{ usuario.usuario__first_name }} {{ usuario.usuario__last_name }}: {{ usuario.total_tareas }}
+                <form method="get" style="display:inline;">
                     <input type="hidden" name="usuario_id" value="{{ usuario.usuario__id }}">
                     <input type="hidden" name="tipo_bodega" value="0105">
                     <button class="button-view-task" name="view_user_tasks">Diferencias</button>
-                </li>
-            </form>
+                </form>
+            </li>
             {% empty %}
             <li>Sin usuarios con tareas asignadas en Bodega 0105.</li>
             {% endfor %}
         </ul>
         <p>Total tareas asignadas hoy: {{ total_tareas_bodega }}</p>
-        <form method="post">
-            {% csrf_token %}
+        <form method="get">
             <input type="hidden" name="tipo_bodega" value="0105">
             <button class="button-view-task" name="view_all_tasks" title="ver todas las tareas de bodega">ver todo bodega</button>
             <button class="button-view-task" name="view_all_user_tasks" title="ver diferencias de bodega">ver todas las diferencias bodega</button>
@@ -166,6 +176,7 @@
     <div>
         <form method="post" style="display:inline;">
             {% csrf_token %}
+            <input type="hidden" name="tipo_bodega" value="{{ tipo_bodega_actual }}">
             {% if mostrar_exportar_todo %}
                 <button type="submit" name="export_excel" class="button-generic">Exportar todo</button>
             {% endif %}
@@ -173,8 +184,8 @@
         </form>
     </div>
     <div>
-        <form method="post">
-            {% csrf_token %}
+        <form method="get">
+            <input type="hidden" name="tipo_bodega" value="{{ tipo_bodega_actual }}">
             <button type="submit" name="ver_no_verificados" class="button-generic">Ver productos no verificados</button>
         </form>
     </div>

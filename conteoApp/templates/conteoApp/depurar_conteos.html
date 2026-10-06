@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Depurar conteos{% endblock %}
+{% block css %}
+<link href="{% static 'conteoApp/css/conteoApp.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div class="mensajes-app">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}" role="alert">{{ message }}</div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="depurar">
+    <h3>Depurar conteos antiguos</h3>
+
+    {% if rango.total %}
+    <p class="depurar-rango">
+        Hay conteos desde el <strong>{{ rango.desde|date:"d/m/Y" }}</strong>
+        hasta el <strong>{{ rango.hasta|date:"d/m/Y" }}</strong>
+        ({{ rango.total }} tareas en total).
+    </p>
+    {% else %}
+    <p class="depurar-rango">No hay conteos registrados.</p>
+    {% endif %}
+
+    {% if meses %}
+    <form method="get" id="form-meses">
+        <input type="hidden" name="revisar" value="1">
+        <div class="table-container">
+            <table class="depurar-tabla">
+                <thead>
+                    <tr>
+                        <th class="checkbox-cell"><input type="checkbox" id="select-all-meses" title="Seleccionar todos"></th>
+                        <th>MES</th>
+                        <th>PRIMER CONTEO</th>
+                        <th>ÚLTIMO CONTEO</th>
+                        <th>TAREAS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mes in meses %}
+                    <tr {% if mes.bloqueado %}class="depurar-bloqueado"{% endif %}>
+                        <td class="checkbox-cell">
+                            {% if mes.bloqueado %}
+                            <input type="checkbox" disabled title="El mes en curso no se puede eliminar">
+                            {% else %}
+                            <input type="checkbox" name="meses" value="{{ mes.clave }}" class="mes-check" {% if mes.clave in seleccionados %}checked{% endif %}>
+                            {% endif %}
+                        </td>
+                        <td>{{ mes.nombre }}{% if mes.bloqueado %} <small>(mes en curso)</small>{% endif %}</td>
+                        <td>{{ mes.desde|date:"d/m/Y" }}</td>
+                        <td>{{ mes.hasta|date:"d/m/Y" }}</td>
+                        <td>{{ mes.tareas }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <button type="submit" class="button-generic" id="btn-revisar">Revisar qué se eliminará</button>
+    </form>
+    {% endif %}
+
+    {% if plan %}
+    <div class="depurar-plan">
+        <h4>Revisión antes de eliminar</h4>
+        <p>Meses seleccionados: <strong>{{ plan.nombres|join:", " }}</strong></p>
+        <ul>
+            <li>Tareas (conteos) que se eliminarán: <strong>{{ plan.tareas }}</strong></li>
+            <li>Filas de inventario que se eliminarán: <strong>{{ plan.inventario }}</strong>
+                <ul>
+                    <li>Usadas por las tareas de esos meses: {{ plan.inventario_de_tareas }}</li>
+                    <li>De cortes de esos meses que ninguna tarea usa: {{ plan.inventario_sin_tareas }}</li>
+                </ul>
+            </li>
+            <li>Filas de inventario que se conservan porque las usan tareas de otros meses: {{ plan.protegidas_otros_meses }}</li>
+            <li>Filas de inventario que se conservan por ser del corte más reciente de su bodega: {{ plan.protegidas_corte_reciente }}</li>
+        </ul>
+        {% if plan.tareas or plan.inventario %}
+        <form method="post" id="form-eliminar">
+            {% csrf_token %}
+            {% for clave in plan.claves %}<input type="hidden" name="meses" value="{{ clave }}">{% endfor %}
+            <p class="depurar-aviso">Esta acción no se puede deshacer. Para continuar escribe <strong>{{ texto_confirmacion }}</strong>:</p>
+            <input type="text" name="confirmacion" id="confirmacion" autocomplete="off" class="search-box depurar-confirmacion" placeholder="{{ texto_confirmacion }}">
+            <button type="submit" class="button-delete" id="btn-eliminar" disabled>Eliminar definitivamente</button>
+        </form>
+        {% else %}
+        <p>No hay tareas en los meses seleccionados.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<div id="processingModal" class="modal">
+    <div class="modal-content"><p>Eliminando... no cierres esta página.</p></div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+(function () {
+    const todos = document.getElementById('select-all-meses');
+    const checks = () => document.querySelectorAll('.mes-check');
+    if (todos) {
+        todos.addEventListener('change', () => checks().forEach(c => { c.checked = todos.checked; }));
+    }
+
+    const formMeses = document.getElementById('form-meses');
+    if (formMeses) {
+        formMeses.addEventListener('submit', (e) => {
+            if (!document.querySelector('.mes-check:checked')) {
+                e.preventDefault();
+                alert('Selecciona al menos un mes.');
+            }
+        });
+    }
+
+    const conf = document.getElementById('confirmacion');
+    const btn = document.getElementById('btn-eliminar');
+    const formEliminar = document.getElementById('form-eliminar');
+    if (conf && btn && formEliminar) {
+        const esperado = "{{ texto_confirmacion|escapejs }}";
+        conf.addEventListener('input', () => {
+            btn.disabled = conf.value.trim().toUpperCase() !== esperado;
+        });
+        formEliminar.addEventListener('submit', (e) => {
+            if (btn.disabled) { e.preventDefault(); return; }
+            btn.disabled = true;  // evita doble envío
+            document.getElementById('processingModal').style.display = 'block';
+        });
+    }
+})();
+</script>
+{% endblock %}

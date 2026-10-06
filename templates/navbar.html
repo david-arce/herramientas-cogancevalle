@@ -1,11 +1,20 @@
-{% load static %}
+{% load static conteo_tags %}
 <nav class="navbar">
     <div class="navbar-left">
       <img src="{% static '/img/logo_cogancevalle.png' %}" alt="Logo" class="logo">
     {% if user.is_authenticated %}
+      {% if user|es_contador %}
+      {# Los contadores solo ven su lista de productos asignados #}
+      <a href="{% url 'lista_tareas' %}" class="{% if request.resolver_match.url_name == 'lista_tareas' %}active{% endif %}">Productos asignados</a>
+      {% else %}
       <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Pronósticos</a>
       <a href="{% url 'lista_tareas' %}" class="{% if request.resolver_match.url_name == 'lista_tareas' %}active{% endif %}">Productos asignados</a>
       <a href="{% url 'asignar_tareas' %}" class="{% if request.resolver_match.url_name == 'asignar_tareas' %}active{% endif %}">Asignar productos</a>
+      {% if user|puede_depurar %}
+      <a href="{% url 'depurar_conteos' %}" class="{% if request.resolver_match.url_name == 'depurar_conteos' %}active{% endif %}">Depurar conteos</a>
+      <a href="{% url 'depurar_inventario' %}" class="{% if request.resolver_match.url_name == 'depurar_inventario' %}active{% endif %}">Depurar inventario</a>
+      {% endif %}
+      {% endif %}
     {% endif %}
     </div>
 

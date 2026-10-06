@@ -297,3 +297,59 @@ td.checkbox-cell {
     text-align: center;
     vertical-align: middle;
 }
+
+/* mensajes del sistema (errores al asignar, etc.) */
+.mensajes-app {
+    padding: 10px 20px 0;
+}
+
+/* depuración de conteos */
+.depurar {
+    max-width: 900px;
+    padding: 20px;
+}
+.depurar-rango {
+    font-size: 1rem;
+}
+.depurar-tabla th, .depurar-tabla td {
+    max-width: none;
+}
+.depurar-bloqueado td {
+    color: #888;
+}
+.depurar-plan {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+.depurar-aviso {
+    color: #940000;
+}
+.depurar-confirmacion {
+    max-width: 250px;
+}
+.button-delete:disabled {
+    background-color: #c9a0a0;
+    cursor: not-allowed;
+}
+.depurar-filtro {
+    margin: 10px 0;
+}
+.depurar-scroll {
+    max-height: 520px;
+    overflow-y: auto;
+}
+.depurar-paginas {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+.depurar-filtro label {
+    margin-left: 10px;
+}
+.depurar-ayuda {
+    font-size: 0.9rem;
+    color: #555;
+}

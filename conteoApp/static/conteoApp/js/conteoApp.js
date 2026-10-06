@@ -1,18 +1,75 @@
-// seleccionar el formulario especifico
-const formTareas = document.getElementById('form-tareas');
-
-// Variable para rastrear si hay cambios en el formulario
-let isFormDirty = false;
-
-// Detecta cambios en los inputs y textareas dentro del formulario
-if (formTareas !== null) {
-    formTareas.querySelectorAll('input, textarea').forEach(element => {
-        element.addEventListener('change', (event) => {
-            // Marca el formulario como modificado
-            isFormDirty = true;
-        });
-    });
+// ─────────────────────────────────────────────────────────────────────────────
+// Utilidades
+// ─────────────────────────────────────────────────────────────────────────────
+function getCsrfToken() {
+    const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (input && input.value) return input.value;
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.content : '';
 }
+
+function mostrar(el) { if (el) el.style.display = 'block'; }
+function ocultar(el) { if (el) el.style.display = 'none'; }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Ordenar tablas (clic en el encabezado)
+// Lee cada celda una sola vez y usa textContent (innerText fuerza recalcular el
+// diseño por cada celda y era muy lento en tablas grandes). Si la celda tiene un
+// input/textarea se ordena por su valor.
+// ─────────────────────────────────────────────────────────────────────────────
+const collator = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
+
+function valorCelda(cell) {
+    if (!cell) return '';
+    const campo = cell.querySelector('input:not([type="checkbox"]), textarea');
+    if (campo) return campo.value.trim();
+    const check = cell.querySelector('input[type="checkbox"]');
+    if (check) return check.checked ? '1' : '0';
+    return cell.textContent.trim();
+}
+
+function aNumero(texto) {
+    if (texto === '') return null;
+    const normal = texto.replace(/\s/g, '').replace(',', '.');
+    return /^-?\d+(\.\d+)?$/.test(normal) ? parseFloat(normal) : null;
+}
+
+function sortTableById(tableId, columnIndex) {
+    const table = document.getElementById(tableId);
+    if (!table || !table.tBodies.length) return;
+    const tbody = table.tBodies[0];
+    const asc = table.dataset.sortOrder === "asc";  // igual que antes: alterna en cada clic
+
+    const filas = Array.from(tbody.rows).map(row => {
+        const texto = valorCelda(row.cells[columnIndex]);
+        return { row, texto, num: aNumero(texto) };
+    });
+    const todosNumeros = filas.every(f => f.num !== null || f.texto === '');
+
+    filas.sort((a, b) => {
+        let r;
+        if (todosNumeros) {
+            r = (a.num ?? 0) - (b.num ?? 0);
+        } else {
+            r = collator.compare(a.texto, b.texto);
+        }
+        return asc ? r : -r;
+    });
+
+    table.dataset.sortOrder = asc ? "desc" : "asc";
+    tbody.replaceChildren(...filas.map(f => f.row));
+}
+
+// Compatibilidad con llamadas antiguas
+function sortTable(columnIndex) {
+    sortTableById("table-asignar", columnIndex);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Vista del contador: conteo, borradores y aviso de cambios sin guardar
+// ─────────────────────────────────────────────────────────────────────────────
+const formTareas = document.getElementById('form-tareas');
+let isFormDirty = false;
 
 // Advertir al usuario antes de salir si hay cambios no guardados
 window.addEventListener('beforeunload', function (e) {
@@ -22,450 +79,272 @@ window.addEventListener('beforeunload', function (e) {
     }
 });
 
-// obtener el evento de click en el boton de enviar conteo
-const btnUpdateTarea = document.getElementById('update-tarea');
-if (btnUpdateTarea !== null) {
-    btnUpdateTarea.addEventListener('click', function () {
-        isFormDirty = false;
-    });   
+function camposConteo() {
+    return formTareas ? formTareas.querySelectorAll('.input-conteo, .input-observacion') : [];
 }
 
-// guardar los valores de los inputs y textareas en el formulario por medio del sessionStorage y localStorage en caso de refrescar la pagina
-document.addEventListener("DOMContentLoaded", function() {
-    const inputs = document.querySelectorAll(".input-conteo, .input-observacion");
+function guardarBorrador(input) {
+    try { sessionStorage.setItem(input.name, input.value); } catch (e) { /* almacenamiento no disponible */ }
+}
 
-    // Cargar valores guardados
-    inputs.forEach(input => {
-        const savedValue = sessionStorage.getItem(input.name);
-        if (savedValue !== null) {
-            input.value = savedValue;
+function limpiarBorradores() {
+    camposConteo().forEach(input => {
+        try { sessionStorage.removeItem(input.name); } catch (e) { /* ignorar */ }
+    });
+}
+
+if (formTareas) {
+    // Restaurar lo escrito y no guardado si la página se recarga. Si hay borradores
+    // distintos a lo que dice el servidor, se marca el formulario como pendiente.
+    camposConteo().forEach(input => {
+        let guardado = null;
+        try { guardado = sessionStorage.getItem(input.name); } catch (e) { /* ignorar */ }
+        if (guardado !== null && guardado !== input.value) {
+            input.value = guardado;
+            isFormDirty = true;
         }
     });
 
-    // Guardar valores en tiempo real
-    inputs.forEach(input => {
-        input.addEventListener("input", () => {
-            sessionStorage.setItem(input.name, input.value);
-        });
-    });
-});
-
-// borrar el cero por defecto del input de conteo al hacer clic en el input
-// document.addEventListener("DOMContentLoaded", function () {
-//     const inputs = document.querySelectorAll(".input-conteo"); // Seleccionar todos los campos de conteo
-
-//     inputs.forEach(input => {
-//         // Eliminar el cero inicial al enfocar el input
-//         input.addEventListener("focus", () => {
-//             if (input.value === "0") {
-//                 input.value = ""; // Borra el cero
-//             }
-//         });
-
-//         // Si el usuario deja el input vacío, volver a poner el cero
-//         input.addEventListener("blur", () => {
-//             if (input.value === "") {
-//                 input.value = "0"; // Restaura el cero si está vacío
-//             }
-//         });
-//     });
-// });
-
-
-// Función para ordenar la tabla
-function sortTableById(tableId, columnIndex) {
-  const table = document.getElementById(tableId);
-  const tbody = table.tBodies[0];
-  const rows = Array.from(tbody.rows);
-  const asc = table.dataset.sortOrder === "asc";
-
-  rows.sort((a, b) => {
-    let aText = a.cells[columnIndex].innerText.trim().toLowerCase();
-    let bText = b.cells[columnIndex].innerText.trim().toLowerCase();
-
-    if (!isNaN(aText) && !isNaN(bText)) {
-      return asc ? aText - bText : bText - aText;
-    }
-    return asc ? aText.localeCompare(bText) : bText.localeCompare(aText);
-  });
-
-  table.dataset.sortOrder = asc ? "desc" : "asc";
-  tbody.replaceChildren(...rows);
-}
-
-
-// Función para ordenar la tabla
-function sortTable(columnIndex) {
-    const table = document.getElementById("table-asignar");
-    let rows = Array.from(table.rows).slice(1); // Ignorar encabezado
-    let ascending = table.dataset.sortOrder === "asc";
-
-    rows.sort((rowA, rowB) => {
-        let cellA = rowA.cells[columnIndex].innerText.toLowerCase();
-        let cellB = rowB.cells[columnIndex].innerText.toLowerCase();
-
-        if (!isNaN(cellA) && !isNaN(cellB)) {
-            return ascending ? cellA - cellB : cellB - cellA;
+    // Delegación de eventos: funciona también con las filas que llegan después de
+    // "Actualizar conteo" (antes esas filas quedaban sin escuchar cambios).
+    formTareas.addEventListener('input', function (event) {
+        const el = event.target;
+        if (el.matches('.input-conteo, .input-observacion')) {
+            guardarBorrador(el);
+            isFormDirty = true;
         }
-
-        return ascending ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
     });
-
-    table.dataset.sortOrder = ascending ? "desc" : "asc";
-    
-    rows.forEach(row => table.appendChild(row)); // Reorganizar filas
+    formTareas.addEventListener('change', function () {
+        isFormDirty = true;
+    });
+    // Evitar que Enter en un campo de conteo envíe el formulario de forma tradicional
+    formTareas.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const btn = document.getElementById('update-tarea');
+        if (btn && !btn.disabled) btn.click();
+    });
 }
 
-//funcion para buscar usuarios en el formnulario de asignar, eliminar y activar
-document.addEventListener('DOMContentLoaded', function () {
-    const searchInput = document.getElementById('searchInput');
-    const checkboxList = document.getElementById('checkboxList');
-    if (!searchInput || !checkboxList) {
-        return;
-    }
-    const labels = Array.from(checkboxList.getElementsByTagName('label'));
+// Enviar el conteo por AJAX y reemplazar las filas con las pendientes
+document.addEventListener("DOMContentLoaded", function () {
+    const btn = document.getElementById("update-tarea");
+    if (!formTareas || !btn) return;
+    const modal = document.getElementById("processingModal");
 
-    searchInput.addEventListener('input', function () {
-        const filter = searchInput.value.trim().toLowerCase();
+    btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        if (btn.disabled) return;  // evita doble envío
 
-        labels.forEach(label => {
-            const text = label.innerText.trim().toLowerCase();
-            if (text.includes(filter)) {
-                label.style.display = '';  // Mostrar si coincide
-            } else {
-                label.style.display = 'none';  // Ocultar si no coincide
+        const formData = new FormData(formTareas);
+        formData.append("update_tarea", "1");
+
+        mostrar(modal);
+        btn.disabled = true;
+
+        fetch(window.location.href, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": getCsrfToken(),
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: formData,
+            credentials: "same-origin"
+        })
+        .then(res => {
+            const tipo = res.headers.get("content-type") || "";
+            if (!tipo.includes("application/json")) {
+                // Normalmente: la sesión expiró y el servidor devolvió la página de login
+                throw new Error("La sesión expiró o el servidor no respondió correctamente. Recarga la página (lo escrito se conserva).");
             }
+            return res.json();
+        })
+        .then(data => {
+            if (data.status !== "ok") {
+                throw new Error(data.msg || "Error al actualizar");
+            }
+            limpiarBorradores();          // lo guardado ya está en el servidor
+            document.getElementById("tareas-body").innerHTML = data.html;
+            isFormDirty = false;
+        })
+        .catch(err => {
+            console.error(err);
+            alert(err.message || "Hubo un problema, revisa la consola.");
+        })
+        .finally(() => {
+            ocultar(modal);
+            btn.disabled = false;
         });
     });
 });
 
-//funcion para buscar usuarios en el formnulario de filtrar 
-document.addEventListener('DOMContentLoaded', function () {
-    const searchInput = document.getElementById('searchInput_homework');
-    const checkboxList = document.getElementById('checkboxList_homework');
+// ─────────────────────────────────────────────────────────────────────────────
+// Panel de asignación
+// ─────────────────────────────────────────────────────────────────────────────
 
-    // Verificar que los elementos existen antes de continuar
-    if (searchInput && checkboxList) {
-        const labels = Array.from(checkboxList.getElementsByTagName('label'));
+// Buscador de usuarios y "Seleccionar todos" (mismo comportamiento para ambas listas)
+function configurarListaUsuarios(searchId, listId, selectAllId, checkboxClass) {
+    const searchInput = document.getElementById(searchId);
+    const checkboxList = document.getElementById(listId);
+    const selectAll = document.getElementById(selectAllId);
+    if (!checkboxList) return;
 
+    const labels = Array.from(checkboxList.getElementsByTagName('label'));
+    const textos = labels.map(label => label.textContent.trim().toLowerCase());
+    const checkboxes = () => checkboxList.querySelectorAll('.' + checkboxClass);
+
+    if (searchInput) {
         searchInput.addEventListener('input', function () {
             const filter = searchInput.value.trim().toLowerCase();
-
-            labels.forEach(label => {
-                const text = label.innerText.trim().toLowerCase();
-                if (text.includes(filter)) {
-                    label.style.display = '';  // Mostrar si coincide
-                } else {
-                    label.style.display = 'none';  // Ocultar si no coincide
-                }
+            labels.forEach((label, i) => {
+                label.style.display = textos[i].includes(filter) ? '' : 'none';
             });
         });
     }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            checkboxes().forEach(cb => { cb.checked = selectAll.checked; });
+        });
+        checkboxList.addEventListener('change', function (event) {
+            if (event.target.classList.contains(checkboxClass)) {
+                selectAll.checked = Array.from(checkboxes()).every(cb => cb.checked);
+            }
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    configurarListaUsuarios('searchInput', 'checkboxList', 'selectAll', 'user-checkbox');
+    configurarListaUsuarios('searchInput_homework', 'checkboxList_homework', 'selectAllHomework', 'user-checkbox-homework');
 });
 
-// Validar que al menos un checkbox esté seleccionado en el formulario de filtrar
+// Validar el formulario de historial (al menos un usuario y una fecha)
 document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('filter_users_form');
     const modal = document.getElementById('customAlert');
     const closeAlertButton = document.getElementById('closeAlert');
     const alertMessage = document.getElementById('alertMessage');
+    if (!form) return;
 
-    // Verificar si el formulario existe
-    if (form) {
-        form.addEventListener('submit', function (event) {
-            // Detectar qué botón fue presionado
-            const submitButton = event.submitter;
-            
-            // Solo validar checkboxes si se presiona el botón "Filtrar usuarios seleccionados"
-            if (submitButton && submitButton.name === 'filter_users') {
-                const checkboxes = document.querySelectorAll('#checkboxList_homework .user-checkbox-homework:checked');
-                const fechaInput = document.getElementById('fecha_asignacion');
-
-                // Validar que haya al menos un checkbox seleccionado
-                if (checkboxes.length === 0) {
-                    event.preventDefault(); // Evitar el envío del formulario
-
-                    // Mostrar el modal de alerta si existe
-                    if (modal && alertMessage) {
-                        alertMessage.textContent = 'Por favor, selecciona al menos un usuario.';
-                        modal.style.display = 'block';
-                    }
-                    return;
-                }
-
-                // Validar que se haya seleccionado una fecha
-                if (!fechaInput.value) {
-                    event.preventDefault();
-                    
-                    if (modal && alertMessage) {
-                        alertMessage.textContent = 'Por favor, selecciona una fecha.';
-                        modal.style.display = 'block';
-                    }
-                    return;
-                }
-            }
-            
-            // Si se presiona "Filtrar todos los usuarios", solo validar la fecha
-            if (submitButton && submitButton.name === 'filter_all_users') {
-                const fechaInput = document.getElementById('fecha_asignacion');
-
-                // Validar que se haya seleccionado una fecha
-                if (!fechaInput.value) {
-                    event.preventDefault();
-                    
-                    if (modal && alertMessage) {
-                        alertMessage.textContent = 'Por favor, selecciona una fecha.';
-                        modal.style.display = 'block';
-                    }
-                    return;
-                }
-            }
-        });
-
-        // Cerrar el modal al hacer clic en el botón "Aceptar"
-        if (closeAlertButton && modal) {
-            closeAlertButton.addEventListener('click', function () {
-                modal.style.display = 'none';
-            });
+    function alerta(texto) {
+        if (modal && alertMessage) {
+            alertMessage.textContent = texto;
+            mostrar(modal);
         }
-
-        // Cerrar el modal al hacer clic fuera de él
-        window.addEventListener('click', function(event) {
-            if (event.target === modal) {
-                modal.style.display = 'none';
-            }
-        });
     }
+
+    form.addEventListener('submit', function (event) {
+        const submitButton = event.submitter;
+        const fechaInput = document.getElementById('fecha_asignacion');
+        if (!submitButton) return;
+
+        // Solo validar checkboxes si se presiona el botón "Filtrar usuarios seleccionados"
+        if (submitButton.name === 'filter_users') {
+            const marcados = document.querySelectorAll('#checkboxList_homework .user-checkbox-homework:checked');
+            if (marcados.length === 0) {
+                event.preventDefault();
+                alerta('Por favor, selecciona al menos un usuario.');
+                return;
+            }
+        }
+        // Para ambos botones se valida la fecha
+        if ((submitButton.name === 'filter_users' || submitButton.name === 'filter_all_users') && !fechaInput.value) {
+            event.preventDefault();
+            alerta('Por favor, selecciona una fecha.');
+        }
+    });
+
+    if (closeAlertButton) {
+        closeAlertButton.addEventListener('click', () => ocultar(modal));
+    }
+    window.addEventListener('click', function (event) {
+        if (event.target === modal) ocultar(modal);
+    });
 });
 
-
-// funcion para confirmar la eliminacion de las tareas de un usuario
-document.addEventListener("DOMContentLoaded", function() {
+// Confirmar la eliminación de las tareas asignadas
+document.addEventListener("DOMContentLoaded", function () {
     const modal = document.getElementById("confirmModal");
     const openModalBtn = document.getElementById("openConfirmModal");
     const closeModalBtn = document.getElementById("cancelDelete");
     const confirmBtn = document.getElementById("confirmDelete");
     const form = document.getElementById("assign_delete_activate_form");
+    if (!(modal && openModalBtn && closeModalBtn && confirmBtn && form)) return;
 
-    // Verificar que los elementos existen antes de añadir event listeners
-    if (modal && openModalBtn && closeModalBtn && confirmBtn && form) {
-        // Abrir el modal cuando el usuario haga clic en el botón
-        openModalBtn.addEventListener("click", function() {
-            modal.style.display = "block";
-        });
+    openModalBtn.addEventListener("click", () => mostrar(modal));
+    closeModalBtn.addEventListener("click", () => ocultar(modal));
 
-        // Cerrar el modal si el usuario cancela
-        closeModalBtn.addEventListener("click", function() {
-            modal.style.display = "none";
-        });
+    confirmBtn.addEventListener("click", function () {
+        confirmBtn.disabled = true;  // evita doble envío
+        const hiddenInput = document.createElement("input");
+        hiddenInput.type = "hidden";
+        hiddenInput.name = "delete_task";  // Debe coincidir con lo que Django espera
+        hiddenInput.value = "1";
+        form.appendChild(hiddenInput);
+        form.submit();
+    });
 
-        // Si el usuario confirma, enviar el formulario manualmente
-        confirmBtn.addEventListener("click", function() {
-            // Crear un input oculto para enviar el nombre del botón (Django lo espera en request.POST)
-            let hiddenInput = document.createElement("input");
-            hiddenInput.type = "hidden";
-            hiddenInput.name = "delete_task";  // Debe coincidir con lo que Django espera
-            hiddenInput.value = "1"; // Un valor cualquiera
-
-            form.appendChild(hiddenInput);
-            form.submit();
-        });
-
-        // Cerrar el modal si el usuario hace clic fuera de él
-        window.addEventListener("click", function(event) {
-            if (event.target === modal) {
-                modal.style.display = "none";
-            }
-        });
-    }
+    window.addEventListener("click", function (event) {
+        if (event.target === modal) ocultar(modal);
+    });
 });
 
-/*
-// funcion para que cambiar el type al botón de 'submit' a 'button' al enviar el conteo
-document.addEventListener("DOMContentLoaded", function () {
-    const updateButton = document.getElementById("update-tarea");
-    const form = document.getElementById("form-tareas");
-    const modal = document.getElementById("processingModal");
-
-    // Verificar que los elementos existen antes de agregar eventos
-    if (updateButton && form && modal) {
-        updateButton.addEventListener("click", function () {
-            // Crear un input oculto para enviar el nombre del botón (Django lo espera en request.POST)
-            let hiddenInput = document.createElement("input");
-            hiddenInput.type = "hidden";
-            hiddenInput.name = "update_tarea";  // Debe coincidir con lo que Django espera
-            hiddenInput.value = "1"; // Un valor cualquiera
-
-            form.appendChild(hiddenInput);
-            
-            // Ocultar el botón de actualizar y mostrar el modal
-            updateButton.style.display = "none"; // Ocultar el botón
-            modal.style.display = "block"; // Mostrar el modal de procesamiento
-
-            form.submit();  // Enviar el formulario manualmente
-        });
-    }
-});
-*/
-
-// funcion para deshabilitar el botón de asignar tareas y mostrar un mensaje de procesamiento
+// Deshabilitar el botón de asignar tareas y mostrar "Procesando..."
 document.addEventListener("DOMContentLoaded", function () {
     const form = document.getElementById("assign_delete_activate_form");
     const assignButton = document.getElementById("assignButton");
     const modal = document.getElementById("processingModal");
+    if (!(form && assignButton && modal)) return;
 
-    // Verificar que los elementos existen antes de agregar eventos
-    if (form && assignButton && modal) {
-        form.addEventListener("submit", function (event) {
-            if (event.submitter === assignButton) { // Solo si se presiona "Asignar Tareas"
-                assignButton.style.display = "none"; // Oculta el botón
-                modal.style.display = "block"; // Muestra el modal
-            }
-        });
+    form.addEventListener("submit", function (event) {
+        if (event.submitter === assignButton) {
+            assignButton.style.display = "none";
+            mostrar(modal);
+        }
+    });
+});
+
+// Al volver con el botón "atrás" el navegador puede restaurar la página desde caché
+// con el modal "Procesando..." abierto: se cierra y se restaura el botón.
+window.addEventListener('pageshow', function (event) {
+    if (event.persisted) {
+        document.querySelectorAll('#processingModal').forEach(ocultar);
+        const assignButton = document.getElementById("assignButton");
+        if (assignButton) assignButton.style.display = "";
+        const confirmBtn = document.getElementById("confirmDelete");
+        if (confirmBtn) confirmBtn.disabled = false;
     }
 });
 
-// Función para manejar el cambio de estado de verificado
-document.addEventListener("DOMContentLoaded", function () {
-    document.querySelectorAll(".verificado-check").forEach(function (checkbox) {
-        checkbox.addEventListener("change", function () {
-            const tareaId = this.dataset.id;
+// Marcar/desmarcar "verificado" (delegado: un solo listener para toda la tabla)
+document.addEventListener("change", function (event) {
+    const checkbox = event.target;
+    if (!checkbox.classList || !checkbox.classList.contains("verificado-check")) return;
+    if (typeof toggleVerificadoURL === "undefined") return;
 
-            // ✅ Leer el token desde el input del formulario o desde la cookie
-            const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
-            if (!csrfInput) {
-                console.error("No se encontró el token CSRF");
-                return;
-            }
-            const csrfToken = csrfInput.value;
-
-            fetch(toggleVerificadoURL, {
-                method: "POST",
-                headers: {
-                    "X-CSRFToken": csrfToken,
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: new URLSearchParams({
-                    "tarea_id": tareaId,
-                }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status !== "ok") {
-                    alert("Error al actualizar el estado");
-                    checkbox.checked = !checkbox.checked;
-                }
-            })
-            .catch(error => {
-                alert("Error en la petición");
-                checkbox.checked = !checkbox.checked;
-            });
-        });
-    });
-});
-
-// Función para actualizar las tareas
-document.addEventListener("DOMContentLoaded", function () {
-  const form = document.getElementById("form-tareas");
-  const btn  = document.getElementById("update-tarea");
-
-  if (!form || !btn) return;
-
-  btn.addEventListener("click", function (e) {
-    e.preventDefault();
-
-    const formData = new FormData(form);
-    formData.append("update_tarea", "1");
-
-    const csrfToken = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
-
-    document.getElementById("processingModal").style.display = "block";
-    btn.disabled = true;
-
-    fetch(window.location.href, {
-      method: "POST",
-      headers: {
-        "X-CSRFToken": csrfToken,
-        "X-Requested-With": "XMLHttpRequest"
-      },
-      body: formData
+    checkbox.disabled = true;
+    fetch(toggleVerificadoURL, {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": getCsrfToken(),
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-Requested-With": "XMLHttpRequest"
+        },
+        body: new URLSearchParams({ "tarea_id": checkbox.dataset.id }),
+        credentials: "same-origin"
     })
-    .then(res => res.json())
-    .then(data => { 
-      if (data.status === "ok") {
-        // Reemplazamos el contenido del <tbody>
-        const body = document.getElementById("tareas-body")
-        // inyecto nuevo HTML
-        body.innerHTML = data.html;
-        // Ocultamos modal y reactivamos botón
-        document.getElementById("processingModal").style.display = "none";
-        btn.disabled = false;
-      } else {
-        throw new Error("Error al actualizar");
-      }
+    .then(response => response.json())
+    .then(data => {
+        if (data.status !== "ok") {
+            alert("Error al actualizar el estado");
+            checkbox.checked = !checkbox.checked;
+        } else {
+            checkbox.checked = data.verificado;  // estado real según el servidor
+        }
     })
-    .catch(err => {
-      console.error(err);
-      alert("Hubo un problema, revisa la consola.");
-      console.log(err);
-      document.getElementById("processingModal").style.display = "none";
-      btn.disabled = false;
-    });
-  });
-});
-
-// ✅ Seleccionar/Deseleccionar todos - Primera lista (Asignar tareas)
-const selectAll = document.getElementById('selectAll');
-if (selectAll) {
-    selectAll.addEventListener('change', function() {
-        document.querySelectorAll('#checkboxList .user-checkbox').forEach(cb => {
-            cb.checked = this.checked;
-        });
-    });
-
-    document.querySelectorAll('#checkboxList .user-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const allChecked = Array.from(
-                document.querySelectorAll('#checkboxList .user-checkbox')
-            ).every(cb => cb.checked);
-            selectAll.checked = allChecked;
-        });
-    });
-}
-
-// Actualizar el estado del checkbox "Seleccionar todos" si se deselecciona alguno manualmente
-document.querySelectorAll('#checkboxList .user-checkbox').forEach(checkbox => {
-    checkbox.addEventListener('change', function() {
-        const allCheckboxes = document.querySelectorAll('#checkboxList .user-checkbox');
-        const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
-        document.getElementById('selectAll').checked = allChecked;
-    });
-});
-
-// ✅ Seleccionar/Deseleccionar todos - Segunda lista (Historial)
-const selectAllHomework = document.getElementById('selectAllHomework');
-if (selectAllHomework) {
-    selectAllHomework.addEventListener('change', function() {
-        document.querySelectorAll('#checkboxList_homework .user-checkbox-homework').forEach(cb => {
-            cb.checked = this.checked;
-        });
-    });
-
-    document.querySelectorAll('#checkboxList_homework .user-checkbox-homework').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const allChecked = Array.from(
-                document.querySelectorAll('#checkboxList_homework .user-checkbox-homework')
-            ).every(cb => cb.checked);
-            selectAllHomework.checked = allChecked;
-        });
-    });
-}
-
-// Actualizar el estado del checkbox "Seleccionar todos" en historial
-document.querySelectorAll('#checkboxList_homework .user-checkbox-homework').forEach(checkbox => {
-    checkbox.addEventListener('change', function() {
-        const allCheckboxes = document.querySelectorAll('#checkboxList_homework .user-checkbox-homework');
-        const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
-        document.getElementById('selectAllHomework').checked = allChecked;
-    });
+    .catch(() => {
+        alert("Error en la petición");
+        checkbox.checked = !checkbox.checked;
+    })
+    .finally(() => { checkbox.disabled = false; });
 });

@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Depurar inventario{% endblock %}
+{% block css %}
+<link href="{% static 'conteoApp/css/conteoApp.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div class="mensajes-app">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}" role="alert">{{ message }}</div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="depurar">
+    <h3>Depurar inventario</h3>
+    <p class="depurar-rango">
+        Filas de inventario: <strong>{{ total.filas }}</strong> ·
+        en la tabla de tareas: <strong>{{ total.con_tareas }}</strong> ·
+        sin tareas: <strong>{{ total.sin_tareas }}</strong>
+    </p>
+    <p>Solo se eliminan filas <strong>sin tareas</strong>. El corte más reciente de cada bodega no se puede eliminar porque es el que se usa para asignar productos.</p>
+
+    <form method="get" class="depurar-filtro">
+        <label for="bod">Bodega:</label>
+        <select name="bod" id="bod" onchange="this.form.submit()">
+            <option value="">Todas</option>
+            {% for b in bodegas %}
+            <option value="{{ b.bod }}" {% if b.bod == bod_filtro %}selected{% endif %}>{{ b.bod }}{% if b.nombre %} - {{ b.nombre }}{% endif %}</option>
+            {% endfor %}
+        </select>
+        <label for="hasta">Cortes hasta:</label>
+        <input type="date" name="hasta" id="hasta" value="{{ hasta_filtro }}" onchange="this.form.submit()">
+        {% if bod_filtro or hasta_filtro %}<a href="{% url 'depurar_inventario' %}">Quitar filtros</a>{% endif %}
+    </form>
+
+    {% if grupos %}
+    <form method="get" id="form-grupos">
+        <input type="hidden" name="revisar" value="1">
+        <input type="hidden" name="todos" id="campo-todos" value="" disabled>
+        {% if bod_filtro %}<input type="hidden" name="bod" value="{{ bod_filtro }}">{% endif %}
+        {% if hasta_filtro %}<input type="hidden" name="hasta" value="{{ hasta_filtro }}">{% endif %}
+        <div class="table-container depurar-scroll">
+            <table class="depurar-tabla">
+                <thead>
+                    <tr>
+                        <th class="checkbox-cell"><input type="checkbox" id="select-all-grupos" title="Seleccionar todos los cortes de la tabla ({{ total.grupos_elegibles }})"></th>
+                        <th>FECHA DE CORTE</th>
+                        <th>BODEGA</th>
+                        <th>FILAS</th>
+                        <th>EN TAREAS</th>
+                        <th>SIN TAREAS</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for g in grupos %}
+                    <tr {% if g.reciente or not g.sin_tareas %}class="depurar-bloqueado"{% endif %}>
+                        <td class="checkbox-cell">
+                            {% if g.reciente %}
+                            <input type="checkbox" disabled title="Corte más reciente: no se puede eliminar">
+                            {% elif g.sin_tareas %}
+                            <input type="checkbox" name="grupos" value="{{ g.clave }}" class="grupo-check" {% if g.clave in seleccionados %}checked{% endif %}>
+                            {% else %}
+                            <input type="checkbox" disabled title="Todas sus filas están en tareas">
+                            {% endif %}
+                        </td>
+                        <td>{% if g.fecha_corte %}{{ g.fecha_corte|date:"d/m/Y H:i" }}{% else %}Sin fecha{% endif %}{% if g.reciente %} <small>(más reciente)</small>{% endif %}</td>
+                        <td>{{ g.bod }}{% if g.bod_nom %} - {{ g.bod_nom }}{% endif %}</td>
+                        <td>{{ g.filas }}</td>
+                        <td>{{ g.con_tareas }}</td>
+                        <td>{{ g.sin_tareas }}</td>
+                        <td><a href="?{% if bod_filtro %}bod={{ bod_filtro }}&amp;{% endif %}{% if hasta_filtro %}hasta={{ hasta_filtro }}&amp;{% endif %}ver={{ g.clave|urlencode }}#detalle">Ver filas</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="depurar-ayuda">Marca la casilla del encabezado para seleccionar <strong>todos</strong> los cortes de la tabla ({{ total.grupos_elegibles }}). Usa los filtros de bodega y fecha para acotar.</p>
+        <button type="submit" class="button-generic" id="btn-revisar">Revisar qué se eliminará</button>
+    </form>
+    {% else %}
+    <p>No hay filas de inventario.</p>
+    {% endif %}
+
+    {% if plan %}
+    <div class="depurar-plan">
+        <h4>Revisión antes de eliminar</h4>
+        <p>Cortes seleccionados: <strong>{{ plan.n_grupos }}</strong>{% if plan.todos %} (todos los de la tabla{% if bod_filtro %}, bodega {{ bod_filtro }}{% endif %}{% if hasta_filtro %}, hasta {{ hasta_filtro }}{% endif %}){% endif %}</p>
+        <ul>
+            <li>Filas sin tareas que se eliminarán: <strong>{{ plan.sin_tareas }}</strong></li>
+            <li>Filas que se conservan porque están en la tabla de tareas: {{ plan.con_tareas }}</li>
+        </ul>
+        {% if plan.sin_tareas %}
+        <form method="post" id="form-eliminar">
+            {% csrf_token %}
+            {% if bod_filtro %}<input type="hidden" name="bod" value="{{ bod_filtro }}">{% endif %}
+            {% if hasta_filtro %}<input type="hidden" name="hasta" value="{{ hasta_filtro }}">{% endif %}
+            {% if plan.todos %}<input type="hidden" name="todos" value="1">{% endif %}
+            {% for clave in plan.claves %}<input type="hidden" name="grupos" value="{{ clave }}">{% endfor %}
+            <p class="depurar-aviso">Esta acción no se puede deshacer. Para continuar escribe <strong>{{ texto_confirmacion }}</strong>:</p>
+            <input type="text" name="confirmacion" id="confirmacion" autocomplete="off" class="search-box depurar-confirmacion" placeholder="{{ texto_confirmacion }}">
+            <button type="submit" class="button-delete" id="btn-eliminar" disabled>Eliminar definitivamente</button>
+        </form>
+        {% else %}
+        <p>No hay filas sin tareas en los cortes seleccionados.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if detalle %}
+    <div class="depurar-plan" id="detalle">
+        <h4>Filas del corte {% if detalle.corte %}{{ detalle.corte|date:"d/m/Y H:i" }}{% else %}sin fecha{% endif %} · bodega {{ detalle.bod }}</h4>
+        <p>
+            {% if detalle.solo_sin_tareas %}
+            Mostrando solo filas sin tareas · <a href="?{% if bod_filtro %}bod={{ bod_filtro }}&amp;{% endif %}{% if hasta_filtro %}hasta={{ hasta_filtro }}&amp;{% endif %}ver={{ detalle.clave|urlencode }}#detalle">ver todas</a>
+            {% else %}
+            Mostrando todas las filas · <a href="?{% if bod_filtro %}bod={{ bod_filtro }}&amp;{% endif %}{% if hasta_filtro %}hasta={{ hasta_filtro }}&amp;{% endif %}ver={{ detalle.clave|urlencode }}&amp;solo_sin_tareas=1#detalle">ver solo sin tareas</a>
+            {% endif %}
+            · {{ pagina.paginator.count }} filas
+        </p>
+        <div class="table-container">
+            <table class="depurar-tabla">
+                <thead>
+                    <tr>
+                        <th>PROVEEDOR</th><th>ITEM</th><th>PRODUCTO</th><th>FECHA VENCE</th>
+                        <th>SALDO</th><th>VALOR UNIT</th><th>EN TAREAS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in pagina %}
+                    <tr>
+                        <td>{{ f.marca_nom }}</td><td>{{ f.sku }}</td><td>{{ f.sku_nom }}</td><td>{{ f.lpt }}</td>
+                        <td>{{ f.inv_saldo|default_if_none:'' }}</td><td>{{ f.vlr_unit }}</td>
+                        <td class="checkbox-cell">{% if f.en_tareas %}Sí{% else %}No{% endif %}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7">Sin filas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if pagina.has_other_pages %}
+        <div class="depurar-paginas">
+            {% if pagina.has_previous %}<a href="?{{ params_detalle }}&amp;page={{ pagina.previous_page_number }}#detalle">« Anterior</a>{% endif %}
+            Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}
+            {% if pagina.has_next %}<a href="?{{ params_detalle }}&amp;page={{ pagina.next_page_number }}#detalle">Siguiente »</a>{% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<div id="processingModal" class="modal">
+    <div class="modal-content"><p>Eliminando... no cierres esta página.</p></div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+(function () {
+    const todos = document.getElementById('select-all-grupos');
+    const checks = () => document.querySelectorAll('.grupo-check');
+    const maxManual = {{ max_manual }};
+    if (todos) {
+        todos.addEventListener('change', () => checks().forEach(c => { c.checked = todos.checked; }));
+        document.addEventListener('change', (e) => {
+            if (e.target.classList && e.target.classList.contains('grupo-check')) {
+                todos.checked = Array.from(checks()).every(c => c.checked);
+            }
+        });
+    }
+    const formGrupos = document.getElementById('form-grupos');
+    if (formGrupos) {
+        formGrupos.addEventListener('submit', (e) => {
+            const marcados = document.querySelectorAll('.grupo-check:checked').length;
+            if (!marcados) {
+                e.preventDefault();
+                alert('Selecciona al menos un corte.');
+                return;
+            }
+            const campoTodos = document.getElementById('campo-todos');
+            if (todos && todos.checked) {
+                // Todos los de la tabla: se envía un solo campo en vez de uno por corte
+                campoTodos.value = '1';
+                campoTodos.disabled = false;
+                checks().forEach(c => { c.disabled = true; });
+            } else if (marcados > maxManual) {
+                e.preventDefault();
+                alert('Seleccionaste ' + marcados + ' cortes. Para más de ' + maxManual +
+                      ' usa la casilla "Seleccionar todos" junto con los filtros de bodega y fecha.');
+            }
+        });
+    }
+    // Si se vuelve con "atrás", reactivar las casillas
+    window.addEventListener('pageshow', () => checks().forEach(c => { c.disabled = false; }));
+    const conf = document.getElementById('confirmacion');
+    const btn = document.getElementById('btn-eliminar');
+    const formEliminar = document.getElementById('form-eliminar');
+    if (conf && btn && formEliminar) {
+        const esperado = "{{ texto_confirmacion|escapejs }}";
+        conf.addEventListener('input', () => { btn.disabled = conf.value.trim().toUpperCase() !== esperado; });
+        formEliminar.addEventListener('submit', (e) => {
+            if (btn.disabled) { e.preventDefault(); return; }
+            btn.disabled = true;
+            document.getElementById('processingModal').style.display = 'block';
+        });
+    }
+})();
+</script>
+{% endblock %}

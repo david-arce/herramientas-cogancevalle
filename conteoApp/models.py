@@ -124,6 +124,11 @@ class Tarea(models.Model):
         db_table = 'tarea'
         verbose_name = 'Tarea'
         verbose_name_plural = 'Tareas'
+        # Todas las pantallas filtran por fecha de asignación (+ bodega o usuario).
+        indexes = [
+            models.Index(fields=['fecha_asignacion', 'tipo_bodega'], name='tarea_fecha_tipo_idx'),
+            models.Index(fields=['usuario', 'fecha_asignacion'], name='tarea_usuario_fecha_idx'),
+        ]
 
     def __str__(self):
         username = self.usuario.username if self.usuario and self.usuario.username else "Unknown User"

@@ -6,6 +6,10 @@
 <div class="container">
     <h3>Asignación de usuarios a Almacén / Bodega ({{ ciudad }})</h3>
     <p>Arrastra los usuarios entre columnas para asignarlos.</p>
+    {% if messages %}{% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-{{ message.tags|default:'info' }}{% endif %}" role="alert">{{ message }}</div>
+    {% endfor %}{% endif %}
+    <div id="dnd-error" class="alert alert-danger" role="alert" style="display:none;"></div>
 
     <form method="post" id="form-mover">
         {% csrf_token %}
@@ -15,7 +19,7 @@
     </form>
 
     <div class="dnd-container" style="display:flex; gap:20px;">
-        <div class="dnd-column" data-bodega="almacen" style="flex:1; border:2px dashed #aaa; min-height:300px; padding:10px;">
+        <div class="dnd-column" data-bodega="0101" style="flex:1; border:2px dashed #aaa; min-height:300px; padding:10px;">
             <h4>Almacén</h4>
             <div id="lista-almacen">
                 {% for uc in usuarios_almacen %}
@@ -56,10 +60,13 @@
 
 <script>
 let draggedItem = null;
+let origenItem = null;
+const errorBox = document.getElementById('dnd-error');
 
 document.querySelectorAll('.dnd-item').forEach(item => {
     item.addEventListener('dragstart', () => {
         draggedItem = item;
+        origenItem = item.parentElement;
         item.classList.add('dragging');
     });
     item.addEventListener('dragend', () => {
@@ -80,20 +87,35 @@ document.querySelectorAll('.dnd-column').forEach(col => {
         col.classList.remove('drag-over');
         if (!draggedItem) return;
 
+        const item = draggedItem;
+        const origen = origenItem;
         const targetList = col.querySelector('div[id^="lista-"]');
-        targetList.appendChild(draggedItem);
+        if (targetList === origen) return;  // soltado en la misma columna: nada que guardar
+        targetList.appendChild(item);
 
-        const destino = col.dataset.bodega; // 'almacen' o '0105'
-        const userId = draggedItem.dataset.userid;
+        const destino = col.dataset.bodega; // '0101' (Almacén) o '0105'
+        const userId = item.dataset.userid;
 
         // Enviar al servidor el cambio
         fetch("{% url 'asignar_bodega_usuarios' %}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': '{{ csrf_token }}'
+                'X-CSRFToken': '{{ csrf_token }}',
+                'X-Requested-With': 'XMLHttpRequest'
             },
-            body: `mover_usuarios=1&destino=${destino}&usuarios=${userId}`
+            body: new URLSearchParams({mover_usuarios: '1', destino: destino, usuarios: userId})
+        })
+        .then(res => res.ok ? res.json() : Promise.reject(res.status))
+        .then(data => {
+            if (data.status !== 'ok') throw new Error(data.msg || 'Error');
+            errorBox.style.display = 'none';
+        })
+        .catch(() => {
+            // Si no se guardó, el usuario vuelve a su columna para no mostrar algo falso
+            origen.appendChild(item);
+            errorBox.textContent = 'No se pudo guardar el cambio. Recarga la página e inténtalo de nuevo.';
+            errorBox.style.display = 'block';
         });
     });
 });

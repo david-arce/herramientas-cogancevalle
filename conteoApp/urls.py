@@ -10,5 +10,7 @@ urlpatterns = [
     # path('tareas/', TareaListView.as_view(), name='lista_tareas'),
     # path('tareas/asignar/', TareaCreateView.as_view(), name='asignar_tarea'),
     path('asignar-bodega-usuarios/', views.asignar_bodega_usuarios, name='asignar_bodega_usuarios'),
+    path('depurar-conteos/', views.depurar_conteos, name='depurar_conteos'),
+    path('depurar-inventario/', views.depurar_inventario, name='depurar_inventario'),
 ]
 
