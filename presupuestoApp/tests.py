@@ -12,6 +12,7 @@ from django.contrib.auth.models import User
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from unittest import mock
+from urllib.parse import unquote
 
 from django.db.models import Sum
 from django.test import TestCase, TransactionTestCase
@@ -21,7 +22,7 @@ from django.utils import timezone
 from . import views, views_presupuesto_areas as vpa
 from .models import Cuenta5Presupuestado
 from .models_presupuesto import (
-    MESES, PlazoEdicionArea, PresupuestoArea, anio_elaboracion, anio_presupuesto, fecha_mes,
+    AsignacionPresupuesto, MESES, PlazoEdicionArea, PresupuestoArea, anio_elaboracion, anio_presupuesto, fecha_mes,
     filas_verticales,
 )
 
@@ -39,6 +40,11 @@ def fila(detalle, base=1000, **extra):
         **{m: base * i for i, m in enumerate(MESES, start=1)},
         "total": 0, "comentario": "ok", **extra,
     }
+
+
+def asignar(usuario, presupuesto):
+    """El área entra a su presupuesto porque lo tiene asignado (Ajustes → Asignación)."""
+    return AsignacionPresupuesto.objects.create(usuario=usuario, presupuesto=presupuesto)
 
 
 def total_de(f):
@@ -80,6 +86,7 @@ class PlazoEdicionTests(TestCase):
     def setUpTestData(cls):
         cls.usuario_area = User.objects.create_user("PLOZANO")
         cls.aprobador = User.objects.create_user("NICOLAS")
+        asignar(cls.usuario_area, AREA)
 
     def post_json(self, nombre, datos, *args):
         return self.client.post(reverse(nombre, args=[AREA, *args]), json.dumps(datos),
@@ -215,6 +222,7 @@ class FlujoAreaTests(TestCase):
         cls.usuario_area = User.objects.create_user("PLOZANO", password="x")
         cls.aprobador = User.objects.create_user("NICOLAS", password="x")
         cls.intruso = User.objects.create_user("OTRO", password="x")
+        asignar(cls.usuario_area, AREA)
         abrir_plazo()
 
     def post_json(self, url, datos):
@@ -411,7 +419,9 @@ class CargarPlantillaTests(TestCase):
 
     def setUp(self):
         abrir_plazo()
-        self.client.force_login(User.objects.create_user("PLOZANO"))
+        usuario = User.objects.create_user("PLOZANO")
+        asignar(usuario, AREA)
+        self.client.force_login(usuario)
 
     def cargar(self):
         return self.client.post(reverse("cargar_base_sede", args=[AREA]))
@@ -997,3 +1007,211 @@ class NominaConfirmacionTests(TestCase):
         r = self.confirmar(True, usuario=User.objects.create_user("OTRO"))
         self.assertEqual(r.status_code, 403)
         self.assertFalse(ConfiguracionNomina.actual().listo)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  URL única (/mi-presupuesto/) y asignación de presupuestos
+# ═══════════════════════════════════════════════════════════════════════
+class MiPresupuestoTests(TestCase):
+    """Una sola URL para todos: cada usuario termina en la plantilla que tiene asignada."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.usuario = User.objects.create_user("PLOZANO")
+        cls.aprobador = User.objects.create_user("NICOLAS")
+
+    def setUp(self):
+        abrir_plazo()
+        self.url = reverse("mi_presupuesto")
+
+    def test_sin_sesion_va_al_login_y_vuelve(self):
+        r = self.client.get(self.url)
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("next=" + self.url, unquote(r["Location"]))
+
+    def test_aprobador_va_al_dashboard(self):
+        self.client.force_login(self.aprobador)
+        self.assertRedirects(self.client.get(self.url), reverse("dashboardPresupuesto"),
+                             fetch_redirect_response=False)
+
+    def test_un_area_abierta_entra_directo(self):
+        asignar(self.usuario, AREA)
+        self.client.force_login(self.usuario)
+        r = self.client.get(self.url)
+        self.assertRedirects(r, reverse("tabla_auxiliar_sede", args=[AREA]), fetch_redirect_response=False)
+        self.assertEqual(self.client.get(r["Location"]).status_code, 200)
+
+    def test_nomina_y_comercial_entran_directo(self):
+        for clave, destino in (("nomina", "presupuestoNomina"), ("comercial", "baseComercial")):
+            AsignacionPresupuesto.objects.filter(usuario=self.usuario).delete()
+            asignar(self.usuario, clave)
+            self.client.force_login(self.usuario)
+            self.assertRedirects(self.client.get(self.url), reverse(destino), fetch_redirect_response=False)
+
+    def test_sin_asignacion_ve_aviso(self):
+        self.client.force_login(self.usuario)
+        r = self.client.get(self.url)
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "Todavía no tienes un presupuesto asignado")
+
+    def test_varios_presupuestos_elige(self):
+        asignar(self.usuario, AREA)
+        asignar(self.usuario, "tecnologia")
+        abrir_plazo("tecnologia")
+        self.client.force_login(self.usuario)
+        r = self.client.get(self.url)
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, reverse("tabla_auxiliar_sede", args=[AREA]))
+        self.assertContains(r, reverse("tabla_auxiliar_sede", args=["tecnologia"]))
+
+    def test_plazo_cerrado_no_redirige_y_ofrece_solo_consulta(self):
+        asignar(self.usuario, AREA)
+        abrir_plazo(dias=-1)
+        self.client.force_login(self.usuario)
+        r = self.client.get(self.url)
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "Plazo cerrado")
+        self.assertContains(r, reverse("presupuesto_aprobado_sede", args=[AREA]))
+        self.assertNotContains(r, reverse("tabla_auxiliar_sede", args=[AREA]))
+
+    def test_ignora_claves_que_ya_no_existen(self):
+        AsignacionPresupuesto.objects.create(usuario=self.usuario, presupuesto="area-borrada")
+        asignar(self.usuario, AREA)
+        self.client.force_login(self.usuario)
+        self.assertRedirects(self.client.get(self.url), reverse("tabla_auxiliar_sede", args=[AREA]),
+                             fetch_redirect_response=False)
+
+
+class PermisosPorAsignacionTests(TestCase):
+    """La asignación es lo que da (y quita) el permiso de entrar."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.usuario = User.objects.create_user("PLOZANO")
+        cls.otro = User.objects.create_user("PQUINTERO")
+
+    def setUp(self):
+        abrir_plazo()
+
+    def test_area_sin_asignacion_no_entra_y_con_asignacion_si(self):
+        url = reverse("tabla_auxiliar_sede", args=[AREA])
+        self.client.force_login(self.usuario)
+        self.assertEqual(self.client.get(url).status_code, 403)
+        a = asignar(self.usuario, AREA)
+        self.assertEqual(self.client.get(url).status_code, 200)
+        # Solo SU área.
+        self.assertEqual(self.client.get(reverse("tabla_auxiliar_sede", args=["tecnologia"])).status_code, 403)
+        a.delete()
+        self.assertEqual(self.client.get(url).status_code, 403)
+
+    def test_nomina_por_asignacion(self):
+        url = reverse("presupuestoNomina")
+        self.client.force_login(self.otro)
+        self.assertEqual(self.client.get(url).status_code, 403)
+        asignar(self.otro, "nomina")
+        self.assertNotEqual(self.client.get(url).status_code, 403)
+
+    def test_comercial_por_asignacion(self):
+        url = reverse("baseComercial")
+        self.client.force_login(self.otro)
+        self.assertEqual(self.client.get(url).status_code, 403)
+        asignar(self.otro, "comercial")
+        self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_admin_sigue_entrando_sin_asignacion(self):
+        self.client.force_login(User.objects.create_user("admin"))
+        self.assertEqual(self.client.get(reverse("baseComercial")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("tabla_auxiliar_sede", args=[AREA])).status_code, 200)
+
+
+class PanelAsignacionesTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.aprobador = User.objects.create_user("NICOLAS")
+        cls.usuario = User.objects.create_user("PLOZANO", first_name="Pilar", last_name="Lozano")
+        cls.inactivo = User.objects.create_user("VIEJO", is_active=False)
+
+    def guardar(self, **datos):
+        return self.client.post(reverse("guardar_asignacion"), json.dumps(datos), content_type="application/json")
+
+    def test_solo_el_aprobador(self):
+        self.client.force_login(self.usuario)
+        self.assertEqual(self.client.get(reverse("ajustes_asignaciones")).status_code, 403)
+        r = self.guardar(usuario=self.usuario.id, presupuesto=AREA, accion="asignar")
+        self.assertEqual(r.status_code, 403)
+        self.assertFalse(AsignacionPresupuesto.objects.exists())
+
+    def test_pantalla_lista_usuarios_presupuestos_y_url_unica(self):
+        asignar(self.usuario, AREA)
+        self.client.force_login(self.aprobador)
+        r = self.client.get(reverse("ajustes_asignaciones"))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "http://testserver" + reverse("mi_presupuesto"))
+        datos = r.context["datos"]
+        self.assertEqual([u["username"] for u in datos["usuarios"]], ["NICOLAS", "PLOZANO"])  # sin inactivos
+        self.assertTrue(next(u for u in datos["usuarios"] if u["username"] == "NICOLAS")["aprobador"])
+        claves = [p["clave"] for p in datos["presupuestos"]]
+        self.assertEqual(set(claves), {*vpa.SEDE_CONFIG, "nomina", "comercial"})
+        self.assertEqual(datos["asignaciones"], [{"usuario": self.usuario.id, "presupuesto": AREA}])
+
+    def test_asignar_y_quitar(self):
+        self.client.force_login(self.aprobador)
+        r = self.guardar(usuario=self.usuario.id, presupuesto=AREA, accion="asignar")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["asignaciones"], [{"usuario": self.usuario.id, "presupuesto": AREA}])
+        a = AsignacionPresupuesto.objects.get()
+        self.assertEqual((a.usuario, a.presupuesto, a.asignado_por), (self.usuario, AREA, "NICOLAS"))
+
+        # Repetir no duplica.
+        self.guardar(usuario=self.usuario.id, presupuesto=AREA, accion="asignar")
+        self.assertEqual(AsignacionPresupuesto.objects.count(), 1)
+
+        r = self.guardar(usuario=self.usuario.id, presupuesto=AREA, accion="quitar")
+        self.assertEqual(r.json()["asignaciones"], [])
+        self.assertFalse(AsignacionPresupuesto.objects.exists())
+
+    def test_datos_invalidos(self):
+        self.client.force_login(self.aprobador)
+        self.assertEqual(self.guardar(usuario=self.usuario.id, presupuesto="no-existe", accion="asignar").status_code, 400)
+        self.assertEqual(self.guardar(usuario=self.usuario.id, presupuesto=AREA, accion="borrar").status_code, 400)
+        self.assertEqual(self.guardar(usuario=999999, presupuesto=AREA, accion="asignar").status_code, 404)
+        self.assertEqual(self.guardar(usuario=self.inactivo.id, presupuesto=AREA, accion="asignar").status_code, 404)
+        self.assertEqual(self.guardar(usuario="x", presupuesto=AREA, accion="asignar").status_code, 404)
+        self.assertEqual(self.client.get(reverse("guardar_asignacion")).status_code, 405)
+        self.assertFalse(AsignacionPresupuesto.objects.exists())
+
+    def test_link_en_el_menu_de_ajustes(self):
+        self.client.force_login(self.aprobador)
+        r = self.client.get(reverse("ajustes_plazos_edicion"))
+        self.assertContains(r, reverse("ajustes_asignaciones"))
+
+
+class MigracionAsignacionesTests(TransactionTestCase):
+    """0037 copia a la tabla los usuarios que antes estaban fijos en el código."""
+
+    antes = [("presupuestoApp", "0036_nomina_codcosto_y_confirmacion")]
+    despues = [("presupuestoApp", "0037_asignacion_presupuesto")]
+
+    def migrar(self, destino):
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate(destino)
+        return executor.loader.project_state(destino).apps
+
+    def tearDown(self):
+        self.migrar(MigrationExecutor(connection).loader.graph.leaf_nodes())
+
+    def test_siembra_usuarios_existentes(self):
+        self.migrar(self.antes)
+        for nombre in ("PLOZANO", "EVALENCIA", "pquintero", "NICOLAS", "admin"):
+            User.objects.create_user(nombre)
+        apps = self.migrar(self.despues)
+        Asignacion = apps.get_model("presupuestoApp", "AsignacionPresupuesto")
+        pares = set(Asignacion.objects.values_list("usuario__username", "presupuesto"))
+        self.assertEqual(pares, {
+            ("PLOZANO", "logistica"),
+            ("EVALENCIA", "comercial-costos"), ("EVALENCIA", "comercial"),
+            ("pquintero", "nomina"),            # coincide sin importar mayúsculas
+        })
+        self.migrar(self.antes)                 # reversible
+        self.assertNotIn("presupuesto_asignacion", connection.introspection.table_names())

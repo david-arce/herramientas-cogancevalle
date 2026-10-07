@@ -115,8 +115,9 @@ def _urls(tipo, derivado=False, permite_manual=False):
 
 @login_required
 def presupuestoNomina(request):
-    usuarios_permitidos = ['admin', 'PQUINTERO']
-    if request.user.username not in usuarios_permitidos:
+    # Quién entra: "admin" + los usuarios con Nómina asignada (Ajustes → Asignación de presupuestos).
+    from .views_asignaciones import puede_entrar
+    if not puede_entrar(request.user, "nomina"):
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     params, _ = ParametrosPresupuestos.objects.get_or_create(id=1)
 

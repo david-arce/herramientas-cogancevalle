@@ -30,6 +30,7 @@ ambos formatos vive aquí, en un solo lugar:
 """
 import datetime
 
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from django.db.models import Count, Max
@@ -211,3 +212,39 @@ class PlazoEdicionArea(models.Model):
 
     def __str__(self):
         return f"{self.area}: hasta {self.fecha_limite:%d/%m/%Y}"
+
+
+class AsignacionPresupuesto(models.Model):
+    """Qué presupuesto(s) llena cada usuario.
+
+    Es lo que usa la URL única (/mi-presupuesto/) para mandar a cada usuario a
+    su plantilla, y lo que se revisa para dejarlo entrar. Se administra en
+    Ajustes → Asignación de presupuestos (solo el aprobador).
+
+    `presupuesto` es una clave del catálogo PRESUPUESTOS_ASIGNABLES
+    (views_asignaciones.py): un área de SEDE_CONFIG, "nomina" o "comercial".
+    """
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="presupuestos_asignados",
+    )
+    presupuesto = models.CharField(max_length=40)
+    asignado_por = models.CharField(max_length=150, blank=True, default="")
+    creado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "presupuesto_asignacion"
+        constraints = [
+            models.UniqueConstraint(fields=["usuario", "presupuesto"], name="presup_asignacion_unica"),
+        ]
+        indexes = [models.Index(fields=["presupuesto"], name="presup_asignacion_clave_idx")]
+
+    def __str__(self):
+        return f"{self.usuario} → {self.presupuesto}"
+
+
+def tiene_asignacion(usuario, presupuesto):
+    """¿El usuario tiene asignado ese presupuesto? (no considera aprobadores)."""
+    return bool(
+        usuario.is_authenticated
+        and AsignacionPresupuesto.objects.filter(usuario=usuario, presupuesto=presupuesto).exists()
+    )

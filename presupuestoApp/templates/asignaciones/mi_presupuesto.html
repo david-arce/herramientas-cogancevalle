@@ -1,0 +1,114 @@
+{% load static %}{% load estaticos %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mi presupuesto</title>
+  <link rel="preload" href="{% static 'fonts/material-icons.woff2' %}" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="{% static_v 'css/material-icons.css' %}" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; background: #f5f7fa; color: #202124; font-size: 14px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    }
+    .mp-top {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 0 20px; height: 56px; background: #1e2235; color: #fff;
+    }
+    .mp-logo { font-weight: 700; letter-spacing: .08em; font-size: .95rem; }
+    .mp-user { display: flex; align-items: center; gap: 12px; font-size: .9rem; color: #d7dcef; }
+    .mp-salir {
+      background: #dc3545; color: #fff; border: none; padding: 7px 14px; border-radius: 6px;
+      cursor: pointer; font: inherit; font-size: .85rem;
+    }
+    .mp-wrap { max-width: 720px; margin: 0 auto; padding: 40px 16px; }
+    h1 { font-size: 1.45rem; margin: 0 0 6px; }
+    .mp-sub { color: #4b5563; margin: 0 0 24px; line-height: 1.5; }
+    .mp-lista { display: grid; gap: 12px; list-style: none; padding: 0; margin: 0; }
+    .mp-item {
+      display: flex; align-items: center; gap: 14px; padding: 16px 18px; background: #fff;
+      border: 1px solid #e5e7eb; border-radius: 12px; color: inherit; text-decoration: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .mp-item:hover { border-color: #3f51b5; box-shadow: 0 2px 10px rgba(63, 81, 181, .12); }
+    .mp-item:focus-visible { outline: 3px solid #3f51b555; outline-offset: 2px; }
+    .mp-ico {
+      flex: none; width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center;
+      background: #eef0fb; color: #3f51b5;
+    }
+    .mp-ico.cerrado { background: #f3f4f6; color: #6b7280; }
+    .mp-texto { flex: 1; min-width: 0; }
+    .mp-nombre { font-weight: 700; font-size: 1.02rem; }
+    .mp-nombre, .mp-grupo { display: block; }
+    .mp-grupo { color: #6b7280; font-size: .82rem; margin-top: 2px; }
+    .mp-estado {
+      display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; font-weight: 600;
+      font-size: .78rem; padding: 3px 9px; border-radius: 999px;
+    }
+    .mp-estado .material-icons { font-size: 15px; }
+    .mp-abierto { background: #e9f9ee; color: #155724; }
+    .mp-cerrado { background: #fdecea; color: #8a1c1c; }
+    .mp-flecha { color: #9ca3af; }
+    .mp-vacio {
+      text-align: center; background: #fff; border: 1px dashed #cbd2e1; border-radius: 14px; padding: 40px 24px;
+    }
+    .mp-vacio .material-icons { font-size: 44px; color: #9aa3c4; }
+    .mp-vacio h1 { margin-top: 12px; }
+    .mp-vacio p { color: #4b5563; line-height: 1.6; margin: 8px auto 0; max-width: 460px; }
+    @media (max-width: 520px) { .mp-user span { display: none; } .mp-wrap { padding-top: 28px; } }
+  </style>
+</head>
+<body>
+  <header class="mp-top">
+    <span class="mp-logo">PRESUPUESTO</span>
+    <div class="mp-user">
+      <span>Hola, {{ user.first_name|default:user.username }}</span>
+      <form action="{% url 'logout' %}" method="post">
+        {% csrf_token %}
+        <button type="submit" class="mp-salir">Cerrar sesión</button>
+      </form>
+    </div>
+  </header>
+
+  <main class="mp-wrap">
+    {% if destinos %}
+      <h1>Elige tu presupuesto</h1>
+      <p class="mp-sub">Tienes {{ destinos|length }} presupuesto{{ destinos|length|pluralize }} asignado{{ destinos|length|pluralize }}.</p>
+      <ul class="mp-lista">
+        {% for d in destinos %}
+        <li>
+          <a class="mp-item" href="{{ d.url }}">
+            <span class="mp-ico {% if not d.editable %}cerrado{% endif %}">
+              <span class="material-icons" aria-hidden="true">{% if d.editable %}edit_note{% else %}visibility{% endif %}</span>
+            </span>
+            <span class="mp-texto">
+              <span class="mp-nombre">{{ d.label }}</span>
+              <span class="mp-grupo">{{ d.grupo }}</span>
+              {% if d.fecha_limite %}
+                {% if d.editable %}
+                  <span class="mp-estado mp-abierto"><span class="material-icons" aria-hidden="true">lock_open</span>
+                    Puedes editar hasta el {{ d.fecha_limite|date:"d/m/Y" }}{% if d.dias == 0 %} (hoy){% endif %}</span>
+                {% else %}
+                  <span class="mp-estado mp-cerrado"><span class="material-icons" aria-hidden="true">lock</span>
+                    Plazo cerrado el {{ d.fecha_limite|date:"d/m/Y" }} · solo consulta</span>
+                {% endif %}
+              {% endif %}
+            </span>
+            <span class="material-icons mp-flecha" aria-hidden="true">chevron_right</span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <section class="mp-vacio">
+        <span class="material-icons" aria-hidden="true">assignment_late</span>
+        <h1>Todavía no tienes un presupuesto asignado</h1>
+        <p>Pídele al administrador que te asigne el tuyo. Cuando lo haga, vuelve a entrar a este mismo enlace
+           y llegarás directo a tu plantilla.</p>
+      </section>
+    {% endif %}
+  </main>
+</body>
+</html>

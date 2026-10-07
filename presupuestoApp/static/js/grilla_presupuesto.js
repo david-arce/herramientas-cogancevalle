@@ -357,6 +357,7 @@ function init(opciones) {
         rows.forEach((row, rowIndex) => {
             const tr = document.createElement("tr");
             tr.dataset.rowIndex = rowIndex;
+            tr.classList.toggle("fila-marcada", !!row._checked);
             COLUMNS.forEach((col, ci) => tr.appendChild(renderCell(row, rowIndex, col, ci)));
             frag.appendChild(tr);
         });
@@ -423,6 +424,7 @@ function init(opciones) {
     function pintarFila(rowIndex) {
         const row = rows[rowIndex];
         if (!row) return;
+        marcarFila(rowIndex);
         COLUMNS.forEach((col, ci) => {
             const td = tdDe(rowIndex, ci);
             if (!td || td.classList.contains("editing")) return;
@@ -435,6 +437,12 @@ function init(opciones) {
             td.textContent = col.type === "number" ? fmt(row[col.key]) : (row[col.key] ?? "");
         });
         programarTotales();
+    }
+
+    // Sombrea la fila cuando está marcada con el checkbox (filas a las que se aplicará el IPC).
+    function marcarFila(rowIndex) {
+        const tr = document.querySelector(`#gridBody tr[data-row-index="${rowIndex}"]`);
+        if (tr) tr.classList.toggle("fila-marcada", !!rows[rowIndex]?._checked);
     }
 
     function syncCheckAllState() {
@@ -642,25 +650,24 @@ function init(opciones) {
 
         const esSelect = col.type === "select-cuenta" || col.type === "select-centro";
 
-        if (col.type === "select-cuenta") td.innerHTML = renderSelectCuentaMayor(row);
-        else if (col.type === "select-centro") td.innerHTML = renderSelectNombreCentro();
-        else {
+        if (esSelect) {
+            // Lista desplegable con buscador: el <input> es la caja de búsqueda y
+            // el valor elegido se guarda aparte (input._valorCombo).
+            td.innerHTML = `<input type="text" class="combo-buscar" autocomplete="off" spellcheck="false">`;
+        } else {
             const val = valorInicial ?? (row[col.key] ?? "");
             td.innerHTML = `<input type="text" value="${escaparAttr(val)}">`;
         }
 
-        const input = td.querySelector("input, select");
+        const input = td.querySelector("input");
 
         if (esSelect) {
-            // El valor actual se fija por DOM: el setter .value hace la coerción
-            // string/number, así que sirve aunque row.mcncuenta venga como number.
             const actual = col.key === "ctanombre" ? row.mcncuenta : row.zonnombre;
-            if (actual !== null && actual !== undefined && actual !== "") input.value = String(actual);
-            if (valorInicial) {
-                const letra = String(valorInicial).toUpperCase();
-                const op = Array.from(input.options).find(o => o.text.toUpperCase().startsWith(letra));
-                if (op) input.value = op.value;
-            }
+            const opciones = col.type === "select-cuenta" ? opcionesCuentaMayor(row) : opcionesNombreCentro();
+            // Si se empezó a escribir sobre la celda, esa letra arranca la búsqueda.
+            if (valorInicial) input.value = String(valorInicial);
+            abrirCombo(td, input, opciones, actual, col.type === "select-cuenta"
+                ? "Buscar cuenta…" : "Buscar…");
         }
 
         input.focus();
@@ -685,7 +692,7 @@ function init(opciones) {
                 const nuevo = Math.max(0, pos - (antes.length - limpio.length));
                 input.setSelectionRange(nuevo, nuevo);
             });
-        } else if (input.tagName === "INPUT") {
+        } else if (!esSelect) {
             input.addEventListener("input", () => {
                 const mayus = input.value.toUpperCase();
                 if (mayus === input.value) return;
@@ -695,15 +702,15 @@ function init(opciones) {
             });
         }
 
+        if (esSelect) {
+            input.addEventListener("input", filtrarCombo);
+            input.addEventListener("keydown", manejarTeclaCombo);   // antes que Enter/Tab/Escape
+        }
         input.addEventListener("keydown", manejarTeclaEnEdicion);
         input.addEventListener("blur", () => { if (editingInput === input) cerrarEdicion(false); });
-        if (input.tagName === "SELECT") {
-            input.addEventListener("change", () => cerrarEdicion(false));
-            if (typeof input.showPicker === "function") { try { input.showPicker(); } catch (_) {} }
-        }
     }
 
-    function renderSelectCuentaMayor(row) {
+    function opcionesCuentaMayor(row) {
         let opciones = Object.keys(mapaCuentaMayor);
         const esAdmin = (row.zonnombre || "").toUpperCase() === "ADMINISTRACIÓN";
         opciones = opciones.filter(o => esAdmin ? o.startsWith("51") : !o.startsWith("51"));
@@ -716,14 +723,176 @@ function init(opciones) {
             opciones.push(actual); // dato legado: no se pierde silenciosamente
         }
         opciones.sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
-        return `<select><option value=""></option>` + opciones.map(o =>
-            `<option value="${escaparAttr(o)}">${escaparHtml(o)} - ${escaparHtml(mapaCuentaMayor[o] || "")}</option>`
-        ).join("") + `</select>`;
+        return opciones.map(o => ({ valor: o, texto: `${o} - ${mapaCuentaMayor[o] || ""}` }));
     }
-    function renderSelectNombreCentro() {
-        return `<select><option value=""></option>` + Object.keys(OPCIONES_NOMBRE_CENTRO).map(o =>
-            `<option value="${escaparAttr(o)}">${escaparHtml(o)}</option>`
-        ).join("") + `</select>`;
+    function opcionesNombreCentro() {
+        return Object.keys(OPCIONES_NOMBRE_CENTRO).map(o => ({ valor: o, texto: o }));
+    }
+
+    // -----------------------------------------------------------------
+    // Lista desplegable con buscador (Cuenta Mayor, Nombre asignación)
+    // -----------------------------------------------------------------
+    // El panel se agrega al <body> con position: fixed para que el scroll de
+    // la grilla no lo recorte. Escribir filtra (sin importar mayúsculas ni
+    // tildes, y por varias palabras); ↑ ↓ mueven, Enter/Tab eligen, Esc cancela.
+    const normalizarBusqueda = (t) =>
+        String(t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const MAX_OPCIONES_VISIBLES = 400;
+    let combo = null;   // { panel, lista, pie, input, td, opciones, filtradas, activo }
+
+    function abrirCombo(td, input, opciones, valorActual, placeholder) {
+        cerrarCombo();
+        const actual = (valorActual === null || valorActual === undefined) ? "" : String(valorActual);
+        input._valorCombo = actual;
+        input.placeholder = placeholder;
+        input.setAttribute("role", "combobox");
+        input.setAttribute("aria-expanded", "true");
+        input.setAttribute("aria-controls", "comboLista");
+        input.setAttribute("aria-autocomplete", "list");
+
+        const panel = document.createElement("div");
+        panel.className = "combo-panel";
+        panel.innerHTML = `<div class="combo-lista" id="comboLista" role="listbox"></div><div class="combo-pie"></div>`;
+        document.body.appendChild(panel);
+        // mousedown no debe quitarle el foco a la caja de búsqueda (si no, se cierra).
+        panel.addEventListener("mousedown", (e) => e.preventDefault());
+        panel.addEventListener("click", (e) => {
+            const op = e.target.closest(".combo-op");
+            if (!op || !combo) return;
+            elegirCombo(parseInt(op.dataset.i, 10));
+            const { rowIndex, colIdx } = editando;
+            cerrarEdicion(false);
+            seleccionar(rowIndex, colIdx);
+            focoGrilla();
+        });
+
+        combo = {
+            panel, input, td,
+            lista: panel.querySelector(".combo-lista"),
+            pie: panel.querySelector(".combo-pie"),
+            opciones: [{ valor: "", texto: "(Sin valor)", vacio: true },
+                       ...opciones.map(o => ({ ...o, clave: normalizarBusqueda(o.texto) }))],
+            filtradas: [], activo: -1, actual,
+        };
+        filtrarCombo();
+        posicionarCombo();
+        window.addEventListener("scroll", posicionarCombo, true);
+        window.addEventListener("resize", posicionarCombo);
+    }
+
+    function cerrarCombo() {
+        if (!combo) return;
+        combo.panel.remove();
+        combo = null;
+        window.removeEventListener("scroll", posicionarCombo, true);
+        window.removeEventListener("resize", posicionarCombo);
+    }
+
+    function filtrarCombo() {
+        if (!combo) return;
+        const terminos = normalizarBusqueda(combo.input.value).split(/\s+/).filter(Boolean);
+        combo.filtradas = terminos.length
+            ? combo.opciones.filter(o => !o.vacio && terminos.every(t => o.clave.includes(t)))
+            : combo.opciones;
+        // Sin búsqueda se resalta el valor actual; con búsqueda, el primer resultado.
+        const iActual = combo.filtradas.findIndex(o => String(o.valor) === combo.actual);
+        combo.activo = terminos.length ? (combo.filtradas.length ? 0 : -1) : Math.max(0, iActual);
+        pintarCombo(terminos);
+    }
+
+    function resaltar(texto, terminos) {
+        if (!terminos.length) return escaparHtml(texto);
+        // Marca cada término encontrado (comparando sin tildes ni mayúsculas).
+        const base = normalizarBusqueda(texto);
+        const marcas = new Array(texto.length).fill(false);
+        terminos.forEach(t => {
+            let i = base.indexOf(t);
+            while (i !== -1) { for (let k = i; k < i + t.length; k++) marcas[k] = true; i = base.indexOf(t, i + t.length); }
+        });
+        let html = "", abierto = false;
+        for (let k = 0; k < texto.length; k++) {
+            if (marcas[k] && !abierto) { html += "<mark>"; abierto = true; }
+            if (!marcas[k] && abierto) { html += "</mark>"; abierto = false; }
+            html += escaparHtml(texto[k]);
+        }
+        return html + (abierto ? "</mark>" : "");
+    }
+
+    function pintarCombo(terminos = []) {
+        const { lista, pie, filtradas } = combo;
+        const visibles = filtradas.slice(0, MAX_OPCIONES_VISIBLES);
+        lista.innerHTML = visibles.length
+            ? visibles.map((o, i) => {
+                const clases = ["combo-op"];
+                if (i === combo.activo) clases.push("activa");
+                if (!o.vacio && String(o.valor) === combo.actual) clases.push("actual");
+                if (o.vacio) clases.push("vacia");
+                return `<div class="${clases.join(" ")}" id="comboOp${i}" role="option" data-i="${i}"
+                         aria-selected="${i === combo.activo}">${resaltar(o.texto, terminos)}</div>`;
+            }).join("")
+            : `<div class="combo-sin">Sin resultados para “${escaparHtml(combo.input.value)}”</div>`;
+        const total = combo.opciones.length - 1;   // sin contar "(Sin valor)"
+        const encontrados = terminos.length ? filtradas.length : total;
+        pie.textContent = terminos.length
+            ? `${encontrados} de ${total} · ↑↓ moverse · Enter elegir · Esc cancelar`
+            : `${total} opciones · escribe para buscar`;
+        combo.input.setAttribute("aria-activedescendant", combo.activo >= 0 ? `comboOp${combo.activo}` : "");
+        moverActivaAVista();
+    }
+
+    function moverActivaAVista() {
+        const el = combo && combo.lista.querySelector(".combo-op.activa");
+        if (el) el.scrollIntoView({ block: "nearest" });
+    }
+
+    function moverCombo(paso) {
+        const n = Math.min(combo.filtradas.length, MAX_OPCIONES_VISIBLES);
+        if (!n) return;
+        const anterior = combo.lista.querySelector(".combo-op.activa");
+        combo.activo = Math.max(0, Math.min(n - 1, (combo.activo < 0 ? -1 : combo.activo) + paso));
+        if (anterior) { anterior.classList.remove("activa"); anterior.setAttribute("aria-selected", "false"); }
+        const nueva = combo.lista.querySelector(`#comboOp${combo.activo}`);
+        if (nueva) { nueva.classList.add("activa"); nueva.setAttribute("aria-selected", "true"); }
+        combo.input.setAttribute("aria-activedescendant", `comboOp${combo.activo}`);
+        moverActivaAVista();
+    }
+
+    function elegirCombo(i) {
+        const op = combo && combo.filtradas[i];
+        if (op) combo.input._valorCombo = String(op.valor);
+    }
+
+    function manejarTeclaCombo(e) {
+        if (!combo) return;
+        const pagina = Math.max(1, Math.floor(combo.lista.clientHeight / 30));
+        if (e.key === "ArrowDown") { e.preventDefault(); moverCombo(1); return; }
+        if (e.key === "ArrowUp") { e.preventDefault(); moverCombo(-1); return; }
+        if (e.key === "PageDown") { e.preventDefault(); moverCombo(pagina); return; }
+        if (e.key === "PageUp") { e.preventDefault(); moverCombo(-pagina); return; }
+        // Enter / Tab eligen la opción resaltada; luego manejarTeclaEnEdicion cierra y avanza.
+        if (e.key === "Enter" || e.key === "Tab") elegirCombo(combo.activo);
+    }
+
+    function posicionarCombo() {
+        if (!combo) return;
+        const r = combo.td.getBoundingClientRect();
+        if (r.bottom < 0 || r.top > window.innerHeight) { combo.panel.style.visibility = "hidden"; return; }
+        combo.panel.style.visibility = "";
+        const ancho = Math.min(Math.max(r.width, 420), window.innerWidth - 16);
+        const izquierda = Math.max(8, Math.min(r.left, window.innerWidth - ancho - 8));
+        const abajo = window.innerHeight - r.bottom - 8;
+        const arriba = r.top - 8;
+        const alto = Math.min(340, Math.max(abajo, arriba));
+        combo.panel.style.width = `${ancho}px`;
+        combo.panel.style.left = `${izquierda}px`;
+        combo.panel.style.maxHeight = `${alto}px`;
+        if (abajo >= 200 || abajo >= arriba) {
+            combo.panel.style.top = `${r.bottom + 2}px`;
+            combo.panel.style.bottom = "";
+        } else {
+            combo.panel.style.top = "";
+            combo.panel.style.bottom = `${window.innerHeight - r.top + 2}px`;
+        }
     }
 
     function cerrarEdicion(cancelar = false) {
@@ -732,16 +901,19 @@ function init(opciones) {
         const input = editingInput;
         editingInput = null;
         editando = null;
+        cerrarCombo();
+        // En las listas con buscador lo escrito es solo la búsqueda: el valor es el elegido.
+        const valor = input._valorCombo !== undefined ? input._valorCombo : input.value;
 
         let huboCambio = false;
         if (!cancelar) {
             const antes = JSON.stringify(rows[rowIndex]);
             instantanea();
-            const ok = aplicarValor(rows[rowIndex], colKey, input.value);
+            const ok = aplicarValor(rows[rowIndex], colKey, valor);
             if (!ok || JSON.stringify(rows[rowIndex]) === antes) {
                 pilaDeshacer.pop();                      // no cambió nada: no ensuciar el historial
                 actualizarBotonesHistorial();
-                if (!ok && input.value !== "") showToast("Ese valor no es válido para la columna ❌", "error");
+                if (!ok && valor !== "") showToast("Ese valor no es válido para la columna ❌", "error");
             } else {
                 huboCambio = true;
             }
@@ -1252,6 +1424,7 @@ function init(opciones) {
         if (!e.target.classList.contains("row-check")) return;
         const rowIndex = parseInt(e.target.closest("td").dataset.rowIndex, 10);
         rows[rowIndex]._checked = e.target.checked;
+        marcarFila(rowIndex);
         syncCheckAllState();
     });
 

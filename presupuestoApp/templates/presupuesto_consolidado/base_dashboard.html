@@ -159,7 +159,7 @@
         </div>
         {% endwith %}
         {% endwith %}
-        {% with ajustes_active="|ajustes_orden_cuentas|ajustes_cuentas_contables|ajustes_plazos_edicion|" %}
+        {% with ajustes_active="|ajustes_orden_cuentas|ajustes_cuentas_contables|ajustes_plazos_edicion|ajustes_asignaciones|" %}
         {% with is_open_a="|"|add:request.resolver_match.url_name|add:"|" %}
         <div class="nav-group {% if is_open_a in ajustes_active %}open{% endif %}" id="grupoAjustes">
           <button class="nav-group-toggle" aria-expanded="false" aria-controls="ajustesMenu" id="ajustesToggle">
@@ -183,6 +183,11 @@
               {% if request.resolver_match.url_name == 'ajustes_plazos_edicion' %}active{% endif %}">
               <span class="material-icons nav-icon">event</span>
               <span class="nav-text">Plazos de edición</span>
+            </a>
+            <a href="{% url 'ajustes_asignaciones' %}" class="nav-link nav-child
+              {% if request.resolver_match.url_name == 'ajustes_asignaciones' %}active{% endif %}">
+              <span class="material-icons nav-icon">manage_accounts</span>
+              <span class="nav-text">Asignación de presupuestos</span>
             </a>
           </div>
         </div>

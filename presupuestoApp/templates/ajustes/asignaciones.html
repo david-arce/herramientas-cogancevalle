@@ -1,0 +1,387 @@
+{% extends 'presupuesto_consolidado/base_dashboard.html' %}
+{% block css %}
+<style>
+  .as-wrap { padding: 24px; max-width: 1100px; }
+  .as-title { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 1.4rem; }
+  .as-sub { color: #4b5563; margin: 0 0 18px; font-size: .92rem; line-height: 1.5; }
+  .as-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+
+  /* URL única */
+  .as-url { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .as-url-label { font-size: .8rem; font-weight: 700; color: #374151; display: flex; align-items: center; gap: 6px; }
+  .as-url-label .material-icons { font-size: 18px; color: #3f51b5; }
+  .as-url input {
+    flex: 1 1 320px; min-width: 0; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px;
+    font: inherit; font-size: .92rem; background: #f9fafb; color: #111827;
+  }
+  .as-url-nota { color: #6b7280; font-size: .82rem; margin-top: 8px; line-height: 1.5; }
+
+  /* Resumen */
+  .as-resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .as-kpi { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; }
+  .as-kpi-num { font-size: 1.5rem; font-weight: 700; }
+  .as-kpi-txt { color: #6b7280; font-size: .82rem; }
+  .as-kpi.alerta .as-kpi-num { color: #b3261e; }
+
+  /* Pestañas + filtros */
+  .as-barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .as-tabs { display: inline-flex; background: #eef0f5; border-radius: 8px; padding: 3px; }
+  .as-tab {
+    border: none; background: none; padding: 7px 14px; border-radius: 6px; cursor: pointer;
+    font: inherit; font-size: .88rem; font-weight: 600; color: #4b5563; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .as-tab .material-icons { font-size: 18px; }
+  .as-tab[aria-selected="true"] { background: #fff; color: #1f2937; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .as-filtros { display: flex; flex-wrap: wrap; gap: 8px; }
+  .as-input, .as-select {
+    padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px; font: inherit; font-size: .88rem; background: #fff;
+  }
+  .as-input { min-width: 220px; }
+  .as-input:focus, .as-select:focus { outline: 2px solid #2563eb33; border-color: #2563eb; }
+
+  .as-btn {
+    border: 1px solid #d1d5db; background: #fff; color: #374151; border-radius: 6px; padding: 7px 12px;
+    cursor: pointer; font: inherit; font-size: .85rem; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  }
+  .as-btn .material-icons { font-size: 18px; }
+  .as-btn:hover:not(:disabled) { background: #f3f4f6; }
+  .as-btn:disabled { opacity: .45; cursor: default; }
+  .as-btn-primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .as-btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+
+  /* Tabla */
+  .as-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  .as-table th { text-align: left; background: #f9fafb; color: #374151; padding: 9px 10px; border-bottom: 1px solid #e5e7eb; font-size: .82rem; }
+  .as-table td { padding: 10px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  .as-table tr:last-child td { border-bottom: none; }
+  .as-col-quien { width: 30%; }
+  .as-col-accion { width: 34%; }
+  .as-nombre { font-weight: 600; color: #111827; }
+  .as-meta { color: #6b7280; font-size: .8rem; margin-top: 2px; }
+  .as-badge {
+    display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 1px 7px; border-radius: 999px;
+    font-size: .72rem; font-weight: 700; background: #eef0fb; color: #3f51b5; vertical-align: middle;
+  }
+  .as-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .as-chip {
+    display: inline-flex; align-items: center; gap: 2px; padding: 3px 4px 3px 10px; border-radius: 999px;
+    background: #e8f0fe; color: #1e3a8a; font-size: .82rem; font-weight: 600;
+  }
+  .as-chip button {
+    border: none; background: none; cursor: pointer; color: inherit; padding: 1px; border-radius: 999px;
+    display: inline-flex; opacity: .7;
+  }
+  .as-chip button:hover { opacity: 1; background: rgba(30, 58, 138, .12); }
+  .as-chip .material-icons { font-size: 16px; }
+  .as-ninguno { color: #b3261e; font-size: .82rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+  .as-ninguno .material-icons { font-size: 16px; }
+  .as-implicito { color: #6b7280; font-size: .8rem; font-style: italic; }
+  .as-asignar { display: flex; gap: 6px; }
+  .as-asignar .as-select { flex: 1; min-width: 0; }
+  .as-vacio { text-align: center; color: #6b7280; padding: 28px 10px; }
+
+  /* Aviso flotante */
+  .as-toast {
+    position: fixed; right: 20px; bottom: 20px; max-width: 360px; padding: 10px 14px; border-radius: 8px;
+    font-size: .9rem; box-shadow: 0 6px 20px rgba(0,0,0,.15); opacity: 0; transform: translateY(8px);
+    transition: opacity .2s, transform .2s; pointer-events: none; z-index: 50;
+  }
+  .as-toast.visible { opacity: 1; transform: none; }
+  .as-toast.ok { background: #e9f9ee; color: #155724; border: 1px solid #b7ecc5; }
+  .as-toast.error { background: #fdecea; color: #8a1c1c; border: 1px solid #f5c2c7; }
+
+  @media (max-width: 760px) {
+    .as-wrap { padding: 16px; }
+    .as-table thead { display: none; }
+    .as-table, .as-table tbody, .as-table tr, .as-table td { display: block; width: 100%; }
+    .as-table tr { border-bottom: 1px solid #e5e7eb; padding: 6px 0; }
+    .as-table td { border: none; padding: 6px 4px; }
+    .as-input { min-width: 0; flex: 1; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="as-wrap">
+  <h1 class="as-title"><span class="material-icons" aria-hidden="true">manage_accounts</span> Asignación de presupuestos</h1>
+  <p class="as-sub">
+    Define qué presupuesto llena cada usuario. Con esto todos usan <b>el mismo enlace</b>: al iniciar sesión,
+    cada uno llega a su plantilla. Un usuario sin asignación no puede entrar a ningún presupuesto.
+  </p>
+
+  <div class="as-card">
+    <div class="as-url">
+      <label class="as-url-label" for="urlUnica"><span class="material-icons" aria-hidden="true">link</span> Enlace único para todos</label>
+      <input id="urlUnica" type="text" readonly value="{{ url_unica }}">
+      <button type="button" class="as-btn as-btn-primary" id="copiarUrl">
+        <span class="material-icons" aria-hidden="true">content_copy</span> Copiar
+      </button>
+    </div>
+    <div class="as-url-nota">
+      Si el usuario tiene un solo presupuesto entra directo; si tiene varios, elige; si su plazo ya cerró, ve el aprobado en solo lectura.
+      Los aprobadores van al dashboard.
+    </div>
+  </div>
+
+  <div class="as-resumen" id="resumen" aria-live="polite"></div>
+
+  <div class="as-barra">
+    <div class="as-tabs" role="tablist" aria-label="Ver asignaciones">
+      <button type="button" class="as-tab" role="tab" id="tabUsuarios" aria-controls="panelUsuarios" aria-selected="true">
+        <span class="material-icons" aria-hidden="true">group</span> Por usuario
+      </button>
+      <button type="button" class="as-tab" role="tab" id="tabPresupuestos" aria-controls="panelPresupuestos" aria-selected="false">
+        <span class="material-icons" aria-hidden="true">folder_shared</span> Por presupuesto
+      </button>
+    </div>
+    <div class="as-filtros">
+      <input type="search" class="as-input" id="buscar" placeholder="Buscar usuario o presupuesto…" aria-label="Buscar">
+      <select class="as-select" id="filtro" aria-label="Filtrar">
+        <option value="todos">Todos</option>
+        <option value="sin">Sin asignación</option>
+        <option value="con">Con asignación</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="as-card" style="padding: 6px 10px;">
+    <div id="panelUsuarios" role="tabpanel" aria-labelledby="tabUsuarios">
+      <table class="as-table">
+        <thead><tr>
+          <th class="as-col-quien">Usuario</th><th>Presupuestos asignados</th><th class="as-col-accion">Asignar presupuesto</th>
+        </tr></thead>
+        <tbody id="cuerpoUsuarios"></tbody>
+      </table>
+    </div>
+    <div id="panelPresupuestos" role="tabpanel" aria-labelledby="tabPresupuestos" hidden>
+      <table class="as-table">
+        <thead><tr>
+          <th class="as-col-quien">Presupuesto</th><th>Usuarios que lo llenan</th><th class="as-col-accion">Agregar usuario</th>
+        </tr></thead>
+        <tbody id="cuerpoPresupuestos"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="as-toast" id="toast" role="status" aria-live="polite"></div>
+{% csrf_token %}
+{{ datos|json_script:"datosAsignaciones" }}
+
+<script>
+(() => {
+  const datos = JSON.parse(document.getElementById("datosAsignaciones").textContent);
+  const csrf = document.querySelector("[name=csrfmiddlewaretoken]").value;
+  const usuarios = datos.usuarios;
+  const presupuestos = datos.presupuestos;
+  const presPorClave = Object.fromEntries(presupuestos.map(p => [p.clave, p]));
+  const usrPorId = Object.fromEntries(usuarios.map(u => [u.id, u]));
+  let asignaciones = datos.asignaciones;
+  let pestana = "usuarios";
+
+  /* ── helpers DOM (sin innerHTML con datos: evita inyectar HTML) ── */
+  function el(tag, attrs = {}, ...hijos) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") n.className = v;
+      else if (k === "text") n.textContent = v;
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v);
+    }
+    hijos.flat().forEach(h => h != null && n.append(h));
+    return n;
+  }
+  const icono = nombre => el("span", { class: "material-icons", "aria-hidden": "true", text: nombre });
+  const nombreUsuario = u => u.nombre || u.username;
+  const normalizar = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+  function porUsuario() {
+    const m = {};
+    asignaciones.forEach(a => (m[a.usuario] ||= []).push(a.presupuesto));
+    return m;
+  }
+  function porPresupuesto() {
+    const m = {};
+    asignaciones.forEach(a => (m[a.presupuesto] ||= []).push(a.usuario));
+    return m;
+  }
+
+  /* ── aviso ── */
+  let timerToast;
+  function avisar(msg, tipo = "ok") {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className = `as-toast ${tipo} visible`;
+    clearTimeout(timerToast);
+    timerToast = setTimeout(() => t.classList.remove("visible"), 3200);
+  }
+
+  /* ── guardar ── */
+  async function guardar(usuario, presupuesto, accion) {
+    try {
+      const resp = await fetch(datos.url_guardar, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
+        body: JSON.stringify({ usuario, presupuesto, accion }),
+      });
+      const r = await resp.json();
+      if (!resp.ok || !r.ok) throw new Error(r.msg || "No se pudo guardar");
+      asignaciones = r.asignaciones;
+      pintar();
+      avisar(r.msg);
+    } catch (e) {
+      avisar(e.message || "Error de conexión", "error");
+    }
+  }
+
+  /* ── resumen ── */
+  function pintarResumen() {
+    const pu = porUsuario(), pp = porPresupuesto();
+    const normales = usuarios.filter(u => !u.aprobador);
+    const sinPres = normales.filter(u => !pu[u.id]).length;
+    const presSin = presupuestos.filter(p => !pp[p.clave]).length;
+    const kpi = (num, txt, alerta) =>
+      el("div", { class: "as-kpi" + (alerta ? " alerta" : "") },
+        el("div", { class: "as-kpi-num", text: String(num) }), el("div", { class: "as-kpi-txt", text: txt }));
+    document.getElementById("resumen").replaceChildren(
+      kpi(normales.length, "usuarios activos (sin contar aprobadores)"),
+      kpi(sinPres, "usuarios sin presupuesto asignado", sinPres > 0),
+      kpi(presupuestos.length - presSin, `de ${presupuestos.length} presupuestos tienen responsable`),
+      kpi(presSin, "presupuestos sin ningún usuario", presSin > 0),
+    );
+  }
+
+  /* ── select con los presupuestos que el usuario aún no tiene ── */
+  function selectPresupuestos(yaTiene, etiqueta) {
+    const sel = el("select", { class: "as-select", "aria-label": etiqueta },
+      el("option", { value: "", text: "Elige un presupuesto…" }));
+    const grupos = {};
+    presupuestos.forEach(p => {
+      if (yaTiene.includes(p.clave)) return;
+      (grupos[p.grupo] ||= el("optgroup", { label: p.grupo })).append(el("option", { value: p.clave, text: p.label }));
+    });
+    Object.values(grupos).forEach(g => sel.append(g));
+    return sel;
+  }
+  function selectUsuarios(yaEstan, etiqueta) {
+    const sel = el("select", { class: "as-select", "aria-label": etiqueta },
+      el("option", { value: "", text: "Elige un usuario…" }));
+    usuarios.forEach(u => {
+      if (yaEstan.includes(u.id)) return;
+      const txt = u.nombre ? `${u.nombre} (${u.username})` : u.username;
+      sel.append(el("option", { value: u.id, text: txt }));
+    });
+    return sel;
+  }
+  function controlAsignar(sel, alAsignar) {
+    const btn = el("button", { type: "button", class: "as-btn as-btn-primary", disabled: "" }, icono("add"), "Asignar");
+    sel.addEventListener("change", () => { btn.disabled = !sel.value; });
+    btn.addEventListener("click", () => { if (sel.value) { btn.disabled = true; alAsignar(sel.value); } });
+    return el("div", { class: "as-asignar" }, sel, btn);
+  }
+  function chip(texto, titulo, alQuitar) {
+    return el("span", { class: "as-chip" }, texto,
+      el("button", { type: "button", title: titulo, "aria-label": titulo, onclick: alQuitar }, icono("close")));
+  }
+
+  /* ── pestaña: por usuario ── */
+  function pintarUsuarios() {
+    const pu = porUsuario();
+    const q = normalizar(document.getElementById("buscar").value);
+    const filtro = document.getElementById("filtro").value;
+    const cuerpo = document.getElementById("cuerpoUsuarios");
+    const filas = usuarios.filter(u => {
+      const suyos = pu[u.id] || [];
+      if (filtro === "sin" && (suyos.length || u.aprobador)) return false;
+      if (filtro === "con" && !suyos.length) return false;
+      if (!q) return true;
+      const texto = [u.username, u.nombre, u.email, ...suyos.map(c => presPorClave[c]?.label)].join(" ");
+      return normalizar(texto).includes(q);
+    }).map(u => {
+      const suyos = pu[u.id] || [];
+      const quien = el("td", {},
+        el("div", { class: "as-nombre" }, nombreUsuario(u),
+          u.aprobador ? el("span", { class: "as-badge", title: "Entra al dashboard y a todos los presupuestos por área" }, "Aprobador") : null),
+        el("div", { class: "as-meta", text: [u.nombre ? u.username : null, u.ultimo_ingreso ? `último ingreso ${u.ultimo_ingreso}` : "nunca ha ingresado"].filter(Boolean).join(" · ") }));
+      let chips;
+      if (suyos.length) {
+        chips = el("div", { class: "as-chips" }, suyos.map(c => chip(presPorClave[c].label,
+          `Quitar ${presPorClave[c].label} a ${u.username}`, () => guardar(u.id, c, "quitar"))));
+      } else if (u.aprobador) {
+        chips = el("span", { class: "as-implicito", text: "Va al dashboard (ve todas las áreas)" });
+      } else {
+        chips = el("span", { class: "as-ninguno" }, icono("error_outline"), "Sin presupuesto");
+      }
+      const accion = controlAsignar(selectPresupuestos(suyos, `Presupuesto para ${u.username}`),
+        clave => guardar(u.id, clave, "asignar"));
+      return el("tr", {}, quien, el("td", {}, chips), el("td", {}, accion));
+    });
+    cuerpo.replaceChildren(...(filas.length ? filas :
+      [el("tr", {}, el("td", { colspan: "3", class: "as-vacio", text: "Ningún usuario coincide con la búsqueda." }))]));
+  }
+
+  /* ── pestaña: por presupuesto ── */
+  function pintarPresupuestos() {
+    const pp = porPresupuesto();
+    const q = normalizar(document.getElementById("buscar").value);
+    const filtro = document.getElementById("filtro").value;
+    const cuerpo = document.getElementById("cuerpoPresupuestos");
+    const filas = presupuestos.filter(p => {
+      const ids = pp[p.clave] || [];
+      if (filtro === "sin" && ids.length) return false;
+      if (filtro === "con" && !ids.length) return false;
+      if (!q) return true;
+      const texto = [p.label, p.grupo, ...ids.map(id => usrPorId[id]?.username), ...ids.map(id => usrPorId[id]?.nombre)].join(" ");
+      return normalizar(texto).includes(q);
+    }).map(p => {
+      const ids = pp[p.clave] || [];
+      const quien = el("td", {}, el("div", { class: "as-nombre", text: p.label }),
+        el("div", { class: "as-meta", text: p.grupo }));
+      const chips = ids.length
+        ? el("div", { class: "as-chips" }, ids.map(id => {
+            const u = usrPorId[id];
+            return chip(u.username, `Quitar ${p.label} a ${u.username}`, () => guardar(id, p.clave, "quitar"));
+          }))
+        : el("span", { class: "as-ninguno" }, icono("error_outline"), "Nadie lo tiene asignado");
+      const accion = controlAsignar(selectUsuarios(ids, `Usuario para ${p.label}`),
+        id => guardar(Number(id), p.clave, "asignar"));
+      return el("tr", {}, quien, el("td", {}, chips), el("td", {}, accion));
+    });
+    cuerpo.replaceChildren(...(filas.length ? filas :
+      [el("tr", {}, el("td", { colspan: "3", class: "as-vacio", text: "Ningún presupuesto coincide con la búsqueda." }))]));
+  }
+
+  function pintar() {
+    pintarResumen();
+    if (pestana === "usuarios") pintarUsuarios(); else pintarPresupuestos();
+  }
+
+  /* ── pestañas ── */
+  function cambiarPestana(nueva) {
+    pestana = nueva;
+    const esU = nueva === "usuarios";
+    document.getElementById("tabUsuarios").setAttribute("aria-selected", String(esU));
+    document.getElementById("tabPresupuestos").setAttribute("aria-selected", String(!esU));
+    document.getElementById("panelUsuarios").hidden = !esU;
+    document.getElementById("panelPresupuestos").hidden = esU;
+    document.querySelector('#filtro option[value="sin"]').textContent = esU ? "Sin presupuesto" : "Sin usuario";
+    document.querySelector('#filtro option[value="con"]').textContent = esU ? "Con presupuesto" : "Con usuario";
+    pintar();
+  }
+  document.getElementById("tabUsuarios").addEventListener("click", () => cambiarPestana("usuarios"));
+  document.getElementById("tabPresupuestos").addEventListener("click", () => cambiarPestana("presupuestos"));
+  document.getElementById("buscar").addEventListener("input", pintar);
+  document.getElementById("filtro").addEventListener("change", pintar);
+
+  /* ── copiar enlace ── */
+  document.getElementById("copiarUrl").addEventListener("click", async () => {
+    const input = document.getElementById("urlUnica");
+    try { await navigator.clipboard.writeText(input.value); }
+    catch { input.select(); document.execCommand("copy"); }
+    avisar("Enlace copiado 📋");
+  });
+
+  cambiarPestana("usuarios");
+})();
+</script>
+{% endblock %}

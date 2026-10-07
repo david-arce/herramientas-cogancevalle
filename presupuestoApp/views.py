@@ -536,9 +536,9 @@ def indice_por_clave(queryset_values, campos_clave):
 
 @login_required
 def base_comercial(request):
-    # ✅ Permitir solo a ciertos usuarios por username
-    usuarios_permitidos = ['admin', 'AGRAJALE', 'EVALENCIA', 'SCORTES']
-    if request.user.username not in usuarios_permitidos:
+    # Quién entra: "admin" + los usuarios con Comercial asignado (Ajustes → Asignación de presupuestos).
+    from .views_asignaciones import puede_entrar
+    if not puede_entrar(request.user, "comercial"):
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
     return render(request, 'presupuesto_comercial/base_presupuesto_comercial.html')
 
@@ -2403,7 +2403,7 @@ ASISTENCIA_TECNICA_CONVENIOS = {'AT-00003', 'AT-00004', 'AT-00006'}
 
 # destino -> cuentas que se agrupan en él (se invierte a lookup O(1))
 _GRUPOS = {
-    '54100207_54100211': ['54100207', '54100208', '54100209', '54100210', '54100211'],
+    '54100207_54100211': ['54100207', '54100208', '54100209', '54100210', '54100211', '54100212'],
     '541009_541033':     ['541009', '541033', '54103301', '54103302'],
     '541015_541016':     ['541015', '541016'],
     '511015_511016':     ['511015', '511016'],

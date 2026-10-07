@@ -34,7 +34,7 @@ from .models import Cuenta5Presupuestado
 from .models_nomina import ConfiguracionNomina, PresupuestoNominaMes
 from .models_presupuesto import (
     CAMPOS_LINEA, CAMPOS_NUMERICOS, CAMPOS_PRESUPUESTO, MESES, PlazoEdicionArea, PresupuestoArea,
-    anio_elaboracion, fecha_mes, filas_verticales,
+    anio_elaboracion, fecha_mes, filas_verticales, tiene_asignacion,
 )
 
 AUXILIAR = PresupuestoArea.Etapa.AUXILIAR
@@ -80,30 +80,31 @@ def _plazo(mes_dia):
     return datetime.date(anio_elaboracion(), mes, dia)
 
 
-def _area(label, responsable, usuarios, limite_auxiliar):
+def _area(label, responsable, limite_auxiliar):
+    # Quién llena cada área ya no se escribe aquí: se asigna en
+    # Ajustes → Asignación de presupuestos (tabla presupuesto_asignacion).
     return {
         "label": label,
-        "usuarios_permitidos": {*APROBADORES, *usuarios},
         "responsable_filtro": responsable,
         "fecha_limite_auxiliar": limite_auxiliar,
     }
 
 
 SEDE_CONFIG = {
-    "almacen-tulua": _area("Almacén Tuluá", "JEFE ALMACEN TULUA", {"JEFEALMACENTULUA", "DBENITEZ"}, LIMITE_AUX_15),
-    "almacen-buga": _area("Almacén Buga", "JEFE ALMACEN BUGA", {"JEFEALMACENBUGA", "FDUQUE"}, LIMITE_AUX_15),
-    "almacen-cartago": _area("Almacén Cartago", "JEFE ALMACEN CARTAGO", {"JEFEALMACENCARTAGO", "CHINCAPI"}, LIMITE_AUX_15),
-    "almacen-cali": _area("Almacén Cali", "JEFE ALMACEN CALI", {"JEFEALMACENCALI", "LAMAYA"}, LIMITE_AUX_15),
-    "comunicaciones": _area("Comunicaciones y Mercadeo", "CARLOS USMAN", {"COMUNICACIONES"}, LIMITE_AUX_08),
-    "comercial-costos": _area("Comercial y Costos", "EVALENCIA", {"COMERCIALCOSTOS", "EVALENCIA"}, LIMITE_AUX_08),
-    "contabilidad": _area("Contabilidad", "CONTABILIDAD", {"CONTABILIDAD"}, LIMITE_AUX_08),
-    "gerencia": _area("Gerencia", "GERENCIA", {"GERENCIA"}, LIMITE_AUX_08),
-    "gestion-humana": _area("Gestión Humana", "MARTA GH", {"GESTIONHUMANA"}, LIMITE_AUX_15),
-    "gestion-riesgos": _area("Gestión de Riesgos", "LINA RICARDO", {"GESTIONRIESGOS"}, LIMITE_AUX_15),
-    "logistica": _area("Logística", "PILAR LOZANO", {"PLOZANO"}, LIMITE_AUX_15),
-    "servicios-tecnicos": _area("Servicios Técnicos", "JORGE GUERRERO", {"SERVICIOSTECNICOS"}, LIMITE_AUX_15),
-    "salud-ocupacional": _area("Salud Ocupacional", "SALUD OCUPACIONAL", {"SALUDOCUPACIONAL"}, LIMITE_AUX_15),
-    "tecnologia": _area("Tecnología", "DIEGO CANO", {"TECNOLOGIA"}, LIMITE_AUX_15),
+    "almacen-tulua": _area("Almacén Tuluá", "JEFE ALMACEN TULUA", LIMITE_AUX_15),
+    "almacen-buga": _area("Almacén Buga", "JEFE ALMACEN BUGA", LIMITE_AUX_15),
+    "almacen-cartago": _area("Almacén Cartago", "JEFE ALMACEN CARTAGO", LIMITE_AUX_15),
+    "almacen-cali": _area("Almacén Cali", "JEFE ALMACEN CALI", LIMITE_AUX_15),
+    "comunicaciones": _area("Comunicaciones y Mercadeo", "CARLOS USMAN", LIMITE_AUX_08),
+    "comercial-costos": _area("Comercial y Costos", "EVALENCIA", LIMITE_AUX_08),
+    "contabilidad": _area("Contabilidad", "CONTABILIDAD", LIMITE_AUX_08),
+    "gerencia": _area("Gerencia", "GERENCIA", LIMITE_AUX_08),
+    "gestion-humana": _area("Gestión Humana", "MARTA GH", LIMITE_AUX_15),
+    "gestion-riesgos": _area("Gestión de Riesgos", "LINA RICARDO", LIMITE_AUX_15),
+    "logistica": _area("Logística", "PILAR LOZANO", LIMITE_AUX_15),
+    "servicios-tecnicos": _area("Servicios Técnicos", "JORGE GUERRERO", LIMITE_AUX_15),
+    "salud-ocupacional": _area("Salud Ocupacional", "SALUD OCUPACIONAL", LIMITE_AUX_15),
+    "tecnologia": _area("Tecnología", "DIEGO CANO", LIMITE_AUX_15),
 }
 
 # Las URLs del consolidado usan otras claves para dos áreas.
@@ -134,8 +135,9 @@ def _config_sede(sede):
     return SEDE_CONFIG.get(sede)
 
 
-def _usuario_autorizado(request, config):
-    return request.user.username in config["usuarios_permitidos"]
+def _usuario_autorizado(request, sede):
+    """El aprobador entra a todo; el resto, solo a las áreas que tiene asignadas."""
+    return _es_aprobador(request) or tiene_asignacion(request.user, sede)
 
 
 def _es_aprobador(request):
@@ -296,7 +298,7 @@ def tabla_auxiliar_sede(request, sede):
     config = _config_sede(sede)
     if not config:
         return HttpResponseForbidden("⛔ Sede no configurada.")
-    if not _usuario_autorizado(request, config):
+    if not _usuario_autorizado(request, sede):
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
 
     cerrado = _plazo_vencido(request, sede)
@@ -328,7 +330,7 @@ def guardar_temp_sede(request, sede):
     config = _config_sede(sede)
     if not config:
         return JsonResponse({"status": "error", "message": "Sede no configurada"}, status=404)
-    if not _usuario_autorizado(request, config):
+    if not _usuario_autorizado(request, sede):
         return JsonResponse({"status": "error", "message": "Sin permisos"}, status=403)
     if request.method != "POST":
         return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
@@ -353,7 +355,7 @@ def cargar_base_sede(request, sede):
     config = _config_sede(sede)
     if not config:
         return JsonResponse({"status": "error", "message": "Sede no configurada"}, status=404)
-    if not _usuario_autorizado(request, config):
+    if not _usuario_autorizado(request, sede):
         return JsonResponse({"status": "error", "message": "Sin permisos"}, status=403)
     cerrado = _plazo_vencido(request, sede)
     if cerrado:
@@ -387,7 +389,7 @@ def subir_presupuesto_sede(request, sede):
     config = _config_sede(sede)
     if not config:
         return JsonResponse({"success": False, "msg": "Sede no configurada"}, status=404)
-    if not _usuario_autorizado(request, config):
+    if not _usuario_autorizado(request, sede):
         return JsonResponse({"success": False, "msg": "Sin permisos"}, status=403)
     if request.method != "POST":
         return JsonResponse({"success": False, "msg": "Método no permitido"}, status=405)
@@ -425,7 +427,7 @@ def presupuesto_sede(request, sede):
         return HttpResponseForbidden("⛔ Sede no configurada.")
     if not _es_aprobador(request):
         # El área tiene una sola pantalla: se la enviamos directamente.
-        if _usuario_autorizado(request, config):
+        if _usuario_autorizado(request, sede):
             return redirect("tabla_auxiliar_sede", sede=sede)
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
 
@@ -443,7 +445,7 @@ def obtener_presupuesto_sede(request, sede):
     config = _config_sede(sede)
     if not config:
         return JsonResponse({"error": "Sede no configurada"}, status=404)
-    if not (_es_aprobador(request) or _usuario_autorizado(request, config)):
+    if not _usuario_autorizado(request, sede):
         return JsonResponse({"error": "Sin permisos"}, status=403)
 
     qs = _filas(sede, PROYECTADO)
@@ -550,7 +552,7 @@ def presupuesto_aprobado_sede(request, sede):
     config = _config_sede(sede)
     if not config:
         return HttpResponseForbidden("⛔ Sede no configurada.")
-    if not (_es_aprobador(request) or _usuario_autorizado(request, config)):
+    if not _usuario_autorizado(request, sede):
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
 
     return render(request, "presupuesto_general/presupuesto_sede_readonly.html", {

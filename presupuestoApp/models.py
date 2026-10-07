@@ -508,4 +508,4 @@ class OrdenCuenta(models.Model):
 
 # ── Nómina: tabla única ────────────────────────────────────────────────
 from .models_nomina import PresupuestoNomina  # noqa: E402,F401
-from .models_presupuesto import PresupuestoArea  # noqa
+from .models_presupuesto import AsignacionPresupuesto, PresupuestoArea  # noqa

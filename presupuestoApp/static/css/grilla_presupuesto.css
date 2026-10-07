@@ -5,6 +5,8 @@
     --color-borde: #d7d9dc;
     --color-fila-activa: #eef1f8;
     --color-celda-edit: #fff8d6;
+    --color-fila-ipc: #dcf3e4;         /* fila marcada con el checkbox para el IPC */
+    --color-fila-ipc-bloqueada: #cbe7d5;
     --color-fondo-header: #f8f9fa;
 }
 * { box-sizing: border-box; }
@@ -92,6 +94,10 @@ td.editing input, td.editing select {
     font-size: 13px; background: transparent; box-sizing: border-box;
 }
 tr.fila-activa td:not(.editing):not(.locked) { background: var(--color-fila-activa); }
+/* Filas marcadas con el checkbox (las que recibirán el IPC): sombreadas en verde. */
+tr.fila-marcada td:not(.editing) { background: var(--color-fila-ipc); }
+tr.fila-marcada td.locked:not(.editing) { background: var(--color-fila-ipc-bloqueada); color: #4a5a50; }
+tr.fila-marcada td:first-child { box-shadow: inset 4px 0 0 #2b8a3e; }
 tr.blink td { animation: blink 0.8s ease-in-out 3; }
 @keyframes blink { 0%,100% { background: #d0ffb5; } 50% { background: #fff; } }
 
@@ -153,4 +159,30 @@ table.atajos td:first-child { white-space: nowrap; font-family: ui-monospace, Co
 
 @media (prefers-reduced-motion: reduce) {
     * { animation: none !important; transition: none !important; }
+}
+/* ── Lista desplegable con buscador (Cuenta Mayor, Nombre asignación) ── */
+td.editing input.combo-buscar { background: #fff; font-weight: 500; }
+td.editing input.combo-buscar::placeholder { color: #9aa0a6; font-weight: 400; }
+.combo-panel {
+    position: fixed; z-index: 9000; display: flex; flex-direction: column;
+    background: #fff; border: 1px solid #b9c2d8; border-radius: 8px;
+    box-shadow: 0 10px 28px rgba(16, 32, 80, .18); overflow: hidden; font-size: 13px;
+}
+.combo-lista { overflow-y: auto; flex: 1; min-height: 0; padding: 4px 0; }
+.combo-op {
+    padding: 7px 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: #1f2937; border-left: 3px solid transparent;
+}
+.combo-op:hover { background: #f1f4fb; }
+.combo-op.activa { background: var(--color-primario); color: #fff; }
+.combo-op.actual { font-weight: 700; border-left-color: #2b8a3e; }
+.combo-op.activa.actual { border-left-color: #8ee09f; }
+.combo-op.vacia { color: #6b7280; font-style: italic; }
+.combo-op.activa.vacia { color: #fff; }
+.combo-op mark { background: #ffe58a; color: inherit; padding: 0; border-radius: 2px; }
+.combo-op.activa mark { background: #ffe58a; color: #1f2937; }
+.combo-sin { padding: 14px 12px; color: #6b7280; }
+.combo-pie {
+    flex: none; padding: 6px 12px; border-top: 1px solid #eef0f4; background: #f8f9fb;
+    color: #6b7280; font-size: 11.5px;
 }

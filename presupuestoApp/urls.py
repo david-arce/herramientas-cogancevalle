@@ -2,9 +2,13 @@ from django.urls import path
 from . import views
 from .urls_nomina import urlpatterns as urls_nomina
 from . import views_cuentas_contables as vcc
+from . import views_asignaciones as va
 
 urlpatterns = [
     *urls_nomina,
+
+    # URL ÚNICA: la que se le comparte a todos. Cada usuario termina en su plantilla.
+    path('mi-presupuesto/', va.mi_presupuesto, name='mi_presupuesto'),
     
     path('dashboard/', views.dashboard_home, name='dashboardPresupuesto'), 
     path('cuenta5/', views.cuenta5, name='cuenta5'),
@@ -111,6 +115,10 @@ urlpatterns = [
 
     # ajustes: fecha límite de edición de los presupuestos por área
     path('ajustes/plazos-edicion/', views.ajustes_plazos_edicion, name='ajustes_plazos_edicion'),
+
+    # ajustes: qué presupuesto llena cada usuario (solo el aprobador)
+    path('ajustes/asignaciones/', va.ajustes_asignaciones, name='ajustes_asignaciones'),
+    path('ajustes/asignaciones/guardar/', va.guardar_asignacion, name='guardar_asignacion'),
     
     # -------------- PRESUPUESTO POR SEDE (genérico, escalable) --------------
     # Para agregar Buga/Cartago/Cali: solo agrega su entrada en SEDE_CONFIG
