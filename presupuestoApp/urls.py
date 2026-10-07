@@ -3,6 +3,7 @@ from . import views
 from .urls_nomina import urlpatterns as urls_nomina
 from . import views_cuentas_contables as vcc
 from . import views_asignaciones as va
+from . import views_agrupaciones as vag
 
 urlpatterns = [
     *urls_nomina,
@@ -119,21 +120,28 @@ urlpatterns = [
     # ajustes: qué presupuesto llena cada usuario (solo el aprobador)
     path('ajustes/asignaciones/', va.ajustes_asignaciones, name='ajustes_asignaciones'),
     path('ajustes/asignaciones/guardar/', va.guardar_asignacion, name='guardar_asignacion'),
+
+    # ajustes: agrupación y nombres de cuentas del consolidado (solo el aprobador)
+    path('ajustes/agrupacion-cuentas/', vag.ajustes_agrupacion_cuentas, name='ajustes_agrupacion_cuentas'),
+    path('ajustes/agrupacion-cuentas/guardar/', vag.guardar_agrupacion_cuenta, name='guardar_agrupacion_cuenta'),
+    path('ajustes/agrupacion-cuentas/eliminar/', vag.eliminar_agrupacion_cuenta, name='eliminar_agrupacion_cuenta'),
+    path('ajustes/agrupacion-cuentas/vista-previa/', vag.vista_previa_agrupacion_cuenta,
+         name='vista_previa_agrupacion_cuenta'),
     
     # -------------- PRESUPUESTO POR SEDE (genérico, escalable) --------------
     # Para agregar Buga/Cartago/Cali: solo agrega su entrada en SEDE_CONFIG
     # (views_presupuesto_sedes.py). Estas 9 rutas les sirven automáticamente.
-    path('presupuesto/<str:sede>/', views.presupuesto_sede, name='presupuesto_sede'),
-    path('presupuesto/<str:sede>/obtener/', views.obtener_presupuesto_sede, name='obtener_presupuesto_sede'),
-    path('presupuesto/<str:sede>/aprobado/', views.presupuesto_aprobado_sede, name='presupuesto_aprobado_sede'),
-    path('presupuesto/<str:sede>/aprobado/obtener/', views.obtener_presupuesto_aprobado_sede, name='obtener_presupuesto_aprobado_sede'),
-    path('presupuesto/<str:sede>/auxiliar/', views.tabla_auxiliar_sede, name='tabla_auxiliar_sede'),
-    path('presupuesto/<str:sede>/auxiliar/obtener/', views.obtener_temp_sede, name='obtener_temp_sede'),
-    path('presupuesto/<str:sede>/auxiliar/cargar-base/', views.cargar_base_sede, name='cargar_base_sede'),
-    path('presupuesto/<str:sede>/auxiliar/guardar/', views.guardar_temp_sede, name='guardar_temp_sede'),
-    path('presupuesto/<str:sede>/subir/', views.subir_presupuesto_sede, name='subir_presupuesto_sede'),
-    path('presupuesto/<str:sede>/borrar/', views.borrar_presupuesto_sede, name='borrar_presupuesto_sede'),
-    path('presupuesto/<str:sede>/subir-cuenta5/', views.subir_cuenta5_sede, name='subir_cuenta5_sede'),
+    path('area/<str:sede>/', views.presupuesto_sede, name='presupuesto_sede'),
+    path('area/<str:sede>/obtener/', views.obtener_presupuesto_sede, name='obtener_presupuesto_sede'),
+    path('area/<str:sede>/aprobado/', views.presupuesto_aprobado_sede, name='presupuesto_aprobado_sede'),
+    path('area/<str:sede>/aprobado/obtener/', views.obtener_presupuesto_aprobado_sede, name='obtener_presupuesto_aprobado_sede'),
+    path('area/<str:sede>/auxiliar/', views.tabla_auxiliar_sede, name='tabla_auxiliar_sede'),
+    path('area/<str:sede>/auxiliar/obtener/', views.obtener_temp_sede, name='obtener_temp_sede'),
+    path('area/<str:sede>/auxiliar/cargar-base/', views.cargar_base_sede, name='cargar_base_sede'),
+    path('area/<str:sede>/auxiliar/guardar/', views.guardar_temp_sede, name='guardar_temp_sede'),
+    path('area/<str:sede>/subir/', views.subir_presupuesto_sede, name='subir_presupuesto_sede'),
+    path('area/<str:sede>/borrar/', views.borrar_presupuesto_sede, name='borrar_presupuesto_sede'),
+    path('area/<str:sede>/subir-cuenta5/', views.subir_cuenta5_sede, name='subir_cuenta5_sede'),
     path('cuenta5/nomina/subir/', views.subir_cuenta5_nomina, name='subir_cuenta5_nomina'),
     
     # consolidado general 
@@ -200,8 +208,8 @@ urlpatterns = [
     path('comparativo/comentarios/<str:sede>/', views.obtener_comentarios_comparativo,
          name='obtener_comentarios_comparativo'),
     
-    path('presupuesto/<str:sede>/version/<int:version>/guardar/', views.guardar_version_sede, name='guardar_version_sede'),
-    path('presupuesto/<str:sede>/version/<int:version>/aprobar/', views.aprobar_version_sede, name='aprobar_version_sede'),
+    path('area/<str:sede>/version/<int:version>/guardar/', views.guardar_version_sede, name='guardar_version_sede'),
+    path('area/<str:sede>/version/<int:version>/aprobar/', views.aprobar_version_sede, name='aprobar_version_sede'),
     
     #------------------PRESUPUESTO CONSOLIDADO---------------------------
     path('<str:area>/', views.presupuesto_consolidado, name='presupuesto_consolidado'),

@@ -506,6 +506,35 @@ class OrdenCuenta(models.Model):
         return f'{self.orden:05d} · {self.mcncuenta} — {self.ctanombre}'
 
 
+
+class AgrupacionCuenta(models.Model):
+    """Cómo se arma una fila del Consolidado / Presupuestado / Comparativo.
+
+    Cada registro es UNA fila (su `codigo`, p. ej. '54100207_54100211' o '5230')
+    con su nombre, y opcionalmente qué cuentas contables se suman en ella:
+
+      cuentas   cuentas exactas      ['54100207', '54100208', ...]
+      prefijos  "empieza por"        ['5230']  -> 5230, 523005, 52300501...
+
+    Un registro sin cuentas ni prefijos solo le pone nombre a la fila (p. ej.
+    'AT-00003' -> 'Convenio Elanco'). Se edita en Ajustes → Agrupación de
+    cuentas; antes vivía en views.py (_GRUPOS, PREFIJOS_AGRUPADOS,
+    NOMBRES_ESPECIALES). Las cuentas que empiezan por 4 no se agrupan.
+    """
+    codigo = models.CharField(max_length=60, unique=True)
+    nombre = models.CharField(max_length=255)
+    cuentas = models.JSONField(default=list, blank=True)
+    prefijos = models.JSONField(default=list, blank=True)
+    actualizado_por = models.CharField(max_length=150, blank=True, default="")
+    actualizado = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "presupuesto_agrupacion_cuenta"
+        ordering = ["codigo"]
+
+    def __str__(self):
+        return f"{self.codigo} — {self.nombre}"
+
 # ── Nómina: tabla única ────────────────────────────────────────────────
 from .models_nomina import PresupuestoNomina  # noqa: E402,F401
 from .models_presupuesto import AsignacionPresupuesto, PresupuestoArea  # noqa

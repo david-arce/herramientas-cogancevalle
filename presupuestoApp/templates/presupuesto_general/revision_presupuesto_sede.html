@@ -10,7 +10,10 @@
 <link rel="stylesheet" href="{% static_v 'css/grilla_presupuesto.css' %}">
 </head>
 <body>
+<header class="barra-pagina">
 <h2>Presupuesto {{ sede_label }} — revisión</h2>
+{% include "presupuesto_general/_barra_usuario.html" %}
+</header>
 <p class="subtitulo">
     Versiones que envió el área. Puedes ajustarlas aquí mismo y aprobar la que quede en firme.
 </p>

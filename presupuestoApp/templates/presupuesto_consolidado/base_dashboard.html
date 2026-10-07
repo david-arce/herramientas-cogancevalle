@@ -159,7 +159,7 @@
         </div>
         {% endwith %}
         {% endwith %}
-        {% with ajustes_active="|ajustes_orden_cuentas|ajustes_cuentas_contables|ajustes_plazos_edicion|ajustes_asignaciones|" %}
+        {% with ajustes_active="|ajustes_orden_cuentas|ajustes_cuentas_contables|ajustes_plazos_edicion|ajustes_asignaciones|ajustes_agrupacion_cuentas|" %}
         {% with is_open_a="|"|add:request.resolver_match.url_name|add:"|" %}
         <div class="nav-group {% if is_open_a in ajustes_active %}open{% endif %}" id="grupoAjustes">
           <button class="nav-group-toggle" aria-expanded="false" aria-controls="ajustesMenu" id="ajustesToggle">
@@ -178,6 +178,11 @@
               {% if request.resolver_match.url_name == 'ajustes_cuentas_contables' %}active{% endif %}">
               <span class="material-icons nav-icon">account_tree</span>
               <span class="nav-text">Cuentas contables</span>
+            </a>
+            <a href="{% url 'ajustes_agrupacion_cuentas' %}" class="nav-link nav-child
+              {% if request.resolver_match.url_name == 'ajustes_agrupacion_cuentas' %}active{% endif %}">
+              <span class="material-icons nav-icon">merge_type</span>
+              <span class="nav-text">Agrupación de cuentas</span>
             </a>
             <a href="{% url 'ajustes_plazos_edicion' %}" class="nav-link nav-child
               {% if request.resolver_match.url_name == 'ajustes_plazos_edicion' %}active{% endif %}">

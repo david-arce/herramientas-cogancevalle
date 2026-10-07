@@ -96,7 +96,7 @@ SEDE_CONFIG = {
     "almacen-cartago": _area("Almacén Cartago", "JEFE ALMACEN CARTAGO", LIMITE_AUX_15),
     "almacen-cali": _area("Almacén Cali", "JEFE ALMACEN CALI", LIMITE_AUX_15),
     "comunicaciones": _area("Comunicaciones y Mercadeo", "CARLOS USMAN", LIMITE_AUX_08),
-    "comercial-costos": _area("Comercial y Costos", "EVALENCIA", LIMITE_AUX_08),
+    "comercial-gastos": _area("Comercial y Gastos", "EVALENCIA", LIMITE_AUX_08),
     "contabilidad": _area("Contabilidad", "CONTABILIDAD", LIMITE_AUX_08),
     "gerencia": _area("Gerencia", "GERENCIA", LIMITE_AUX_08),
     "gestion-humana": _area("Gestión Humana", "MARTA GH", LIMITE_AUX_15),
@@ -108,14 +108,18 @@ SEDE_CONFIG = {
 }
 
 # Las URLs del consolidado usan otras claves para dos áreas.
-ALIAS_AREA_CONSOLIDADO = {"gh": "gestion-humana", "ocupacional": "salud-ocupacional"}
+# "comercial-costos" es la clave anterior de "comercial-gastos" (se renombró):
+# se acepta para que no se rompan enlaces o pantallas que aún la usen.
+ALIAS_AREA_CONSOLIDADO = {
+    "gh": "gestion-humana", "ocupacional": "salud-ocupacional", "comercial-costos": "comercial-gastos",
+}
 
 TEMPLATES_CONSOLIDADO = {
     "almacen-buga": "presupuesto_consolidado/presupuesto_almacen_buga.html",
     "almacen-cali": "presupuesto_consolidado/presupuesto_almacen_cali.html",
     "almacen-cartago": "presupuesto_consolidado/presupuesto_almacen_cartago.html",
     "almacen-tulua": "presupuesto_consolidado/presupuesto_almacen_tulua.html",
-    "comercial-costos": "presupuesto_consolidado/presupuesto_comercial_costos.html",
+    "comercial-gastos": "presupuesto_consolidado/presupuesto_comercial_costos.html",
     "comunicaciones": "presupuesto_consolidado/presupuesto_comunicaciones.html",
     "contabilidad": "presupuesto_consolidado/presupuesto_contabilidad.html",
     "gerencia": "presupuesto_consolidado/presupuesto_gerencia.html",
@@ -133,6 +137,14 @@ TEMPLATES_CONSOLIDADO = {
 # ---------------------------------------------------------------------------
 def _config_sede(sede):
     return SEDE_CONFIG.get(sede)
+
+
+def _redirigir_clave_vieja(nombre_url, sede):
+    """Enlaces guardados con una clave anterior (p. ej. comercial-costos) -> la clave nueva."""
+    nueva = ALIAS_AREA_CONSOLIDADO.get(sede)
+    if sede not in SEDE_CONFIG and nueva in SEDE_CONFIG:
+        return redirect(nombre_url, sede=nueva)
+    return None
 
 
 def _usuario_autorizado(request, sede):
@@ -295,6 +307,8 @@ def _cuerpo_json(request):
 # ---------------------------------------------------------------------------
 @login_required
 def tabla_auxiliar_sede(request, sede):
+    if (vieja := _redirigir_clave_vieja("tabla_auxiliar_sede", sede)):
+        return vieja
     config = _config_sede(sede)
     if not config:
         return HttpResponseForbidden("⛔ Sede no configurada.")
@@ -422,6 +436,8 @@ def subir_presupuesto_sede(request, sede):
 # ---------------------------------------------------------------------------
 @login_required
 def presupuesto_sede(request, sede):
+    if (vieja := _redirigir_clave_vieja("presupuesto_sede", sede)):
+        return vieja
     config = _config_sede(sede)
     if not config:
         return HttpResponseForbidden("⛔ Sede no configurada.")
@@ -549,6 +565,8 @@ def borrar_presupuesto_sede(request, sede):
 # ---------------------------------------------------------------------------
 @login_required
 def presupuesto_aprobado_sede(request, sede):
+    if (vieja := _redirigir_clave_vieja("presupuesto_aprobado_sede", sede)):
+        return vieja
     config = _config_sede(sede)
     if not config:
         return HttpResponseForbidden("⛔ Sede no configurada.")
@@ -599,7 +617,7 @@ def exportar_excel_presupuestos(request):
 # Presupuesto consolidado (vistas por área del aprobado)
 # ---------------------------------------------------------------------------
 def presupuesto_consolidado(request, area):
-    template = TEMPLATES_CONSOLIDADO.get(area)
+    template = TEMPLATES_CONSOLIDADO.get(area) or TEMPLATES_CONSOLIDADO.get(ALIAS_AREA_CONSOLIDADO.get(area))
     if not template:
         return HttpResponseForbidden("⛔ Área no válida.")
     return render(request, template)

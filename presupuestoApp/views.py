@@ -46,7 +46,7 @@ TARJETAS_DASHBOARD = [
     ("almacen-cali", "Almacen Cali", "#2196f3", "note_alt"),
     ("almacen-cartago", "Almacen Cartago", "#ff5722", "label"),
     ("almacen-tulua", "Almacen Tulua", "#673ab7", "group"),
-    ("comercial-costos", "Comercial", "#e91e63", "group"),
+    ("comercial-gastos", "Comercial y Gastos", "#e91e63", "group"),
     ("comunicaciones", "Comunicaciones", "#ff9800", "group"),
     ("contabilidad", "Contabilidad", "#4caf50", "group"),
     ("gerencia", "Gerencia", "#795548", "group"),
@@ -2401,50 +2401,10 @@ ASISTENCIA_TECNICA = {
 ASISTENCIA_TECNICA_PROPIA    = {'AT-00001', 'AT-00002', 'AT-00005'}
 ASISTENCIA_TECNICA_CONVENIOS = {'AT-00003', 'AT-00004', 'AT-00006'}
 
-# destino -> cuentas que se agrupan en él (se invierte a lookup O(1))
-_GRUPOS = {
-    '54100207_54100211': ['54100207', '54100208', '54100209', '54100210', '54100211', '54100212'],
-    '541009_541033':     ['541009', '541033', '54103301', '54103302'],
-    '541015_541016':     ['541015', '541016'],
-    '511015_511016':     ['511015', '511016'],
-    '51109501_51109502': ['51109501', '51109502'],
-}
-AGRUPACIONES_EXACTAS = {c: destino for destino, cuentas in _GRUPOS.items() for c in cuentas}
-
-PREFIJOS_AGRUPADOS = ('5230', '541003', '541005', '541006', '541024', '541027', '5415')
-
-NOMBRES_ESPECIALES = {
-    '541001': 'Honorarios', '54100207_54100211': 'Tasas Bomberil-otras',
-    '541003': 'Arrendamientos', '541005': 'Seguros',
-    '541006': 'Mantenimiento y Reparaciónes',
-    '541009_541033': 'Adecuación e Instalaciones-Reparac locat',
-    '541015_541016': 'Utiles - Papelería- Fotocopias',
-    '541024': 'Gastos Legales', '541027': 'Gastos de Viaje',
-    '5415': 'Depreciación', '511015_511016': 'Papelería y Utiles de Oficina',
-    '5405': 'Gastos de Personal', '5105': 'Gastos de Personal',
-    '51109501_51109502': 'Gastos de Fondos Sociales',
-    '5': 'Proyecto de Aftosa', '6': 'Asistencia Técnica Propia',
-    '7': 'Asistencia Técnica Convenios',
-    '8': 'Asistencia Técnica Otros - Capacitaciones',
-    '5230': 'Gastos no Operacionales-IVA obsequios',
-    '521015': 'Gastos Contribución 4 x1000', '615035': 'Intereses',
-    'AT-00003': 'Convenio Elanco', 'AT-00004': 'Apoyo ciclo aftosa Virbac',
-    'AT-00005': 'Convenio Proalba-Santa Lucía', 'AT-00007': 'Convenio Tecnoquímicas',
-    'AT-00008': 'Seminario ambiental',
-    'AT-00010': 'Jornada de actualización en reproducción',
-    'AT-00013': 'Curso de gestión empresarial', 'AT-00014': 'Curso de mayordomía',
-    'AT-00015': 'Ecografo Bovino', 'AT-00016': 'Curso de Inseminación',
-    'AT-00019': 'Brucelosis-Tuberculosis', 'AT-00020': 'Programa ambiental',
-    'AT-00021': 'Chequeo reproductivo', 'AT-00022': 'Curso de Bromatología',
-    'AT-00023': 'Capacitación software ganadero', 'AT-00024': 'Atencion urgencias',
-    'AT-00026': 'Taller atención básica equipos de ordeño',
-    'AT-00028': 'Mantenimiento equipo técnico-Diplomado',
-    'AT-00029': 'Taller en bienestar y sanidad bovina',
-    'AT-00030': 'Seminario productividad láctea',
-    'AT-00032': 'Servicio de imágenes con dron',
-    'VT-00025': 'Convenio Tecnoquímicas', '41659505': 'Proyecto de Aftosa',
-    '41659501': 'Patrocinio de eventos', '420560': 'Venta PPE (moto)',
-}
+# Agrupación de cuentas ("54100207_54100211", "empieza por 5230", ...) y los
+# nombres de cada fila: ya NO están aquí. Viven en la tabla AgrupacionCuenta y
+# se editan en Ajustes → Agrupación de cuentas (ver agrupacion_cuentas.py).
+from .agrupacion_cuentas import cargar_reglas  # noqa: E402
 
 # ══════════════════════════════════════════════════════════════════
 #  HELPERS
@@ -2465,23 +2425,21 @@ def filtros_sede(sede):
     return {'mcnzona__in': cfg['zona']}, {'sede__icontains': cfg['nombre']}
 
 
-def aplicar_agrupaciones(cuenta, costo):
+def aplicar_agrupaciones(cuenta, costo, reglas=None):
+    """Fila en la que se suma una cuenta.
+
+    Las reglas por centro de costo siguen aquí; las de cuentas (exactas y
+    "empieza por") salen de Ajustes → Agrupación de cuentas. Pasa `reglas`
+    (cargar_reglas()) cuando se llama dentro de un bucle.
+    """
     if cuenta.startswith('4'):
         return cuenta
 
     if costo.startswith('02040'):                         cuenta = '5'
     if costo == '020201' and cuenta.startswith('5405'):   cuenta = '5405'
     if costo == '0101':                                   cuenta = '5105'
-    if cuenta.startswith('541001'):                       cuenta = '541001'
 
-    if cuenta in AGRUPACIONES_EXACTAS:
-        return AGRUPACIONES_EXACTAS[cuenta]
-
-    for prefijo in PREFIJOS_AGRUPADOS:
-        if cuenta.startswith(prefijo):
-            return prefijo
-
-    return cuenta
+    return (reglas or cargar_reglas()).agrupar(cuenta)
 
 
 def _mes_desde_serial(valor):
@@ -2570,6 +2528,7 @@ def calcular_movimientos(origen='ejecutado', sede='total'):
         )
 
         consolidado = defaultdict(lambda: {'total_debito': 0, 'total_credito': 0, 'total_valor': 0})
+        reglas = cargar_reglas()   # Ajustes → Agrupación de cuentas (una consulta)
 
         # ── detalle (cuentas 5 + cuentas 4) ───────────────────────
         for tabla, queryset in (('cuenta5', queryset_5), ('cuenta4', queryset_4)):
@@ -2595,7 +2554,7 @@ def calcular_movimientos(origen='ejecutado', sede='total'):
                     if destino_norm in ASISTENCIA_TECNICA:
                         cuenta = destino_norm
                 else:
-                    cuenta = aplicar_agrupaciones(cuenta, costo)
+                    cuenta = aplicar_agrupaciones(cuenta, costo, reglas)
                     if destino_norm in ASISTENCIA_TECNICA_PROPIA:
                         cuenta = '6'
                     elif destino_norm in ASISTENCIA_TECNICA_CONVENIOS:
@@ -2615,7 +2574,7 @@ def calcular_movimientos(origen='ejecutado', sede='total'):
             costo  = row['mcnccosto'] or 'SIN COSTO'
             cuenta = resolver_cuenta_clave(row['mcncuenta'], row['ctanombre']) or 'SIN CUENTA'
             if cuenta not in ALIAS_CUENTAS_CLAVE:
-                cuenta = aplicar_agrupaciones(cuenta, costo)
+                cuenta = aplicar_agrupaciones(cuenta, costo, reglas)
             consolidado[(mes, cuenta, costo, 'SIN DESTINO')]['total_valor'] += row['valor'] or 0
 
         # ── armado de registros ───────────────────────────────────
@@ -2628,7 +2587,7 @@ def calcular_movimientos(origen='ejecutado', sede='total'):
             else:
                 saldo = vals['total_debito'] - vals['total_credito'] + vals['total_valor']
 
-            especial = NOMBRES_ESPECIALES.get(cuenta)
+            especial = reglas.nombre(cuenta)
             if especial:
                 nombre = especial                       # ya viene bien escrito
             else:

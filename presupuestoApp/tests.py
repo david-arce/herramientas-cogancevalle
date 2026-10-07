@@ -20,7 +20,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from . import views, views_presupuesto_areas as vpa
-from .models import Cuenta5Presupuestado
+from .models import Cuenta5Presupuestado, OrdenCuenta
 from .models_presupuesto import (
     AsignacionPresupuesto, MESES, PlazoEdicionArea, PresupuestoArea, anio_elaboracion, anio_presupuesto, fecha_mes,
     filas_verticales,
@@ -1154,6 +1154,12 @@ class PanelAsignacionesTests(TestCase):
         self.assertEqual(set(claves), {*vpa.SEDE_CONFIG, "nomina", "comercial"})
         self.assertEqual(datos["asignaciones"], [{"usuario": self.usuario.id, "presupuesto": AREA}])
 
+    def test_url_unica_con_https_detras_del_proxy(self):
+        self.client.force_login(self.aprobador)
+        r = self.client.get(reverse("ajustes_asignaciones"), HTTP_X_FORWARDED_PROTO="https",
+                            HTTP_HOST="herramientas.up.railway.app")
+        self.assertEqual(r.context["url_unica"], "https://herramientas.up.railway.app" + reverse("mi_presupuesto"))
+
     def test_asignar_y_quitar(self):
         self.client.force_login(self.aprobador)
         r = self.guardar(usuario=self.usuario.id, presupuesto=AREA, accion="asignar")
@@ -1215,3 +1221,243 @@ class MigracionAsignacionesTests(TransactionTestCase):
         })
         self.migrar(self.antes)                 # reversible
         self.assertNotIn("presupuesto_asignacion", connection.introspection.table_names())
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Agrupación y nombres de cuentas (tabla AgrupacionCuenta)
+# ═══════════════════════════════════════════════════════════════════════
+def _agrupar_como_antes(cuenta, costo):
+    """Copia de la lógica que había fija en views.py antes de la tabla."""
+    grupos = {
+        '54100207_54100211': ['54100207', '54100208', '54100209', '54100210', '54100211'],
+        '541009_541033': ['541009', '541033', '54103301', '54103302'],
+        '541015_541016': ['541015', '541016'],
+        '511015_511016': ['511015', '511016'],
+        '51109501_51109502': ['51109501', '51109502'],
+    }
+    exactas = {c: d for d, cs in grupos.items() for c in cs}
+    if cuenta.startswith('4'):
+        return cuenta
+    if costo.startswith('02040'): cuenta = '5'
+    if costo == '020201' and cuenta.startswith('5405'): cuenta = '5405'
+    if costo == '0101': cuenta = '5105'
+    if cuenta.startswith('541001'): cuenta = '541001'
+    if cuenta in exactas:
+        return exactas[cuenta]
+    for prefijo in ('5230', '541003', '541005', '541006', '541024', '541027', '5415'):
+        if cuenta.startswith(prefijo):
+            return prefijo
+    return cuenta
+
+
+class AgrupacionMigradaTests(TestCase):
+    """La migración copia las reglas del código: el resultado no cambia."""
+
+    def test_mismo_resultado_que_las_reglas_fijas(self):
+        from .agrupacion_cuentas import cargar_reglas
+        reglas = cargar_reglas()
+        cuentas = [
+            '54100207', '54100208', '54100211', '54100212', '541009', '54103301', '541033', '541015',
+            '541016', '511015', '51109501', '51109502', '5230', '523005', '52300501', '541003',
+            '54100301', '541005', '54100501', '541006', '54100699', '541024', '54102401', '541027',
+            '5415', '541505', '54150501', '541001', '54100101', '54100199', '541010', '541011',
+            '5405', '540505', '510506', '5105', '521015', '615035', '613522', '41750201', '4175',
+            '420560', '41659505', '511', '5', '54', '5410', '541', '5412', '54101201',
+        ]
+        costos = ['020202', '020400', '020401', '020201', '0101', '0203', 'SIN COSTO']
+        for cuenta in cuentas:
+            for costo in costos:
+                self.assertEqual(views.aplicar_agrupaciones(cuenta, costo, reglas),
+                                 _agrupar_como_antes(cuenta, costo), (cuenta, costo))
+
+    def test_nombres_migrados(self):
+        from .agrupacion_cuentas import cargar_reglas
+        reglas = cargar_reglas()
+        self.assertEqual(reglas.nombre('54100207_54100211'), 'Tasas Bomberil-otras')
+        self.assertEqual(reglas.nombre('541001'), 'Honorarios')
+        self.assertEqual(reglas.nombre('AT-00003'), 'Convenio Elanco')
+        self.assertEqual(reglas.nombre('5'), 'Proyecto de Aftosa')
+        self.assertIsNone(reglas.nombre('541010'))
+
+
+class AgrupacionCuentasPantallaTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.aprobador = User.objects.create_user("NICOLAS")
+        cls.area = User.objects.create_user("PLOZANO")
+
+    def post(self, nombre, datos):
+        return self.client.post(reverse(nombre), json.dumps(datos), content_type="application/json")
+
+    def guardar(self, **datos):
+        return self.post("guardar_agrupacion_cuenta", datos)
+
+    def test_solo_el_aprobador(self):
+        self.client.force_login(self.area)
+        self.assertEqual(self.client.get(reverse("ajustes_agrupacion_cuentas")).status_code, 403)
+        self.assertEqual(self.guardar(codigo="X1", nombre="x").status_code, 403)
+        self.assertEqual(self.post("eliminar_agrupacion_cuenta", {"id": 1}).status_code, 403)
+        self.assertEqual(self.post("vista_previa_agrupacion_cuenta", {}).status_code, 403)
+
+    def test_pantalla_lista_las_reglas_migradas(self):
+        self.client.force_login(self.aprobador)
+        r = self.client.get(reverse("ajustes_agrupacion_cuentas"))
+        self.assertEqual(r.status_code, 200)
+        filas = {f["codigo"]: f for f in r.context["datos"]["filas"]}
+        self.assertEqual(filas["54100207_54100211"]["cuentas"][0], "54100207")
+        self.assertEqual(filas["5230"]["prefijos"], ["5230"])
+        self.assertContains(r, reverse("ajustes_agrupacion_cuentas"))     # enlace en el menú
+
+    def test_agregar_cuenta_a_un_grupo_cambia_el_consolidado(self):
+        from .agrupacion_cuentas import cargar_reglas
+        from .models import AgrupacionCuenta
+        self.client.force_login(self.aprobador)
+        self.assertEqual(views.aplicar_agrupaciones("54100212", "020202"), "54100212")
+        g = AgrupacionCuenta.objects.get(codigo="54100207_54100211")
+        r = self.guardar(id=g.id, codigo=g.codigo, nombre="Tasas y otras",
+                         cuentas=g.cuentas + ["54100212"], prefijos=[])
+        self.assertEqual(r.status_code, 200, r.content)
+        reglas = cargar_reglas()
+        self.assertEqual(views.aplicar_agrupaciones("54100212", "020202", reglas), "54100207_54100211")
+        self.assertEqual(reglas.nombre("54100207_54100211"), "Tasas y otras")
+
+    def test_crear_prefijo_y_eliminar(self):
+        from .models import AgrupacionCuenta
+        self.client.force_login(self.aprobador)
+        OrdenCuenta.objects.create(mcncuenta="541010", orden=10)
+        r = self.guardar(codigo="5410_SERV", nombre="Servicios", cuentas="541010, 541011", prefijos=["541045"])
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertTrue(r.json()["agregada_orden"])
+        self.assertTrue(OrdenCuenta.objects.filter(mcncuenta="5410_SERV", visible_total=True).exists())
+        self.assertEqual(views.aplicar_agrupaciones("54104501", "020202"), "5410_SERV")
+        self.assertEqual(views.aplicar_agrupaciones("541011", "020202"), "5410_SERV")
+        # El prefijo más largo gana sobre uno más corto de otra fila.
+        self.guardar(codigo="5410_GEN", nombre="General", prefijos=["5410"])
+        self.assertEqual(views.aplicar_agrupaciones("54104501", "020202"), "5410_SERV")
+        self.assertEqual(views.aplicar_agrupaciones("54109999", "020202"), "5410_GEN")
+
+        fila = AgrupacionCuenta.objects.get(codigo="5410_SERV")
+        r = self.post("eliminar_agrupacion_cuenta", {"id": fila.id})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(views.aplicar_agrupaciones("541011", "020202"), "5410_GEN")
+
+    def test_validaciones(self):
+        from .models import AgrupacionCuenta
+        self.client.force_login(self.aprobador)
+        casos = [
+            dict(codigo="", nombre="x"),
+            dict(codigo="mal código", nombre="x"),
+            dict(codigo="5230", nombre="duplicado"),
+            dict(codigo="N1", nombre=""),
+            dict(codigo="N2", nombre="x", cuentas=["41750201"]),
+            dict(codigo="N3", nombre="x", prefijos=["4175"]),
+            dict(codigo="N4", nombre="x", cuentas=["54100208"]),     # ya está en otra fila
+            dict(codigo="N5", nombre="x", prefijos=["5230"]),        # prefijo repetido
+            dict(codigo="N6", nombre="x", prefijos=["5"]),           # muy corto
+            dict(codigo="N7", nombre="x", cuentas=["54a"]),
+        ]
+        antes = AgrupacionCuenta.objects.count()
+        for caso in casos:
+            r = self.guardar(**caso)
+            self.assertEqual(r.status_code, 400, caso)
+            self.assertTrue(r.json()["errores"], caso)
+        self.assertEqual(AgrupacionCuenta.objects.count(), antes)
+        g = AgrupacionCuenta.objects.get(codigo="5230")
+        r = self.guardar(id=g.id, codigo="OTRO", nombre="x", prefijos=["5230"])
+        self.assertEqual(r.status_code, 400)          # el código no se cambia
+        self.assertEqual(self.post("eliminar_agrupacion_cuenta", {"id": 999999}).status_code, 404)
+
+    def test_vista_previa(self):
+        from .models import AgrupacionCuenta
+        self.client.force_login(self.aprobador)
+        for cta, nom in (("52300501", "IVA OBSEQUIOS"), ("54100208", "TASA BOMBERIL"), ("54100299", "OTRA TASA")):
+            Cuenta5Presupuestado.objects.create(mcncuenta=cta, ctanombre=nom)
+        g = AgrupacionCuenta.objects.get(codigo="54100207_54100211")
+        r = self.post("vista_previa_agrupacion_cuenta",
+                      {"id": g.id, "codigo": g.codigo, "cuentas": ["54100208"], "prefijos": ["541002"]}).json()
+        por_cuenta = {f["cuenta"]: f for f in r["filas"]}
+        self.assertTrue(por_cuenta["54100208"]["aqui"])
+        self.assertEqual(por_cuenta["54100208"]["motivo"], "cuenta exacta")
+        self.assertEqual(por_cuenta["54100299"]["motivo"], "empieza por 541002")
+        self.assertNotIn("52300501", por_cuenta)
+        # Una cuenta exacta de OTRA fila gana sobre el prefijo nuevo.
+        r = self.post("vista_previa_agrupacion_cuenta", {"codigo": "NUEVA", "prefijos": ["5410"]}).json()
+        f = {x["cuenta"]: x for x in r["filas"]}["54100208"]
+        self.assertFalse(f["aqui"])
+        self.assertEqual(f["destino"], "54100207_54100211")
+
+
+class CerrarSesionEnGrillasTests(TestCase):
+    def test_pantallas_de_presupuesto_tienen_cerrar_sesion(self):
+        usuario = User.objects.create_user("PLOZANO", first_name="Pilar")
+        asignar(usuario, AREA)
+        abrir_plazo()
+        self.client.force_login(usuario)
+        for url in (reverse("tabla_auxiliar_sede", args=[AREA]), reverse("presupuesto_aprobado_sede", args=[AREA])):
+            r = self.client.get(url)
+            self.assertContains(r, 'action="%s"' % reverse("logout"))
+            self.assertContains(r, "Hola, Pilar")
+        self.client.force_login(User.objects.create_user("NICOLAS"))
+        self.assertContains(self.client.get(reverse("presupuesto_sede", args=[AREA])), "Cerrar sesión")
+
+
+class ComercialGastosTests(TransactionTestCase):
+    """0039: 'comercial-costos' pasa a 'comercial-gastos' sin perder datos."""
+
+    antes = [("presupuestoApp", "0038_agrupacion_cuenta")]
+    despues = [("presupuestoApp", "0039_renombrar_comercial_gastos")]
+
+    def migrar(self, destino):
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate(destino)
+        return executor.loader.project_state(destino).apps
+
+    def tearDown(self):
+        self.migrar(MigrationExecutor(connection).loader.graph.leaf_nodes())
+
+    def test_migracion_ida_y_vuelta(self):
+        apps = self.migrar(self.antes)
+        usuario = User.objects.create_user("EVALENCIA")
+        Area = apps.get_model("presupuestoApp", "PresupuestoArea")
+        Plazo = apps.get_model("presupuestoApp", "PlazoEdicionArea")
+        Asig = apps.get_model("presupuestoApp", "AsignacionPresupuesto")
+        C5 = apps.get_model("presupuestoApp", "Cuenta5Presupuestado")
+        Area.objects.create(area="comercial-costos", etapa="auxiliar", linea=1, fecha=datetime.date(ANIO, 1, 1), valor=5)
+        Area.objects.create(area="logistica", etapa="auxiliar", linea=1, fecha=datetime.date(ANIO, 1, 1), valor=7)
+        Plazo.objects.create(area="comercial-costos", fecha_limite=datetime.date(ANIO, 1, 1))
+        Asig.objects.create(usuario_id=usuario.id, presupuesto="comercial-costos")
+        C5.objects.create(mcncuenta="511001", origen_area="comercial-costos")
+
+        apps = self.migrar(self.despues)
+        for modelo, campo in (("PresupuestoArea", "area"), ("PlazoEdicionArea", "area"),
+                              ("AsignacionPresupuesto", "presupuesto"), ("Cuenta5Presupuestado", "origen_area")):
+            M = apps.get_model("presupuestoApp", modelo)
+            self.assertFalse(M.objects.filter(**{campo: "comercial-costos"}).exists(), modelo)
+            self.assertTrue(M.objects.filter(**{campo: "comercial-gastos"}).exists(), modelo)
+        self.assertTrue(apps.get_model("presupuestoApp", "PresupuestoArea").objects.filter(area="logistica").exists())
+
+        apps = self.migrar(self.antes)
+        self.assertTrue(apps.get_model("presupuestoApp", "PresupuestoArea").objects.filter(area="comercial-costos").exists())
+
+
+class ComercialGastosVistasTests(TestCase):
+    def test_nombre_y_enlaces(self):
+        self.assertEqual(vpa.SEDE_CONFIG["comercial-gastos"]["label"], "Comercial y Gastos")
+        self.assertNotIn("comercial-costos", vpa.SEDE_CONFIG)
+        usuario = User.objects.create_user("EVALENCIA")
+        asignar(usuario, "comercial-gastos")
+        abrir_plazo("comercial-gastos")
+        self.client.force_login(usuario)
+        r = self.client.get(reverse("mi_presupuesto"))
+        self.assertRedirects(r, "/presupuesto/area/comercial-gastos/auxiliar/", fetch_redirect_response=False)
+        self.assertContains(self.client.get(r["Location"]), "Presupuesto Comercial y Gastos")
+        # Un enlace viejo guardado sigue funcionando.
+        self.assertRedirects(self.client.get("/presupuesto/area/comercial-costos/auxiliar/"),
+                             "/presupuesto/area/comercial-gastos/auxiliar/", fetch_redirect_response=False)
+
+    def test_tarjeta_del_dashboard(self):
+        self.client.force_login(User.objects.create_user("NICOLAS"))
+        r = self.client.get(reverse("dashboardPresupuesto"))
+        self.assertContains(r, "Comercial y Gastos")
+        self.assertContains(r, "/presupuesto/area/comercial-gastos/")

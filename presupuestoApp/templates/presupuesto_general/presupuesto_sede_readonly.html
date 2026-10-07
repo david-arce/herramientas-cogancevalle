@@ -42,7 +42,10 @@
 </style>
 </head>
 <body>
+<header class="barra-pagina">
 <h2>Presupuesto {{ sede_label }} — aprobado</h2>
+{% include "presupuesto_general/_barra_usuario.html" %}
+</header>
 <p class="subtitulo">Solo lectura. Para cambiar algo, edita y vuelve a aprobar la versión desde la pantalla de revisión.</p>
 
 <div class="aviso">Versión aprobada vigente: <b>v{{ ultima_version }}</b></div>

@@ -1,0 +1,21 @@
+{# Saludo + Cerrar sesión, para las pantallas de presupuesto que no usan el dashboard. #}
+{% if user.is_authenticated %}
+<style>
+    .barra-pagina { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .barra-pagina h2 { margin-top: 0; }
+    .barra-usuario { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #444; margin-left: auto; }
+    .barra-usuario form { margin: 0; }
+    .barra-usuario .cerrar-sesion {
+        background: #dc3545; color: #fff; border: none; padding: 7px 14px; border-radius: 6px;
+        cursor: pointer; font: inherit; font-size: 14px;
+    }
+    .barra-usuario .cerrar-sesion:hover { background: #bb2d3b; }
+</style>
+<div class="barra-usuario">
+    <span>Hola, {{ user.first_name|default:user.username }}</span>
+    <form action="{% url 'logout' %}" method="post">
+        {% csrf_token %}
+        <button type="submit" class="cerrar-sesion">Cerrar sesión</button>
+    </form>
+</div>
+{% endif %}

@@ -142,6 +142,21 @@ def _lista_asignaciones():
     ]
 
 
+def _url_absoluta(request, ruta):
+    """URL completa para compartir, con https cuando el usuario entra por https.
+
+    En Railway (y cualquier hosting con proxy) el HTTPS termina en el proxy y a
+    Django le llega http, por eso build_absolute_uri daba "http://". El proxy
+    avisa el protocolo real en la cabecera X-Forwarded-Proto. Lo ideal es
+    configurar SECURE_PROXY_SSL_HEADER en settings.py; esto lo cubre aunque no esté.
+    """
+    url = request.build_absolute_uri(ruta)
+    proto = request.headers.get("X-Forwarded-Proto", "").split(",")[0].strip().lower()
+    if proto == "https" and url.startswith("http://"):
+        url = "https://" + url[len("http://"):]
+    return url
+
+
 @login_required
 def ajustes_asignaciones(request):
     if not _es_aprobador(request):
@@ -165,7 +180,7 @@ def ajustes_asignaciones(request):
         for c, info in PRESUPUESTOS_ASIGNABLES.items()
     ]
     return render(request, "ajustes/asignaciones.html", {
-        "url_unica": request.build_absolute_uri(reverse("mi_presupuesto")),
+        "url_unica": _url_absoluta(request, reverse("mi_presupuesto")),
         "datos": {
             "usuarios": usuarios,
             "presupuestos": presupuestos,
