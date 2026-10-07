@@ -1461,3 +1461,58 @@ class ComercialGastosVistasTests(TestCase):
         r = self.client.get(reverse("dashboardPresupuesto"))
         self.assertContains(r, "Comercial y Gastos")
         self.assertContains(r, "/presupuesto/area/comercial-gastos/")
+
+
+class OrdenCuentasNombresTests(TestCase):
+    """Sincronizar completa los nombres vacíos y el nombre se comparte con Agrupación de cuentas."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.aprobador = User.objects.create_user("NICOLAS")
+
+    def setUp(self):
+        self.client.force_login(self.aprobador)
+
+    def test_sincronizar_completa_nombres_vacios_y_respeta_los_escritos(self):
+        from .models import AgrupacionCuenta
+        OrdenCuenta.objects.create(mcncuenta="54100207_54100211", orden=10)              # agrupación
+        OrdenCuenta.objects.create(mcncuenta="1", orden=20)                              # cuenta clave
+        OrdenCuenta.objects.create(mcncuenta="541010", orden=30)                         # con movimientos
+        OrdenCuenta.objects.create(mcncuenta="541011", orden=40, ctanombre="Mi nombre")  # ya escrito
+        OrdenCuenta.objects.create(mcncuenta="999999", orden=50)                         # desconocida
+        Cuenta5Presupuestado.objects.create(mcncuenta="541010", ctanombre="ASEO Y ELEMENTOS",
+                                            mcnfecha=46023, mcnvaldebi=10, mcnccosto="020202")
+        r = self.client.post(reverse("sincronizar_orden_cuentas"))
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertGreaterEqual(r.json()["nombres"], 3)
+        nombres = dict(OrdenCuenta.objects.values_list("mcncuenta", "ctanombre"))
+        self.assertEqual(nombres["54100207_54100211"], "Tasas Bomberil-otras")
+        self.assertEqual(nombres["1"], "Ventas a crédito")
+        self.assertEqual(nombres["541010"], "Aseo y elementos")
+        self.assertEqual(nombres["541011"], "Mi nombre")
+        self.assertEqual(nombres["999999"], "")
+        # listar trae el sugerido para las vacías
+        data = {d["mcncuenta"]: d for d in self.client.get(reverse("listar_orden_cuentas")).json()["data"]}
+        self.assertEqual(data["54100207_54100211"]["sugerido"], "Tasas Bomberil-otras")
+
+    def test_nombre_compartido_en_las_dos_pantallas(self):
+        from .models import AgrupacionCuenta
+        OrdenCuenta.objects.create(mcncuenta="5230", orden=10, ctanombre="Viejo")
+        # Orden de cuentas -> Agrupación
+        self.client.post(reverse("guardar_orden_cuentas"), json.dumps({"cuentas": [
+            {"mcncuenta": "5230", "ctanombre": "IVA obsequios", "visible_total": True, "visible_sede": True}]}),
+            content_type="application/json")
+        self.assertEqual(AgrupacionCuenta.objects.get(codigo="5230").nombre, "IVA obsequios")
+        # Agrupación -> Orden de cuentas
+        g = AgrupacionCuenta.objects.get(codigo="5230")
+        self.client.post(reverse("guardar_agrupacion_cuenta"), json.dumps(
+            {"id": g.id, "codigo": "5230", "nombre": "Gastos no operacionales", "cuentas": [], "prefijos": ["5230"]}),
+            content_type="application/json")
+        self.assertEqual(OrdenCuenta.objects.get(mcncuenta="5230").ctanombre, "Gastos no operacionales")
+
+    def test_aviso_de_orden_vacia_solo_si_esta_vacia(self):
+        r = self.client.get(reverse("ajustes_agrupacion_cuentas"))
+        self.assertTrue(r.context["datos"]["orden_vacia"])
+        OrdenCuenta.objects.create(mcncuenta="1", orden=10)
+        r = self.client.get(reverse("ajustes_agrupacion_cuentas"))
+        self.assertFalse(r.context["datos"]["orden_vacia"])

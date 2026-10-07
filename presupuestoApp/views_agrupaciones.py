@@ -176,6 +176,8 @@ def guardar_agrupacion_cuenta(request):
                 setattr(actual, campo, limpio[campo])
             actual.actualizado_por = request.user.username
             actual.save()
+            # Un solo nombre por fila: Orden de cuentas muestra el mismo.
+            OrdenCuenta.objects.filter(mcncuenta=actual.codigo).update(ctanombre=actual.nombre)
             return _respuesta(f"Fila {actual.codigo} guardada ✅")
 
         AgrupacionCuenta.objects.create(**limpio, actualizado_por=request.user.username)
@@ -184,9 +186,12 @@ def guardar_agrupacion_cuenta(request):
         if OrdenCuenta.objects.exists() and not OrdenCuenta.objects.filter(mcncuenta=limpio["codigo"]).exists():
             ultimo = OrdenCuenta.objects.aggregate(m=Max("orden"))["m"] or 0
             OrdenCuenta.objects.create(
-                mcncuenta=limpio["codigo"], orden=ultimo + 10, visible_total=True, visible_sede=True,
+                mcncuenta=limpio["codigo"], ctanombre=limpio["nombre"], orden=ultimo + 10,
+                visible_total=True, visible_sede=True,
             )
             agregada_orden = True
+        else:
+            OrdenCuenta.objects.filter(mcncuenta=limpio["codigo"]).update(ctanombre=limpio["nombre"])
 
     msg = f"Fila {limpio['codigo']} creada ✅"
     if agregada_orden:

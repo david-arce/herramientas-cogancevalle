@@ -49,7 +49,7 @@
 
   <div class="orden-hint">
     Arrastra las filas para reordenar. <b>Total</b> = aparece en Consolidado/Presupuestado general y Total Base ·
-    <b>Sede</b> = aparece en las pestañas por sede. Los nombres editados reemplazan al nombre contable.
+    <b>Sede</b> = aparece en las pestañas por sede. Los nombres se cargan al sincronizar y se comparten con Agrupación de cuentas; si dejas uno vacío se usa el que aparece en gris.
   </div>
 
   <div class="orden-list" id="lista">
@@ -98,7 +98,7 @@ function crearFila(c) {
     <div class="drag-handle">⠿</div>
     <div class="pos-num"></div>
     <div class="cta-code">${c.mcncuenta}</div>
-    <div><input class="cta-nombre" type="text" value="${(c.ctanombre||'').replace(/"/g,'&quot;')}" placeholder="(nombre contable)"></div>
+    <div><input class="cta-nombre" type="text" value="${(c.ctanombre||'').replace(/"/g,'&quot;')}" placeholder="${(c.sugerido||'(sin nombre)').replace(/"/g,'&quot;')}" title="Si lo dejas vacío se usa: ${(c.sugerido||'el nombre contable').replace(/"/g,'&quot;')}"></div>
     <div class="chk-cell"><input type="checkbox" class="chk-total" ${c.visible_total ? 'checked' : ''}></div>
     <div class="chk-cell"><input type="checkbox" class="chk-sede"  ${c.visible_sede  ? 'checked' : ''}></div>
     <div><button class="btn-del" title="Eliminar">✕</button></div>`;
@@ -148,7 +148,9 @@ document.getElementById('btnSync').addEventListener('click', async () => {
     const r = await fetch(URL_SYNC, { method:'POST', headers:{'X-CSRFToken':csrf()} });
     const j = await r.json();
     if (!j.success) throw new Error(j.error || 'Error');
-    toast(`✅ ${j.creadas} cuentas nuevas (total ${j.total})`, 'success');
+    let msg = `✅ ${j.creadas} cuentas nuevas · ${j.nombres || 0} nombres completados (total ${j.total})`;
+    if (j.sin_nombre) msg += ` · ${j.sin_nombre} sin nombre conocido`;
+    toast(msg, 'success');
     cargar();
   } catch (e) { toast('Error: ' + e.message, 'error'); }
 });

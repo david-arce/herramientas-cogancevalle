@@ -12,7 +12,7 @@ from .models import (
     ComentarioComparativo,
     Cuenta4Base,
     Cuenta4Presupuestado,
-    OrdenCuenta,
+    OrdenCuenta, AgrupacionCuenta,
     PresupuestoGeneralVentas,
     PresupuestoCentroOperacionVentas,
     PresupuestoCentroSegmentoVentas,
@@ -2716,15 +2716,19 @@ def nombres_personalizados():
 
 def _cuentas_detectadas():
     """Cuentas que realmente pueden aparecer en las tablas, ya agrupadas."""
-    detectadas = {}
+    detectadas, alguno_ok = {}, False
     for fn, arg in ((calcular_consolidado, 'consolidado'),
                     (calcular_presupuestado, 'presupuestado')):
         res = fn(arg)
         if res.get('success'):
+            alguno_ok = True
             for cta, row in res['data'].items():
-                if cta and cta not in detectadas:
-                    detectadas[cta] = row.get('ctanombre') or ''
-    return detectadas
+                nombre = row.get('ctanombre') or ''
+                if nombre == 'SIN NOMBRE':
+                    nombre = ''
+                if cta and not detectadas.get(cta):
+                    detectadas[cta] = nombre
+    return detectadas if alguno_ok else None
 
 
 @login_required
@@ -2734,12 +2738,48 @@ def ajustes_orden_cuentas(request):
     return render(request, 'ajustes/orden_cuentas.html')
 
 
+def nombres_por_defecto(codigos, detectadas=None):
+    """{código: nombre} para cada fila, en este orden de prioridad:
+
+      1. Ajustes → Agrupación de cuentas (nombre de la fila)
+      2. el nombre con que sale hoy en el consolidado/presupuestado (detectadas)
+      3. cuentas clave (Ventas a crédito, Costo de ventas, ...)
+      4. el catálogo de cuentas contables (cuentas_contables)
+    Lo que viene TODO EN MAYÚSCULAS se deja con mayúscula inicial, como en las tablas.
+    """
+    codigos = [str(c) for c in codigos]
+    reglas = cargar_reglas()
+    detectadas = detectadas or {}
+    catalogo = {}
+    numericos = [int(c) for c in codigos if c.isdigit()]
+    if numericos:
+        try:
+            with transaction.atomic():      # savepoint: la tabla externa puede no existir
+                for cta, nom in CuentasContables.objects.filter(cuenta__in=numericos).values_list('cuenta', 'nom_cuenta'):
+                    if nom and str(cta) not in catalogo:
+                        catalogo[str(cta)] = nom.strip()
+        except Exception:
+            pass
+    nombres = {}
+    for c in codigos:
+        nombre = (reglas.nombre(c) or detectadas.get(c) or NOMBRES_CUENTAS_CLAVE.get(c)
+                  or catalogo.get(c) or '').strip()
+        if nombre.isupper():
+            nombre = nombre.capitalize()
+        nombres[c] = nombre
+    return nombres
+
+
 @require_GET
 def listar_orden_cuentas(request):
     data = list(
         OrdenCuenta.objects.order_by('orden', 'id')
         .values('id', 'mcncuenta', 'ctanombre', 'orden', 'visible_total', 'visible_sede')
     )
+    # Nombre que se usa si la fila no tiene uno escrito (se muestra de guía).
+    sugeridos = nombres_por_defecto([d['mcncuenta'] for d in data])
+    for d in data:
+        d['sugerido'] = sugeridos.get(d['mcncuenta'], '')
     return JsonResponse({'success': True, 'data': data, 'total': len(data)})
 
 
@@ -2750,6 +2790,10 @@ def sincronizar_orden_cuentas(request):
     Si la tabla está vacía, la siembra con el orden que hay hoy en el código."""
     try:
         detectadas = _cuentas_detectadas()
+        if detectadas is None:
+            return JsonResponse({'success': False, 'error':
+                'No se pudo calcular el consolidado para detectar las cuentas; revisa el registro del servidor.'},
+                status=500)
         existentes = set(OrdenCuenta.objects.values_list('mcncuenta', flat=True))
         creadas = 0
 
@@ -2780,8 +2824,19 @@ def sincronizar_orden_cuentas(request):
             OrdenCuenta.objects.bulk_create(nuevas)
             creadas += len(nuevas)
 
+            # Completa el nombre de las filas que lo tengan vacío (no toca los ya escritos).
+            vacias = list(OrdenCuenta.objects.filter(ctanombre=''))
+            sugeridos = nombres_por_defecto([o.mcncuenta for o in vacias], detectadas)
+            con_nombre = []
+            for o in vacias:
+                if sugeridos.get(o.mcncuenta):
+                    o.ctanombre = sugeridos[o.mcncuenta]
+                    con_nombre.append(o)
+            OrdenCuenta.objects.bulk_update(con_nombre, ['ctanombre'], batch_size=500)
+
         return JsonResponse({
-            'success': True, 'creadas': creadas,
+            'success': True, 'creadas': creadas, 'nombres': len(con_nombre),
+            'sin_nombre': len(vacias) - len(con_nombre),
             'total': OrdenCuenta.objects.count(),
         })
     except Exception as e:
@@ -2804,15 +2859,20 @@ def guardar_orden_cuentas(request):
                 cta = str(f.get('mcncuenta', '') or '').strip()
                 if not cta:
                     continue
+                nombre = str(f.get('ctanombre', '') or '').strip()
                 OrdenCuenta.objects.update_or_create(
                     mcncuenta=cta,
                     defaults={
                         'orden': (i + 1) * 10,
-                        'ctanombre': str(f.get('ctanombre', '') or '').strip(),
+                        'ctanombre': nombre,
                         'visible_total': bool(f.get('visible_total', True)),
                         'visible_sede': bool(f.get('visible_sede', False)),
                     },
                 )
+                # Un solo nombre por fila: si la fila está en Agrupación de cuentas, se iguala allá.
+                if nombre:
+                    AgrupacionCuenta.objects.filter(codigo=cta).exclude(nombre=nombre).update(
+                        nombre=nombre, actualizado_por=request.user.username)
         return JsonResponse({'success': True, 'guardadas': len(filas)})
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'JSON inválido'}, status=400)

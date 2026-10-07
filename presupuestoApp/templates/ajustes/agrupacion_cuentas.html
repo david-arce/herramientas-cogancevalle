@@ -17,6 +17,8 @@
               background: #fff8d6; color: #6b4e00; border: 1px solid #ffe28a; display: flex; gap: 8px; align-items: flex-start; }
   .ag-aviso .material-icons { font-size: 18px; }
   .ag-aviso a { color: inherit; font-weight: 600; }
+  /* display:flex de .ag-aviso anulaba el atributo hidden: el aviso salía siempre. */
+  .ag-wrap [hidden], dialog [hidden] { display: none !important; }
 
   .ag-barra { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .ag-filtros { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -135,7 +137,7 @@
       <li>No se agrupan las cuentas que empiezan por 4 ni las cuentas clave (ventas y costo de ventas).
           Las filas <code>5</code>, <code>5105</code>, <code>5405</code>, <code>6</code>, <code>7</code> y <code>8</code> salen de reglas por centro de costo
           y destino que siguen fijas; aquí solo se cambia su nombre.</li>
-      <li>Si una cuenta tiene nombre en <a href="{% url 'ajustes_orden_cuentas' %}">Orden de cuentas</a>, ese nombre tiene prioridad en las tablas.</li>
+      <li>El nombre es el mismo que en <a href="{% url 'ajustes_orden_cuentas' %}">Orden de cuentas</a>: si lo cambias en una de las dos pantallas, se cambia en la otra.</li>
     </ul>
   </details>
 
