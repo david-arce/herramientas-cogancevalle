@@ -1516,3 +1516,56 @@ class OrdenCuentasNombresTests(TestCase):
         OrdenCuenta.objects.create(mcncuenta="1", orden=10)
         r = self.client.get(reverse("ajustes_agrupacion_cuentas"))
         self.assertFalse(r.context["datos"]["orden_vacia"])
+
+
+class CambiarCodigoFilaTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.aprobador = User.objects.create_user("NICOLAS")
+
+    def setUp(self):
+        self.client.force_login(self.aprobador)
+
+    def guardar(self, fila, **cambios):
+        datos = {"id": fila.id, "codigo": fila.codigo, "nombre": fila.nombre,
+                 "cuentas": fila.cuentas, "prefijos": fila.prefijos, **cambios}
+        return self.client.post(reverse("guardar_agrupacion_cuenta"), json.dumps(datos),
+                                content_type="application/json")
+
+    def test_cambia_el_codigo_y_se_lleva_orden_y_comentarios(self):
+        from .models import AgrupacionCuenta, ComentarioComparativo
+        g = AgrupacionCuenta.objects.get(codigo="54100207_54100211")
+        OrdenCuenta.objects.create(mcncuenta=g.codigo, orden=70, visible_sede=True)
+        ComentarioComparativo.objects.create(sede="tulua", fila_key=g.codigo, mcncuenta=g.codigo, comentario="ojo")
+        r = self.guardar(g, codigo="5410_TASAS")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertIn("54100207_54100211 → 5410_TASAS", r.json()["msg"])
+        self.assertFalse(AgrupacionCuenta.objects.filter(codigo="54100207_54100211").exists())
+        o = OrdenCuenta.objects.get(mcncuenta="5410_TASAS")
+        self.assertEqual((o.orden, o.visible_sede, o.ctanombre), (70, True, "Tasas Bomberil-otras"))
+        self.assertEqual(ComentarioComparativo.objects.get(sede="tulua").fila_key, "5410_TASAS")
+        self.assertEqual(views.aplicar_agrupaciones("54100208", "020202"), "5410_TASAS")
+
+    def test_no_se_puede_cambiar(self):
+        from .models import AgrupacionCuenta
+        casos = [
+            (AgrupacionCuenta.objects.get(codigo="54100207_54100211"), "51_TASAS"),   # cambia de subtotal
+            (AgrupacionCuenta.objects.get(codigo="5230"), "5230_IVA"),                # lo usan las tablas
+            (AgrupacionCuenta.objects.get(codigo="5"), "5X"),                         # regla fija
+            (AgrupacionCuenta.objects.get(codigo="AT-00003"), "AT-99"),               # solo nombre
+            (AgrupacionCuenta.objects.get(codigo="541009_541033"), "541015_541016"),  # ya existe
+        ]
+        for fila, nuevo in casos:
+            r = self.guardar(fila, codigo=nuevo)
+            self.assertEqual(r.status_code, 400, (fila.codigo, nuevo))
+            self.assertTrue(AgrupacionCuenta.objects.filter(codigo=fila.codigo).exists())
+        OrdenCuenta.objects.create(mcncuenta="541099", orden=1)
+        self.assertEqual(self.guardar(AgrupacionCuenta.objects.get(codigo="541009_541033"),
+                                      codigo="541099").status_code, 400)
+
+    def test_lista_indica_si_el_codigo_es_fijo(self):
+        r = self.client.get(reverse("ajustes_agrupacion_cuentas"))
+        filas = {f["codigo"]: f for f in r.context["datos"]["filas"]}
+        self.assertEqual(filas["54100207_54100211"]["codigo_fijo"], "")
+        self.assertTrue(filas["5415"]["codigo_fijo"])
+        self.assertTrue(filas["AT-00003"]["codigo_fijo"])

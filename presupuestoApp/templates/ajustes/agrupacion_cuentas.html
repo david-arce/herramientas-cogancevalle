@@ -137,6 +137,9 @@
       <li>No se agrupan las cuentas que empiezan por 4 ni las cuentas clave (ventas y costo de ventas).
           Las filas <code>5</code>, <code>5105</code>, <code>5405</code>, <code>6</code>, <code>7</code> y <code>8</code> salen de reglas por centro de costo
           y destino que siguen fijas; aquí solo se cambia su nombre.</li>
+      <li>El <b>código de la fila</b> se puede cambiar en las filas que suman cuentas, manteniendo sus dos primeros dígitos
+          (las tablas arman los subtotales con ellos). No se puede en las filas que solo ponen nombre ni en las que usan
+          las reglas fijas o los subtotales (<code>5</code>, <code>5105</code>, <code>5405</code>, <code>5230</code>, <code>5415</code>, <code>615035</code>…).</li>
       <li>El nombre es el mismo que en <a href="{% url 'ajustes_orden_cuentas' %}">Orden de cuentas</a>: si lo cambias en una de las dos pantallas, se cambia en la otra.</li>
     </ul>
   </details>
@@ -182,7 +185,7 @@
         <div class="ag-campo">
           <label for="fCodigo">Código de la fila</label>
           <input class="ag-input ag-cod" id="fCodigo" maxlength="60" autocomplete="off" placeholder="Ej. 541040_541045">
-          <div class="ag-ayuda-campo" id="ayudaCodigo">Identifica la fila en las tablas. No se puede cambiar después.</div>
+          <div class="ag-ayuda-campo" id="ayudaCodigo"></div>
         </div>
         <div class="ag-campo">
           <label for="fNombre">Nombre que se muestra</label>
@@ -381,8 +384,12 @@
     editando = f;
     $("editorTitulo").textContent = f ? `Editar fila ${f.codigo}` : "Nueva fila";
     $("fCodigo").value = f ? f.codigo : "";
-    $("fCodigo").readOnly = !!f;
-    $("ayudaCodigo").textContent = f ? "El código no se puede cambiar." : "Identifica la fila en las tablas. No se puede cambiar después.";
+    $("fCodigo").readOnly = !!(f && f.codigo_fijo);
+    $("ayudaCodigo").textContent = !f
+      ? "Identifica la fila en las tablas. Empieza por los dígitos del subtotal donde debe sumar (54 = gastos de ventas, 51 = administración…)."
+      : f.codigo_fijo
+        ? `No se puede cambiar: ${f.codigo_fijo}.`
+        : `Si lo cambias, se actualiza también en Orden de cuentas y en los comentarios del Comparativo. Debe seguir empezando por «${f.codigo.slice(0, 2)}».`;
     $("fNombre").value = f ? f.nombre : "";
     tags.cuentas = f ? [...f.cuentas] : [];
     tags.prefijos = f ? [...f.prefijos] : [];

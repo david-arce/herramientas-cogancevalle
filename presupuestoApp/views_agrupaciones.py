@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from .agrupacion_cuentas import PATRON_CODIGO, PATRON_CUENTA, ReglasCuentas, filas_reglas
 from .models import (
-    AgrupacionCuenta, ConsolidadoTotalBase, Cuenta5Base, Cuenta5Presupuestado, CuentasContables,
+    AgrupacionCuenta, ComentarioComparativo, ConsolidadoTotalBase, Cuenta5Base, Cuenta5Presupuestado, CuentasContables,
     OrdenCuenta,
 )
 from .views_presupuesto_areas import _es_aprobador
@@ -24,6 +24,32 @@ from .views_presupuesto_areas import _es_aprobador
 # Cuentas clave (ventas, descuentos, costo de ventas): se reconocen aparte y
 # nunca se agrupan. Mismo listado que ALIAS_CUENTAS_CLAVE en views.py.
 CUENTAS_CLAVE = {"1", "2", "41750201", "613522"}
+
+# Filas cuyo código NO se puede cambiar, con el motivo:
+#  - las producen reglas fijas del cálculo (centro de costo / destino),
+#  - o las pantallas de Consolidado, Presupuestado y Comparativo las usan por
+#    su código para ubicar subtotales (Utilidad operacional, Excedentes...).
+CODIGOS_FIJOS = {
+    "5": "lo genera la regla del centro de costo 02040…",
+    "6": "lo genera la regla de Asistencia Técnica Propia",
+    "7": "lo genera la regla de Asistencia Técnica Convenios",
+    "8": "lo genera la regla del centro de costo 0203…",
+    "5105": "lo genera la regla del centro de costo 0101",
+    "5405": "lo genera la regla del centro de costo 020201",
+    "5230": "las tablas ubican los Excedentes y los gastos por servicios con este código",
+    "5415": "las tablas ubican la Utilidad operacional después de esta fila",
+    "615035": "las tablas ubican los ingresos por servicios después de esta fila",
+    **{c: "es una cuenta clave (ventas / costo de ventas)" for c in CUENTAS_CLAVE},
+}
+
+
+def motivo_codigo_fijo(fila):
+    """Por qué no se puede cambiar el código de la fila, o "" si sí se puede."""
+    if fila.codigo in CODIGOS_FIJOS:
+        return CODIGOS_FIJOS[fila.codigo]
+    if not (fila.cuentas or fila.prefijos):
+        return "la fila solo pone nombre: su código es la cuenta o el destino que llega del cálculo"
+    return ""
 MAX_VISTA_PREVIA = 500
 
 
@@ -51,6 +77,7 @@ def _lista():
             "cuentas": a.cuentas or [],
             "prefijos": a.prefijos or [],
             "en_orden": a.codigo in orden,
+            "codigo_fijo": motivo_codigo_fijo(a),
             "nombre_orden": nombre_orden if nombre_orden and nombre_orden != a.nombre else "",
             "actualizado": timezone.localtime(a.actualizado).strftime("%d/%m/%Y %H:%M"),
             "actualizado_por": a.actualizado_por,
@@ -85,16 +112,24 @@ def _validar(datos, actual=None):
     cuentas = _lista_codigos(datos.get("cuentas"))
     prefijos = _lista_codigos(datos.get("prefijos"))
 
-    if actual is not None:
-        if codigo and codigo != actual.codigo:
-            errores.append("El código de una fila no se puede cambiar: crea una fila nueva.")
+    if actual is not None and (not codigo or codigo == actual.codigo):
+        codigo = actual.codigo                      # no cambia
+    elif actual is not None and motivo_codigo_fijo(actual):
+        errores.append(f"El código {actual.codigo} no se puede cambiar: {motivo_codigo_fijo(actual)}.")
         codigo = actual.codigo
+    elif actual is not None and codigo[:2] != actual.codigo[:2]:
+        # Las tablas suman los subtotales por los primeros dígitos (54 = gastos de
+        # ventas, 51 = administración...): cambiarlos movería la fila de subtotal.
+        errores.append(f"El código nuevo debe empezar por «{actual.codigo[:2]}», como el actual, "
+                       "para que la fila siga sumando en el mismo subtotal.")
     elif not codigo:
         errores.append("Escribe el código de la fila.")
     elif len(codigo) > 60 or not PATRON_CODIGO.match(codigo):
         errores.append("El código solo puede tener letras, números, guion o guion bajo (máx. 60).")
-    elif AgrupacionCuenta.objects.filter(codigo=codigo).exists():
+    elif AgrupacionCuenta.objects.filter(codigo=codigo).exclude(pk=getattr(actual, "pk", None)).exists():
         errores.append(f"Ya existe una fila con el código {codigo}.")
+    elif actual is not None and OrdenCuenta.objects.filter(mcncuenta=codigo).exists():
+        errores.append(f"El código {codigo} ya está en Orden de cuentas como otra fila; usa otro código.")
 
     if not nombre:
         errores.append("Escribe el nombre de la fila.")
@@ -172,13 +207,23 @@ def guardar_agrupacion_cuenta(request):
             return JsonResponse({"ok": False, "msg": errores[0], "errores": errores}, status=400)
 
         if actual:
-            for campo in ("nombre", "cuentas", "prefijos"):
+            anterior = actual.codigo
+            for campo in ("codigo", "nombre", "cuentas", "prefijos"):
                 setattr(actual, campo, limpio[campo])
             actual.actualizado_por = request.user.username
             actual.save()
+            msg = f"Fila {actual.codigo} guardada ✅"
+            if anterior != actual.codigo:
+                # El código es la llave de la fila en Orden de cuentas (posición,
+                # visibilidad) y en los comentarios del Comparativo: se lleva todo.
+                OrdenCuenta.objects.filter(mcncuenta=anterior).update(mcncuenta=actual.codigo)
+                comentarios = ComentarioComparativo.objects.filter(fila_key=anterior).update(
+                    fila_key=actual.codigo, mcncuenta=actual.codigo)
+                msg = f"Código cambiado: {anterior} → {actual.codigo} ✅ (también en Orden de cuentas"
+                msg += f" y {comentarios} comentario(s) del Comparativo)" if comentarios else ")"
             # Un solo nombre por fila: Orden de cuentas muestra el mismo.
             OrdenCuenta.objects.filter(mcncuenta=actual.codigo).update(ctanombre=actual.nombre)
-            return _respuesta(f"Fila {actual.codigo} guardada ✅")
+            return _respuesta(msg)
 
         AgrupacionCuenta.objects.create(**limpio, actualizado_por=request.user.username)
         # Para que la fila nueva salga en las tablas debe estar en Orden de cuentas.
