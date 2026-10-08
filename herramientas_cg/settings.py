@@ -159,3 +159,12 @@ SESSION_COOKIE_AGE = 28800  # 8 horas
 
 # Opcional: Expirar la sesión cuando el navegador se cierra
 # SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'console': {'class': 'logging.StreamHandler'}},
+    'loggers': {
+        'django.request': {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
+        'django.server': {'handlers': ['console'], 'level': 'INFO'},
+    },
+}
