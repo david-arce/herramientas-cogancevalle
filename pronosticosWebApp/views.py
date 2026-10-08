@@ -18,30 +18,26 @@ from pronosticosWebApp.pronosticos.pronosticos import Pronosticos
 from django.contrib.auth.decorators import permission_required
 from django.core.exceptions import PermissionDenied
 from pronosticosWebApp.models import PronosticoMoviln3, PronosticoMoviln4, PronosticoMoviln5, PronosticoSes, PronosticoSed, Demanda, PronosticoFinal, TrasladoResumenSede
-
+from django.core.cache import cache
 logger = logging.getLogger(__name__)
 
 # Create your views here.
 @login_required
 @permission_required('pronosticosWebApp.view_demanda', raise_exception=True)
 def dashboard(request):
-    df_demanda = pd.DataFrame(list(Demanda.objects.all().values()))
-    df_demanda = df_demanda.drop(columns=['id'])
-    # Ordenar directamente por 'sku', 'sede' y 'mm' sin agrupar
-    # global sku, sku_nom, marca_nom, sede
-    df_demanda = df_demanda.sort_values(by=['sku', 'sede', 'mm']).reset_index(drop=True)
-    sku = df_demanda['sku'].unique().tolist()  # Obtener los valores únicos de 'sku'
-    sku_nom = df_demanda['sku_nom'].unique().tolist()  # Obtener los valores únicos de 'sku_nom'
-    marca_nom = df_demanda['marca_nom'].unique().tolist()  # Obtener los valores únicos de 'marca_nom'
-    # marca_nom = ['ALL VET', 'BIOS','FAB. Y MERCADEO', 'FERCON', 'FERRAGRO', 'HERRADURA LA MONTANA', 'INSMEVET', 'LHAURA', 'QUIMPAC', 'RENTASAL', 'VITALES']
-    sede = df_demanda['sede'].unique().tolist()  # Obtener los valores únicos de 'sede'
-    context = {
-        'items': sku,
-        'proveedores': marca_nom,
-        'productos': sku_nom,
-        'sedes': sede,
-    }
-    return render(request, "pronosticosWebApp/pronosticos.html", context)
+    ctx = cache.get('pron_filtros')
+    if ctx is None:
+        filas = (Demanda.objects
+                 .values_list('sku', 'sku_nom', 'marca_nom', 'sede')
+                 .distinct().order_by('sku', 'sede'))
+        ctx = {
+            'items':       list(dict.fromkeys(f[0] for f in filas)),
+            'productos':   list(dict.fromkeys(f[1] for f in filas)),
+            'proveedores': list(dict.fromkeys(f[2] for f in filas)),
+            'sedes':       list(dict.fromkeys(f[3] for f in filas)),
+        }
+        cache.set('pron_filtros', ctx, 60 * 30)
+    return render(request, "pronosticosWebApp/pronosticos.html", ctx)
 
 @csrf_exempt
 @login_required
