@@ -1,7 +1,7 @@
 {% load static conteo_tags %}
 <nav class="navbar">
     <div class="navbar-left">
-      <img src="{% static '/img/logo_cogancevalle.png' %}" alt="Logo" class="logo">
+      <img src="{% static 'img/logo_cogancevalle.png' %}" alt="Logo" class="logo">
     {% if user.is_authenticated %}
       {% if user|es_contador %}
       {# Los contadores solo ven su lista de productos asignados #}
