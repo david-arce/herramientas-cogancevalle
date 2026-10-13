@@ -33,6 +33,7 @@ from django.db.models import Sum, Max, Q, Avg
 from django.db import transaction
 import numpy as np
 import json
+import zlib
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.db import models
@@ -1994,6 +1995,68 @@ from .views_presupuesto_areas import (  # noqa: F401
     subir_cuenta5_nomina, estado_cuenta5_nomina,
 )
 
+# ---------------------------------------------------------------------------
+# Subida por lotes de los Excel de Cuenta 4 / Cuenta 5 (base y presupuestado)
+# ---------------------------------------------------------------------------
+# Cada petición trae un lote (hasta ~5.000 filas) en uno de dos formatos:
+#   {"columnas": ["mcncuenta", ...], "filas": [["510506", ...], ...]}   (compacto, el actual)
+#   {"registros": [{"mcncuenta": "510506", ...}, ...]}                  (el anterior)
+# y puede venir comprimido con gzip (cabecera X-Compresion: gzip).
+#
+# Antes se guardaba fila por fila con objects.create(): un INSERT por fila, y con
+# la base de datos remota (~45 ms por consulta) 40.000 filas tardaban ~30 min.
+# Ahora se guardan con bulk_create en tandas de 1.000: unas pocas consultas por lote.
+MAX_DESCOMPRIMIDO = 64 * 1024 * 1024     # tope al descomprimir un lote (64 MB)
+TANDA_BULK = 1000
+
+
+def _cuerpo_lote(request):
+    cuerpo = request.body
+    if (request.headers.get("X-Compresion") or "").lower() == "gzip":
+        d = zlib.decompressobj(16 + zlib.MAX_WBITS)
+        cuerpo = d.decompress(cuerpo, MAX_DESCOMPRIMIDO)
+        if d.unconsumed_tail:
+            raise ValueError("El lote es demasiado grande.")
+    return json.loads(cuerpo)
+
+
+def _registros_lote(datos, modelo):
+    """Lista de dicts {campo: valor} validando que las columnas existan en el modelo."""
+    permitidos = {f.name for f in modelo._meta.concrete_fields if not f.primary_key}
+    if "columnas" in datos:
+        columnas = [str(c) for c in datos.get("columnas") or []]
+        desconocidas = [c for c in columnas if c not in permitidos]
+        if desconocidas:
+            raise ValueError(f"Columnas desconocidas: {', '.join(desconocidas)}")
+        registros = []
+        for n, fila in enumerate(datos.get("filas") or [], start=1):
+            if not isinstance(fila, list) or len(fila) != len(columnas):
+                raise ValueError(f"La fila {n} del lote no tiene {len(columnas)} valores.")
+            registros.append(dict(zip(columnas, fila)))
+        return registros
+    registros = datos.get("registros") or []
+    desconocidas = sorted({k for r in registros for k in r} - permitidos)
+    if desconocidas:
+        raise ValueError(f"Columnas desconocidas: {', '.join(desconocidas)}")
+    return registros
+
+
+def _subir_lote_excel(request, modelo, nombre_log):
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+    try:
+        with log_carga(nombre_log, request, lote=request.headers.get("X-Lote")) as info:
+            registros = _registros_lote(_cuerpo_lote(request), modelo)
+            info["recibidos"] = len(registros)
+            objetos = [modelo(**r) for r in registros]
+            with transaction.atomic():
+                modelo.objects.bulk_create(objetos, batch_size=TANDA_BULK)
+            info["registros"] = len(objetos)
+        return JsonResponse({"status": "ok", "insertados": len(objetos)})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+
 #---------------------Obtener, editar y guardar cuanta 5--------------
 def excel_serial_to_date(serial):
     if serial is None:
@@ -2065,25 +2128,7 @@ def obtener_cuenta5_base(request):
     
 @csrf_exempt
 def subir_excel_cuenta5(request):
-    if request.method == "POST":
-        try:
-            with log_carga("cuenta5_base", request, lote=request.headers.get("X-Lote")) as info:
-                data = json.loads(request.body)
-                registros = data.get("registros", [])
-                info["recibidos"] = len(registros)
-                insertados = 0
-
-                with transaction.atomic():
-                    for r in registros:
-                        Cuenta5Base.objects.create(**r)
-                        insertados += 1
-                info["registros"] = insertados
-
-            return JsonResponse({"status": "ok", "insertados": insertados})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    else:
-        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+    return _subir_lote_excel(request, Cuenta5Base, "cuenta5_base")
 
 @csrf_exempt
 def borrar_cuenta5_base(request):
@@ -2134,25 +2179,7 @@ def obtener_cuenta5_presupuestado(request):
   
 @csrf_exempt
 def subir_excel_cuenta5_presupuestado(request):
-    if request.method == "POST":
-        try:
-            with log_carga("cuenta5_presupuestado", request, lote=request.headers.get("X-Lote")) as info:
-                data = json.loads(request.body)
-                registros = data.get("registros", [])
-                info["recibidos"] = len(registros)
-                insertados = 0
-
-                with transaction.atomic():
-                    for r in registros:
-                        Cuenta5Presupuestado.objects.create(**r)
-                        insertados += 1
-                info["registros"] = insertados
-
-            return JsonResponse({"status": "ok", "insertados": insertados})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    else:
-        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+    return _subir_lote_excel(request, Cuenta5Presupuestado, "cuenta5_presupuestado")
 
 @csrf_exempt
 def borrar_cuenta5_presupuestado(request):
@@ -2204,22 +2231,7 @@ def obtener_cuenta4_base(request):
     
 @csrf_exempt
 def subir_excel_cuenta4(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body)
-            registros = data.get("registros", [])
-            insertados = 0
-
-            with transaction.atomic():
-                for r in registros:
-                    Cuenta4Base.objects.create(**r)
-                    insertados += 1
-
-            return JsonResponse({"status": "ok", "insertados": insertados})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    else:
-        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+    return _subir_lote_excel(request, Cuenta4Base, "cuenta4_base")
 
 @csrf_exempt
 def borrar_cuenta4_base(request):
@@ -2270,22 +2282,7 @@ def obtener_cuenta4_presupuestado(request):
   
 @csrf_exempt
 def subir_excel_cuenta4_presupuestado(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body)
-            registros = data.get("registros", [])
-            insertados = 0
-
-            with transaction.atomic():
-                for r in registros:
-                    Cuenta4Presupuestado.objects.create(**r)
-                    insertados += 1
-
-            return JsonResponse({"status": "ok", "insertados": insertados})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-    else:
-        return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
+    return _subir_lote_excel(request, Cuenta4Presupuestado, "cuenta4_presupuestado")
 
 @csrf_exempt
 def borrar_cuenta4_presupuestado(request):

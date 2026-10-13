@@ -123,7 +123,7 @@ function loadData() {
   formData.append("length", 999999);
   formData.append("search[value]", "");
 
-  fetch(url_obtener_cuenta4_base, {
+  return fetch(url_obtener_cuenta4_base, {
     method: "POST",
     headers: { "X-CSRFToken": getCookie("csrftoken") },
     body: formData,
@@ -388,33 +388,9 @@ function syncCheckAll() {
   else                          { master.checked = false; master.indeterminate = true; }
 }
 
-const CHUNK = 2000;   // ~1,2 MB por lote
-
-async function enviarPorLotes(valid, url) {
-  let total = 0;
-  const lotes = Math.ceil(valid.length / CHUNK);
-
-  for (let i = 0; i < lotes; i++) {
-    const lote = valid.slice(i * CHUNK, (i + 1) * CHUNK);
-
-    const r = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": getCookie("csrftoken"),
-      },
-      body: JSON.stringify({ registros: lote }),
-    });
-
-    const d = await r.json();
-    if (!r.ok || d.status !== "ok") {
-      throw new Error(`Lote ${i + 1}/${lotes}: ${d.message || r.status}`);
-    }
-
-    total += d.insertados;
-    showToast(`Lote ${i + 1}/${lotes} — ${total} registros`, "success", 1200);
-  }
-  return total;
+// Subida por lotes con ventana de progreso (static/js/carga_lotes.js)
+function enviarPorLotes(valid, url, loader) {
+  return CargaLotes.enviar(valid, url, { loader, etiqueta: "Cuenta 4" });
 }
 
 // ─── Enlazar todos los eventos de UI ─────────────────────────
@@ -490,25 +466,34 @@ function bindUI() {
     const file = e.target.files[0];
     if (!file) { spinner.style.display = "none"; btn.disabled = false; return; }
 
+    const loader   = CargaLotes.loader(`Cargando ${file.name}`);
+    const terminar = () => { spinner.style.display = "none"; btn.disabled = false; e.target.value = ""; };
+    const fallar   = (texto, detalles, nota) => { loader.error(texto, detalles, nota); terminar(); };
+    loader.fase("Leyendo el archivo…");
+
     const reader = new FileReader();
-    reader.onload = function(ev) {
+    reader.onerror = () => fallar("No se pudo leer el archivo.");
+    reader.onload = async function(ev) {
       try {
+        loader.fase("Leyendo las filas del Excel…");
+        await CargaLotes.pintar();          // que se vea el loader antes del trabajo pesado
         const data = new Uint8Array(ev.target.result);
         const wb   = XLSX.read(data, { type: "array" });
         const ws   = wb.Sheets[wb.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json(ws, { defval: null });
 
         if (!json.length) {
-          alert("El archivo está vacío o no tiene datos.");
-          spinner.style.display = "none"; btn.disabled = false; return;
+          fallar("El archivo está vacío o no tiene datos."); return;
         }
 
         const required = COLUMNS.map(c => c.label);
         const missing  = required.filter(h => !(h in json[0]));
         if (missing.length) {
-          alert("Faltan columnas obligatorias:\n" + missing.join(", "));
-          spinner.style.display = "none"; btn.disabled = false; return;
+          fallar("Faltan columnas obligatorias en el archivo:", missing); return;
         }
+
+        loader.fase(`Revisando ${CargaLotes.formato(json.length)} filas…`);
+        await CargaLotes.pintar();
 
         const errores = [];
         const valid   = [];
@@ -549,26 +534,29 @@ function bindUI() {
         });
 
         if (errores.length) {
-          alert("Errores encontrados:\n" + errores.slice(0, 10).join("\n") +
-            (errores.length > 10 ? `\n…y ${errores.length - 10} más` : ""));
-          spinner.style.display = "none"; btn.disabled = false; return;
+          fallar(`Hay ${errores.length} fila(s) con errores; no se subió nada.`,
+            errores.slice(0, 10).concat(errores.length > 10 ? [`…y ${errores.length - 10} más`] : []));
+          return;
         }
 
-        enviarPorLotes(valid, "/presupuesto/subir_excel_cuenta4/")
-          .then(total => {
-            showToast(`${total} registros cargados`, "success");
-            loadData();
-          })
-          .catch(err => showToast("Error: " + err.message, "error", 8000))
-          .finally(() => {
-            spinner.style.display = "none";
-            btn.disabled = false;
-            e.target.value = "";
-          });
+        try {
+          const total = await enviarPorLotes(valid, "/presupuesto/subir_excel_cuenta4/", loader);
+          loader.fase("Actualizando la tabla…");
+          await loadData();
+          loader.exito(`${CargaLotes.formato(total)} registros cargados`);
+          showToast(`${total} registros cargados`, "success");
+        } catch (err) {
+          if (err.guardados) loadData();      // que la tabla muestre lo que sí alcanzó a guardarse
+          fallar("La carga se detuvo. " + err.message, null, err.guardados
+            ? `Alcanzaron a guardarse ${CargaLotes.formato(err.guardados)} registros de los lotes anteriores. ` +
+              "Para no duplicarlos, borra la cuenta y vuelve a cargar el archivo completo."
+            : "No se guardó ningún registro.");
+          return;
+        }
+        terminar();
 
       } catch (err) {
-        alert("Error leyendo el archivo: " + err.message);
-        spinner.style.display = "none"; btn.disabled = false;
+        fallar("Error leyendo el archivo: " + err.message);
       }
     };
 

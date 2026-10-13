@@ -1656,3 +1656,58 @@ class FilasCalculadasTests(TestCase):
             html = r.content.decode()
             self.assertIn('id="configSubtotales"', html, nombre)
             self.assertRegex(html, r"js/subtotales\.js\?v=\d+")
+
+
+class SubidaLotesExcelTests(TestCase):
+    """Subida de los Excel de Cuenta 4 / 5 por lotes: bulk_create, formato compacto y gzip."""
+
+    COLS = ["mcncuenta", "mcnfecha", "mcnvaldebi", "mcnvalcred", "ctanombre"]
+
+    def subir(self, nombre, datos, gzip_=False, **extra):
+        import gzip
+        cuerpo = json.dumps(datos).encode()
+        if gzip_:
+            return self.client.post(reverse(nombre), gzip.compress(cuerpo), content_type="application/octet-stream",
+                                    HTTP_X_COMPRESION="gzip", **extra)
+        return self.client.post(reverse(nombre), cuerpo, content_type="application/json", **extra)
+
+    def test_formato_compacto_con_gzip_conserva_orden_y_valores(self):
+        from .models import Cuenta5Base
+        filas = [[f"5105{i:02d}", 46023.0 + i, 1000.0 * i, 0.0, "SUELDOS"] for i in range(25)]
+        r = self.subir("subir_excel_cuenta5", {"columnas": self.COLS, "filas": filas}, gzip_=True, HTTP_X_LOTE="1/1")
+        self.assertEqual(r.json(), {"status": "ok", "insertados": 25})
+        guardadas = list(Cuenta5Base.objects.order_by("id").values_list("mcncuenta", "mcnfecha", "mcnvaldebi"))
+        self.assertEqual(guardadas, [(f[0], f[1], f[2]) for f in filas])
+
+    def test_formato_anterior_sigue_funcionando_en_las_cuatro_cargas(self):
+        from .models import Cuenta4Base, Cuenta4Presupuestado, Cuenta5Base, Cuenta5Presupuestado
+        registro = {"mcncuenta": "510506", "mcnfecha": 46023, "mcnvaldebi": 5.0, "mcnvalcred": None}
+        for nombre, modelo in (("subir_excel_cuenta5", Cuenta5Base), ("subir_excel_cuenta5_presupuestado", Cuenta5Presupuestado),
+                               ("subir_excel_cuenta4", Cuenta4Base), ("subir_excel_cuenta4_presupuestado", Cuenta4Presupuestado)):
+            r = self.subir(nombre, {"registros": [registro, registro]})
+            self.assertEqual(r.json()["insertados"], 2, nombre)
+            self.assertEqual(modelo.objects.filter(mcncuenta="510506").count(), 2, nombre)
+
+    def test_errores_no_guardan_nada_del_lote(self):
+        from .models import Cuenta5Base
+        r = self.subir("subir_excel_cuenta5", {"columnas": self.COLS + ["no_existe"], "filas": [[1, 2, 3, 4, 5, 6]]})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("no_existe", r.json()["message"])
+        r = self.subir("subir_excel_cuenta5", {"columnas": self.COLS, "filas": [["5105", 1, 2, 3, "x"], ["5105", 1]]})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("fila 2", r.json()["message"])
+        r = self.subir("subir_excel_cuenta5", {"registros": [{"id": 99, "mcncuenta": "1"}]})   # la llave no se puede mandar
+        self.assertEqual(r.status_code, 400)
+        r = self.subir("subir_excel_cuenta5", {"columnas": self.COLS, "filas": [["5105", "no-es-numero", 1, 0, "x"]]})
+        self.assertEqual(r.status_code, 400)
+        self.assertFalse(Cuenta5Base.objects.exists())
+
+    def test_inserta_en_pocas_consultas(self):
+        filas = [[f"5105{i % 90:02d}", 46023.0, 1.0, 0.0, "X"] for i in range(2500)]
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        with CaptureQueriesContext(connection) as ctx:
+            r = self.subir("subir_excel_cuenta5", {"columnas": self.COLS, "filas": filas})
+        self.assertEqual(r.json()["insertados"], 2500)
+        inserts = [q for q in ctx.captured_queries if q["sql"].lstrip().upper().startswith("INSERT")]
+        self.assertLess(len(inserts), 100)          # antes: 2.500 INSERT (uno por fila)
