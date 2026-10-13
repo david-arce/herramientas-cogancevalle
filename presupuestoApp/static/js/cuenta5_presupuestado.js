@@ -305,27 +305,36 @@ const CHUNK = 2000;   // ~1,2 MB por lote
 async function enviarPorLotes(valid, url) {
   let total = 0;
   const lotes = Math.ceil(valid.length / CHUNK);
+  const t0 = performance.now();
+  const seg = desde => ((performance.now() - desde) / 1000).toFixed(2);
+
+  console.info(`[Cuenta 5] INICIO carga: ${valid.length} registros en ${lotes} lote(s) → ${url}`);
 
   for (let i = 0; i < lotes; i++) {
     const lote = valid.slice(i * CHUNK, (i + 1) * CHUNK);
+    const tLote = performance.now();
 
     const r = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-CSRFToken": getCookie("csrftoken"),
+        "X-Lote": `${i + 1}/${lotes}`,   // aparece en el log del servidor
       },
       body: JSON.stringify({ registros: lote }),
     });
 
     const d = await r.json();
     if (!r.ok || d.status !== "ok") {
+      console.error(`[Cuenta 5] ERROR en lote ${i + 1}/${lotes} tras ${seg(t0)} s:`, d.message || r.status);
       throw new Error(`Lote ${i + 1}/${lotes}: ${d.message || r.status}`);
     }
 
     total += d.insertados;
+    console.info(`[Cuenta 5] Lote ${i + 1}/${lotes}: ${d.insertados} registros en ${seg(tLote)} s (acumulado ${total})`);
     showToast(`Lote ${i + 1}/${lotes} — ${total} registros`, "success", 1200);
   }
+  console.info(`[Cuenta 5] FIN carga: ${total} registros en ${seg(t0)} s`);
   return total;
 }
 function isoToExcelSerial(v) {
@@ -454,7 +463,7 @@ function bindUI() {
           try {
             valid.push({
               mcncuenta:  parseStr(row.MCNCUENTA),
-              mcnfecha:   parseNumF(row.MCNFECHA),
+              mcnfecha:   parseFechaExcel(row.MCNFECHA),
               mcntipodoc: parseStr(row.MCNTIPODOC),
               mcnnumedoc: parseInt_(row.MCNNUMEDOC),
               mcnvincula: parseStr(row.MCNVINCULA),

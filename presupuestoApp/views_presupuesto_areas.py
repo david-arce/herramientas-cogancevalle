@@ -30,6 +30,7 @@ from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
+from .log_cargas import log_carga
 from .models import Cuenta5Presupuestado
 from .models_nomina import ConfiguracionNomina, PresupuestoNominaMes
 from .models_presupuesto import (
@@ -785,9 +786,10 @@ def subir_cuenta5_sede(request, sede):
     if request.method != "POST":
         return JsonResponse({"success": False, "msg": "Método no permitido"}, status=405)
 
-    with transaction.atomic():
+    with log_carga("cuenta5_sede", request, sede=sede) as info, transaction.atomic():
         registros, version, sin_cuenta = _movimientos_cuenta5(sede, config, timezone.now())
         if version is None:
+            info["resultado"] = "sin_version_aprobada"
             return JsonResponse({
                 "success": False,
                 "msg": f"{config['label']} no tiene una versión aprobada ❌",
@@ -795,6 +797,7 @@ def subir_cuenta5_sede(request, sede):
             }, status=400)
         reemplazados, _ = Cuenta5Presupuestado.objects.filter(origen_area=sede).delete()
         Cuenta5Presupuestado.objects.bulk_create(registros, batch_size=1000)
+        info.update(version=version, reemplazados=reemplazados, registros=len(registros))
 
     msg = f"{config['label']} v{version}: {len(registros)} registros subidos a Cuenta 5 ✅"
     if reemplazados:
@@ -941,7 +944,7 @@ def subir_cuenta5_nomina(request):
         }, status=400)
 
     ahora = timezone.now()
-    with transaction.atomic():
+    with log_carga("cuenta5_nomina", request) as info, transaction.atomic():
         registros, sin_cuenta = [], set()
         for r in PresupuestoNominaMes.objects.exclude(valor=0).order_by("linea", "fecha").values(
             "linea", "cuenta", "codcosto", "centro", "cedula", "nombre", "fecha", "valor"
@@ -964,12 +967,14 @@ def subir_cuenta5_nomina(request):
                 origen_subido=ahora,
             ))
         if not registros and not PresupuestoNominaMes.objects.exists():
+            info["resultado"] = "sin_datos"
             return JsonResponse({
                 "success": False, "msg": "No hay presupuesto de nómina para subir ❌",
                 "estado": estado_cuenta5_nomina(),
             }, status=400)
         reemplazados, _ = Cuenta5Presupuestado.objects.filter(origen_area=ORIGEN_NOMINA).delete()
         Cuenta5Presupuestado.objects.bulk_create(registros, batch_size=1000)
+        info.update(reemplazados=reemplazados, registros=len(registros))
 
     msg = f"Nómina: {len(registros)} registros subidos a Cuenta 5 ✅"
     if reemplazados:

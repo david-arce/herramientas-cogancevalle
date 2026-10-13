@@ -419,8 +419,11 @@ tr.total-row-utilidad-op td {
     border-bottom: 2px solid #3b82f6;
 }
 
-/* % Utilidad Operacional */
-tr.total-row-pct-utilidad-op td {
+/* % Utilidad Operacional — con línea separadora debajo.
+   El selector lleva "table.consolidado tbody" para ganarle en especificidad a
+   "table.consolidado tbody td" (que pone el borde inferior gris de 1px);
+   sin eso la línea separadora no se veía. */
+table.consolidado tbody tr.total-row-pct-utilidad-op td {
     background: #eff6ff;
     color: #1e3a8a;
     font-style: italic;

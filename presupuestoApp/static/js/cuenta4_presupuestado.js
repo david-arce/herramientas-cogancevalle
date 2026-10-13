@@ -451,7 +451,7 @@ function bindUI() {
           try {
             valid.push({
               mcncuenta:  parseStr(row.MCNCUENTA),
-              mcnfecha:   parseNumF(row.MCNFECHA),
+              mcnfecha:   parseFechaExcel(row.MCNFECHA),
               mcntipodoc: parseStr(row.MCNTIPODOC),
               mcnnumedoc: parseInt_(row.MCNNUMEDOC),
               mcnvincula: parseStr(row.MCNVINCULA),
