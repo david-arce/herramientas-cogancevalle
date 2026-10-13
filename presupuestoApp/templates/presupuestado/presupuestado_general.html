@@ -800,7 +800,7 @@ async function cargarDatos() {
         if (json.error) { showToast('Error: ' + json.error, 'error'); return; }
         datosOriginales = json.data || [];
         ordenCuentas    = json.orden || [];
-        renderTabla(datosOriginales);
+        renderTabla(datosOrdenados());   // conserva el orden elegido al cambiar de pestaña
     } catch (e) {
         showToast('Error al cargar datos: ' + e.message, 'error');
         document.getElementById('presupuestadoBody').innerHTML =
@@ -828,23 +828,28 @@ document.getElementById('globalSearch').addEventListener('input', aplicarBusqued
 /* ══════════════════════════════════════════════════════════════════
    ORDENAMIENTO
 ══════════════════════════════════════════════════════════════════ */
+// 1er clic: ascendente ▲ · 2º clic: descendente ▼ · 3er clic: orden original (sin ordenar)
+function datosOrdenados() {
+    if (!sortCol) return datosOriginales;
+    const col = sortCol;
+    return [...datosOriginales].sort((a, b) => {
+        const esNum = MESES.includes(col) || col === 'total';
+        const av = esNum ? (parseFloat(a[col]) || 0) : String(a[col] || '').toLowerCase();
+        const bv = esNum ? (parseFloat(b[col]) || 0) : String(b[col] || '').toLowerCase();
+        if (av < bv) return sortDir === 'asc' ? -1 : 1;
+        if (av > bv) return sortDir === 'asc' ?  1 : -1;
+        return 0;
+    });
+}
 document.querySelectorAll('thead th.sortable').forEach(th => {
     th.addEventListener('click', () => {
         const col = th.dataset.col;
-        sortDir = (sortCol === col && sortDir === 'asc') ? 'desc' : 'asc';
-        sortCol = col;
+        if (sortCol !== col)        { sortCol = col; sortDir = 'asc'; }
+        else if (sortDir === 'asc') { sortDir = 'desc'; }
+        else                        { sortCol = null; sortDir = 'asc'; }   // neutro
         document.querySelectorAll('thead th').forEach(t => t.classList.remove('sorted-asc','sorted-desc'));
-        th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
-
-        const sorted = [...datosOriginales].sort((a, b) => {
-            const esNum = MESES.includes(col) || col === 'total';
-            const av = esNum ? (parseFloat(a[col]) || 0) : String(a[col] || '').toLowerCase();
-            const bv = esNum ? (parseFloat(b[col]) || 0) : String(b[col] || '').toLowerCase();
-            if (av < bv) return sortDir === 'asc' ? -1 : 1;
-            if (av > bv) return sortDir === 'asc' ?  1 : -1;
-            return 0;
-        });
-        renderTabla(sorted);
+        if (sortCol) th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+        renderTabla(datosOrdenados());
     });
 });
 

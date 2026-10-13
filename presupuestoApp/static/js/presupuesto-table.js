@@ -207,11 +207,14 @@
             this.thead.appendChild(tr);
         }
 
+        // 1er clic: ascendente ▲ · 2º clic: descendente ▼ · 3er clic: orden original (⇅)
         _toggleSort(key) {
-            if (this.sortState.key === key) {
-                this.sortState.dir *= -1;
-            } else {
+            if (this.sortState.key !== key) {
                 this.sortState = { key, dir: 1 };
+            } else if (this.sortState.dir === 1) {
+                this.sortState = { key, dir: -1 };
+            } else {
+                this.sortState = { key: null, dir: 1 };
             }
             this._renderHead();
             this._renderBody();
@@ -825,12 +828,22 @@
             const ths = Array.from(thead.rows[0].cells);
             const tbody = table.tBodies[0];
             let sortState = { index: null, dir: 1 };
+            const ordenOriginal = Array.from(tbody.rows);   // para volver al orden neutro
 
             ths.forEach((th, index) => {
                 th.style.cursor = 'pointer';
                 th.title = 'Clic para ordenar';
                 th.addEventListener('click', () => {
-                    sortState = sortState.index === index ? { index, dir: sortState.dir * -1 } : { index, dir: 1 };
+                    // 1er clic: ascendente · 2º: descendente · 3º: orden original
+                    if (sortState.index !== index)  sortState = { index, dir: 1 };
+                    else if (sortState.dir === 1)   sortState = { index, dir: -1 };
+                    else                            sortState = { index: null, dir: 1 };
+                    ths.forEach((t, i) => t.setAttribute('aria-sort', i !== sortState.index ? 'none'
+                        : (sortState.dir === 1 ? 'ascending' : 'descending')));
+                    if (sortState.index === null) {
+                        ordenOriginal.forEach(f => tbody.appendChild(f));
+                        return;
+                    }
                     const filas = Array.from(tbody.rows);
                     const esNumerica = numericCols.has(index);
                     filas.sort((a, b) => {

@@ -18,6 +18,31 @@ function fmt(value) {
   return value;
 }
 
+// ─── Valor usado por los filtros (permite agrupar) ───────────
+// La fecha se filtra por MES ("Enero 2026"), igual que en Presupuestado.
+const MESES_LARGOS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio",
+                      "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+function monthKey(v) {
+  if (v === null || v === undefined || v === "") return "";
+  const m = String(v).match(/^(\d{4})-(\d{2})/);
+  return m ? `${m[1]}-${m[2]}` : String(v);
+}
+function monthLabel(key) {
+  const m = String(key).match(/^(\d{4})-(\d{2})$/);
+  return m ? `${MESES_LARGOS[+m[2] - 1]} ${m[1]}` : (key === "" ? "(Vacío)" : key);
+}
+
+// Columnas con agrupación especial
+const FILTER_VALUE_GETTERS = { mcnfecha: monthKey };
+
+function getFilterValue(row, col) {
+  const g = FILTER_VALUE_GETTERS[col];
+  const raw = row[col];
+  if (g) return g(raw);
+  return raw === null || raw === undefined ? "" : String(raw);
+}
+
 function showToast(msg, type = "success", duration = 3000) {
   const c = document.getElementById("toastContainer");
   const t = document.createElement("div");
@@ -123,11 +148,15 @@ function feedFilterValues() {
     // Recoger todos los valores únicos no nulos de esa columna
     const unique = [...new Set(
       allRows
-        .map(row => row[col])
-        .filter(v => v !== null && v !== undefined)
-        .map(String)
+        .filter(row => row[col] !== null && row[col] !== undefined)
+        .map(row => getFilterValue(row, col))
     )];
-    C5Filters.setValues(col, unique);
+    let labels = null;
+    if (FILTER_VALUE_GETTERS[col] === monthKey) {
+      labels = {};
+      unique.forEach(v => { labels[v] = monthLabel(v); });
+    }
+    C5Filters.setValues(col, unique, labels);
   });
 }
 
@@ -153,8 +182,7 @@ function applyFilterAndRender() {
     // 2b. Filtros Excel — cada columna activa debe coincidir
     for (const [col, allowed] of Object.entries(excelFilters)) {
       if (!allowed || allowed.length === 0) continue;
-      const cellVal = row[col] !== null && row[col] !== undefined ? String(row[col]) : "";
-      if (!allowed.includes(cellVal)) return false;
+      if (!allowed.includes(getFilterValue(row, col))) return false;
     }
 
     return true;
@@ -338,14 +366,12 @@ function bindSortHeaders() {
       // Ignorar clics sobre el icono de filtro
       if (e.target.classList.contains("c5-filter-icon")) return;
 
-      if (sortCol === idx) {
-        sortDir = sortDir === "asc" ? "desc" : "asc";
-      } else {
-        sortCol = idx;
-        sortDir = "asc";
-      }
+      // 1er clic: ascendente ↑ · 2º clic: descendente ↓ · 3er clic: orden original (sin ordenar)
+      if (sortCol !== idx)        { sortCol = idx; sortDir = "asc"; }
+      else if (sortDir === "asc") { sortDir = "desc"; }
+      else                        { sortCol = null; sortDir = "asc"; }
       document.querySelectorAll("th[data-col]").forEach(h => h.removeAttribute("data-sort"));
-      th.dataset.sort = sortDir;
+      if (sortCol !== null) th.dataset.sort = sortDir;
       applyFilterAndRender();
     });
   });

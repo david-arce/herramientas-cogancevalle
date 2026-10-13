@@ -447,6 +447,8 @@
         mcnzona:   [],
         ctanombre: [],
       },
+      /* col → { valor: texto a mostrar } (p. ej. "2026-01" → "Enero 2026") */
+      labels: {},
       /* columna actualmente abierta en el dropdown */
       activeCol: null,
       /* selección temporal mientras el dropdown está abierto */
@@ -470,7 +472,9 @@
     function renderList(col, query) {
       const all    = state.values[col] || [];
       const q      = (query || '').toLowerCase().trim();
-      const subset = q ? all.filter(v => String(v).toLowerCase().includes(q)) : all;
+      const labels = state.labels[col] || {};
+      const texto  = v => (labels[v] !== undefined ? labels[v] : String(v));
+      const subset = q ? all.filter(v => (String(v) + ' ' + texto(v)).toLowerCase().includes(q)) : all;
       const sel    = state.tempSelection;
 
       if (subset.length === 0) {
@@ -480,7 +484,7 @@
 
       list.innerHTML = subset.map(v => {
         const checked  = sel === null || sel.has(String(v));
-        const label    = v === '' || v === null ? '(Vacío)' : String(v);
+        const label    = v === '' || v === null ? '(Vacío)' : texto(v);
         return `
           <label class="c5-fdd-item">
             <input type="checkbox" value="${escapeAttr(String(v))}" ${checked ? 'checked' : ''}>
@@ -678,8 +682,9 @@
        * Llamar desde cuenta5.js después de recibir los datos de la API:
        *   C5Filters.setValues('mcncuenta', ['510506','510507',...])
        */
-      setValues(col, values) {
+      setValues(col, values, labelMap) {
         if (!(col in state.values)) return;
+        state.labels[col] = labelMap || {};
         /* Ordenar: fechas cronológico, resto alfabético */
         const sorted = [...new Set(values.map(String))].sort((a, b) =>
           a.localeCompare(b, undefined, { numeric: true })
