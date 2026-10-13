@@ -4,6 +4,7 @@ from .urls_nomina import urlpatterns as urls_nomina
 from . import views_cuentas_contables as vcc
 from . import views_asignaciones as va
 from . import views_agrupaciones as vag
+from . import views_subtotales as vsub
 
 urlpatterns = [
     *urls_nomina,
@@ -127,6 +128,13 @@ urlpatterns = [
     path('ajustes/agrupacion-cuentas/eliminar/', vag.eliminar_agrupacion_cuenta, name='eliminar_agrupacion_cuenta'),
     path('ajustes/agrupacion-cuentas/vista-previa/', vag.vista_previa_agrupacion_cuenta,
          name='vista_previa_agrupacion_cuenta'),
+
+    # ajustes: qué cuentas suma cada fila calculada (Otros Ingresos, Gastos por Servicios...)
+    path('ajustes/filas-calculadas/', vsub.ajustes_filas_calculadas, name='ajustes_filas_calculadas'),
+    path('ajustes/filas-calculadas/guardar/', vsub.guardar_fila_calculada, name='guardar_fila_calculada'),
+    path('ajustes/filas-calculadas/restaurar/', vsub.restaurar_fila_calculada, name='restaurar_fila_calculada'),
+    path('ajustes/filas-calculadas/vista-previa/', vsub.vista_previa_fila_calculada,
+         name='vista_previa_fila_calculada'),
     
     # -------------- PRESUPUESTO POR SEDE (genérico, escalable) --------------
     # Para agregar Buga/Cartago/Cali: solo agrega su entrada en SEDE_CONFIG

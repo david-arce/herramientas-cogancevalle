@@ -201,6 +201,8 @@
 <div id="toastContainer"></div>
 
 {% block js %}
+{{ subtotales|json_script:"configSubtotales" }}
+<script src="{% static_v 'js/subtotales.js' %}"></script>
 <script>
 /* ══════════════════════════════════════════════════════════════════
    CONFIGURACIÓN
@@ -307,6 +309,12 @@ function calcularTotalesPorPrefijo(data, prefijo) {
     });
     return t;
 }
+/* Suma de una fila calculada con las cuentas de Ajustes → Filas calculadas
+   (static/js/subtotales.js). clave: 'VentasNetas', 'CostoVentas', '54', '51',
+   'AjustesMargenContribucion'... */
+function sumarSubtotal(data, clave) {
+    return Subtotales.sumar(data, clave, MESES);
+}
 function calcularTotalesPorLista(data, lista) {
     const t = { total: 0 };
     MESES.forEach(m => t[m] = 0);
@@ -338,23 +346,23 @@ function calcularSeguros(fn, data) {
 }
 
 function calcularPorcentajeCostoVentas(data) {
-    const ventasNetas = calcularTotalesPorLista(data, ['1', '2', '41750201']);
-    const costoVentas = calcularTotalesPorLista(data, ['613522']);
+    const ventasNetas = sumarSubtotal(data, 'VentasNetas');
+    const costoVentas = sumarSubtotal(data, 'CostoVentas');
     const fila = { mcncuenta: '', ctanombre: '% Costo de Ventas', isTotalRow: true, tipoTotal: 'PctCostoVentas', total: 0 };
     MESES.forEach(m => { const vn = ventasNetas[m] || 0; fila[m] = vn !== 0 ? (costoVentas[m] / vn) * 100 : 0; });
     fila.total = ventasNetas.total !== 0 ? (costoVentas.total / ventasNetas.total) * 100 : 0;
     return fila;
 }
 function calcularMargenBruto(data) {
-    const ventasNetas = calcularTotalesPorLista(data, ['1', '2', '41750201']);
-    const costoVentas = calcularTotalesPorLista(data, ['613522']);
+    const ventasNetas = sumarSubtotal(data, 'VentasNetas');
+    const costoVentas = sumarSubtotal(data, 'CostoVentas');
     const fila = { mcncuenta: '', ctanombre: 'Margen Bruto', isTotalRow: true, tipoTotal: 'MargenBruto', total: 0 };
     MESES.forEach(m => { fila[m] = (ventasNetas[m] || 0) - (costoVentas[m] || 0); });
     fila.total = (ventasNetas.total || 0) - (costoVentas.total || 0);
     return fila;
 }
 function calcularPorcentajeMargenBruto(data) {
-    const ventasNetas = calcularTotalesPorLista(data, ['1', '2', '41750201']);
+    const ventasNetas = sumarSubtotal(data, 'VentasNetas');
     const margenBruto = calcularMargenBruto(data);
     const fila = { mcncuenta: '', ctanombre: '% Margen Bruto', isTotalRow: true, tipoTotal: 'PctMargenBruto', total: 0 };
     MESES.forEach(m => { const vn = ventasNetas[m] || 0; fila[m] = vn !== 0 ? (margenBruto[m] / vn) * 100 : 0; });
@@ -363,15 +371,14 @@ function calcularPorcentajeMargenBruto(data) {
 }
 function calcularMargenContribucion(data) {
     const margenBruto    = calcularSeguros(calcularMargenBruto, data);
-    const descuentosPago = calcularSeguros(d => calcularTotalesPorLista(d, ['4240900101']), data);
-    const bonificaciones = calcularSeguros(d => calcularTotalesPorLista(d, ['4240909502']), data);
+    const ajustes        = calcularSeguros(d => sumarSubtotal(d, 'AjustesMargenContribucion'), data);  // descuentos y bonificaciones
     const fila = { mcncuenta: '', ctanombre: 'Margen de Contribución', isTotalRow: true, tipoTotal: 'MargenContribucion', total: 0 };
-    MESES.forEach(m => { fila[m] = (margenBruto[m] || 0) + (descuentosPago[m] || 0) + (bonificaciones[m] || 0); });
-    fila.total = (margenBruto.total || 0) + (descuentosPago.total || 0) + (bonificaciones.total || 0);
+    MESES.forEach(m => { fila[m] = (margenBruto[m] || 0) + (ajustes[m] || 0); });
+    fila.total = (margenBruto.total || 0) + (ajustes.total || 0);
     return fila;
 }
 function calcularPorcentajeMargenContribucion(data) {
-    const ventasNetas        = calcularSeguros(d => calcularTotalesPorLista(d, ['1', '2', '41750201']), data);
+    const ventasNetas        = calcularSeguros(d => sumarSubtotal(d, 'VentasNetas'), data);
     const margenContribucion = calcularSeguros(calcularMargenContribucion, data);
     const fila = { mcncuenta: '', ctanombre: '% Margen de Contribución', isTotalRow: true, tipoTotal: 'PctMargenContribucion', total: 0 };
     MESES.forEach(m => { const vn = ventasNetas[m] || 0; fila[m] = vn !== 0 ? (margenContribucion[m] / vn) * 100 : 0; });
@@ -380,15 +387,15 @@ function calcularPorcentajeMargenContribucion(data) {
 }
 function calcularUtilidadOperacional(data) {
     const margenCtb = calcularSeguros(calcularMargenContribucion, data);
-    const gastos54  = calcularSeguros(d => calcularTotalesPorPrefijo(d, '54'), data);
-    const gastos51  = calcularSeguros(d => calcularTotalesPorPrefijo(d, '51'), data);
+    const gastos54  = calcularSeguros(d => sumarSubtotal(d, '54'), data);
+    const gastos51  = calcularSeguros(d => sumarSubtotal(d, '51'), data);
     const fila = { mcncuenta: '', ctanombre: 'Utilidad Operacional', isTotalRow: true, tipoTotal: 'UtilidadOperacional', total: 0 };
     MESES.forEach(m => { fila[m] = (margenCtb[m] || 0) - (gastos54[m] || 0) - (gastos51[m] || 0); });
     fila.total = (margenCtb.total || 0) - (gastos54.total || 0) - (gastos51.total || 0);
     return fila;
 }
 function calcularPorcentajeUtilidadOperacional(data) {
-    const ventasNetas = calcularSeguros(d => calcularTotalesPorLista(d, ['1', '2', '41750201']), data);
+    const ventasNetas = calcularSeguros(d => sumarSubtotal(d, 'VentasNetas'), data);
     const utilidadOp  = calcularSeguros(calcularUtilidadOperacional, data);
     const fila = { mcncuenta: '', ctanombre: '% Utilidad Operacional', isTotalRow: true, tipoTotal: 'PctUtilidadOperacional', total: 0 };
     MESES.forEach(m => { const vn = ventasNetas[m] || 0; fila[m] = vn !== 0 ? (utilidadOp[m] / vn) * 100 : 0; });
@@ -408,7 +415,7 @@ function calcularExcedentesPerdidaNeta(data) {
     return fila;
 }
 function calcularPorcentajeExcedentes(data) {
-    const ventasNetas       = calcularSeguros(d => calcularTotalesPorLista(d, ['1', '2', '41750201']), data);
+    const ventasNetas       = calcularSeguros(d => sumarSubtotal(d, 'VentasNetas'), data);
     const excedentesPerdida = calcularSeguros(calcularExcedentesPerdidaNeta, data);
     const fila = { mcncuenta: '', ctanombre: '% Excedente o Pérdida', isTotalRow: true, tipoTotal: 'PctExcedentes', total: 0 };
     MESES.forEach(m => { const vn = ventasNetas[m] || 0; fila[m] = vn !== 0 ? (excedentesPerdida[m] / vn) * 100 : 0; });
@@ -417,8 +424,8 @@ function calcularPorcentajeExcedentes(data) {
 }
 
 const CALCULADORAS_TOTAL = {
-    'VentasNetas':            d => ({ ...calcularTotalesPorLista(d, ['1','2','41750201']) }),
-    '54':                     d => calcularTotalesPorPrefijo(d, '54'),
+    'VentasNetas':            d => ({ ...sumarSubtotal(d, 'VentasNetas') }),
+    '54':                     d => sumarSubtotal(d, '54'),
     'PctCostoVentas':         calcularPorcentajeCostoVentas,
     'MargenBruto':            calcularMargenBruto,
     'PctMargenBruto':         calcularPorcentajeMargenBruto,
@@ -435,8 +442,8 @@ const FILAS_PORCENTAJE = new Set([
 ]);
 
 function construirFilas(data) {
-    const totales54        = calcularTotalesPorPrefijo(data, '54');
-    const totalesVN        = calcularTotalesPorLista(data, ['1','2','41750201']);
+    const totales54        = sumarSubtotal(data, '54');
+    const totalesVN        = sumarSubtotal(data, 'VentasNetas');
     const filaPct          = calcularPorcentajeCostoVentas(data);
     const filaMargen       = calcularMargenBruto(data);
     const filaPctMargen    = calcularPorcentajeMargenBruto(data);

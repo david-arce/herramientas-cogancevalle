@@ -535,6 +535,32 @@ class AgrupacionCuenta(models.Model):
     def __str__(self):
         return f"{self.codigo} — {self.nombre}"
 
+
+class SubtotalCuentas(models.Model):
+    """Qué cuentas suma cada fila calculada (las que no tienen cuenta propia):
+    Ventas Netas, Gastos de Ventas, Gastos de Administración, Gastos
+    Financieros, Asistencia Técnica, Otros Ingresos, Gastos por Servicios...
+
+    `clave` es una de las de subtotales.CATALOGO. Si no hay registro para una
+    clave se usan los valores por defecto de ese catálogo (los que estaban
+    escritos en las plantillas). Se edita en Ajustes → Filas calculadas.
+
+      cuentas   cuentas exactas      ['41659505', '422004', ...]
+      prefijos  "empieza por"        ['54']  -> 5405, 541001, 54100201...
+    """
+    clave = models.CharField(max_length=40, unique=True)
+    cuentas = models.JSONField(default=list, blank=True)
+    prefijos = models.JSONField(default=list, blank=True)
+    actualizado_por = models.CharField(max_length=150, blank=True, default="")
+    actualizado = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "presupuesto_subtotal_cuentas"
+        ordering = ["clave"]
+
+    def __str__(self):
+        return self.clave
+
 # ── Nómina: tabla única ────────────────────────────────────────────────
 from .models_nomina import PresupuestoNomina  # noqa: E402,F401
 from .models_presupuesto import AsignacionPresupuesto, PresupuestoArea  # noqa

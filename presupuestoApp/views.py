@@ -37,6 +37,8 @@ from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.db import models
 from django.core.paginator import Paginator
+from .log_cargas import log_carga
+from .subtotales import configuracion_para_tablas
 from django.views.decorators.http import require_http_methods, require_GET, require_POST
 
 # Tarjetas del dashboard de presupuestos por área: (clave de SEDE_CONFIG,
@@ -2065,14 +2067,17 @@ def obtener_cuenta5_base(request):
 def subir_excel_cuenta5(request):
     if request.method == "POST":
         try:
-            data = json.loads(request.body)
-            registros = data.get("registros", [])
-            insertados = 0
+            with log_carga("cuenta5_base", request, lote=request.headers.get("X-Lote")) as info:
+                data = json.loads(request.body)
+                registros = data.get("registros", [])
+                info["recibidos"] = len(registros)
+                insertados = 0
 
-            with transaction.atomic():
-                for r in registros:
-                    Cuenta5Base.objects.create(**r)
-                    insertados += 1
+                with transaction.atomic():
+                    for r in registros:
+                        Cuenta5Base.objects.create(**r)
+                        insertados += 1
+                info["registros"] = insertados
 
             return JsonResponse({"status": "ok", "insertados": insertados})
         except Exception as e:
@@ -2131,14 +2136,17 @@ def obtener_cuenta5_presupuestado(request):
 def subir_excel_cuenta5_presupuestado(request):
     if request.method == "POST":
         try:
-            data = json.loads(request.body)
-            registros = data.get("registros", [])
-            insertados = 0
+            with log_carga("cuenta5_presupuestado", request, lote=request.headers.get("X-Lote")) as info:
+                data = json.loads(request.body)
+                registros = data.get("registros", [])
+                info["recibidos"] = len(registros)
+                insertados = 0
 
-            with transaction.atomic():
-                for r in registros:
-                    Cuenta5Presupuestado.objects.create(**r)
-                    insertados += 1
+                with transaction.atomic():
+                    for r in registros:
+                        Cuenta5Presupuestado.objects.create(**r)
+                        insertados += 1
+                info["registros"] = insertados
 
             return JsonResponse({"status": "ok", "insertados": insertados})
         except Exception as e:
@@ -2902,7 +2910,8 @@ def consolidado_general(request):
     usuarios_permitidos = ['admin', 'NICOLAS']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuesto_consolidado/consolidado_general.html")
+    return render(request, "presupuesto_consolidado/consolidado_general.html",
+                  {'subtotales': configuracion_para_tablas()})
 
 # PRESUPUESTO GENERAL
 @login_required
@@ -2910,7 +2919,8 @@ def presupuestado_general(request):
     usuarios_permitidos = ['admin', 'NICOLAS']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuestado/presupuestado_general.html")
+    return render(request, "presupuestado/presupuestado_general.html",
+                  {'subtotales': configuracion_para_tablas()})
 
 # TABLA DINÁMICA FLEXIBLE
 @login_required
@@ -3738,7 +3748,8 @@ def comparativo_general(request):
     usuarios_permitidos = ['admin', 'NICOLAS']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "comparativo/comparativo_general.html")
+    return render(request, "comparativo/comparativo_general.html",
+                  {'subtotales': configuracion_para_tablas()})
 
 
 @require_GET

@@ -1569,3 +1569,90 @@ class CambiarCodigoFilaTests(TestCase):
         self.assertEqual(filas["54100207_54100211"]["codigo_fijo"], "")
         self.assertTrue(filas["5415"]["codigo_fijo"])
         self.assertTrue(filas["AT-00003"]["codigo_fijo"])
+
+
+class FilasCalculadasTests(TestCase):
+    """Ajustes → Filas calculadas: qué cuentas suma cada fila sin cuenta propia."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.aprobador = User.objects.create_user("NICOLAS")
+        cls.area = User.objects.create_user("PLOZANO")
+
+    def post(self, nombre, datos):
+        return self.client.post(reverse(nombre), json.dumps(datos), content_type="application/json")
+
+    def test_por_defecto_son_las_cuentas_que_estaban_en_las_plantillas(self):
+        from .subtotales import configuracion_para_tablas
+        c = configuracion_para_tablas()
+        self.assertEqual(c["OtrosIngresos"]["cuentas"], [
+            "41659505", "41659501", "422004", "422507", "422529", "4240900202", "4240900301",
+            "4240900401", "4240909501", "4240909503", "4240909901", "4", "420560"])
+        self.assertEqual(c["GastosPorServicios"]["cuentas"], ["5", "6", "7", "8", "5230"])
+        self.assertEqual(c["51"]["prefijos"], ["51"])
+        self.assertEqual(c["54"]["prefijos"], ["54"])
+        self.assertEqual(c["VentasNetas"]["prefijos"], ["1", "2", "41750201"])
+        self.assertEqual(c["GastosFinancieros"]["prefijos"], ["521005", "521015", "521020", "3", "615035"])
+        self.assertEqual(c["AsistenciaTecnica"]["prefijos"], ["AT", "VT"])
+
+    def test_solo_el_aprobador(self):
+        self.client.force_login(self.area)
+        self.assertEqual(self.client.get(reverse("ajustes_filas_calculadas")).status_code, 403)
+        self.assertEqual(self.post("guardar_fila_calculada", {"clave": "51"}).status_code, 403)
+        self.assertEqual(self.post("restaurar_fila_calculada", {"clave": "51"}).status_code, 403)
+        self.assertEqual(self.post("vista_previa_fila_calculada", {"clave": "51"}).status_code, 403)
+
+    def test_guardar_y_restaurar(self):
+        from .models import SubtotalCuentas
+        self.client.force_login(self.aprobador)
+        self.assertEqual(self.client.get(reverse("ajustes_filas_calculadas")).status_code, 200)
+        r = self.post("guardar_fila_calculada",
+                      {"clave": "OtrosIngresos", "cuentas": "41659505, at-00003 41659505", "prefijos": ["4250"]})
+        self.assertEqual(r.status_code, 200, r.content)
+        fila = next(f for f in r.json()["filas"] if f["clave"] == "OtrosIngresos")
+        self.assertEqual(fila["cuentas"], ["41659505", "AT-00003"])     # sin repetidos, en mayúsculas
+        self.assertEqual(fila["prefijos"], ["4250"])
+        self.assertTrue(fila["personalizado"])
+        self.assertEqual(SubtotalCuentas.objects.get(clave="OtrosIngresos").actualizado_por, "NICOLAS")
+
+        r = self.post("restaurar_fila_calculada", {"clave": "OtrosIngresos"})
+        fila = next(f for f in r.json()["filas"] if f["clave"] == "OtrosIngresos")
+        self.assertFalse(fila["personalizado"])
+        self.assertEqual(len(fila["cuentas"]), 13)
+        self.assertFalse(SubtotalCuentas.objects.exists())
+
+    def test_validacion(self):
+        self.client.force_login(self.aprobador)
+        self.assertEqual(self.post("guardar_fila_calculada", {"clave": "51", "cuentas": ["51 01!"]}).status_code, 400)
+        r = self.post("guardar_fila_calculada", {"clave": "51", "cuentas": ["5105"], "prefijos": ["5105"]})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("cuenta exacta y como prefijo", r.json()["msg"])
+        self.assertEqual(self.post("guardar_fila_calculada", {"clave": "NoExiste"}).status_code, 404)
+        # Vacía se permite (la fila queda en 0) y se avisa
+        r = self.post("guardar_fila_calculada", {"clave": "GastosFinancieros", "cuentas": [], "prefijos": []})
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("quedará en 0", r.json()["msg"])
+
+    def test_vista_previa_y_avisos(self):
+        OrdenCuenta.objects.create(mcncuenta="511001", ctanombre="Sueldos", orden=10, visible_total=True, visible_sede=True)
+        OrdenCuenta.objects.create(mcncuenta="41750105", ctanombre="Devolución", orden=20, visible_total=True, visible_sede=False)
+        self.client.force_login(self.aprobador)
+        r = self.post("vista_previa_fila_calculada",
+                      {"clave": "OtrosIngresos", "cuentas": ["41750105", "511001", "999999"]}).json()
+        filas = {f["cuenta"]: f for f in r["filas"]}
+        self.assertEqual(set(filas), {"41750105", "511001"})
+        self.assertEqual(filas["41750105"]["oculta"], "solo en Total Base")
+        self.assertEqual(filas["511001"]["tambien"], ["Gastos de Administración"])   # se contaría dos veces
+        self.assertTrue(any("999999 no está en Orden de cuentas" in a for a in r["avisos"]))
+        self.assertTrue(any("otra fila calculada" in a for a in r["avisos"]))
+
+    def test_las_tablas_reciben_la_configuracion(self):
+        self.client.force_login(self.aprobador)
+        self.post("guardar_fila_calculada", {"clave": "GastosPorServicios", "cuentas": ["5", "6", "5230", "529595"]})
+        for nombre in ("consolidado_general", "presupuestado_general", "comparativo_general"):
+            r = self.client.get(reverse(nombre))
+            self.assertEqual(r.status_code, 200, nombre)
+            self.assertEqual(r.context["subtotales"]["GastosPorServicios"]["cuentas"], ["5", "6", "5230", "529595"])
+            html = r.content.decode()
+            self.assertIn('id="configSubtotales"', html, nombre)
+            self.assertRegex(html, r"js/subtotales\.js\?v=\d+")

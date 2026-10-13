@@ -15,7 +15,7 @@ Escribe en el logger "presupuestoApp.cargas":
 Si settings.py no tiene LOGGING para este logger, se le pone un handler a
 consola (stderr) para que los mensajes salgan igual en los logs del servidor
 (gunicorn, runserver, journalctl...). Si settings.py sí lo configura, se
-respeta esa configuración
+respeta esa configuración.
 """
 import logging
 import time

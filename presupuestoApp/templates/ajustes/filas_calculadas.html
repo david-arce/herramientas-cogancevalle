@@ -1,0 +1,398 @@
+{% extends 'presupuesto_consolidado/base_dashboard.html' %}
+{% block css %}
+<style>
+  .ag-wrap { padding: 24px; max-width: 1150px; }
+  .ag-title { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 1.4rem; }
+  .ag-sub { color: #4b5563; margin: 0 0 16px; font-size: .92rem; line-height: 1.5; max-width: 860px; }
+  .ag-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; }
+  .ag-wrap [hidden], dialog [hidden] { display: none !important; }
+
+  .ag-ayuda { padding: 10px 16px; margin-bottom: 14px; font-size: .86rem; color: #374151; line-height: 1.55; }
+  .ag-ayuda summary { cursor: pointer; font-weight: 600; color: #1f2937; display: flex; align-items: center; gap: 6px; }
+  .ag-ayuda summary .material-icons { font-size: 18px; color: #3f51b5; }
+  .ag-ayuda ul { margin: 8px 0 4px 18px; padding: 0; }
+  .ag-ayuda li { margin: 3px 0; }
+  .ag-ayuda code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85em; }
+
+  .ag-input { padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px; font: inherit; font-size: .88rem; background: #fff; min-width: 240px; }
+  .ag-input:focus { outline: 2px solid #2563eb33; border-color: #2563eb; }
+  .ag-barra { display: flex; gap: 8px; margin-bottom: 12px; }
+  .ag-btn {
+    border: 1px solid #d1d5db; background: #fff; color: #374151; border-radius: 6px; padding: 7px 12px; cursor: pointer;
+    font: inherit; font-size: .85rem; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  }
+  .ag-btn .material-icons { font-size: 18px; }
+  .ag-btn:hover:not(:disabled) { background: #f3f4f6; }
+  .ag-btn:disabled { opacity: .5; cursor: default; }
+  .ag-btn-primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .ag-btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+  .ag-icono { border: none; background: none; color: #6b7280; cursor: pointer; padding: 5px; border-radius: 6px; display: inline-flex; }
+  .ag-icono:hover { background: #f3f4f6; color: #111827; }
+  .ag-icono .material-icons { font-size: 19px; }
+
+  .ag-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  .ag-table th { text-align: left; background: #f9fafb; color: #374151; padding: 9px 12px; border-bottom: 1px solid #e5e7eb; font-size: .8rem; }
+  .ag-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  .ag-table tr:last-child td { border-bottom: none; }
+  .ag-table tbody tr:hover td { background: #fafbff; }
+  .ag-nombre { font-weight: 600; color: #111827; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .ag-desc { color: #6b7280; font-size: .8rem; margin-top: 3px; line-height: 1.4; }
+  .ag-donde { color: #4b5563; font-size: .78rem; margin-top: 4px; display: flex; gap: 4px; align-items: center; }
+  .ag-donde .material-icons { font-size: 14px; }
+  .ag-badge { font-size: .7rem; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: #fff4d6; color: #8a5300; }
+  .ag-badge.fila { background: #eef2ff; color: #3730a3; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 500; }
+  .ag-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ag-chip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px; font-size: .8rem;
+             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: #e8f0fe; color: #1e3a8a; }
+  .ag-chip.prefijo { background: #efe7fb; color: #5b21b6; }
+  .ag-chip.prefijo::after { content: "…"; }
+  .ag-solo { color: #9ca3af; font-size: .82rem; font-style: italic; }
+  .ag-acciones { white-space: nowrap; text-align: right; width: 1%; }
+  .ag-vacio { text-align: center; color: #6b7280; padding: 30px 10px; }
+
+  dialog.ag-dialogo { margin: auto; border: none; border-radius: 12px; padding: 0; width: min(780px, calc(100vw - 32px));
+                      max-height: calc(100vh - 40px); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+  dialog.ag-dialogo::backdrop { background: rgba(17, 24, 39, .45); }
+  .ag-dlg { display: flex; flex-direction: column; max-height: calc(100vh - 40px); }
+  .ag-dlg-head { padding: 16px 20px 10px; border-bottom: 1px solid #eef0f4; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .ag-dlg-head h2 { margin: 0; font-size: 1.1rem; }
+  .ag-dlg-head p { margin: 4px 0 0; color: #6b7280; font-size: .82rem; line-height: 1.4; }
+  .ag-dlg-body { padding: 16px 20px; overflow-y: auto; display: grid; gap: 14px; }
+  .ag-dlg-foot { padding: 12px 20px; border-top: 1px solid #eef0f4; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .ag-dlg-foot div { display: flex; gap: 8px; }
+  .ag-campo label { display: block; font-size: .8rem; font-weight: 600; color: #374151; margin-bottom: 4px; }
+  .ag-ayuda-campo { color: #6b7280; font-size: .78rem; margin-top: 4px; line-height: 1.4; }
+
+  .ag-tags { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; padding: 5px 6px; min-height: 38px;
+             border: 1px solid #d1d5db; border-radius: 6px; background: #fff; cursor: text; }
+  .ag-tags:focus-within { outline: 2px solid #2563eb33; border-color: #2563eb; }
+  .ag-tags input { border: none; outline: none; font: inherit; font-size: .88rem; flex: 1; min-width: 140px; padding: 3px 4px; }
+  .ag-tags .ag-chip button { border: none; background: none; color: inherit; cursor: pointer; padding: 0; display: inline-flex; opacity: .7; }
+  .ag-tags .ag-chip button:hover { opacity: 1; }
+  .ag-tags .ag-chip .material-icons { font-size: 14px; }
+  .ag-tags .ag-chip.prefijo::after { content: none; }
+
+  .ag-errores { background: #fdecea; color: #8a1c1c; border: 1px solid #f5c2c7; border-radius: 8px; padding: 8px 12px; font-size: .86rem; }
+  .ag-avisos { background: #fff8d6; color: #6b4e00; border: 1px solid #ffe28a; border-radius: 8px; padding: 8px 12px; font-size: .84rem; }
+  .ag-errores ul, .ag-avisos ul { margin: 0; padding-left: 18px; }
+
+  .ag-prev { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+  .ag-prev-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px;
+                  background: #f9fafb; border-bottom: 1px solid #e5e7eb; font-size: .84rem; color: #374151; }
+  .ag-prev-head b { color: #111827; }
+  .ag-prev-lista { max-height: 260px; overflow-y: auto; }
+  .ag-prev table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+  .ag-prev td { padding: 5px 12px; border-bottom: 1px solid #f3f4f6; }
+  .ag-prev td:first-child { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; width: 120px; }
+  .ag-prev .motivo { color: #6b7280; white-space: nowrap; text-align: right; }
+  .ag-prev tr.otra td { color: #8a5300; background: #fffbeb; }
+  .ag-prev-vacio { padding: 14px 12px; color: #6b7280; font-size: .84rem; }
+
+  .ag-toast { position: fixed; right: 20px; bottom: 20px; max-width: 460px; padding: 10px 14px; border-radius: 8px; font-size: .9rem;
+              box-shadow: 0 6px 20px rgba(0,0,0,.15); opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s;
+              pointer-events: none; z-index: 10050; }
+  .ag-toast.visible { opacity: 1; transform: none; }
+  .ag-toast.ok { background: #e9f9ee; color: #155724; border: 1px solid #b7ecc5; }
+  .ag-toast.aviso { background: #fff8d6; color: #6b4e00; border: 1px solid #ffe28a; }
+  .ag-toast.error { background: #fdecea; color: #8a1c1c; border: 1px solid #f5c2c7; }
+
+  @media (max-width: 760px) {
+    .ag-wrap { padding: 16px; }
+    .ag-input { min-width: 0; flex: 1; }
+    .ag-table thead { display: none; }
+    .ag-table, .ag-table tbody, .ag-table tr, .ag-table td { display: block; width: 100%; }
+    .ag-table tr { border-bottom: 1px solid #e5e7eb; padding: 6px 0; }
+    .ag-table td { border: none; padding: 4px 10px; }
+    .ag-acciones { text-align: left; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ag-wrap">
+  <h1 class="ag-title"><span class="material-icons" aria-hidden="true">functions</span> Filas calculadas</h1>
+  <p class="ag-sub">
+    Qué cuentas suma cada fila que no tiene cuenta propia en el Ejecutado, Presupuestado y Comparativo
+    (Otros Ingresos, Gastos por Servicios, Gastos de Administración…). Los márgenes, la utilidad y los excedentes
+    se recalculan con estas sumas. Los cambios se ven la próxima vez que se abran esas tablas.
+  </p>
+
+  <details class="ag-card ag-ayuda">
+    <summary><span class="material-icons" aria-hidden="true">help_outline</span> Cómo funciona</summary>
+    <ul>
+      <li><b>Cuentas exactas:</b> se suma la fila de la tabla con ese código. Ej.: <code>422004</code>, <code>AT-00003</code>.</li>
+      <li><b>Empiezan por:</b> se suman todas las filas cuyo código empieza así. Ej.: <code>51</code> suma 5105, 511001, 51109502…</li>
+      <li>Se suman las filas tal como salen en la tabla (ya agrupadas en <a href="{% url 'ajustes_agrupacion_cuentas' %}">Agrupación de cuentas</a>
+          y en el orden de <a href="{% url 'ajustes_orden_cuentas' %}">Orden de cuentas</a>).
+          Una cuenta que no esté en Orden de cuentas no aparece en la tabla y por eso no se suma; la vista previa lo advierte.</li>
+      <li>Cambiar estas cuentas no mueve las filas de lugar: la posición la sigue dando Orden de cuentas.</li>
+      <li><b>Restaurar</b> vuelve a las cuentas que traía el sistema.</li>
+    </ul>
+  </details>
+
+  <div class="ag-barra">
+    <input type="search" class="ag-input" id="buscar" placeholder="Buscar fila o cuenta…" aria-label="Buscar">
+  </div>
+
+  <div class="ag-card">
+    <table class="ag-table">
+      <thead><tr><th style="width:38%">Fila calculada</th><th>Qué suma</th><th></th></tr></thead>
+      <tbody id="cuerpo"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Editor -->
+<dialog class="ag-dialogo" id="editor" aria-labelledby="editorTitulo">
+  <form class="ag-dlg" id="formEditor" method="dialog" novalidate>
+    <div class="ag-dlg-head">
+      <div><h2 id="editorTitulo"></h2><p id="editorDesc"></p></div>
+      <button type="button" class="ag-icono" data-cerrar aria-label="Cerrar"><span class="material-icons" aria-hidden="true">close</span></button>
+    </div>
+    <div class="ag-dlg-body">
+      <div class="ag-errores" id="errores" role="alert" hidden></div>
+      <div class="ag-campo">
+        <label for="fCuentasInput">Cuentas exactas que se suman</label>
+        <div class="ag-tags" data-tags="cuentas"><input id="fCuentasInput" autocomplete="off" placeholder="Escribe una cuenta y pulsa Enter (o pega varias)"></div>
+      </div>
+      <div class="ag-campo">
+        <label for="fPrefijosInput">Sumar todas las cuentas que empiezan por</label>
+        <div class="ag-tags" data-tags="prefijos"><input id="fPrefijosInput" autocomplete="off" placeholder="Ej. 51 y Enter"></div>
+        <div class="ag-ayuda-campo" id="porDefecto"></div>
+      </div>
+      <div class="ag-avisos" id="avisos" hidden></div>
+      <div class="ag-prev" aria-live="polite">
+        <div class="ag-prev-head"><span id="prevResumen">Filas de la tabla que se sumarían</span><span id="prevCargando" hidden>Buscando…</span></div>
+        <div class="ag-prev-lista" id="prevLista"></div>
+      </div>
+    </div>
+    <div class="ag-dlg-foot">
+      <button type="button" class="ag-btn" id="usarDefectoBtn" title="Carga las cuentas por defecto en el editor (no guarda)">
+        <span class="material-icons" aria-hidden="true">restart_alt</span> Usar las cuentas por defecto
+      </button>
+      <div>
+        <button type="button" class="ag-btn" data-cerrar>Cancelar</button>
+        <button type="submit" class="ag-btn ag-btn-primary" id="guardarBtn"><span class="material-icons" aria-hidden="true">save</span> Guardar</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<div class="ag-toast" id="toast" role="status" aria-live="polite"></div>
+{% csrf_token %}
+{{ datos|json_script:"datosFilasCalculadas" }}
+
+<script>
+(() => {
+  const datos = JSON.parse(document.getElementById("datosFilasCalculadas").textContent);
+  const URLS = datos.urls;
+  const csrf = document.querySelector("[name=csrfmiddlewaretoken]").value;
+  let filas = datos.filas;
+  const $ = (id) => document.getElementById(id);
+
+  function el(tag, attrs = {}, ...hijos) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") n.className = v;
+      else if (k === "text") n.textContent = v;
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v);
+    }
+    hijos.flat().forEach(h => h != null && n.append(h));
+    return n;
+  }
+  const icono = (n) => el("span", { class: "material-icons", "aria-hidden": "true", text: n });
+  const normalizar = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const lista = (items) => items.length === 1 ? items[0] : el("ul", {}, items.map(t => el("li", { text: t })));
+  const mismas = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+
+  let timerToast;
+  function avisar(msg, tipo = "ok", ms = 4000) {
+    const t = $("toast");
+    t.textContent = msg; t.className = `ag-toast ${tipo} visible`;
+    clearTimeout(timerToast); timerToast = setTimeout(() => t.classList.remove("visible"), ms);
+  }
+
+  async function post(url, cuerpo) {
+    const resp = await fetch(url, {
+      method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
+      body: JSON.stringify(cuerpo),
+    });
+    let r = {};
+    try { r = await resp.json(); } catch { r = { ok: false, msg: "Respuesta inválida del servidor" }; }
+    if (!resp.ok || !r.ok) { const e = new Error(r.msg || "Error"); e.errores = r.errores; throw e; }
+    return r;
+  }
+
+  /* ── listado ── */
+  function chips(cuentas, prefijos) {
+    if (!cuentas.length && !prefijos.length) return el("span", { class: "ag-solo", text: "no suma ninguna cuenta (queda en 0)" });
+    return el("div", { class: "ag-chips" },
+      cuentas.map(c => el("span", { class: "ag-chip", title: "Cuenta exacta", text: c })),
+      prefijos.map(p => el("span", { class: "ag-chip prefijo", title: `Todas las que empiezan por ${p}`, text: p })));
+  }
+  function pintar() {
+    const q = normalizar($("buscar").value);
+    const visibles = filas.filter(f => !q ||
+      normalizar([f.nombre, f.fila, f.descripcion, ...f.cuentas, ...f.prefijos].join(" ")).includes(q));
+    $("cuerpo").replaceChildren(...(visibles.length ? visibles.map(f => {
+      const nombre = el("td", {},
+        el("div", { class: "ag-nombre" }, f.nombre,
+          f.fila ? el("span", { class: "ag-badge fila", title: "Fila en la tabla", text: f.fila }) : null,
+          f.personalizado ? el("span", { class: "ag-badge", title: `Modificada por ${f.actualizado_por || "—"} el ${f.actualizado}`, text: "modificada" }) : null),
+        el("div", { class: "ag-desc", text: f.descripcion }),
+        el("div", { class: "ag-donde" }, icono("table_view"), f.donde));
+      const acciones = el("td", { class: "ag-acciones" },
+        el("button", { type: "button", class: "ag-icono", title: "Editar", "aria-label": `Editar ${f.nombre}`, onclick: () => abrirEditor(f) }, icono("edit")),
+        f.personalizado ? el("button", { type: "button", class: "ag-icono", title: "Restaurar las cuentas por defecto",
+          "aria-label": `Restaurar ${f.nombre}`, onclick: () => restaurar(f) }, icono("restart_alt")) : null);
+      return el("tr", {}, nombre, el("td", {}, chips(f.cuentas, f.prefijos)), acciones);
+    }) : [el("tr", {}, el("td", { colspan: "3", class: "ag-vacio", text: "Ninguna fila coincide con la búsqueda." }))]));
+  }
+  $("buscar").addEventListener("input", pintar);
+
+  async function restaurar(f) {
+    if (!confirm(`¿Volver a las cuentas por defecto de «${f.nombre}»?`)) return;
+    try {
+      const r = await post(URLS.restaurar, { clave: f.clave });
+      filas = r.filas; pintar(); avisar(r.msg);
+    } catch (e) { avisar(e.message, "error"); }
+  }
+
+  /* ── campos de etiquetas (cuentas / prefijos) ── */
+  const tags = { cuentas: [], prefijos: [] };
+  function pintarTags(tipo) {
+    const caja = document.querySelector(`.ag-tags[data-tags="${tipo}"]`);
+    const input = caja.querySelector("input");
+    caja.querySelectorAll(".ag-chip").forEach(c => c.remove());
+    tags[tipo].forEach(v => caja.insertBefore(el("span", { class: "ag-chip" + (tipo === "prefijos" ? " prefijo" : "") },
+      tipo === "prefijos" ? `${v}…` : v,
+      el("button", { type: "button", "aria-label": `Quitar ${v}`, onclick: () => {
+        tags[tipo] = tags[tipo].filter(x => x !== v); pintarTags(tipo); programarVistaPrevia(); input.focus();
+      } }, icono("close"))), input));
+  }
+  function agregarTags(tipo, texto) {
+    const nuevos = String(texto).split(/[\s,;]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+    let cambio = false;
+    nuevos.forEach(v => { if (!tags[tipo].includes(v)) { tags[tipo].push(v); cambio = true; } });
+    if (cambio) { pintarTags(tipo); programarVistaPrevia(); }
+  }
+  document.querySelectorAll(".ag-tags").forEach(caja => {
+    const tipo = caja.dataset.tags;
+    const input = caja.querySelector("input");
+    caja.addEventListener("click", () => input.focus());
+    input.addEventListener("keydown", (e) => {
+      if (["Enter", ",", " ", "Tab"].includes(e.key) && input.value.trim()) {
+        if (e.key !== "Tab") e.preventDefault();
+        agregarTags(tipo, input.value); input.value = "";
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+      } else if (e.key === "Backspace" && !input.value && tags[tipo].length) {
+        tags[tipo].pop(); pintarTags(tipo); programarVistaPrevia();
+      }
+    });
+    input.addEventListener("paste", (e) => {
+      const texto = (e.clipboardData || window.clipboardData).getData("text");
+      if (/[\s,;]/.test(texto.trim())) { e.preventDefault(); agregarTags(tipo, texto); }
+    });
+    input.addEventListener("blur", () => { if (input.value.trim()) { agregarTags(tipo, input.value); input.value = ""; } });
+  });
+
+  /* ── vista previa ── */
+  let editando = null, timerPrev, pedidoPrev = 0;
+  function programarVistaPrevia() { clearTimeout(timerPrev); timerPrev = setTimeout(vistaPrevia, 350); }
+  function mostrarCaja(id, items) {
+    const caja = $(id);
+    if (!items || !items.length) { caja.hidden = true; caja.replaceChildren(); return; }
+    caja.hidden = false; caja.replaceChildren(lista(items));
+  }
+  async function vistaPrevia() {
+    const prev = $("prevLista");
+    if (!tags.cuentas.length && !tags.prefijos.length) {
+      $("prevResumen").textContent = "Filas de la tabla que se sumarían";
+      prev.replaceChildren(el("div", { class: "ag-prev-vacio", text: "Sin cuentas: esta fila quedará en 0." }));
+      mostrarCaja("avisos", null);
+      return;
+    }
+    const n = ++pedidoPrev;
+    $("prevCargando").hidden = false;
+    try {
+      const r = await post(URLS.vista_previa, { clave: editando.clave, cuentas: tags.cuentas, prefijos: tags.prefijos });
+      if (n !== pedidoPrev) return;
+      mostrarCaja("errores", r.errores);
+      mostrarCaja("avisos", r.avisos);
+      $("prevResumen").replaceChildren(el("span", {}, el("b", { text: `${r.filas.length} fila${r.filas.length === 1 ? "" : "s"}` }),
+        " de la tabla se sumarían"));
+      prev.replaceChildren(r.filas.length ? el("table", {}, el("tbody", {}, r.filas.map(f => el("tr", { class: f.tambien.length ? "otra" : "" },
+        el("td", { text: f.cuenta }),
+        el("td", { text: f.nombre || "—" }),
+        el("td", { class: "motivo", text: [
+          f.exacta ? "cuenta exacta" : "por prefijo",
+          f.oculta,
+          f.tambien.length ? `también en ${f.tambien.join(", ")}` : "",
+        ].filter(Boolean).join(" · ") }))))) :
+        el("div", { class: "ag-prev-vacio", text: "Ninguna fila de la tabla coincide todavía." }));
+    } catch (e) {
+      if (n === pedidoPrev) prev.replaceChildren(el("div", { class: "ag-prev-vacio", text: e.message }));
+    } finally {
+      if (n === pedidoPrev) $("prevCargando").hidden = true;
+    }
+  }
+
+  /* ── editor ── */
+  function textoDefecto(f) {
+    const d = f.por_defecto;
+    const partes = [];
+    if (d.cuentas.length) partes.push("cuentas " + d.cuentas.join(", "));
+    if (d.prefijos.length) partes.push("empiezan por " + d.prefijos.join(", "));
+    return "Por defecto: " + (partes.join(" · ") || "ninguna");
+  }
+  function abrirEditor(f) {
+    editando = f;
+    $("editorTitulo").textContent = `Editar ${f.nombre}`;
+    $("editorDesc").textContent = `${f.descripcion} Se usa en: ${f.donde}.`;
+    $("porDefecto").textContent = textoDefecto(f);
+    tags.cuentas = [...f.cuentas];
+    tags.prefijos = [...f.prefijos];
+    pintarTags("cuentas"); pintarTags("prefijos");
+    mostrarCaja("errores", null); mostrarCaja("avisos", null);
+    $("editor").showModal();
+    $("fCuentasInput").focus();
+    vistaPrevia();
+  }
+  document.querySelectorAll("[data-cerrar]").forEach(b => b.addEventListener("click", () => b.closest("dialog").close()));
+  $("usarDefectoBtn").addEventListener("click", () => {
+    if (!editando) return;
+    tags.cuentas = [...editando.por_defecto.cuentas];
+    tags.prefijos = [...editando.por_defecto.prefijos];
+    pintarTags("cuentas"); pintarTags("prefijos"); vistaPrevia();
+  });
+
+  $("formEditor").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    ["cuentas", "prefijos"].forEach(t => {
+      const inp = document.querySelector(`.ag-tags[data-tags="${t}"] input`);
+      if (inp.value.trim()) { agregarTags(t, inp.value); inp.value = ""; }
+    });
+    if (mismas(tags.cuentas, editando.cuentas) && mismas(tags.prefijos, editando.prefijos)) {
+      $("editor").close(); return;                       // sin cambios
+    }
+    const btn = $("guardarBtn");
+    btn.disabled = true;
+    try {
+      const r = await post(URLS.guardar, { clave: editando.clave, cuentas: tags.cuentas, prefijos: tags.prefijos });
+      filas = r.filas;
+      $("editor").close(); pintar();
+      if (r.avisos && r.avisos.length) avisar(`${r.msg} · Ojo: ${r.avisos[0]}`, "aviso", 8000);
+      else avisar(r.msg);
+    } catch (err) {
+      mostrarCaja("errores", err.errores || [err.message]);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  pintar();
+})();
+</script>
+{% endblock %}
