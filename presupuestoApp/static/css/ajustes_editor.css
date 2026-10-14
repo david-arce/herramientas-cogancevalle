@@ -1,0 +1,69 @@
+/* Estilos comunes (.ag-*) de las pantallas de Ajustes con tabla + diálogo editor.
+   Usado por:
+   - templates/ajustes/agrupacion_cuentas.html
+   - templates/ajustes/filas_calculadas.html
+*/
+
+.ag-wrap { padding: 24px; max-width: 1150px; }
+.ag-title { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 1.4rem; }
+.ag-sub { color: #4b5563; margin: 0 0 16px; font-size: .92rem; line-height: 1.5; max-width: 860px; }
+.ag-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; }
+.ag-ayuda { padding: 10px 16px; margin-bottom: 14px; font-size: .86rem; color: #374151; line-height: 1.55; }
+.ag-ayuda summary { cursor: pointer; font-weight: 600; color: #1f2937; display: flex; align-items: center; gap: 6px; }
+.ag-ayuda summary .material-icons { font-size: 18px; color: #3f51b5; }
+.ag-ayuda ul { margin: 8px 0 4px 18px; padding: 0; }
+.ag-ayuda li { margin: 3px 0; }
+/* display:flex de .ag-aviso anulaba el atributo hidden: el aviso salía siempre. */
+.ag-wrap [hidden], dialog [hidden] { display: none !important; }
+.ag-btn {
+    border: 1px solid #d1d5db; background: #fff; color: #374151; border-radius: 6px; padding: 7px 12px; cursor: pointer;
+    font: inherit; font-size: .85rem; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  }
+.ag-btn .material-icons { font-size: 18px; }
+.ag-btn:hover:not(:disabled) { background: #f3f4f6; }
+.ag-btn:disabled { opacity: .5; cursor: default; }
+.ag-btn-primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+.ag-btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+.ag-icono { border: none; background: none; color: #6b7280; cursor: pointer; padding: 5px; border-radius: 6px; display: inline-flex; }
+.ag-icono:hover { background: #f3f4f6; color: #111827; }
+.ag-icono .material-icons { font-size: 19px; }
+.ag-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.ag-table th { text-align: left; background: #f9fafb; color: #374151; padding: 9px 12px; border-bottom: 1px solid #e5e7eb; font-size: .8rem; }
+.ag-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+.ag-table tr:last-child td { border-bottom: none; }
+.ag-table tbody tr:hover td { background: #fafbff; }
+.ag-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.ag-chip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px; font-size: .8rem;
+             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: #e8f0fe; color: #1e3a8a; }
+.ag-chip.prefijo { background: #efe7fb; color: #5b21b6; }
+.ag-chip.prefijo::after { content: "…"; }
+.ag-solo { color: #9ca3af; font-size: .82rem; font-style: italic; }
+.ag-acciones { white-space: nowrap; text-align: right; width: 1%; }
+.ag-vacio { text-align: center; color: #6b7280; padding: 30px 10px; }
+dialog.ag-dialogo::backdrop { background: rgba(17, 24, 39, .45); }
+.ag-dlg { display: flex; flex-direction: column; max-height: calc(100vh - 40px); }
+.ag-dlg-head h2 { margin: 0; font-size: 1.1rem; }
+.ag-dlg-body { padding: 16px 20px; overflow-y: auto; display: grid; gap: 14px; }
+.ag-campo label { display: block; font-size: .8rem; font-weight: 600; color: #374151; margin-bottom: 4px; }
+.ag-ayuda-campo { color: #6b7280; font-size: .78rem; margin-top: 4px; line-height: 1.4; }
+.ag-tags { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; padding: 5px 6px; min-height: 38px;
+             border: 1px solid #d1d5db; border-radius: 6px; background: #fff; cursor: text; }
+.ag-tags:focus-within { outline: 2px solid #2563eb33; border-color: #2563eb; }
+.ag-tags input { border: none; outline: none; font: inherit; font-size: .88rem; flex: 1; min-width: 140px; padding: 3px 4px; }
+.ag-tags .ag-chip button { border: none; background: none; color: inherit; cursor: pointer; padding: 0; display: inline-flex; opacity: .7; }
+.ag-tags .ag-chip button:hover { opacity: 1; }
+.ag-tags .ag-chip .material-icons { font-size: 14px; }
+.ag-tags .ag-chip.prefijo::after { content: none; }
+.ag-errores { background: #fdecea; color: #8a1c1c; border: 1px solid #f5c2c7; border-radius: 8px; padding: 8px 12px; font-size: .86rem; }
+.ag-prev { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+.ag-prev-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px;
+                  background: #f9fafb; border-bottom: 1px solid #e5e7eb; font-size: .84rem; color: #374151; }
+.ag-prev-head b { color: #111827; }
+.ag-prev table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+.ag-prev td { padding: 5px 12px; border-bottom: 1px solid #f3f4f6; }
+.ag-prev .motivo { color: #6b7280; white-space: nowrap; text-align: right; }
+.ag-prev tr.otra td { color: #8a5300; background: #fffbeb; }
+.ag-prev-vacio { padding: 14px 12px; color: #6b7280; font-size: .84rem; }
+.ag-toast.visible { opacity: 1; transform: none; }
+.ag-toast.ok { background: #e9f9ee; color: #155724; border: 1px solid #b7ecc5; }
+.ag-toast.error { background: #fdecea; color: #8a1c1c; border: 1px solid #f5c2c7; }

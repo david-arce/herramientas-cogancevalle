@@ -1,0 +1,11 @@
+/* Ajustes de las vistas Cuenta 4 / Cuenta 5 *presupuestado* (complementa cuentas.css).
+   Usado por:
+   - templates/presupuestado/cuenta4_presupuestado.html
+   - templates/presupuestado/cuenta5_presupuestado.html
+*/
+
+/* En presupuestado los modales grandes son de 700px (en ejecutado quedan en 82vw, ver cuentas.css). */
+.c5-modal-large {
+  width: 700px;
+  max-width: 95vw;
+}

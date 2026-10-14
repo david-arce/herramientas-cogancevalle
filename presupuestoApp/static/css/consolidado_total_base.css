@@ -182,17 +182,6 @@ CONTENEDOR — mismo padding que .container de la dinámica
     margin-bottom: 8px;
 }
 
-/* Pestañas de sede + stats en una sola fila */
-.sub-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px 10px;
-    flex-wrap: wrap;
-    margin-bottom: 8px;
-}
-.sub-toolbar .stats-bar { margin-bottom: 0; }
-
 .stat-pill {
     background: var(--c-surface);
     border: 1px solid var(--c-border);

@@ -1,4 +1,4 @@
-{% load static %}
+{% load estaticos %}{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,40 +6,8 @@
 <meta name="csrf-token" content="{{ csrf_token }}">
 <title>Presupuesto aprobado · {{ sede_label }}</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>
-    :root { --color-primario: #1F3A93; --color-borde: #d7d9dc; --color-fondo-header: #f8f9fa; }
-    * { box-sizing: border-box; }
-    body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; margin: 16px; }
-    h2 { margin-bottom: 4px; }
-    .subtitulo { color: #666; font-size: 14px; margin: 0 0 14px; }
-    .toolbar { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 15px; align-items: center; }
-    .toolbar-group {
-        display: flex; align-items: center; gap: 8px; padding: 8px;
-        border: 1px solid var(--color-borde); border-radius: 6px; background: var(--color-fondo-header);
-    }
-    .toolbar-group button {
-        font-size: 14px; padding: 6px 14px; border: none; border-radius: 6px;
-        cursor: pointer; background: #5e5e5e; color: #fff; transition: all .2s ease;
-    }
-    .toolbar-group button:hover { background: #8b8b8b; color: #111; }
-    #gridContainer { overflow: auto; max-width: 100%; height: 70vh; border: 1px solid var(--color-borde); }
-    table.grid { border-collapse: collapse; width: 100%; font-size: 13px; }
-    table.grid th, table.grid td {
-        border: 1px solid var(--color-borde); padding: 5px 10px; white-space: nowrap; text-align: left;
-    }
-    table.grid thead th { background: var(--color-primario); color: #fff; position: sticky; top: 0; z-index: 2; }
-    td.numeric { text-align: right; font-variant-numeric: tabular-nums; }
-    #gridBody tr:nth-child(even) { background: #fafafa; }
-    #gridBody tr:hover { background: #eef2fb; }
-    table.grid tfoot td {
-        position: sticky; bottom: 0; z-index: 2;
-        background: #e8ecf7; color: var(--color-primario); font-weight: 700;
-        border-top: 2px solid var(--color-primario);
-    }
-    table.grid tfoot td.total-general { background: var(--color-primario); color: #fff; }
-    .aviso { font-size: 13px; color: #155724; background: #e9f9ee; border: 1px solid #b7ecc5;
-             padding: 8px 12px; border-radius: 6px; margin-bottom: 14px; }
-</style>
+<link rel="stylesheet" href="{% static_v 'css/grilla_presupuesto.css' %}">
+<link rel="stylesheet" href="{% static_v 'css/presupuesto_sede_readonly.css' %}">
 </head>
 <body>
 <header class="barra-pagina">

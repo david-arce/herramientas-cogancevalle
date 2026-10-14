@@ -1,0 +1,38 @@
+/* Estilos propios de Filas calculadas (complementa ajustes_editor.css).
+   Usado por:
+   - templates/ajustes/filas_calculadas.html
+*/
+
+.ag-ayuda code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85em; }
+.ag-input { padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px; font: inherit; font-size: .88rem; background: #fff; min-width: 240px; }
+.ag-input:focus { outline: 2px solid #2563eb33; border-color: #2563eb; }
+.ag-barra { display: flex; gap: 8px; margin-bottom: 12px; }
+.ag-nombre { font-weight: 600; color: #111827; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ag-desc { color: #6b7280; font-size: .8rem; margin-top: 3px; line-height: 1.4; }
+.ag-donde { color: #4b5563; font-size: .78rem; margin-top: 4px; display: flex; gap: 4px; align-items: center; }
+.ag-donde .material-icons { font-size: 14px; }
+.ag-badge { font-size: .7rem; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: #fff4d6; color: #8a5300; }
+.ag-badge.fila { background: #eef2ff; color: #3730a3; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 500; }
+dialog.ag-dialogo { margin: auto; border: none; border-radius: 12px; padding: 0; width: min(780px, calc(100vw - 32px));
+                      max-height: calc(100vh - 40px); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+.ag-dlg-head { padding: 16px 20px 10px; border-bottom: 1px solid #eef0f4; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.ag-dlg-head p { margin: 4px 0 0; color: #6b7280; font-size: .82rem; line-height: 1.4; }
+.ag-dlg-foot { padding: 12px 20px; border-top: 1px solid #eef0f4; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.ag-dlg-foot div { display: flex; gap: 8px; }
+.ag-avisos { background: #fff8d6; color: #6b4e00; border: 1px solid #ffe28a; border-radius: 8px; padding: 8px 12px; font-size: .84rem; }
+.ag-errores ul, .ag-avisos ul { margin: 0; padding-left: 18px; }
+.ag-prev-lista { max-height: 260px; overflow-y: auto; }
+.ag-prev td:first-child { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; width: 120px; }
+.ag-toast { position: fixed; right: 20px; bottom: 20px; max-width: 460px; padding: 10px 14px; border-radius: 8px; font-size: .9rem;
+              box-shadow: 0 6px 20px rgba(0,0,0,.15); opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s;
+              pointer-events: none; z-index: 10050; }
+.ag-toast.aviso { background: #fff8d6; color: #6b4e00; border: 1px solid #ffe28a; }
+@media (max-width: 760px) {
+    .ag-wrap { padding: 16px; }
+    .ag-input { min-width: 0; flex: 1; }
+    .ag-table thead { display: none; }
+    .ag-table, .ag-table tbody, .ag-table tr, .ag-table td { display: block; width: 100%; }
+    .ag-table tr { border-bottom: 1px solid #e5e7eb; padding: 6px 0; }
+    .ag-table td { border: none; padding: 4px 10px; }
+    .ag-acciones { text-align: left; }
+  }

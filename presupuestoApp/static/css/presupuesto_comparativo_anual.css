@@ -1,0 +1,16 @@
+/* Estilos de presupuesto_comparativo_anual.html (antes en un <style> dentro de la plantilla).
+   Usado por:
+   - templates/presupuesto_comercial/presupuesto_comparativo_anual.html
+*/
+
+.tarjeta-resumen {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 12px 18px;
+    min-width: 180px;
+}
+.tarjeta-resumen .titulo { font-size: 12px; color: #666; margin-bottom: 4px; }
+.tarjeta-resumen .valor { font-size: 20px; font-weight: 700; color: #2c3e50; }
+.tarjeta-resumen .valor.positivo { color: #1e8e3e; }
+.tarjeta-resumen .valor.negativo { color: #c0392b; }
