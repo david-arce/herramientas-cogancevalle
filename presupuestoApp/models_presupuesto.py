@@ -56,6 +56,27 @@ CAMPOS_PRESUPUESTO = [
 CAMPOS_NUMERICOS = ["mcncuenta", "sede_distribucion", *MESES, "total"]
 
 
+# Código de costo de cada centro ("Nombre asignación del gasto" en la grilla).
+# El centro es la ÚNICA fuente del código de costo: se aplica al guardar y al
+# subir a Cuenta 5, así se corrigen filas traídas de la plantilla con códigos
+# viejos. Debe coincidir con OPCIONES_NOMBRE_CENTRO de grilla_presupuesto.js
+# (hay un test que lo verifica).
+CODIGO_COSTO_POR_CENTRO = {
+    "ALMACEN TULUA": "020202",
+    "ALMACEN BUGA": "020200",
+    "ALMACEN CARTAGO": "020202",
+    "ALMACEN CALI": "020202",
+    "ADMINISTRACIÓN": "0102",
+    "SEVICIOS TÉCNICOS": "020302",
+}
+_CODIGO_COSTO_NORMALIZADO = {k.upper(): v for k, v in CODIGO_COSTO_POR_CENTRO.items()}
+
+
+def codigo_costo_de_centro(zonnombre, actual=None):
+    """Código de costo que corresponde al centro; si el centro no es conocido, el actual."""
+    return _CODIGO_COSTO_NORMALIZADO.get(str(zonnombre or "").strip().upper(), actual)
+
+
 def anio_presupuesto():
     """Año del presupuesto que se está elaborando: SIEMPRE el siguiente al actual.
 
@@ -186,6 +207,7 @@ def filas_verticales(filas, *, area, etapa, version=None, fecha_version=None, an
     for linea, fila in enumerate(filas, start=1):
         anio_fila = fila.get("anio") or anio_defecto
         comunes = {c: fila.get(c) for c in CAMPOS_LINEA}
+        comunes["mcnccosto"] = codigo_costo_de_centro(comunes["zonnombre"], comunes["mcnccosto"])
         for mes in MESES:
             registros.append(PresupuestoArea(
                 area=area, etapa=etapa, version=version, fecha_version=fecha_version,

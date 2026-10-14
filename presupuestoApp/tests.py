@@ -1796,3 +1796,130 @@ class FilasCalculadasEnOrdenTests(TestCase):
             {"codigo": "CALC-MIO", "nombre": "x", "cuentas": ["541099"]}), content_type="application/json")
         self.assertEqual(r.status_code, 400)
         self.assertIn("reservados", r.json()["msg"])
+
+
+class CodigoCostoPorCentroTests(TestCase):
+    """El código de costo sale SIEMPRE del centro ("Nombre asignación del gasto")."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.aprobador = User.objects.create_user("NICOLAS")
+
+    def setUp(self):
+        self.client.force_login(self.aprobador)
+
+    def aprobar_tal_cual(self, filas):
+        """Guarda la versión aprobada SIN pasar por filas_verticales (como datos viejos)."""
+        registros = []
+        for linea, f in enumerate(filas, start=1):
+            for mes in MESES:
+                registros.append(PresupuestoArea(
+                    area=AREA, etapa="aprobado", version=1, fecha_version=timezone.localdate(),
+                    linea=linea, fecha=fecha_mes(ANIO, mes), valor=f[mes],
+                    **{c: f.get(c) for c in ("mcnzona", "zonnombre", "mcnccosto", "responsable",
+                                             "mcncuenta", "ctanombre", "mcndetalle")},
+                ))
+        PresupuestoArea.objects.bulk_create(registros)
+
+    def test_subir_usa_el_codigo_del_centro_aunque_lo_guardado_sea_otro(self):
+        # Caso reportado: Tuluá es 020202 pero la línea quedó guardada con 020201
+        # (cuenta 540531 o plantilla con un código viejo).
+        self.aprobar_tal_cual([
+            fila("tulua", 100, mcncuenta="540531", mcnccosto="020201"),
+            fila("buga", 100, zonnombre="ALMACEN BUGA", mcnccosto="020202"),
+            fila("otro centro", 100, zonnombre="CENTRO NUEVO", mcnccosto="9999"),
+        ])
+        r = self.client.post(reverse("subir_cuenta5_sede", args=[AREA]))
+        self.assertEqual(r.status_code, 200, r.content)
+        qs = Cuenta5Presupuestado.objects.filter(origen_area=AREA)
+        self.assertEqual(set(qs.filter(mcndetalle="tulua").values_list("mcnccosto", flat=True)), {"020202"})
+        self.assertEqual(set(qs.filter(mcndetalle="buga").values_list("mcnccosto", flat=True)), {"020200"})
+        # Centro desconocido: se conserva el código guardado.
+        self.assertEqual(set(qs.filter(mcndetalle="otro centro").values_list("mcnccosto", flat=True)), {"9999"})
+
+    def test_al_guardar_se_corrige_el_codigo(self):
+        regs = filas_verticales([fila("x", 1, zonnombre="almacen tulua ", mcnccosto="020201")],
+                                area=AREA, etapa="auxiliar")
+        self.assertEqual({r.mcnccosto for r in regs}, {"020202"})
+
+    def test_mapa_igual_al_de_la_grilla(self):
+        import pathlib, re as _re
+        from .models_presupuesto import CODIGO_COSTO_POR_CENTRO
+        js = (pathlib.Path(__file__).parent / "static/js/grilla_presupuesto.js").read_text(encoding="utf-8")
+        bloque = _re.search(r"const OPCIONES_NOMBRE_CENTRO = \{(.*?)\};", js, _re.S).group(1)
+        en_js = dict(_re.findall(r'"([^"]+)":\s*\{\s*codigoCosto:\s*"([^"]+)"', bloque))
+        self.assertEqual(en_js, CODIGO_COSTO_POR_CENTRO)
+        # Ya no hay cuentas que fuercen otro código de costo.
+        self.assertNotIn('row.mcnccosto = "020201"', js)
+        self.assertNotIn('row.mcnccosto = "0101"', js)
+
+
+class TablaDinamicaResponsableYBusquedaTests(TestCase):
+    """Filtro "responsable" y búsqueda general ("q") en la tabla dinámica."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user("NICOLAS")
+        enero = vpa._serial_excel(datetime.date(ANIO, 1, 1))
+        C = Cuenta5Presupuestado.objects.create
+        C(mcncuenta="513525", ctanombre="ACUEDUCTO", vinnombre="EPM", mcndetalle="agua sede",
+          responsable="PILAR LOZANO", mcnfecha=enero, mcnvaldebi=100, mcnvalcred=0)
+        C(mcncuenta="513525", ctanombre="ACUEDUCTO", vinnombre="EPM", mcndetalle="agua bodega",
+          responsable="JUAN PEREZ", mcnfecha=enero, mcnvaldebi=50, mcnvalcred=0)
+        C(mcncuenta="512010", ctanombre="ARRENDAMIENTOS", vinnombre="INMOBILIARIA", mcndetalle="local centro",
+          responsable="JUAN PEREZ", mcnfecha=enero, mcnvaldebi=300, mcnvalcred=0)
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def tabla(self, **params):
+        r = self.client.get(reverse("obtener_tabla_dinamica_flexible"),
+                            {"group_by": "ctanombre,vinnombre,mcndetalle,mcncuenta", **params})
+        self.assertEqual(r.status_code, 200, r.content)
+        return {d["mcndetalle"]: d["enero"] for d in r.json()["data"]}
+
+    def test_lista_de_responsables_sale_de_cuenta5_presupuestado(self):
+        r = self.client.get(reverse("obtener_valores_filtros"), {"campo": "responsable"})
+        self.assertEqual(r.json()["valores"], ["JUAN PEREZ", "PILAR LOZANO"])
+        # En cascada: con un filtro de cuenta, solo los responsables de esa cuenta.
+        r = self.client.get(reverse("obtener_valores_filtros"), {"campo": "responsable", "mcncuenta": "512010"})
+        self.assertEqual(r.json()["valores"], ["JUAN PEREZ"])
+
+    def test_filtro_responsable(self):
+        self.assertEqual(self.tabla(responsable="PILAR LOZANO"), {"agua sede": 100})
+        self.assertEqual(self.tabla(responsable="JUAN PEREZ"), {"agua bodega": 50, "local centro": 300})
+
+    def test_busqueda_general(self):
+        self.assertEqual(self.tabla(q="agua"), {"agua sede": 100, "agua bodega": 50})
+        self.assertEqual(self.tabla(q="arrend"), {"local centro": 300})           # nombre de cuenta
+        self.assertEqual(self.tabla(q="pilar"), {"agua sede": 100})              # responsable
+        self.assertEqual(self.tabla(q="512010"), {"local centro": 300})          # código de cuenta
+        self.assertEqual(self.tabla(q="agua", responsable="JUAN PEREZ"), {"agua bodega": 50})
+        # La búsqueda también acota las listas de los filtros.
+        r = self.client.get(reverse("obtener_valores_filtros"), {"campo": "ctanombre", "q": "pilar"})
+        self.assertEqual(r.json()["valores"], ["ACUEDUCTO"])
+
+    def test_registros_del_detalle_respetan_filtros(self):
+        r = self.client.get(reverse("obtener_registros_detalle"),
+                            {"ctanombre": "ACUEDUCTO", "vinnombre": "EPM", "mcndetalle": "agua sede",
+                             "responsable": "JUAN PEREZ"})
+        self.assertEqual(r.json()["total"], 0)
+
+    def test_redistribuir_solo_toca_lo_filtrado(self):
+        r = self.client.post(reverse("redistribuir_mes"), json.dumps({
+            "nivel": "cuenta", "ctanombre": "ACUEDUCTO", "mes": 1, "nuevo_total": 80,
+            "filtros": {"responsable": ["JUAN PEREZ"]},
+        }), content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["actualizados"], 1)
+        self.assertEqual(Cuenta5Presupuestado.objects.get(mcndetalle="agua bodega").mcnvaldebi, 80)
+        self.assertEqual(Cuenta5Presupuestado.objects.get(mcndetalle="agua sede").mcnvaldebi, 100)
+
+    def test_inflacion_respeta_la_busqueda(self):
+        r = self.client.post(reverse("aplicar_inflacion"), json.dumps({
+            "porcentaje": 10, "objetivos": [{"nivel": "cuenta", "ctanombre": "ACUEDUCTO"}],
+            "filtros": {"q": "bodega"},
+        }), content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(Cuenta5Presupuestado.objects.get(mcndetalle="agua bodega").mcnvaldebi, 55)
+        self.assertEqual(Cuenta5Presupuestado.objects.get(mcndetalle="agua sede").mcnvaldebi, 100)

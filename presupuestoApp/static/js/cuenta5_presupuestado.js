@@ -92,7 +92,7 @@ const COLUMNS = [
 ];
 
 // Columnas que tienen filtro Excel (deben coincidir con data-filter en el HTML)
-const FILTER_COLS = ["mcncuenta", "mcnfecha", "mcnccosto", "mcndestino", "mcnzona", "ctanombre"];
+const FILTER_COLS = ["mcncuenta", "mcnfecha", "mcnccosto", "mcndestino", "mcnzona", "ctanombre", "responsable"];
 
 // ─── Estado global ────────────────────────────────────────────
 let allRows            = [];  // todos los registros cargados del servidor

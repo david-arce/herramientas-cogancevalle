@@ -16,7 +16,18 @@
 
         <!-- SECCIÓN DE FILTROS -->
         <div class="filters-section">
-            <h3>🔍 Filtros</h3>
+            <div class="filters-head">
+                <h3>🔍 Filtros</h3>
+                <div class="busqueda-general">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <input type="search" id="busquedaGeneral" autocomplete="off"
+                           placeholder="Búsqueda general: cuenta, vínculo, detalle o responsable..."
+                           aria-label="Búsqueda general en la tabla dinámica">
+                    <button type="button" id="busquedaGeneralLimpiar" title="Limpiar búsqueda" hidden>✕</button>
+                </div>
+            </div>
             <div class="filters-grid">
                 <div class="filter-group">
                     <label>Cuenta</label>
@@ -109,6 +120,25 @@
                             <div class="filter-actions">
                                 <button onclick="aplicarFiltro('ctanombre')">Aplicar</button>
                                 <button onclick="limpiarFiltro('ctanombre')">Limpiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Responsable</label>
+                    <div class="filter-dropdown">
+                        <button class="filter-btn" onclick="toggleFilter('responsable')">
+                            <span id="responsable-text">Todos</span><span class="arrow">▼</span>
+                        </button>
+                        <div id="filter-responsable" class="filter-panel">
+                            <div class="filter-search"><input type="text" id="search-responsable" placeholder="Buscar..." onkeyup="filtrarOpciones('responsable')"></div>
+                            <div class="filter-options">
+                                <label class="filter-option"><input type="checkbox" class="select-all" onchange="seleccionarTodos('responsable', this.checked)"><span>(Seleccionar todo)</span></label>
+                                <div id="options-responsable"></div>
+                            </div>
+                            <div class="filter-actions">
+                                <button onclick="aplicarFiltro('responsable')">Aplicar</button>
+                                <button onclick="limpiarFiltro('responsable')">Limpiar</button>
                             </div>
                         </div>
                     </div>
@@ -491,8 +521,9 @@
            ESTADO GLOBAL
         ══════════════════════════════════════════════════════════════════════ */
         let datosGlobales = [];
-        let filtrosActivos = { cuenta: [], zona: [], destino: [], costo: [], ctanombre: [] };
-        let valoresFiltros = { cuenta: [], zona: [], destino: [], costo: [], ctanombre: [] };
+        let filtrosActivos = { cuenta: [], zona: [], destino: [], costo: [], ctanombre: [], responsable: [] };
+        let valoresFiltros = { cuenta: [], zona: [], destino: [], costo: [], ctanombre: [], responsable: [] };
+        let busquedaGeneral = '';   // texto de la búsqueda general (parámetro "q" del backend)
 
         let registroEnEdicion = null;
         let registroAEliminar = null;
@@ -753,6 +784,8 @@
             if (filtrosActivos.zona.length)     params.set('mcnzona',    filtrosActivos.zona.join(','));
             if (filtrosActivos.destino.length)  params.set('mcndestino', filtrosActivos.destino.join(','));
             if (filtrosActivos.costo.length)    params.set('mcnccosto',  filtrosActivos.costo.join(','));
+            if (filtrosActivos.responsable.length) params.set('responsable', filtrosActivos.responsable.join(','));
+            if (busquedaGeneral)                params.set('q', busquedaGeneral);
 
             try {
                 const resp = await fetch(`../obtener-registros-detalle/?${params}`);
@@ -1012,6 +1045,8 @@
             if (filtrosActivos.zona.length)     params.set('mcnzona',    filtrosActivos.zona.join(','));
             if (filtrosActivos.destino.length)  params.set('mcndestino', filtrosActivos.destino.join(','));
             if (filtrosActivos.costo.length)    params.set('mcnccosto',  filtrosActivos.costo.join(','));
+            if (filtrosActivos.responsable.length) params.set('responsable', filtrosActivos.responsable.join(','));
+            if (busquedaGeneral)                params.set('q', busquedaGeneral);
 
             try {
                 const resp = await fetch(`../obtener-registros-nivel/?${params}`);
@@ -1144,9 +1179,9 @@
         /* ══════════════════════════════════════════════════════════════════════
         FILTROS DINÁMICOS EN CASCADA (tabla principal) — comportamiento Excel
         ══════════════════════════════════════════════════════════════════════ */
-        const FILTRO_TIPOS = ['cuenta','zona','destino','costo','ctanombre'];
+        const FILTRO_TIPOS = ['cuenta','zona','destino','costo','ctanombre','responsable'];
         const CAMPO_MAP    = { cuenta:'mcncuenta', zona:'mcnzona', destino:'mcndestino',
-                            costo:'mcnccosto', ctanombre:'ctanombre' };
+                            costo:'mcnccosto', ctanombre:'ctanombre', responsable:'responsable' };
 
         // Selección guardada antes de empezar a escribir en el buscador
         const _snapshotSeleccion = {};
@@ -1159,6 +1194,7 @@
             FILTRO_TIPOS.forEach(t => {
                 if (excluir !== t && filtrosActivos[t].length) p.set(CAMPO_MAP[t], filtrosActivos[t].join(','));
             });
+            if (busquedaGeneral) p.set('q', busquedaGeneral);
             return p;
         }
 
@@ -1342,18 +1378,14 @@
            CARGA DE DATOS
         ══════════════════════════════════════════════════════════════════════ */
         function construirURLConFiltros() {
-            let url = `../obtener-tabla-dinamica-flexible/?group_by=ctanombre,vinnombre,mcndetalle,mcncuenta`;
-            if (filtrosActivos.cuenta.length    && filtrosActivos.cuenta.length    < valoresFiltros.cuenta.length)
-                url += `&mcncuenta=${filtrosActivos.cuenta.join(',')}`;
-            if (filtrosActivos.zona.length      && filtrosActivos.zona.length      < valoresFiltros.zona.length)
-                url += `&mcnzona=${filtrosActivos.zona.join(',')}`;
-            if (filtrosActivos.destino.length   && filtrosActivos.destino.length   < valoresFiltros.destino.length)
-                url += `&mcndestino=${filtrosActivos.destino.join(',')}`;
-            if (filtrosActivos.costo.length     && filtrosActivos.costo.length     < valoresFiltros.costo.length)
-                url += `&mcnccosto=${filtrosActivos.costo.join(',')}`;
-            if (filtrosActivos.ctanombre.length && filtrosActivos.ctanombre.length < valoresFiltros.ctanombre.length)
-                url += `&ctanombre=${filtrosActivos.ctanombre.join(',')}`;
-            return url;
+            // URLSearchParams codifica los valores (nombres con "&", "#", tildes...).
+            const p = new URLSearchParams({ group_by: 'ctanombre,vinnombre,mcndetalle,mcncuenta' });
+            FILTRO_TIPOS.forEach(t => {
+                const sel = filtrosActivos[t];
+                if (sel.length && sel.length < valoresFiltros[t].length) p.set(CAMPO_MAP[t], sel.join(','));
+            });
+            if (busquedaGeneral) p.set('q', busquedaGeneral);
+            return `../obtener-tabla-dinamica-flexible/?${p}`;
         }
 
         function cargarDatos(colapsar = false) {
@@ -1365,6 +1397,7 @@
                     if (data.error) { alert('Error: ' + data.error); return; }
                     datosGlobales = data.data;
                     procesarYMostrarDatos(datosGlobales, colapsar);
+                    if (busquedaGeneral) expandirTodo();   // que se vean los detalles encontrados
                     calcularEstadisticas(datosGlobales);
                 })
                 .catch(e => {
@@ -2074,6 +2107,8 @@
             if (filtrosActivos.zona.length    && filtrosActivos.zona.length    < valoresFiltros.zona.length)    f.mcnzona    = filtrosActivos.zona;
             if (filtrosActivos.destino.length && filtrosActivos.destino.length < valoresFiltros.destino.length) f.mcndestino = filtrosActivos.destino;
             if (filtrosActivos.costo.length   && filtrosActivos.costo.length   < valoresFiltros.costo.length)   f.mcnccosto  = filtrosActivos.costo;
+            if (filtrosActivos.responsable.length && filtrosActivos.responsable.length < valoresFiltros.responsable.length) f.responsable = filtrosActivos.responsable;
+            if (busquedaGeneral) f.q = busquedaGeneral;
             return f;
         }
 
@@ -2127,8 +2162,44 @@
                 document.querySelectorAll('.filter-panel').forEach(p => p.classList.remove('show'));
         });
 
+        /* ══════════════════════════════════════════════════════════════════════
+           BÚSQUEDA GENERAL — se filtra en el servidor (parámetro "q"), así los
+           totales, los registros y las ediciones usan los mismos datos.
+        ══════════════════════════════════════════════════════════════════════ */
+        let _busquedaTimer = null;
+
+        async function aplicarBusquedaGeneral(texto) {
+            const q = String(texto || '').trim();
+            document.getElementById('busquedaGeneralLimpiar').hidden = !q;
+            if (q === busquedaGeneral) return;
+            busquedaGeneral = q;
+            limpiarSeleccionInflacion();          // la selección era sobre otras filas
+            await _actualizarTodosFiltros();      // las listas de filtros se ajustan a la búsqueda
+            cargarDatos(!q);                      // sin búsqueda vuelve a verse colapsado
+        }
+
+        function _initBusquedaGeneral() {
+            const input = document.getElementById('busquedaGeneral');
+            const limpiar = document.getElementById('busquedaGeneralLimpiar');
+            input.addEventListener('input', () => {
+                clearTimeout(_busquedaTimer);
+                _busquedaTimer = setTimeout(() => aplicarBusquedaGeneral(input.value), 400);
+            });
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter')  { clearTimeout(_busquedaTimer); aplicarBusquedaGeneral(input.value); }
+                if (e.key === 'Escape') { input.value = ''; clearTimeout(_busquedaTimer); aplicarBusquedaGeneral(''); }
+            });
+            limpiar.addEventListener('click', () => {
+                input.value = '';
+                clearTimeout(_busquedaTimer);
+                aplicarBusquedaGeneral('');
+                input.focus();
+            });
+        }
+
         /* Init */
         window.addEventListener('load', () => {
+            _initBusquedaGeneral();
             cargarValoresFiltros();
         });
     </script>

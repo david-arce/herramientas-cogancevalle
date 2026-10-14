@@ -42,6 +42,8 @@ const COLUMNS = [
 const COL_INI = COLUMNS.findIndex(c => c.type !== "check" && c.type !== "acciones");
 const COL_FIN = COLUMNS.length - 1;
 
+// Centro -> código de costo y zona. El código de costo sale SOLO de aquí
+// (mismo mapa que CODIGO_COSTO_POR_CENTRO en models_presupuesto.py).
 const OPCIONES_NOMBRE_CENTRO = {
     "ALMACEN TULUA":    { codigoCosto: "020202", centro: "001" },
     "ALMACEN BUGA":     { codigoCosto: "020200", centro: "002" },
@@ -584,8 +586,7 @@ function init(opciones) {
             }
             row.mcncuenta = codigo;
             row.ctanombre = mapaCuentaMayor[codigo] || "";
-            if (["510531", "51059503"].includes(codigo)) row.mcnccosto = "0101";
-            if (["540531", "54059503"].includes(codigo)) row.mcnccosto = "020201";
+            // El código de costo NO depende de la cuenta: siempre sale del centro.
             return true;
         }
         if (colKey === "zonnombre") {

@@ -97,7 +97,10 @@
           <th data-col="docdetalle">DOCDETALLE</th>
           <th data-col="infdetalle">INFDETALLE</th>
           <th data-col="comentario">COMENTARIO</th>
-          <th data-col="responsable">RESPONSABLE</th>
+          <th data-col="responsable" class="c5-filterable" data-filter="responsable">
+            RESPONSABLE
+            <span class="c5-filter-icon" data-filter="responsable" title="Filtrar RESPONSABLE">&#9660;</span>
+          </th>
         </tr>
       </thead>
       <tfoot id="c5Tfoot">
@@ -184,7 +187,7 @@
 
   /* ═══════════ MÓDULO: Filtros estilo Excel (corregido) ═══════════ */
   (() => {
-    const COLS = ['mcncuenta','mcnfecha','mcnccosto','mcndestino','mcnzona','ctanombre'];
+    const COLS = ['mcncuenta','mcnfecha','mcnccosto','mcndestino','mcnzona','ctanombre','responsable'];
 
     const state = {
       filters: {}, values: {}, labels: {},

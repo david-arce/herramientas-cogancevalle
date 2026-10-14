@@ -46,6 +46,71 @@ body {
     font-size: 1.1em;
 }
 
+/* Título "Filtros" + búsqueda general en la misma fila */
+.filters-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+}
+
+.filters-head h3 {
+    margin-bottom: 0;
+}
+
+.busqueda-general {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 1 460px;
+    min-width: 240px;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    padding: 6px 10px;
+    color: #6c757d;
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.busqueda-general:focus-within {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, .18);
+}
+
+.busqueda-general input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font: inherit;
+    font-size: .9em;
+    color: #212529;
+}
+
+/* Se usa nuestro botón ✕, no el del navegador */
+.busqueda-general input::-webkit-search-cancel-button {
+    display: none;
+}
+
+.busqueda-general button {
+    border: none;
+    background: none;
+    color: #6c757d;
+    cursor: pointer;
+    font-size: .85em;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+.busqueda-general button:hover {
+    background: #e9ecef;
+    color: #212529;
+}
+
 .filters-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

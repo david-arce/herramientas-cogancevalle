@@ -2950,6 +2950,38 @@ def presupuestado_general(request):
                   {'subtotales': configuracion_para_tablas()})
 
 # TABLA DINÁMICA FLEXIBLE
+# Filtros de la tabla dinámica. Se aplican IGUAL en la tabla, en las listas de
+# los filtros, en los registros del detalle y en redistribuir / inflación, para
+# que lo que se ve y lo que se modifica sean siempre los mismos registros.
+TD_FILTROS = ('mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto', 'ctanombre', 'responsable')
+# Búsqueda general (parámetro "q"): texto contenido en cualquiera de estos campos.
+TD_CAMPOS_BUSQUEDA = ('mcncuenta', 'ctanombre', 'vinnombre', 'mcndetalle', 'responsable')
+
+
+def _td_filtrar(qs, fuente, campos=TD_FILTROS, excluir=()):
+    """Aplica a `qs` los filtros de la tabla dinámica que vengan en `fuente`.
+
+    `fuente` puede ser request.GET (valores "a,b,c") o el dict "filtros" del
+    body JSON (listas). "q" es la búsqueda general.
+    """
+    for campo in campos:
+        if campo in excluir:
+            continue
+        valores = fuente.get(campo)
+        if isinstance(valores, str):
+            valores = [v.strip() for v in valores.split(',')]
+        valores = [v for v in (valores or []) if v not in (None, '')]
+        if valores:
+            qs = qs.filter(**{f'{campo}__in': valores})
+    q = str(fuente.get('q') or '').strip()
+    if q:
+        condicion = Q()
+        for campo in TD_CAMPOS_BUSQUEDA:
+            condicion |= Q(**{f'{campo}__icontains': q})
+        qs = qs.filter(condicion)
+    return qs
+
+
 @login_required
 def obtener_tabla_dinamica_flexible(request):
     """
@@ -2970,25 +3002,8 @@ def obtener_tabla_dinamica_flexible(request):
             'mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto'
         ]))
  
-        queryset = Cuenta5Presupuestado.objects.values(*campos_select)
- 
-        filtro_cuenta    = request.GET.get('mcncuenta',  '')
-        filtro_zona      = request.GET.get('mcnzona',    '')
-        filtro_destino   = request.GET.get('mcndestino', '')
-        filtro_costo     = request.GET.get('mcnccosto',  '')
-        filtro_ctanombre = request.GET.get('ctanombre',  '')   # ▼ nuevo
- 
-        if filtro_cuenta:
-            queryset = queryset.filter(mcncuenta__in=[c.strip() for c in filtro_cuenta.split(',')])
-        if filtro_zona:
-            queryset = queryset.filter(mcnzona__in=[z.strip() for z in filtro_zona.split(',')])
-        if filtro_destino:
-            queryset = queryset.filter(mcndestino__in=[d.strip() for d in filtro_destino.split(',')])
-        if filtro_costo:
-            queryset = queryset.filter(mcnccosto__in=[c.strip() for c in filtro_costo.split(',')])
-        # ▼ Filtrar por ctanombre si viene en el request
-        if filtro_ctanombre:
-            queryset = queryset.filter(ctanombre__in=[c.strip() for c in filtro_ctanombre.split(',')])
+        # Filtros (cuenta, zona, destino, costo, nombre cuenta, responsable) + búsqueda general
+        queryset = _td_filtrar(Cuenta5Presupuestado.objects.all(), request.GET).values(*campos_select)
  
         tabla_dinamica = defaultdict(lambda: {
             **{campo: '' for campo in campos_agrupacion},
@@ -3052,32 +3067,11 @@ def obtener_valores_filtros(request):
     """
     try:
         campo = request.GET.get('campo', '')
-        # ▼ ctanombre agregado a campos válidos
-        campos_validos = ['mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto', 'ctanombre']
- 
-        if campo not in campos_validos:
+        if campo not in TD_FILTROS:
             return JsonResponse({'error': 'Campo no válido'}, status=400)
- 
-        queryset = Cuenta5Presupuestado.objects.all()
- 
-        # Aplicar los filtros de los OTROS campos (no del campo que se consulta)
-        filtro_cuenta   = request.GET.get('mcncuenta',  '')
-        filtro_zona     = request.GET.get('mcnzona',    '')
-        filtro_destino  = request.GET.get('mcndestino', '')
-        filtro_costo    = request.GET.get('mcnccosto',  '')
-        filtro_ctanombre = request.GET.get('ctanombre', '')   # ▼ nuevo
- 
-        if filtro_cuenta and campo != 'mcncuenta':
-            queryset = queryset.filter(mcncuenta__in=[c.strip() for c in filtro_cuenta.split(',')])
-        if filtro_zona and campo != 'mcnzona':
-            queryset = queryset.filter(mcnzona__in=[z.strip() for z in filtro_zona.split(',')])
-        if filtro_destino and campo != 'mcndestino':
-            queryset = queryset.filter(mcndestino__in=[d.strip() for d in filtro_destino.split(',')])
-        if filtro_costo and campo != 'mcnccosto':
-            queryset = queryset.filter(mcnccosto__in=[c.strip() for c in filtro_costo.split(',')])
-        # ▼ Aplicar filtro ctanombre en cascada (solo si no es el campo que se consulta)
-        if filtro_ctanombre and campo != 'ctanombre':
-            queryset = queryset.filter(ctanombre__in=[c.strip() for c in filtro_ctanombre.split(',')])
+
+        # Filtros de los OTROS campos (no del que se consulta) + búsqueda general
+        queryset = _td_filtrar(Cuenta5Presupuestado.objects.all(), request.GET, excluir=(campo,))
  
         valores = (
             queryset
@@ -3112,17 +3106,8 @@ def obtener_registros_detalle(request):
             mcndetalle=mcndetalle,
         )
 
-        # ✅ Soportar múltiples valores separados por coma
-        for campo, param in [
-            ('mcncuenta',  'mcncuenta'),
-            ('mcnzona',    'mcnzona'),
-            ('mcndestino', 'mcndestino'),
-            ('mcnccosto',  'mcnccosto'),
-        ]:
-            valor = request.GET.get(param, '')
-            if valor:
-                valores = [v.strip() for v in valor.split(',')]
-                queryset = queryset.filter(**{f'{campo}__in': valores})
+        # Mismos filtros de la tabla (ctanombre ya viene fijo por el nivel) + búsqueda general
+        queryset = _td_filtrar(queryset, request.GET, excluir=('ctanombre',))
 
         registros = []
         for obj in queryset:
@@ -3138,6 +3123,7 @@ def obtener_registros_detalle(request):
                 'mcnccosto':  obj.mcnccosto,
                 'ctanombre':  obj.ctanombre,
                 'vinnombre':  obj.vinnombre,
+                'responsable': obj.responsable,
             })
 
         return JsonResponse({'registros': registros, 'total': len(registros)})
@@ -3217,17 +3203,8 @@ def obtener_registros_nivel(request):
                 return JsonResponse({'error': 'Falta vinnombre'}, status=400)
             queryset = queryset.filter(vinnombre=vinnombre)
 
-        # ✅ Soportar múltiples valores separados por coma
-        for campo, param in [
-            ('mcncuenta',  'mcncuenta'),
-            ('mcnzona',    'mcnzona'),
-            ('mcndestino', 'mcndestino'),
-            ('mcnccosto',  'mcnccosto'),
-        ]:
-            valor = request.GET.get(param, '')
-            if valor:
-                valores = [v.strip() for v in valor.split(',')]
-                queryset = queryset.filter(**{f'{campo}__in': valores})
+        # Mismos filtros de la tabla (ctanombre ya viene fijo por el nivel) + búsqueda general
+        queryset = _td_filtrar(queryset, request.GET, excluir=('ctanombre',))
 
         registros = []
         for obj in queryset:
@@ -3243,6 +3220,7 @@ def obtener_registros_nivel(request):
                 'mcnccosto':  obj.mcnccosto,
                 'ctanombre':  obj.ctanombre,
                 'vinnombre':  obj.vinnombre,
+                'responsable': obj.responsable,
             })
 
         return JsonResponse({'registros': registros, 'total': len(registros)})
@@ -3318,7 +3296,7 @@ def redistribuir_mes(request):
     Body JSON:
       nivel: 'cuenta' | 'vinculo' | 'detalle'
       ctanombre, vinnombre, mcndetalle, mes (1-12), nuevo_total,
-      filtros: {mcncuenta: [], mcnzona: [], mcndestino: [], mcnccosto: []}
+      filtros: {mcncuenta: [], mcnzona: [], mcndestino: [], mcnccosto: [], responsable: [], q: ''}
     """
     try:
         body = json.loads(request.body)
@@ -3349,11 +3327,7 @@ def redistribuir_mes(request):
         qs = qs.filter(mcndetalle=mcndetalle)
 
     # Mismos filtros que usa la tabla, para que el universo coincida
-    filtros = body.get('filtros') or {}
-    for campo in ('mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto'):
-        valores = [v for v in (filtros.get(campo) or []) if v not in (None, '')]
-        if valores:
-            qs = qs.filter(**{f'{campo}__in': valores})
+    qs = _td_filtrar(qs, body.get('filtros') or {}, excluir=('ctanombre',))
 
     registros = [r for r in qs if _mes_de_serial(r.mcnfecha) == mes]
     if not registros:
@@ -3405,7 +3379,7 @@ def aplicar_inflacion(request):
       meses: [1..12]  (opcional; por defecto todos)
       objetivos: [{nivel:'cuenta'|'vinculo'|'detalle',
                    ctanombre, vinnombre, mcndetalle}, ...]
-      filtros: {mcncuenta: [], mcnzona: [], mcndestino: [], mcnccosto: []}
+      filtros: {mcncuenta: [], mcnzona: [], mcndestino: [], mcnccosto: [], responsable: [], q: ''}
     """
     try:
         body = json.loads(request.body)
@@ -3450,11 +3424,7 @@ def aplicar_inflacion(request):
     qs = Cuenta5Presupuestado.objects.filter(condicion)
 
     # Mismos filtros de la tabla, para que el universo coincida con lo visible
-    filtros = body.get('filtros') or {}
-    for campo in ('mcncuenta', 'mcnzona', 'mcndestino', 'mcnccosto'):
-        valores = [v for v in (filtros.get(campo) or []) if v not in (None, '')]
-        if valores:
-            qs = qs.filter(**{f'{campo}__in': valores})
+    qs = _td_filtrar(qs, body.get('filtros') or {}, excluir=('ctanombre',))
 
     # distinct() + dict por PK: blindaje contra doble aplicación
     unicos = {}
