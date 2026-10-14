@@ -2013,3 +2013,75 @@ class TextosBotonesGrillaTests(TestCase):
         r = self.client.get(reverse("presupuesto_sede", args=[AREA]))
         for texto in ("Exportar a Excel esta tabla", "Descargar plantilla vacía", "Importar archivo Excel"):
             self.assertContains(r, texto)
+
+
+class EliminarConsolidadoBaseTests(TestCase):
+    """Carga consolidado base: eliminar TODO lo filtrado (no solo lo visible) en la base de datos."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user("admin")
+
+    def setUp(self):
+        from .models import ConsolidadoTotalBase as T
+        self.T = T
+        self.client.force_login(self.user)
+        objs = []
+        for i in range(1500):   # más de las 1.000 filas que pinta la pantalla
+            objs.append(T(mcncuenta=str(510000 + i), ctanombre=f"GASTO {i}", mcnfecha=datetime.date(2025, 1, 1),
+                          valor=1, sede="tulua", origen="ejecutado"))
+        objs += [T(mcncuenta="610000", ctanombre="OTRA", mcnfecha=datetime.date(2025, 2, 1), valor=1,
+                   sede="buga", origen="ejecutado"),
+                 T(mcncuenta="710000", ctanombre="PPTO", mcnfecha=datetime.date(2026, 1, 1), valor=1,
+                   sede="tulua", origen="presupuestado"),
+                 T(mcncuenta="810000", ctanombre="VIEJO", mcnfecha=datetime.date(2025, 1, 1), valor=1,
+                   sede="TULUA ", origen="ejecutado")]           # dato viejo con mayúsculas/espacio
+        T.objects.bulk_create(objs)
+
+    def post(self, **body):
+        return self.client.post(reverse("eliminar_filtrado_consolidado_total_base"),
+                                json.dumps(body), content_type="application/json")
+
+    def test_contar_no_borra(self):
+        r = self.post(accion="contar", filtros={"sede": ["tulua"], "origen": ["ejecutado"]})
+        self.assertEqual(r.json()["total"], 1500)
+        self.assertEqual(self.T.objects.count(), 1503)
+
+    def test_elimina_todo_lo_filtrado_no_solo_1000(self):
+        f = {"sede": ["tulua"], "origen": ["ejecutado"]}
+        r = self.post(accion="eliminar", filtros=f, esperado=1500)
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["eliminados"], 1500)
+        self.assertEqual(sorted(self.T.objects.values_list("ctanombre", flat=True)), ["OTRA", "PPTO", "VIEJO"])
+
+    def test_busqueda_y_fecha(self):
+        self.assertEqual(self.post(accion="contar", filtros={"q": "gasto 14"}).json()["total"], 111)  # 14, 140-149, 1400-1499
+        self.assertEqual(self.post(accion="contar", filtros={"q": "510000 gasto 0"}).json()["total"], 1)  # "cuenta nombre"
+        self.assertEqual(self.post(accion="contar", filtros={"mcnfecha": ["2025-02-01"]}).json()["total"], 1)
+
+    def test_espacios_en_lo_guardado_y_lista_vacia(self):
+        # La pantalla muestra "TULUA" (sin espacio): también se encuentra el guardado "TULUA ".
+        self.assertEqual(self.post(accion="contar", filtros={"sede": ["TULUA"]}).json()["total"], 1)
+        # Filtro activo con "ninguno" marcado: no coincide nada (no borra todo).
+        self.assertEqual(self.post(accion="contar", filtros={"sede": []}).json()["total"], 0)
+
+    def test_si_cambiaron_los_datos_no_borra(self):
+        r = self.post(accion="eliminar", filtros={"sede": ["buga"]}, esperado=5)
+        self.assertEqual(r.status_code, 409)
+        self.assertEqual(self.T.objects.count(), 1503)
+        self.assertEqual(self.post(accion="eliminar", filtros={"sede": ["buga"]}).status_code, 400)  # sin "esperado"
+
+    def test_por_ids(self):
+        ids = list(self.T.objects.filter(sede="buga").values_list("pk", flat=True))
+        self.assertEqual(self.post(accion="eliminar", filtros={"ids": ids}, esperado=1).json()["eliminados"], 1)
+        self.assertFalse(self.T.objects.filter(sede="buga").exists())
+
+    def test_requiere_sesion(self):
+        self.client.logout()
+        self.assertEqual(self.post(accion="contar", filtros={}).status_code, 302)
+
+    def test_borrar_todo_por_sede_tolera_mayusculas(self):
+        r = self.client.post(reverse("borrar_consolidado_total_base"),
+                             json.dumps({"sede": "tulua", "origen": "ejecutado"}), content_type="application/json")
+        self.assertEqual(r.json()["eliminados"], 1501)       # 1500 + "TULUA "
+        self.assertEqual(self.T.objects.count(), 2)

@@ -204,6 +204,11 @@ urlpatterns = [
         views.eliminar_fila_consolidado_total_base,
         name='eliminar_fila_consolidado_total_base',
     ),
+    path(
+        'eliminar_filtrado_consolidado_total_base/',
+        views.eliminar_filtrado_consolidado_total_base,
+        name='eliminar_filtrado_consolidado_total_base',
+    ),
     
     # ── Comparativo general: 4 sedes + total, con comentarios ──
     path('comparativo/general/', views.comparativo_general, name='comparativo_general'),

@@ -466,3 +466,12 @@ main.content, .page-content, .main-content {
 
 /* ── Ocultar columna de centro de costo ── */
 .hide-ccosto .col-ccosto { display: none; }
+
+/* Número de registros dentro de los botones de eliminar */
+.btn-count:not(:empty) {
+    background: rgba(255,255,255,.25);
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 11px;
+}
+#btnEliminarFiltrado { display: flex; align-items: center; gap: 6px; }

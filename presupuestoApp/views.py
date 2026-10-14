@@ -28,8 +28,8 @@ from .models import (
     Cuenta5Presupuestado,
 )
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
-from django.db.models.functions import Concat
-from django.db.models import Sum, Max, Q, Avg
+from django.db.models.functions import Coalesce, Concat, Trim
+from django.db.models import Sum, Max, Q, Avg, Value
 from django.db import transaction
 import numpy as np
 import json
@@ -3676,16 +3676,17 @@ def borrar_consolidado_total_base(request):
                     {'success': False, 'error': f"Sede inválida. Opciones: {', '.join(sorted(SEDES_VALIDAS))}"},
                     status=400,
                 )
-            qs = qs.filter(sede=sede)
+            # Sin importar mayúsculas ni espacios en lo guardado (p. ej. "TULUA ").
+            qs = qs.annotate(_sede=Trim('sede')).filter(_sede__iexact=sede)
         if origen:
             if origen not in ORIGENES_VALIDOS:
                 return JsonResponse(
                     {'success': False, 'error': f"Origen inválido. Opciones: {', '.join(sorted(ORIGENES_VALIDOS))}"},
                     status=400,
                 )
-            qs = qs.filter(origen=origen)
+            qs = qs.annotate(_origen=Trim('origen')).filter(_origen__iexact=origen)
 
-        eliminados, _ = qs.delete()
+        eliminados, _ = ConsolidadoTotalBase.objects.filter(pk__in=qs.values('pk')).delete()
         return JsonResponse({'success': True, 'eliminados': eliminados})
 
     except Exception as e:
@@ -3707,6 +3708,92 @@ def eliminar_fila_consolidado_total_base(request):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+# ─────────────────────────────────────────────────────────────
+# POST /presupuesto/eliminar_filtrado_consolidado_total_base/
+# Elimina TODO lo que cumple los filtros del historial (no solo las filas
+# que se ven en pantalla, que se cortan en 1.000), en una sola consulta.
+#
+# Body JSON:
+#   accion:   "contar" (no borra, solo devuelve cuántos) | "eliminar"
+#   esperado: (con "eliminar") el número que se le mostró al usuario; si los
+#             datos cambiaron entre contar y eliminar, no se borra nada (409).
+#   filtros:  solo los filtros ACTIVOS. Una lista vacía significa "ninguno"
+#             (no coincide nada), igual que en la pantalla.
+#       sede, origen, mcnfecha (AAAA-MM-DD), mcncuenta, ctanombre: [valores]
+#       q:   texto contenido en "cuenta nombre" (la caja de búsqueda)
+#       ids: [ids] (casillas marcadas)
+# ─────────────────────────────────────────────────────────────
+CTB_FILTROS_TEXTO = ('sede', 'origen', 'mcncuenta', 'ctanombre')
+
+
+def _ctb_filtrar(filtros):
+    """QuerySet de ConsolidadoTotalBase con los mismos criterios del historial."""
+    qs = ConsolidadoTotalBase.objects.all()
+    for campo in CTB_FILTROS_TEXTO:
+        if campo in filtros:
+            valores = [str(v).strip() for v in (filtros.get(campo) or [])]
+            # La pantalla compara el valor sin espacios a los lados: aquí igual.
+            qs = qs.annotate(**{f'_f_{campo}': Trim(campo)}).filter(**{f'_f_{campo}__in': valores})
+    if 'mcnfecha' in filtros:
+        fechas = []
+        for v in filtros.get('mcnfecha') or []:
+            try:
+                fechas.append(datetime.date.fromisoformat(str(v).strip()))
+            except ValueError:
+                raise ValueError(f'Fecha inválida en el filtro: {v}')
+        qs = qs.filter(mcnfecha__in=fechas)
+    if 'ids' in filtros:
+        qs = qs.filter(pk__in=[int(i) for i in (filtros.get('ids') or [])])
+    q = str(filtros.get('q') or '').strip()
+    if q:
+        qs = qs.annotate(_f_texto=Concat(Coalesce('mcncuenta', Value('')), Value(' '),
+                                         Coalesce('ctanombre', Value(''))))
+        qs = qs.filter(_f_texto__icontains=q)
+    return qs
+
+
+@login_required
+@require_POST
+def eliminar_filtrado_consolidado_total_base(request):
+    try:
+        body = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'JSON inválido'}, status=400)
+
+    filtros = body.get('filtros') or {}
+    accion = body.get('accion', 'contar')
+    if accion not in ('contar', 'eliminar'):
+        return JsonResponse({'success': False, 'error': 'Acción inválida'}, status=400)
+
+    try:
+        qs = _ctb_filtrar(filtros)
+    except (TypeError, ValueError) as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+    if accion == 'contar':
+        return JsonResponse({'success': True, 'total': qs.count()})
+
+    try:
+        esperado = int(body.get('esperado'))
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Falta "esperado" (cuántos se confirmaron)'}, status=400)
+
+    with log_carga('eliminar_consolidado_base', request, filtros=sorted(filtros)) as info, transaction.atomic():
+        ids = list(qs.values_list('pk', flat=True))
+        if len(ids) != esperado:
+            info['resultado'] = 'cambio_de_datos'
+            return JsonResponse({
+                'success': False,
+                'error': (f'Los datos cambiaron: ahora hay {len(ids)} registros con esos filtros '
+                          f'(se confirmaron {esperado}). No se eliminó nada; revisa e intenta de nuevo.'),
+                'total': len(ids),
+            }, status=409)
+        eliminados, _ = ConsolidadoTotalBase.objects.filter(pk__in=ids).delete()
+        info['registros'] = eliminados
+
+    return JsonResponse({'success': True, 'eliminados': eliminados})
+
 
 # ─────────────────────────────────────────────────────────────
 # Utilidad interna
