@@ -81,6 +81,41 @@
     /* Las celdas fijas en thead tienen z-index mayor */
     .comparativo table thead tr th.th-fixed { z-index: 4; }
 
+    /* ── Tamaño compacto: mismas medidas que Ejecutado / Presupuestado ── */
+    .comparativo table.consolidado { font-size: .75rem; border-collapse: separate; border-spacing: 0;}
+    .comparativo table.consolidado thead th {
+        padding: 6px 8px;
+        font-size: .68rem;
+        letter-spacing: .05em;
+    }
+    .comparativo table.consolidado thead tr.sub-row th { font-size: .66rem; padding: 4px 8px; }
+    .comparativo table.consolidado tbody td {
+        padding: 4px 8px;
+        font-size: .75rem;
+        line-height: 1.35;
+        border-bottom: 1px solid #d1d5db;      /* mismo gris de cuadrícula que Ejecutado */
+        border-right: 1px solid #d1d5db;
+    }
+    .comparativo table.consolidado td.num {
+        font-family: inherit;                   /* misma letra que Ejecutado (cifras alineadas) */
+        font-size: .75rem;
+        font-variant-numeric: tabular-nums;
+    }
+    .comparativo table tr .td-cuenta, .comparativo table tr .th-cuenta { min-width: 80px; max-width: 80px; }
+    .comparativo table tr .th-nombre,
+    .comparativo table tr .td-nombre {
+        left: 80px;
+        min-width: 230px;
+        max-width: 230px;
+        white-space: nowrap;                    /* una sola línea, como en Ejecutado */
+        overflow: hidden;
+        text-overflow: ellipsis;                /* el nombre completo queda en el tooltip */
+    }
+    .comparativo table tr .th-comentario,
+    .comparativo table tr .td-comentario { min-width: 190px; max-width: 190px; }
+    .comparativo .comentario-cell { padding: 0 .2rem; gap: .25rem; }
+    .comparativo .comentario-input { font-size: .72rem; padding: 0 .3rem; height: 18px; line-height: 16px; }
+
     /* ── Línea divisora vertical entre bloques de mes (y antes del acumulado) ── */
     .comparativo td.mes-sep {
         border-left: 2px solid var(--subtotal-linea, #334155) !important;
@@ -90,31 +125,6 @@
     .comparativo thead th.mes-sep {
         border-left: 2px solid #64748b !important;
     }
-
-    /* ── Comentarios: input + indicador de guardado ── */
-    .comentario-cell { display:flex; align-items:center; gap:.35rem; padding:.25rem .4rem; }
-    .comentario-input {
-        flex: 1;
-        min-width: 0;
-        background: transparent;
-        border: 1px solid transparent;
-        border-radius: 6px;
-        color: inherit;
-        font: inherit;
-        font-size: .78rem;
-        padding: .3rem .4rem;
-        transition: border-color .15s, background .15s;
-    }
-    .comentario-input:hover { border-color: var(--c-border, #3c3c3c); }
-    .comentario-input:focus {
-        outline: none;
-        border-color: var(--c-accent, #6d6df6);
-        background: rgba(255,255,255,0.03);
-    }
-    .comentario-estado { width: 14px; text-align:center; font-size:.75rem; flex-shrink:0; }
-    .comentario-estado.guardando { color: var(--c-muted, #9a9aab); }
-    .comentario-estado.guardado  { color: #1a7f37; }
-    .comentario-estado.error     { color: #c62828; }
 </style>
 {% endblock %}
 
