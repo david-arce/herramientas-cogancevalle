@@ -66,7 +66,7 @@ body {
 CONTENEDOR — mismo padding que .container de la dinámica
 ══════════════════════════════════════════════════════════════════ */
 .consolidado-wrap {
-    padding: 16px 18px;
+    padding: 8px 14px;
     max-width: 100%;
 }
 
@@ -76,13 +76,13 @@ CONTENEDOR — mismo padding que .container de la dinámica
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 12px;
+    gap: 8px;
+    margin-bottom: 8px;
 }
 
 /* Mismo estilo que .header h1 en la dinámica */
 .consolidado-title {
-    font-size: 1.35rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--c-text);
     display: flex;
@@ -98,18 +98,19 @@ CONTENEDOR — mismo padding que .container de la dinámica
 .controls-bar {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
 }
 
 .btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     border: none;
     border-radius: var(--radius);
-    padding: 8px 16px;
-    font-size: .85rem;
+    padding: 4px 10px;
+    font-size: .76rem;
+    line-height: 1.3;
     font-weight: 600;
     cursor: pointer;
     transition: background .15s, transform .1s;
@@ -156,15 +157,15 @@ CONTENEDOR — mismo padding que .container de la dinámica
     background: #fff;
     border: 1px solid var(--c-border-md);
     border-radius: var(--radius);
-    padding: 6px 12px;
+    padding: 3px 9px;
 }
 
 .search-box input {
     border: none;
     outline: none;
-    font-size: .85rem;
+    font-size: .76rem;
     color: var(--c-text);
-    width: 200px;
+    width: 180px;
     background: transparent;
 }
 
@@ -176,17 +177,28 @@ CONTENEDOR — mismo padding que .container de la dinámica
 /* ══ STATS — mismas .stat-pill de la dinámica ════════════════ */
 .stats-bar {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
+
+/* Pestañas de sede + stats en una sola fila */
+.sub-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+.sub-toolbar .stats-bar { margin-bottom: 0; }
 
 .stat-pill {
     background: var(--c-surface);
     border: 1px solid var(--c-border);
     border-radius: 999px;
-    padding: 5px 14px;
-    font-size: .78rem;
+    padding: 2px 10px;
+    font-size: .72rem;
     font-weight: 600;
     color: var(--c-muted);
     display: flex;
