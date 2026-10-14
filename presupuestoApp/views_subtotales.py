@@ -14,6 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .agrupacion_cuentas import cargar_reglas
+from .filas_calculadas import es_calculada
 from .models import OrdenCuenta, SubtotalCuentas
 from .subtotales import POR_CLAVE, configuracion_subtotales, limpiar_codigos, suma_cuenta, validar
 from .views_presupuesto_areas import _es_aprobador
@@ -42,11 +43,12 @@ def _filas_tabla():
     """[(código, nombre, visible_total, visible_sede)] de las filas que muestran las tablas."""
     filas = list(OrdenCuenta.objects.order_by("orden", "id")
                  .values_list("mcncuenta", "ctanombre", "visible_total", "visible_sede"))
-    if filas:
-        return filas
-    from .views import ORDEN_SEDE_FALLBACK, ORDEN_TOTAL_FALLBACK   # orden por defecto si la tabla está vacía
-    en_sede = set(ORDEN_SEDE_FALLBACK)
-    return [(c, "", True, c in en_sede) for c in ORDEN_TOTAL_FALLBACK]
+    if not filas:
+        from .views import ORDEN_SEDE_FALLBACK, ORDEN_TOTAL_FALLBACK   # orden por defecto si la tabla está vacía
+        en_sede = set(ORDEN_SEDE_FALLBACK)
+        filas = [(c, "", True, c in en_sede) for c in ORDEN_TOTAL_FALLBACK]
+    # Las filas calculadas (CALC-...) no son cuentas: no se suman en otra fila calculada
+    return [f for f in filas if not es_calculada(f[0])]
 
 
 def _analizar(clave, cuentas, prefijos):

@@ -7,6 +7,11 @@
 
 /* ── Variables ─────────────────────────────────────────────── */
 :root {
+    /* Subtotales: un solo color para todas las filas calculadas */
+    --subtotal-bg:       #e8edf4;
+    --subtotal-bg-hover: #dfe6f0;
+    --subtotal-texto:    #0f172a;
+    --subtotal-linea:    #334155;
     --bg:             #f4f5f7;
     --surface:        #ffffff;
     --border:         #d0d4db;
@@ -45,8 +50,8 @@
     --font-mono:      'IBM Plex Mono', monospace;
 
     --row-odd:        #ffffff;
-    --row-even:       #f8f9fb;
-    --row-hover:      #eef2fd;
+    --row-even:       #ffffff;   /* sin franjas de color */
+    --row-hover:      #f3f4f6;
     --header-bg:      #1a1d23;
     --header-text:    #e8eaed;
 }
@@ -270,8 +275,6 @@ table.consolidado td.num {
     font-size: 12px;
     color: var(--text-secondary);
 }
-table.consolidado td.num.pos { color: var(--c-pos); }
-table.consolidado td.num.neg { color: var(--c-neg); }
 
 /* ── Fila vacía ────────────────────────────────────────────── */
 table.consolidado tbody tr.empty-row td {
@@ -347,97 +350,21 @@ table.consolidado tfoot td:last-child { border-right: none; }
     #toastContainer     { bottom: 16px; right: 12px; left: 12px; }
     .toast              { max-width: 100%; }
 }
-/* ══ FILAS ESPECIALES ══════════════════════════════════════════ */
-tr.total-row-54 td {
-    background: #ececec;
-    color: bold;
+/* ══ FILAS ═══════════════════════════════════════════════════════
+   Las cuentas van sin color. Todos los subtotales (filas calculadas,
+   clase .fila-subtotal) llevan UN mismo color, negrilla y una línea
+   divisora marcada arriba y abajo. Los porcentajes, en cursiva.
+   El selector lleva "table.consolidado tbody" para ganarle a los
+   bordes grises de las celdas normales. */
+table.consolidado tbody tr.fila-subtotal td {
+    background: var(--subtotal-bg);
+    color: var(--subtotal-texto);
     font-weight: 700;
-    font-size: .73rem;
-    border-top: 2px solid #000000;
+    border-top: 2px solid var(--subtotal-linea);
+    border-bottom: 2px solid var(--subtotal-linea);
 }
-tr.total-row-ventas-netas td {
-    background: #ececec;
-    color: var(--row-vn-text);
-    font-weight: 700;
-    font-size: .73rem;
-    border-bottom: 2px solid #047857;
-}
-/* Fila % Costo de Ventas */
-tr.total-row-pct td {
-    background: #f0fdf4;
-    color: #166534;
-    font-weight: 600;
-    border-top: 1px dashed #86efac;
-    border-bottom: 1px dashed #86efac;
-}
-/* Fila Margen Bruto */
-tr.total-row-margen td {
-    background: #eff6ff;
-    color: #ccd5f4;
-    font-weight: 700;
-    border-top: 2px solid #c4defc;
-    border-bottom: 2px solid #93c5fd;
-}
-
-/* Fila % Margen Bruto */
-tr.total-row-pct-margen td {
-    background: #eef2ff;
-    color: #a6a0ff;
-    font-weight: 600;
-    border-top: 1px dashed #a5b4fc;
-    border-bottom: 1px dashed #a5b4fc;
-    font-style: italic;
-}
-/* Margen de Contribución */
-tr.total-row-margen-ctb td {
-    background: #e9fff4;   /* verde esmeralda suave */
-    color: #065f46;
-    font-weight: 700;
-    border-top: 2px solid #c8fae9;
-    border-bottom: 2px solid #10b981;
-}
-
-/* % Margen de Contribución */
-tr.total-row-pct-margen-ctb td {
-    background: #ecfdf5;
-    color: #065f46;
-    font-style: italic;
-    font-weight: 600;
-    border-bottom: 2px solid #10b981;
-}
-/* Utilidad Operacional */
-tr.total-row-utilidad-op td {
-    background: #dbeafe;        
-    color: #1e3a8a;
-    font-weight: 700;
-    border-top: 2px solid #000000;
-}
-
-/* % Utilidad Operacional — con línea separadora debajo.
-   El selector lleva "table.consolidado tbody" para ganarle en especificidad a
-   "table.consolidado tbody td" (que pone el borde inferior gris de 1px);
-   sin eso la línea separadora no se veía. */
-table.consolidado tbody tr.total-row-pct-utilidad-op td {
-    background: #eff6ff;
-    color: #1e3a8a;
-    font-style: italic;
-    font-weight: 600;
-    border-bottom: 2px solid #000000;
-}
-/* ── EXCEDENTES O PERDIDA NETA ──────────────────────────────── */
-tr.total-row-excedentes td {
-    background-color: #f0fdf4;
-    color: #166534;
-    font-weight: 700;
-}
-
-/* ── % EXCEDENTE O PERDIDA ──────────────────────────────────── */
-tr.total-row-pct-excedentes td {
-    background-color: #f0fdf4;
-    color: #15803d;
-    font-style: italic;
-    border-bottom: 2px solid #86efac;
-}
+table.consolidado tbody tr.fila-subtotal.fila-pct td { font-style: italic; }
+table.consolidado tbody tr.fila-subtotal:hover td { background: var(--subtotal-bg-hover); }
 .table-scroll {
     overflow-x: auto;
     overflow-y: auto;

@@ -11,7 +11,7 @@
   .orden-hint { font-size:.78rem; color:var(--c-muted,#9a9aab); margin-bottom:.75rem; }
   .orden-list { border:1px solid var(--c-border,#3c3c3c); border-radius:10px; overflow:hidden; max-height:65vh; overflow-y:auto; }
   .orden-row {
-    display:grid; grid-template-columns:34px 60px 120px 1fr 70px 70px 34px;
+    display:grid; grid-template-columns:34px 60px 250px 1fr 70px 70px 34px;
     align-items:center; gap:.5rem; padding:.4rem .6rem;
     border-bottom:1px solid var(--c-border,#3c3c3c); font-size:.8rem;
     background:transparent; cursor:grab;
@@ -30,6 +30,12 @@
   .chk-cell { text-align:center; }
   .btn-del { background:none; border:none; color:#c62828; cursor:pointer; font-size:.9rem; }
   .pos-num { color:var(--c-muted,#9a9aab); font-size:.72rem; text-align:right; }
+  /* Filas calculadas (subtotales): mismo color que en las tablas */
+  .orden-row.es-calculada { background:#e8edf4; font-weight:600; }
+  .orden-row.es-calculada:hover { background:#dfe6f0 !important; }
+  .badge-calc { display:inline-block; margin-left:.4rem; font-size:.65rem; font-weight:600; padding:1px 6px;
+                border-radius:999px; background:#334155; color:#fff; vertical-align:middle; }
+  .cta-code { word-break:break-all; }
 </style>
 {% endblock %}
 
@@ -50,6 +56,9 @@
   <div class="orden-hint">
     Arrastra las filas para reordenar. <b>Total</b> = aparece en Consolidado/Presupuestado general y Total Base ·
     <b>Sede</b> = aparece en las pestañas por sede. Los nombres se cargan al sincronizar y se comparten con Agrupación de cuentas; si dejas uno vacío se usa el que aparece en gris.
+    Las filas marcadas como <span class="badge-calc" style="margin:0">calculada</span> (códigos <code>CALC-…</code>) son los subtotales
+    (Ventas Netas, Margen Bruto, Utilidad Operacional…): se mueven, renombran y ocultan igual que una cuenta; qué cuentas suman
+    se define en Ajustes → Filas calculadas.
   </div>
 
   <div class="orden-list" id="lista">
@@ -93,11 +102,12 @@ function crearFila(c) {
   row.draggable = true;
   row.dataset.id = c.id ?? '';
   row.dataset.cuenta = c.mcncuenta;
+  if (c.calculada) row.classList.add('es-calculada');
 
   row.innerHTML = `
     <div class="drag-handle">⠿</div>
     <div class="pos-num"></div>
-    <div class="cta-code">${c.mcncuenta}</div>
+    <div class="cta-code">${c.mcncuenta}${c.calculada ? '<span class="badge-calc" title="Subtotal calculado">calculada</span>' : ''}</div>
     <div><input class="cta-nombre" type="text" value="${(c.ctanombre||'').replace(/"/g,'&quot;')}" placeholder="${(c.sugerido||'(sin nombre)').replace(/"/g,'&quot;')}" title="Si lo dejas vacío se usa: ${(c.sugerido||'el nombre contable').replace(/"/g,'&quot;')}"></div>
     <div class="chk-cell"><input type="checkbox" class="chk-total" ${c.visible_total ? 'checked' : ''}></div>
     <div class="chk-cell"><input type="checkbox" class="chk-sede"  ${c.visible_sede  ? 'checked' : ''}></div>
@@ -116,7 +126,10 @@ function crearFila(c) {
     cont.insertBefore(arrastrando, e.clientY < medio ? row : row.nextSibling);
   });
   row.querySelector('.btn-del').addEventListener('click', async () => {
-    if (!confirm(`¿Eliminar ${c.mcncuenta} de la lista de orden?`)) return;
+    const aviso = c.calculada
+      ? `¿Quitar la fila calculada ${c.mcncuenta}? Dejará de verse en las tablas (para ocultarla basta con desmarcar Total/Sede). "Sincronizar cuentas" la vuelve a agregar.`
+      : `¿Eliminar ${c.mcncuenta} de la lista de orden?`;
+    if (!confirm(aviso)) return;
     if (row.dataset.id) {
       await fetch(URL_ELIMINAR, {
         method:'POST',

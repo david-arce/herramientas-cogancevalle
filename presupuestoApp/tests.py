@@ -1711,3 +1711,88 @@ class SubidaLotesExcelTests(TestCase):
         self.assertEqual(r.json()["insertados"], 2500)
         inserts = [q for q in ctx.captured_queries if q["sql"].lstrip().upper().startswith("INSERT")]
         self.assertLess(len(inserts), 100)          # antes: 2.500 INSERT (uno por fila)
+
+
+class FilasCalculadasEnOrdenTests(TestCase):
+    """Las filas calculadas (CALC-...) están en Orden de cuentas y las tablas las ubican por esa lista."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.aprobador = User.objects.create_user("NICOLAS")
+
+    def test_ubicar_las_pone_donde_estaban_y_no_mueve_nada(self):
+        from . import filas_calculadas as fc
+        base = ["1", "2", "41750201", "613522", "4240900101", "4240909502", "5405", "5415", "542005",
+                "5105", "511534", "521005", "615035", "AT-00004", "VT-00001", "41659505", "5", "5230"]
+        r = fc.ubicar(base)
+        self.assertEqual([c for c in r if not fc.es_calculada(c)], base)       # las cuentas no se mueven
+        self.assertEqual(r[0], "CALC-VENTAS-NETAS")
+        siguiente = lambda c: r[r.index(c) + 1]
+        self.assertEqual(siguiente("613522"), "CALC-PCT-COSTO-VENTAS")
+        self.assertEqual(siguiente("4240909502"), "CALC-MARGEN-CONTRIBUCION")
+        self.assertEqual(r[r.index("5405") - 1], "CALC-GASTOS-VENTAS")
+        self.assertEqual(siguiente("511534"), "CALC-UTILIDAD-OPERACIONAL")
+        self.assertEqual(r[r.index("5") - 1], "CALC-GASTOS-SERVICIOS")
+        self.assertEqual(r[-2:], ["CALC-EXCEDENTES", "CALC-PCT-EXCEDENTES"])
+        self.assertEqual(fc.ubicar(r), r)                                       # idempotente
+        movida = [c for c in r if c != "CALC-MARGEN-BRUTO"] + ["CALC-MARGEN-BRUTO"]
+        self.assertEqual(fc.ubicar(movida), movida)                             # respeta lo que movió el usuario
+
+    def test_migracion_agrega_las_calculadas_a_un_orden_existente(self):
+        import importlib
+        from django.apps import apps
+        from . import filas_calculadas as fc
+        mig = importlib.import_module("presupuestoApp.migrations.0041_orden_filas_calculadas")
+        cuentas = ["1", "2", "613522", "5405", "5105", "5230"]
+        for i, c in enumerate(cuentas):
+            OrdenCuenta.objects.create(mcncuenta=c, orden=i * 7 + 3, visible_sede=c != "5230")
+        mig.agregar(apps, None)
+        filas = list(OrdenCuenta.objects.order_by("orden"))
+        self.assertEqual([o.mcncuenta for o in filas], fc.ubicar(cuentas))
+        self.assertEqual([o.orden for o in filas], [(i + 1) * 10 for i in range(len(filas))])
+        vn = OrdenCuenta.objects.get(mcncuenta="CALC-VENTAS-NETAS")
+        self.assertEqual((vn.ctanombre, vn.visible_total, vn.visible_sede), ("VENTAS NETAS", True, True))
+        self.assertFalse(OrdenCuenta.objects.get(mcncuenta="CALC-OTROS-INGRESOS").visible_sede)
+        mig.agregar(apps, None)
+        self.assertEqual(OrdenCuenta.objects.count(), len(filas))
+        mig.quitar(apps, None)
+        self.assertEqual(sorted(OrdenCuenta.objects.values_list("mcncuenta", flat=True)), sorted(cuentas))
+
+    def test_sincronizar_vuelve_a_agregar_las_que_falten(self):
+        for i, c in enumerate(["1", "613522", "5405", "CALC-VENTAS-NETAS"]):
+            OrdenCuenta.objects.create(mcncuenta=c, orden=(i + 1) * 10)
+        self.client.force_login(self.aprobador)
+        with mock.patch.object(views, "_cuentas_detectadas", return_value={}):
+            r = self.client.post(reverse("sincronizar_orden_cuentas"))
+        self.assertTrue(r.json()["success"], r.content)
+        codigos = list(OrdenCuenta.objects.order_by("orden").values_list("mcncuenta", flat=True))
+        self.assertEqual(codigos.count("CALC-VENTAS-NETAS"), 1)
+        self.assertEqual(codigos[codigos.index("613522") + 1], "CALC-PCT-COSTO-VENTAS")
+        self.assertEqual(sum(c.startswith("CALC-") for c in codigos), 17)
+        listado = {d["mcncuenta"]: d for d in self.client.get(reverse("listar_orden_cuentas")).json()["data"]}
+        self.assertTrue(listado["CALC-MARGEN-BRUTO"]["calculada"])
+        self.assertFalse(listado["613522"]["calculada"])
+
+    def test_las_tablas_reciben_el_orden_con_las_calculadas_y_sus_nombres(self):
+        self.client.force_login(self.aprobador)
+        with mock.patch.object(views, "calcular_movimientos", return_value={"success": True, "data": {}}):
+            total = self.client.get(reverse("obtener_consolidado")).json()
+            sede = self.client.get(reverse("obtener_presupuestado") + "?sede=tulua").json()
+            self.assertEqual(sum(c.startswith("CALC-") for c in total["orden"]), 17)
+            self.assertIn("CALC-GASTOS-FINANCIEROS", total["orden"])
+            self.assertNotIn("CALC-GASTOS-FINANCIEROS", sede["orden"])     # solo en Total
+            self.assertIn("CALC-UTILIDAD-OPERACIONAL", sede["orden"])
+            self.assertEqual(total["calculadas"]["CALC-MARGEN-BRUTO"], "Margen Bruto")
+            # Renombrada en Orden de cuentas -> las tablas usan ese nombre
+            OrdenCuenta.objects.create(mcncuenta="CALC-MARGEN-BRUTO", ctanombre="MARGEN BRUTO TOTAL", orden=10)
+            OrdenCuenta.objects.create(mcncuenta="1", orden=5)
+            total = self.client.get(reverse("obtener_consolidado")).json()
+        self.assertEqual(total["orden"], ["1", "CALC-MARGEN-BRUTO"])
+        self.assertEqual(total["calculadas"], {"CALC-MARGEN-BRUTO": "MARGEN BRUTO TOTAL"})
+
+    def test_agrupacion_no_puede_usar_codigos_calc(self):
+        self.client.force_login(self.aprobador)
+        r = self.client.post(reverse("guardar_agrupacion_cuenta"), json.dumps(
+            {"codigo": "CALC-MIO", "nombre": "x", "cuentas": ["541099"]}), content_type="application/json")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("reservados", r.json()["msg"])

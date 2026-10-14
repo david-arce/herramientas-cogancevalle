@@ -81,16 +81,15 @@
     /* Las celdas fijas en thead tienen z-index mayor */
     .comparativo table thead tr th.th-fixed { z-index: 4; }
 
-    /* ── Borde entre meses ── */
-    .comparativo td.mes-sep,
-    .comparativo th.mes-sep {
-        border-left: 2px solid var(--c-border, #3c3c3c) !important;
+    /* ── Línea divisora vertical entre bloques de mes (y antes del acumulado) ── */
+    .comparativo td.mes-sep {
+        border-left: 2px solid var(--subtotal-linea, #334155) !important;
     }
-
-    /* Resto de estilos */
-    .comparativo td.pos { color: #1a7f37; }
-    .comparativo td.neg { color: #c62828; }
-    .comparativo td.dif { font-weight: 600; }
+    .comparativo thead th.mes-th,
+    .comparativo thead th.col-sep,
+    .comparativo thead th.mes-sep {
+        border-left: 2px solid #64748b !important;
+    }
 
     /* ── Comentarios: input + indicador de guardado ── */
     .comentario-cell { display:flex; align-items:center; gap:.35rem; padding:.25rem .4rem; }
@@ -203,6 +202,7 @@
 {% block js %}
 {{ subtotales|json_script:"configSubtotales" }}
 <script src="{% static_v 'js/subtotales.js' %}"></script>
+<script src="{% static_v 'js/filas_calculadas.js' %}"></script>
 <script>
 /* ══════════════════════════════════════════════════════════════════
    CONFIGURACIÓN
@@ -265,6 +265,8 @@ let sedeActual          = 'tulua';
 let datosConsolidado    = [];
 let datosPresupuestado  = [];
 let comentariosActuales = {};   // { fila_key: texto }
+let ordenCuentas        = [];   // Orden de cuentas de la pestaña (incluye las CALC-...)
+let nombresCalculadas   = {};   // { 'CALC-...': nombre }
 const cache             = {};   // { sede: { consolidado, presupuestado, comentarios } }
 const timersGuardado    = {};   // debounce por fila_key
 
@@ -298,202 +300,43 @@ function getCsrfToken() {
    se ejecutan sobre CUALQUIER dataset que se les pase — consolidado
    o presupuestado — para poder comparar fila contra fila)
 ══════════════════════════════════════════════════════════════════ */
-function calcularTotalesPorPrefijo(data, prefijo) {
-    const t = { total: 0 };
-    MESES.forEach(m => t[m] = 0);
-    data.forEach(row => {
-        if (row.mcncuenta && String(row.mcncuenta).startsWith(prefijo)) {
-            MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
-            t.total += parseFloat(row.total) || 0;
-        }
-    });
-    return t;
-}
-/* Suma de una fila calculada con las cuentas de Ajustes → Filas calculadas
-   (static/js/subtotales.js). clave: 'VentasNetas', 'CostoVentas', '54', '51',
-   'AjustesMargenContribucion'... */
-function sumarSubtotal(data, clave) {
-    return Subtotales.sumar(data, clave, MESES);
-}
-function calcularTotalesPorLista(data, lista) {
-    const t = { total: 0 };
-    MESES.forEach(m => t[m] = 0);
-    data.forEach(row => {
-        if (row.mcncuenta) {
-            const c = String(row.mcncuenta);
-            if (lista.some(cod => c.startsWith(cod))) {
-                MESES.forEach(m => t[m] += parseFloat(row[m]) || 0);
-                t.total += parseFloat(row.total) || 0;
-            }
-        }
-    });
-    return t;
-}
 function cerosTotales() {
     const t = { total: 0 };
     MESES.forEach(m => t[m] = 0);
     return t;
 }
-function calcularSeguros(fn, data) {
-    if (typeof fn !== 'function') return cerosTotales();
-    try {
-        const result = fn(data);
-        const tieneValores = result && (
-            result.total !== 0 || MESES.some(m => (result[m] || 0) !== 0)
-        );
-        return tieneValores ? result : cerosTotales();
-    } catch { return cerosTotales(); }
+
+// Pestaña "Total" = mismo cálculo que Total Base; pestañas de sede = cálculo por sede
+const modoActual = () => (sedeActual === 'consolidado' ? 'total' : 'sede');
+const FILAS_PORCENTAJE = FilasCalculadas.PORCENTAJES;
+
+/* Cuentas del consolidado y del presupuestado unidas, en el orden de Orden de
+   cuentas. Sale toda cuenta que tenga datos en cualquiera de los dos lados
+   (antes solo salían las del consolidado). */
+function cuentasUnidas() {
+    const mapaC = new Map(datosConsolidado.map(r => [String(r.mcncuenta), r]));
+    const mapaP = new Map(datosPresupuestado.map(r => [String(r.mcncuenta), r]));
+    const filas = [], vistas = new Set();
+    const agregar = codigo => {
+        if (vistas.has(codigo)) return;
+        vistas.add(codigo);
+        const rc = mapaC.get(codigo), rp = mapaP.get(codigo);
+        if (rc) filas.push(rc);
+        else if (rp) filas.push({ ...cerosTotales(), mcncuenta: rp.mcncuenta, ctanombre: rp.ctanombre });
+    };
+    ordenCuentas.forEach(c => agregar(String(c)));
+    datosConsolidado.forEach(r => agregar(String(r.mcncuenta)));     // por si alguna no está en el orden
+    datosPresupuestado.forEach(r => agregar(String(r.mcncuenta)));
+    return filas;
 }
 
-function calcularPorcentajeCostoVentas(data) {
-    const ventasNetas = sumarSubtotal(data, 'VentasNetas');
-    const costoVentas = sumarSubtotal(data, 'CostoVentas');
-    const fila = { mcncuenta: '', ctanombre: '% Costo de Ventas', isTotalRow: true, tipoTotal: 'PctCostoVentas', total: 0 };
-    MESES.forEach(m => { const vn = ventasNetas[m] || 0; fila[m] = vn !== 0 ? (costoVentas[m] / vn) * 100 : 0; });
-    fila.total = ventasNetas.total !== 0 ? (costoVentas.total / ventasNetas.total) * 100 : 0;
-    return fila;
-}
-function calcularMargenBruto(data) {
-    const ventasNetas = sumarSubtotal(data, 'VentasNetas');
-    const costoVentas = sumarSubtotal(data, 'CostoVentas');
-    const fila = { mcncuenta: '', ctanombre: 'Margen Bruto', isTotalRow: true, tipoTotal: 'MargenBruto', total: 0 };
-    MESES.forEach(m => { fila[m] = (ventasNetas[m] || 0) - (costoVentas[m] || 0); });
-    fila.total = (ventasNetas.total || 0) - (costoVentas.total || 0);
-    return fila;
-}
-function calcularPorcentajeMargenBruto(data) {
-    const ventasNetas = sumarSubtotal(data, 'VentasNetas');
-    const margenBruto = calcularMargenBruto(data);
-    const fila = { mcncuenta: '', ctanombre: '% Margen Bruto', isTotalRow: true, tipoTotal: 'PctMargenBruto', total: 0 };
-    MESES.forEach(m => { const vn = ventasNetas[m] || 0; fila[m] = vn !== 0 ? (margenBruto[m] / vn) * 100 : 0; });
-    fila.total = ventasNetas.total !== 0 ? (margenBruto.total / ventasNetas.total) * 100 : 0;
-    return fila;
-}
-function calcularMargenContribucion(data) {
-    const margenBruto    = calcularSeguros(calcularMargenBruto, data);
-    const ajustes        = calcularSeguros(d => sumarSubtotal(d, 'AjustesMargenContribucion'), data);  // descuentos y bonificaciones
-    const fila = { mcncuenta: '', ctanombre: 'Margen de Contribución', isTotalRow: true, tipoTotal: 'MargenContribucion', total: 0 };
-    MESES.forEach(m => { fila[m] = (margenBruto[m] || 0) + (ajustes[m] || 0); });
-    fila.total = (margenBruto.total || 0) + (ajustes.total || 0);
-    return fila;
-}
-function calcularPorcentajeMargenContribucion(data) {
-    const ventasNetas        = calcularSeguros(d => sumarSubtotal(d, 'VentasNetas'), data);
-    const margenContribucion = calcularSeguros(calcularMargenContribucion, data);
-    const fila = { mcncuenta: '', ctanombre: '% Margen de Contribución', isTotalRow: true, tipoTotal: 'PctMargenContribucion', total: 0 };
-    MESES.forEach(m => { const vn = ventasNetas[m] || 0; fila[m] = vn !== 0 ? (margenContribucion[m] / vn) * 100 : 0; });
-    fila.total = ventasNetas.total !== 0 ? (margenContribucion.total / ventasNetas.total) * 100 : 0;
-    return fila;
-}
-function calcularUtilidadOperacional(data) {
-    const margenCtb = calcularSeguros(calcularMargenContribucion, data);
-    const gastos54  = calcularSeguros(d => sumarSubtotal(d, '54'), data);
-    const gastos51  = calcularSeguros(d => sumarSubtotal(d, '51'), data);
-    const fila = { mcncuenta: '', ctanombre: 'Utilidad Operacional', isTotalRow: true, tipoTotal: 'UtilidadOperacional', total: 0 };
-    MESES.forEach(m => { fila[m] = (margenCtb[m] || 0) - (gastos54[m] || 0) - (gastos51[m] || 0); });
-    fila.total = (margenCtb.total || 0) - (gastos54.total || 0) - (gastos51.total || 0);
-    return fila;
-}
-function calcularPorcentajeUtilidadOperacional(data) {
-    const ventasNetas = calcularSeguros(d => sumarSubtotal(d, 'VentasNetas'), data);
-    const utilidadOp  = calcularSeguros(calcularUtilidadOperacional, data);
-    const fila = { mcncuenta: '', ctanombre: '% Utilidad Operacional', isTotalRow: true, tipoTotal: 'PctUtilidadOperacional', total: 0 };
-    MESES.forEach(m => { const vn = ventasNetas[m] || 0; fila[m] = vn !== 0 ? (utilidadOp[m] / vn) * 100 : 0; });
-    fila.total = ventasNetas.total !== 0 ? (utilidadOp.total / ventasNetas.total) * 100 : 0;
-    return fila;
-}
-function calcularExcedentesPerdidaNeta(data) {
-    const utilidadOp      = calcularSeguros(calcularUtilidadOperacional, data);
-    const gastosFinanc    = calcularSeguros(typeof calcularGastosFinancieros === 'function' ? calcularGastosFinancieros : null, data);
-    const ingresosPorServ = calcularSeguros(typeof calcularIngresosPorServicios === 'function' ? calcularIngresosPorServicios : null, data);
-    const gastosPorServ   = calcularSeguros(typeof calcularGastosPorServicios === 'function' ? calcularGastosPorServicios : null, data);
-    const fila = { mcncuenta: '', ctanombre: 'EXCEDENTES O PERDIDA NETA', isTotalRow: true, tipoTotal: 'ExcedentesPerdidaNeta', total: 0 };
-    MESES.forEach(m => {
-        fila[m] = (utilidadOp[m] || 0) - (gastosFinanc[m] || 0) + (ingresosPorServ[m] || 0) - (gastosPorServ[m] || 0);
-    });
-    fila.total = (utilidadOp.total || 0) - (gastosFinanc.total || 0) + (ingresosPorServ.total || 0) - (gastosPorServ.total || 0);
-    return fila;
-}
-function calcularPorcentajeExcedentes(data) {
-    const ventasNetas       = calcularSeguros(d => sumarSubtotal(d, 'VentasNetas'), data);
-    const excedentesPerdida = calcularSeguros(calcularExcedentesPerdidaNeta, data);
-    const fila = { mcncuenta: '', ctanombre: '% Excedente o Pérdida', isTotalRow: true, tipoTotal: 'PctExcedentes', total: 0 };
-    MESES.forEach(m => { const vn = ventasNetas[m] || 0; fila[m] = vn !== 0 ? (excedentesPerdida[m] / vn) * 100 : 0; });
-    fila.total = ventasNetas.total !== 0 ? (excedentesPerdida.total / ventasNetas.total) * 100 : 0;
-    return fila;
-}
-
-const CALCULADORAS_TOTAL = {
-    'VentasNetas':            d => ({ ...sumarSubtotal(d, 'VentasNetas') }),
-    '54':                     d => sumarSubtotal(d, '54'),
-    'PctCostoVentas':         calcularPorcentajeCostoVentas,
-    'MargenBruto':            calcularMargenBruto,
-    'PctMargenBruto':         calcularPorcentajeMargenBruto,
-    'MargenContribucion':     calcularMargenContribucion,
-    'PctMargenContribucion':  calcularPorcentajeMargenContribucion,
-    'UtilidadOperacional':    calcularUtilidadOperacional,
-    'PctUtilidadOperacional': calcularPorcentajeUtilidadOperacional,
-    'ExcedentesPerdidaNeta':  calcularExcedentesPerdidaNeta,
-    'PctExcedentes':          calcularPorcentajeExcedentes,
-};
-const FILAS_PORCENTAJE = new Set([
-    'PctCostoVentas','PctMargenBruto','PctMargenContribucion',
-    'PctUtilidadOperacional','PctExcedentes'
-]);
-
-function construirFilas(data) {
-    const totales54        = sumarSubtotal(data, '54');
-    const totalesVN        = sumarSubtotal(data, 'VentasNetas');
-    const filaPct          = calcularPorcentajeCostoVentas(data);
-    const filaMargen       = calcularMargenBruto(data);
-    const filaPctMargen    = calcularPorcentajeMargenBruto(data);
-    const filaMargenCtb    = calcularMargenContribucion(data);
-    const filaPctMargenCtb = calcularPorcentajeMargenContribucion(data);
-    const filaUtilidadOp   = calcularUtilidadOperacional(data);
-    const filaPctUtilidadOp     = calcularPorcentajeUtilidadOperacional(data);
-    const filaExcedentesPerdida = calcularExcedentesPerdidaNeta(data);
-    const filaPctExcedentes     = calcularPorcentajeExcedentes(data);
-
-    const insertado = { VentasNetas:false, Gastos54:false, Despues613522:false, Despues5415:false };
-    const resultado = [];
-
-    data.forEach(row => {
-        const cuenta = String(row.mcncuenta || '');
-
-        if (cuenta === '1' && !insertado.VentasNetas) {
-            resultado.push({ ...totalesVN, mcncuenta:'', ctanombre:'VENTAS NETAS', isTotalRow:true, tipoTotal:'VentasNetas' });
-            insertado.VentasNetas = true;
-        }
-        if (cuenta === '5405' && !insertado.Gastos54) {
-            resultado.push({ ...totales54, mcncuenta:'', ctanombre:'GASTOS DE VENTAS', isTotalRow:true, tipoTotal:'54' });
-            insertado.Gastos54 = true;
-        }
-
-        resultado.push(row);
-
-        if (cuenta === '613522' && !insertado.Despues613522) {
-            resultado.push(filaPct, filaMargen, filaPctMargen, filaMargenCtb, filaPctMargenCtb);
-            insertado.Despues613522 = true;
-        }
-        if (cuenta === '5415' && !insertado.Despues5415) {
-            resultado.push(filaUtilidadOp, filaPctUtilidadOp, filaExcedentesPerdida, filaPctExcedentes);
-            insertado.Despues5415 = true;
-        }
-    });
-
-    if (!insertado.VentasNetas) resultado.push({ ...totalesVN, mcncuenta:'', ctanombre:'VENTAS NETAS', isTotalRow:true, tipoTotal:'VentasNetas' });
-    if (!insertado.Gastos54)   resultado.push({ ...totales54, mcncuenta:'', ctanombre:'GASTOS DE VENTAS', isTotalRow:true, tipoTotal:'54' });
-    if (!insertado.Despues613522) resultado.push(filaPct, filaMargen, filaPctMargen, filaMargenCtb, filaPctMargenCtb);
-    if (!insertado.Despues5415)   resultado.push(filaUtilidadOp, filaPctUtilidadOp, filaExcedentesPerdida, filaPctExcedentes);
-
-    return resultado;
+/* Filas de la tabla: cuentas + filas calculadas (CALC-...) donde estén en Orden de cuentas */
+function construirFilas() {
+    return FilasCalculadas.construir(cuentasUnidas(), ordenCuentas, modoActual(), { nombres: nombresCalculadas });
 }
 
 function obtenerFilaEquivalente(filaC, mapaPresupuestado) {
-    if (filaC.isTotalRow) {
-        const fn = CALCULADORAS_TOTAL[filaC.tipoTotal];
-        return fn ? fn(datosPresupuestado) : cerosTotales();
-    }
+    if (filaC.isTotalRow) return FilasCalculadas.calcular(filaC.tipoTotal, datosPresupuestado, modoActual());
     return mapaPresupuestado.get(String(filaC.mcncuenta)) || cerosTotales();
 }
 
@@ -675,7 +518,7 @@ function renderTabla() {
     }
 
     const mapaPresupuestado = new Map(datosPresupuestado.map(r => [String(r.mcncuenta), r]));
-    const filasC = construirFilas(datosConsolidado);
+    const filasC = construirFilas();
 
     filasC.forEach(filaC => {
         const filaP = obtenerFilaEquivalente(filaC, mapaPresupuestado);
@@ -683,7 +526,8 @@ function renderTabla() {
         const filaKey = filaKeyDe(filaC);
 
         const tr = document.createElement('tr');
-        if (filaC.isTotalRow) tr.className = claseTotal(filaC.tipoTotal);
+        // Un solo estilo para todos los subtotales
+        if (filaC.isTotalRow) tr.className = 'fila-subtotal ' + claseTotal(filaC.tipoTotal) + (esPct ? ' fila-pct' : '');
 
         const tdCuenta = document.createElement('td');
         tdCuenta.className = 'th-fixed td-cuenta';
@@ -758,6 +602,8 @@ async function cargarDatos(sede, forzar = false) {
         datosConsolidado    = cache[sede].consolidado;
         datosPresupuestado  = cache[sede].presupuestado;
         comentariosActuales = cache[sede].comentarios;
+        ordenCuentas        = cache[sede].orden;
+        nombresCalculadas   = cache[sede].calculadas;
         construirEncabezados();
         renderTabla();
         return;
@@ -785,11 +631,15 @@ async function cargarDatos(sede, forzar = false) {
         datosConsolidado    = jsonC.data || [];
         datosPresupuestado  = jsonP.data || [];
         comentariosActuales = jsonCom.data || {};
+        ordenCuentas        = jsonC.orden || jsonP.orden || [];
+        nombresCalculadas   = jsonC.calculadas || jsonP.calculadas || {};
 
         cache[sede] = {
             consolidado: datosConsolidado,
             presupuestado: datosPresupuestado,
             comentarios: comentariosActuales,
+            orden: ordenCuentas,
+            calculadas: nombresCalculadas,
         };
 
         construirEncabezados();
@@ -840,7 +690,7 @@ document.getElementById('exportarBtn').addEventListener('click', () => {
         showToast('Sin datos para exportar', 'error'); return;
     }
     const mapaPresupuestado = new Map(datosPresupuestado.map(r => [String(r.mcncuenta), r]));
-    const filasC = construirFilas(datosConsolidado);
+    const filasC = construirFilas();
 
     const headers = ['Cuenta', 'Nombre Cuenta'];
     MESES.forEach(m => headers.push(

@@ -14,6 +14,7 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
 
+from .filas_calculadas import PREFIJO as PREFIJO_CALCULADAS
 from .agrupacion_cuentas import PATRON_CODIGO, PATRON_CUENTA, ReglasCuentas, filas_reglas
 from .models import (
     AgrupacionCuenta, ComentarioComparativo, ConsolidadoTotalBase, Cuenta5Base, Cuenta5Presupuestado, CuentasContables,
@@ -124,6 +125,8 @@ def _validar(datos, actual=None):
                        "para que la fila siga sumando en el mismo subtotal.")
     elif not codigo:
         errores.append("Escribe el código de la fila.")
+    elif codigo.upper().startswith(PREFIJO_CALCULADAS):
+        errores.append(f"Los códigos que empiezan por {PREFIJO_CALCULADAS} están reservados para las filas calculadas.")
     elif len(codigo) > 60 or not PATRON_CODIGO.match(codigo):
         errores.append("El código solo puede tener letras, números, guion o guion bajo (máx. 60).")
     elif AgrupacionCuenta.objects.filter(codigo=codigo).exclude(pk=getattr(actual, "pk", None)).exists():

@@ -40,6 +40,7 @@ from django.db import models
 from django.core.paginator import Paginator
 from .log_cargas import log_carga
 from .subtotales import configuracion_para_tablas
+from . import filas_calculadas
 from django.views.decorators.http import require_http_methods, require_GET, require_POST
 
 # Tarjetas del dashboard de presupuestos por área: (clave de SEDE_CONFIG,
@@ -2655,8 +2656,13 @@ def _responder_movimientos(request, origen):
     posicion = {cta: i for i, cta in enumerate(ORDEN_PERSONALIZADO)}
     filas.sort(key=lambda item: posicion[item['mcncuenta']])
 
+    # Nombre de las filas calculadas (CALC-...): el de Orden de cuentas o el de por defecto
+    calculadas = {c: NOMBRES.get(c) or filas_calculadas.NOMBRES[c]
+                  for c in ORDEN_PERSONALIZADO if filas_calculadas.es_calculada(c)}
+
     return JsonResponse({'data': filas,
                          'orden': ORDEN_PERSONALIZADO,
+                         'calculadas': calculadas,
                          'recordsTotal': len(filas),
                          'recordsFiltered': len(filas)})
 
@@ -2698,7 +2704,11 @@ ORDEN_TOTAL_FALLBACK = [
     '4240900301','4240900401','4240909501','4240909503','4240909901','41750105',
     '5','6','7','8','5230',
 ]
-ORDEN_SEDE_FALLBACK = ORDEN_TOTAL_FALLBACK[:ORDEN_TOTAL_FALLBACK.index('542005') + 1]
+_CUENTAS_SEDE_FALLBACK = set(ORDEN_TOTAL_FALLBACK[:ORDEN_TOTAL_FALLBACK.index('542005') + 1])
+# Las filas calculadas (CALC-...) van en su lugar por defecto dentro de la lista.
+ORDEN_TOTAL_FALLBACK = filas_calculadas.ubicar(ORDEN_TOTAL_FALLBACK)
+ORDEN_SEDE_FALLBACK = [c for c in ORDEN_TOTAL_FALLBACK
+                       if c in _CUENTAS_SEDE_FALLBACK or c in filas_calculadas.EN_SEDE]
 
 
 def obtener_orden_cuentas(ambito='total'):
@@ -2768,8 +2778,8 @@ def nombres_por_defecto(codigos, detectadas=None):
     nombres = {}
     for c in codigos:
         nombre = (reglas.nombre(c) or detectadas.get(c) or NOMBRES_CUENTAS_CLAVE.get(c)
-                  or catalogo.get(c) or '').strip()
-        if nombre.isupper():
+                  or filas_calculadas.NOMBRES.get(c) or catalogo.get(c) or '').strip()
+        if nombre.isupper() and not filas_calculadas.es_calculada(c):
             nombre = nombre.capitalize()
         nombres[c] = nombre
     return nombres
@@ -2785,6 +2795,7 @@ def listar_orden_cuentas(request):
     sugeridos = nombres_por_defecto([d['mcncuenta'] for d in data])
     for d in data:
         d['sugerido'] = sugeridos.get(d['mcncuenta'], '')
+        d['calculada'] = filas_calculadas.es_calculada(d['mcncuenta'])
     return JsonResponse({'success': True, 'data': data, 'total': len(data)})
 
 
@@ -2828,6 +2839,25 @@ def sincronizar_orden_cuentas(request):
                     ))
             OrdenCuenta.objects.bulk_create(nuevas)
             creadas += len(nuevas)
+
+            # Filas calculadas (CALC-...) que falten: se insertan en su lugar por defecto
+            # y se renumera la lista sin cambiar el orden de lo que ya estaba.
+            filas = list(OrdenCuenta.objects.order_by('orden', 'id'))
+            codigos = filas_calculadas.ubicar([o.mcncuenta for o in filas])
+            if len(codigos) != len(filas):
+                por_codigo = {o.mcncuenta: o for o in filas}
+                faltan = [OrdenCuenta(mcncuenta=c, ctanombre=filas_calculadas.NOMBRES[c], orden=0,
+                                      visible_total=True, visible_sede=c in filas_calculadas.EN_SEDE)
+                          for c in codigos if c not in por_codigo]
+                OrdenCuenta.objects.bulk_create(faltan)
+                creadas += len(faltan)
+                por_codigo.update({o.mcncuenta: o for o in faltan})
+                todas = []
+                for i, c in enumerate(codigos):
+                    o = OrdenCuenta.objects.get(mcncuenta=c) if por_codigo[c].pk is None else por_codigo[c]
+                    o.orden = (i + 1) * 10
+                    todas.append(o)
+                OrdenCuenta.objects.bulk_update(todas, ['orden'], batch_size=500)
 
             # Completa el nombre de las filas que lo tengan vacío (no toca los ya escritos).
             vacias = list(OrdenCuenta.objects.filter(ctanombre=''))
