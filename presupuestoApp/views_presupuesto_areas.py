@@ -454,6 +454,7 @@ def presupuesto_sede(request, sede):
         "sede_label": config["label"],
         "versiones": versiones,
         "version_actual": versiones[-1]["numero"] if versiones else None,
+        "cuenta5": estado_cuenta5(sede),   # mismo estado que muestran las tarjetas
     })
 
 
@@ -811,6 +812,32 @@ def subir_cuenta5_sede(request, sede):
         "reemplazados": reemplazados, "sin_cuenta": sin_cuenta,
         "estado": estado_cuenta5(sede),
     })
+
+
+@login_required
+def quitar_cuenta5_sede(request, sede):
+    """Elimina de Cuenta 5 presupuestado lo que esta área había subido.
+
+    Solo borra los registros con origen_area = sede; lo cargado por Excel y lo
+    de otras áreas no se toca. La versión aprobada sigue intacta, así que se
+    puede volver a subir cuando se quiera.
+    """
+    config = _config_sede(sede)
+    if not config:
+        return JsonResponse({"success": False, "msg": "Área no configurada"}, status=404)
+    if not _es_aprobador(request):
+        return JsonResponse({"success": False, "msg": "Solo el aprobador puede quitar de Cuenta 5"}, status=403)
+    if request.method != "POST":
+        return JsonResponse({"success": False, "msg": "Método no permitido"}, status=405)
+
+    with log_carga("quitar_cuenta5_sede", request, sede=sede) as info, transaction.atomic():
+        eliminados, _ = Cuenta5Presupuestado.objects.filter(origen_area=sede).delete()
+        info.update(eliminados=eliminados)
+
+    msg = (f"{config['label']}: se quitaron {eliminados} registros de Cuenta 5 ✅" if eliminados
+           else f"{config['label']} no tenía nada subido en Cuenta 5")
+    return JsonResponse({"success": True, "msg": msg, "eliminados": eliminados,
+                         "estado": estado_cuenta5(sede)})
 
 
 # ---------------------------------------------------------------------------

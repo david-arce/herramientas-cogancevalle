@@ -29,7 +29,7 @@
                     data-estado="{{ t.cuenta5.estado }}"
                     {% if t.cuenta5.estado == 'sin_aprobar' or t.cuenta5.estado == 'sin_datos' or t.cuenta5.estado == 'sin_confirmar' %}disabled title="{{ t.cuenta5.texto }}"{% endif %}>
                 <span class="material-icons" aria-hidden="true">cloud_upload</span>
-                <span class="c5-btn-texto">{% if t.cuenta5.estado == 'subido' or t.cuenta5.estado == 'desactualizado' %}Volver a subir a Cuenta 5{% else %}Subir a Cuenta 5{% endif %}</span>
+                <span class="c5-btn-texto">{% if t.cuenta5.estado == 'subido' or t.cuenta5.estado == 'desactualizado' %}Volver a subir presupuesto{% else %}Subir presupuesto{% endif %}</span>
             </button>
         </div>
     </article>
@@ -37,7 +37,7 @@
 </section>
 
 <dialog id="dlgCuenta5" class="c5-dialogo" aria-labelledby="dlgCuenta5Titulo">
-    <h2 id="dlgCuenta5Titulo">Subir a Cuenta 5 presupuestado</h2>
+    <h2 id="dlgCuenta5Titulo">Subir presupuesto</h2>
     <p id="dlgCuenta5Texto"></p>
     <div class="c5-dialogo-botones">
         <button type="button" id="dlgCuenta5Cancelar">Cancelar</button>
@@ -81,7 +81,7 @@
         boton.dataset.descripcion = e.descripcion || "";
         boton.disabled = SIN_BOTON.includes(e.estado);
         boton.querySelector(".c5-btn-texto").textContent =
-            (e.estado === "subido" || e.estado === "desactualizado") ? "Volver a subir a Cuenta 5" : "Subir a Cuenta 5";
+            (e.estado === "subido" || e.estado === "desactualizado") ? "Volver a subir presupuesto" : "Subir presupuesto";
     }
 
     document.querySelectorAll(".c5-btn").forEach(boton => {
@@ -114,7 +114,7 @@
             if (datos.estado) pintarEstado(tarjeta, datos.estado);
             mostrarAviso(datos.msg || (resp.ok ? "Listo" : "No se pudo subir"), !datos.success);
         } catch (e) {
-            mostrarAviso("Error de conexión al subir a Cuenta 5", true);
+            mostrarAviso("Error de conexión al subir el presupuesto", true);
         } finally {
             boton.classList.remove("cargando");
             boton.disabled = SIN_BOTON.includes(boton.dataset.estado);

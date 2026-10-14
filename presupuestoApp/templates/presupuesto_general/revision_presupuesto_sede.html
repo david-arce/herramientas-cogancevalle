@@ -43,6 +43,15 @@
             <button type="button">👁️ Ver aprobado</button>
         </a>
     </div>
+    {# Estado en Cuenta 5 presupuestado: el mismo que muestran las tarjetas del dashboard #}
+    <div class="toolbar-group cuenta5-grupo" id="cuenta5Grupo" aria-live="polite">
+        <b>Cuenta 5:</b>
+        <span class="badge" id="c5Badge"></span>
+        <span class="c5-detalle" id="c5Detalle"></span>
+        <button type="button" id="subirC5Btn" class="btn-principal">☁️ Subir presupuesto</button>
+        <button type="button" id="quitarC5Btn" class="btn-peligro"
+                title="Elimina de Cuenta 5 presupuestado lo que se subió de {{ sede_label }}">🗑️ Quitar de Cuenta 5</button>
+    </div>
     {% include "presupuesto_general/_grilla_toolbar.html" %}
 </div>
 
@@ -71,6 +80,31 @@
     </div>
 </div>
 
+<div id="modalSubirC5" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">☁️ Subir presupuesto</div>
+        <p id="textoSubirC5"></p>
+        <div class="modal-footer">
+            <button class="btn-cancel" data-modal="modalSubirC5">Cancelar</button>
+            <button class="btn-confirm-aprobar" id="confirmSubirC5Btn">Subir</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalQuitarC5" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">⚠️ Quitar de Cuenta 5</div>
+        <p>Se eliminarán de Cuenta 5 presupuestado los <b id="registrosQuitarC5"></b> registros que se subieron de
+           {{ sede_label }}. Lo cargado por Excel y lo de otras áreas no se toca, y la versión aprobada sigue
+           intacta: puedes volver a subirla cuando quieras.</p>
+        <div class="modal-footer">
+            <button class="btn-cancel" data-modal="modalQuitarC5">Cancelar</button>
+            <button class="btn-confirm" id="confirmQuitarC5Btn">Quitar</button>
+        </div>
+    </div>
+</div>
+
+{{ cuenta5|json_script:"estadoCuenta5" }}
 <script src="{% static_v 'js/grilla_presupuesto.js' %}"></script>
 <script>
 // Las URLs por versión se arman a partir de una plantilla con un número
@@ -79,6 +113,8 @@ const URL_OBTENER = "{% url 'obtener_presupuesto_sede' sede=sede %}";
 const URL_GUARDAR = v => "{% url 'guardar_version_sede' sede=sede version=999999 %}".replace("999999", v);
 const URL_APROBAR = v => "{% url 'aprobar_version_sede' sede=sede version=999999 %}".replace("999999", v);
 const URL_BORRAR  = "{% url 'borrar_presupuesto_sede' sede=sede %}";
+const URL_SUBIR_C5  = "{% url 'subir_cuenta5_sede' sede=sede %}";
+const URL_QUITAR_C5 = "{% url 'quitar_cuenta5_sede' sede=sede %}";
 
 const select = document.getElementById("versionSelect");
 const versionActual = () => select.value;
@@ -122,6 +158,62 @@ document.getElementById("confirmAprobarBtn").addEventListener("click", async () 
     } catch (e) {
         GrillaPresupuesto.showToast("Error al aprobar ❌", "error");
     }
+});
+
+// ── Cuenta 5 presupuestado: estado, subir y quitar ──
+const C5_BADGE = { subido: "badge-aprobada", pendiente: "badge-pendiente",
+                   desactualizado: "badge-sinenviar", sin_aprobar: "badge-neutro" };
+let estadoC5 = JSON.parse(document.getElementById("estadoCuenta5").textContent);
+
+function pintarCuenta5(e) {
+    estadoC5 = e;
+    const badge = document.getElementById("c5Badge");
+    badge.className = "badge " + (C5_BADGE[e.estado] || "badge-neutro");
+    badge.textContent = e.texto;
+    document.getElementById("c5Detalle").textContent = e.detalle;
+    const ya = e.estado === "subido" || e.estado === "desactualizado";
+    const subir = document.getElementById("subirC5Btn");
+    subir.textContent = ya ? "☁️ Volver a subir presupuesto" : "☁️ Subir presupuesto";
+    subir.disabled = e.estado === "sin_aprobar";
+    subir.title = e.estado === "sin_aprobar" ? "Aprueba una versión para poder subirla" : "";
+    document.getElementById("quitarC5Btn").disabled = !e.registros_subidos;
+}
+pintarCuenta5(estadoC5);
+
+async function accionCuenta5(url, boton) {
+    boton.disabled = true;
+    try {
+        const resp = await GrillaPresupuesto.apiPost(url, {});
+        GrillaPresupuesto.showToast(resp.msg || "Listo", resp.success ? "success" : "error");
+        if (resp.estado) pintarCuenta5(resp.estado);
+    } catch (e) {
+        GrillaPresupuesto.showToast("Error de conexión ❌", "error");
+    } finally {
+        pintarCuenta5(estadoC5);   // re-habilita los botones según el estado
+    }
+}
+
+document.getElementById("subirC5Btn").addEventListener("click", () => {
+    const ya = estadoC5.estado === "subido" || estadoC5.estado === "desactualizado";
+    document.getElementById("textoSubirC5").textContent =
+        `Se subirá ${estadoC5.descripcion} a Cuenta 5 presupuestado.` +
+        (ya ? " Reemplazará los registros que ya se habían subido." : "") +
+        " Se sube la versión APROBADA, no la que estás viendo si es otra.";
+    GrillaPresupuesto.abrirModal("modalSubirC5");
+});
+document.getElementById("confirmSubirC5Btn").addEventListener("click", async () => {
+    GrillaPresupuesto.cerrarModal("modalSubirC5");
+    await accionCuenta5(URL_SUBIR_C5, document.getElementById("subirC5Btn"));
+});
+
+document.getElementById("quitarC5Btn").addEventListener("click", () => {
+    document.getElementById("registrosQuitarC5").textContent =
+        Number(estadoC5.registros_subidos || 0).toLocaleString("es-CO");
+    GrillaPresupuesto.abrirModal("modalQuitarC5");
+});
+document.getElementById("confirmQuitarC5Btn").addEventListener("click", async () => {
+    GrillaPresupuesto.cerrarModal("modalQuitarC5");
+    await accionCuenta5(URL_QUITAR_C5, document.getElementById("quitarC5Btn"));
 });
 
 // ── Borrar versión ──

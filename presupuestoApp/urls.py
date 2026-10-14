@@ -150,6 +150,7 @@ urlpatterns = [
     path('area/<str:sede>/subir/', views.subir_presupuesto_sede, name='subir_presupuesto_sede'),
     path('area/<str:sede>/borrar/', views.borrar_presupuesto_sede, name='borrar_presupuesto_sede'),
     path('area/<str:sede>/subir-cuenta5/', views.subir_cuenta5_sede, name='subir_cuenta5_sede'),
+    path('area/<str:sede>/quitar-cuenta5/', views.quitar_cuenta5_sede, name='quitar_cuenta5_sede'),
     path('cuenta5/nomina/subir/', views.subir_cuenta5_nomina, name='subir_cuenta5_nomina'),
     
     # consolidado general 

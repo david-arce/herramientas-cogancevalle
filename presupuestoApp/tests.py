@@ -1923,3 +1923,93 @@ class TablaDinamicaResponsableYBusquedaTests(TestCase):
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual(Cuenta5Presupuestado.objects.get(mcndetalle="agua bodega").mcnvaldebi, 55)
         self.assertEqual(Cuenta5Presupuestado.objects.get(mcndetalle="agua sede").mcnvaldebi, 100)
+
+
+class QuitarCuenta5YRevisionTests(TestCase):
+    """Quitar de Cuenta 5 lo subido por un área, y los controles en la pantalla de revisión."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.aprobador = User.objects.create_user("NICOLAS")
+        cls.usuario_area = User.objects.create_user("PLOZANO")
+
+    def setUp(self):
+        self.client.force_login(self.aprobador)
+        PresupuestoArea.objects.bulk_create(filas_verticales(
+            [fila("A", 100)], area=AREA, etapa="aprobado", version=1, fecha_version=timezone.localdate()))
+        # También una versión enviada, para que la pantalla de revisión tenga qué mostrar.
+        PresupuestoArea.objects.bulk_create(filas_verticales(
+            [fila("A", 100)], area=AREA, etapa="proyectado", version=1, fecha_version=timezone.localdate()))
+
+    def quitar(self, area=AREA):
+        return self.client.post(reverse("quitar_cuenta5_sede", args=[area]))
+
+    def test_quita_solo_lo_del_area(self):
+        Cuenta5Presupuestado.objects.create(mcncuenta="510506", mcnvaldebi=7, mcnfecha=46023)        # Excel
+        Cuenta5Presupuestado.objects.create(mcncuenta="510506", mcnvaldebi=7, mcnfecha=46023,
+                                            origen_area="tecnologia")                                # otra área
+        self.client.post(reverse("subir_cuenta5_sede", args=[AREA]))
+        self.assertEqual(vpa.estado_cuenta5(AREA)["estado"], "subido")
+
+        r = self.quitar()
+        self.assertEqual(r.status_code, 200, r.content)
+        datos = r.json()
+        self.assertTrue(datos["success"])
+        self.assertEqual(datos["eliminados"], 12)
+        self.assertEqual(datos["estado"]["estado"], "pendiente")
+        self.assertFalse(Cuenta5Presupuestado.objects.filter(origen_area=AREA).exists())
+        self.assertEqual(Cuenta5Presupuestado.objects.count(), 2)
+        # La versión aprobada sigue ahí: se puede volver a subir.
+        self.assertTrue(self.client.post(reverse("subir_cuenta5_sede", args=[AREA])).json()["success"])
+
+    def test_sin_nada_subido(self):
+        datos = self.quitar().json()
+        self.assertTrue(datos["success"])
+        self.assertEqual(datos["eliminados"], 0)
+
+    def test_permisos_y_metodo(self):
+        self.client.force_login(self.usuario_area)
+        self.assertEqual(self.quitar().status_code, 403)
+        self.client.force_login(self.aprobador)
+        self.assertEqual(self.client.get(reverse("quitar_cuenta5_sede", args=[AREA])).status_code, 405)
+        self.assertEqual(self.quitar("no-existe").status_code, 404)
+
+    def test_revision_muestra_estado_y_botones(self):
+        r = self.client.get(reverse("presupuesto_sede", args=[AREA]))
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.context["cuenta5"]["estado"], "pendiente")
+        self.assertContains(r, 'id="estadoCuenta5"')
+        self.assertContains(r, "Subir presupuesto")
+        self.assertContains(r, "Quitar de Cuenta 5")
+        self.assertContains(r, reverse("quitar_cuenta5_sede", args=[AREA]))
+
+
+class TextosYAniosTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_user("admin")
+
+    def setUp(self):
+        self.client.force_login(self.admin)
+
+    def test_tarjetas_dicen_subir_presupuesto(self):
+        r = self.client.get(reverse("dashboardPresupuesto"))
+        self.assertContains(r, "Subir presupuesto")
+        self.assertNotContains(r, "Subir a Cuenta 5")
+
+    def test_comparativo_usa_anio_actual_y_siguiente(self):
+        r = self.client.get(reverse("comparativo_general"))
+        actual = timezone.localdate().year
+        self.assertContains(r, f"const ANIO_C = '-{actual % 100:02d}';")
+        self.assertContains(r, f"const ANIO_P = '-{(actual + 1) % 100:02d}';")
+
+
+class TextosBotonesGrillaTests(TestCase):
+    def test_textos_de_la_barra_de_la_grilla(self):
+        User.objects.create_user("NICOLAS")
+        self.client.force_login(User.objects.get(username="NICOLAS"))
+        PresupuestoArea.objects.bulk_create(filas_verticales(
+            [fila("A")], area=AREA, etapa="proyectado", version=1, fecha_version=timezone.localdate()))
+        r = self.client.get(reverse("presupuesto_sede", args=[AREA]))
+        for texto in ("Exportar a Excel esta tabla", "Descargar plantilla vacía", "Importar archivo Excel"):
+            self.assertContains(r, texto)

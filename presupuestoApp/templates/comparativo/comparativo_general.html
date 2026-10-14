@@ -99,8 +99,10 @@
 /* ══════════════════════════════════════════════════════════════════
    CONFIGURACIÓN
 ══════════════════════════════════════════════════════════════════ */
-const ANIO_C = '-25';   // sufijo columna Consolidado
-const ANIO_P = '-26';   // sufijo columna Presupuestado
+// Sufijos de año: Consolidado = año en curso, Presupuestado = año siguiente
+// (los calcula el servidor; cambian solos al pasar de año).
+const ANIO_C = '{{ sufijo_consolidado }}';
+const ANIO_P = '{{ sufijo_presupuestado }}';
 
 const URL_CONSOLIDADO_BASE   = "{% url 'obtener_consolidado' %}";
 const URL_PRESUPUESTADO_BASE = "{% url 'obtener_presupuestado' %}";

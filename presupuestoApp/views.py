@@ -1986,13 +1986,14 @@ def seleccion_cuentas_contables(request):
 # ---------------------------------------------------------------------------
 # Configuración centralizada por sede
 # ---------------------------------------------------------------------------
+from .models_presupuesto import anio_elaboracion, anio_presupuesto  # noqa: E402
 from .views_presupuesto_areas import (  # noqa: F401
     SEDE_CONFIG, exportar_excel_presupuestos, presupuesto_sede, obtener_presupuesto_sede,
     presupuesto_aprobado_sede, obtener_presupuesto_aprobado_sede, tabla_auxiliar_sede,
     obtener_temp_sede, guardar_temp_sede, cargar_base_sede, subir_presupuesto_sede,
     borrar_presupuesto_sede, presupuesto_consolidado, obtener_presupuesto_consolidado,
     guardar_presupuesto_consolidado, guardar_version_sede, aprobar_version_sede,
-    subir_cuenta5_sede, estado_cuenta5, ajustes_plazos_edicion,
+    subir_cuenta5_sede, quitar_cuenta5_sede, estado_cuenta5, ajustes_plazos_edicion,
     subir_cuenta5_nomina, estado_cuenta5_nomina,
 )
 
@@ -3745,8 +3746,14 @@ def comparativo_general(request):
     usuarios_permitidos = ['admin', 'NICOLAS']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "comparativo/comparativo_general.html",
-                  {'subtotales': configuracion_para_tablas()})
+    # Consolidado = año en curso (ejecutado); Presupuestado = año siguiente.
+    # Salen de las mismas funciones que usa el presupuesto por áreas.
+    anio_c, anio_p = anio_elaboracion(), anio_presupuesto()
+    return render(request, "comparativo/comparativo_general.html", {
+        'subtotales': configuracion_para_tablas(),
+        'sufijo_consolidado': f"-{anio_c % 100:02d}",
+        'sufijo_presupuestado': f"-{anio_p % 100:02d}",
+    })
 
 
 @require_GET
