@@ -191,3 +191,11 @@ h1 {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* Barra superior con el usuario y "Cerrar sesión" */
+.comercial-topbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin: -6px 0 8px;
+}

@@ -16,7 +16,12 @@
  *       onCargado(filas) {},
  *   });
  *   grilla.cambiarFuente(urlObtener, urlGuardar);  // cambiar de versión
- *   await grilla.vaciarColaDeGuardado();           // antes de subir/aprobar
+ *   await grilla.vaciarColaDeGuardado();           // antes de subir/aprobar (lanza error si no se pudo)
+ *
+ * Guardado a prueba de despliegues: usa EnvioSeguro (envio_seguro.js, debe
+ * cargarse ANTES que este archivo). Los cambios se guardan en el navegador,
+ * se reintentan solos si el servidor no responde y, si la página se cerró
+ * antes de confirmarse, al volver a abrirla se ofrece recuperarlos.
  * ===================================================================== */
 (function (global) {
 "use strict";
@@ -162,14 +167,6 @@ async function apiPost(url, body) {
     });
     return res.json();
 }
-async function bloquearFilaEncabezado(hoja) {
-    const totalCols = hoja.columnCount;
-    hoja.getRow(1).eachCell({ includeEmpty: true }, cell => { cell.protection = { locked: true }; });
-    for (let r = 2; r <= hoja.rowCount; r++) {
-        for (let c = 1; c <= totalCols; c++) hoja.getCell(r, c).protection = { locked: false };
-    }
-    await hoja.protect("", { selectLockedCells: true, selectUnlockedCells: true });
-}
 
 // Contador de modales abiertos: mientras haya uno abierto la grilla ignora
 // los atajos de teclado.
@@ -198,6 +195,7 @@ function init(opciones) {
     const OPC = Object.assign({
         sede: "", urlObtener: "", urlGuardar: "", urlCuentas: "",
         soloLectura: false, nombreExport: "presupuesto", onCargado: null,
+        usuario: "",          // para separar la copia local de cada usuario en un mismo navegador
     }, opciones);
 
     let rows = [];
@@ -209,15 +207,18 @@ function init(opciones) {
     let arrastre = null;            // { tipo: "seleccion"|"relleno", base?, destino? }
 
     const $ = (id) => document.getElementById(id);
-    const puedeEditar = () => !OPC.soloLectura;
+    // Mientras los datos no se hayan cargado del servidor no se permite editar
+    // ni guardar: si el servidor se está actualizando y la carga falla, una
+    // grilla vacía NO puede terminar reemplazando el presupuesto guardado.
+    let datosCargados = false;
+    const puedeEditar = () => !OPC.soloLectura && datosCargados;
 
     // -----------------------------------------------------------------
-    // Guardado automático
+    // Guardado automático (cola persistente con reintentos, ver envio_seguro.js)
     // -----------------------------------------------------------------
     const AUTOSAVE_DEBOUNCE_MS = 800;
     let autoSaveTimer = null;
-    let autoSaveEnCurso = null;
-    let autoSaveDatosPendientes = false;
+    let avisoReintentoMostrado = false;
 
     function setAutoSaveStatus(estado, texto) {
         const el = $("autoSaveStatus");
@@ -228,6 +229,45 @@ function init(opciones) {
         if (txt) txt.textContent = texto;
     }
 
+    const claveRespaldo = () => `presupuesto|${OPC.usuario || ""}|${OPC.urlGuardar}`;
+    const payloadActual = () => rows.map(r => { const { _checked, ...resto } = r; return resto; });
+
+    function pintarEstadoCola(estado, info) {
+        if (estado === "enviando") {
+            setAutoSaveStatus("saving", "Guardando…");
+        } else if (estado === "guardado") {
+            if (!autoSaveTimer) setAutoSaveStatus("saved", "Todo guardado");
+            if (avisoReintentoMostrado) {
+                showToast("Conexión recuperada: tus cambios se guardaron ✅", "success", 5000);
+                avisoReintentoMostrado = false;
+            }
+        } else if (estado === "reintentando") {
+            const seg = Math.round(info.espera / 1000);
+            setAutoSaveStatus("saving", info.conRespaldo
+                ? `Servidor no disponible · reintento en ${seg} s · cambios a salvo en este navegador`
+                : `Servidor no disponible · reintento en ${seg} s · no cierres esta página`);
+            if (!avisoReintentoMostrado) {
+                avisoReintentoMostrado = true;
+                showToast(`${info.error.message}. Tus cambios quedan en cola y se guardarán solos cuando el servidor responda.`,
+                          "error", 7000);
+            }
+        } else if (estado === "error") {
+            setAutoSaveStatus("error", "Error al guardar ❌");
+            showToast(`${info.error.message} ❌`, "error", 7000);
+        }
+    }
+
+    function crearCola() {
+        return EnvioSeguro.cola({
+            clave: claveRespaldo(),
+            url: OPC.urlGuardar,
+            esExito: j => j.status === "ok",
+            onEstado: pintarEstadoCola,
+        });
+    }
+    let cola = crearCola();
+    const colasAnteriores = [];   // al cambiar de versión, la cola previa sigue enviando lo suyo
+
     function programarGuardadoAutomatico() {
         if (!puedeEditar()) return;
         setAutoSaveStatus("saving", "Cambios sin guardar…");
@@ -235,50 +275,74 @@ function init(opciones) {
         autoSaveTimer = setTimeout(() => { autoSaveTimer = null; ejecutarGuardadoAutomatico(); }, AUTOSAVE_DEBOUNCE_MS);
     }
 
+    // Encola la versión actual; la cola se encarga de enviarla (y reintentar).
     function ejecutarGuardadoAutomatico() {
-        if (!puedeEditar()) return Promise.resolve();
-        if (autoSaveEnCurso) {          // ya hay uno en vuelo: se reprograma al terminar
-            autoSaveDatosPendientes = true;
-            return autoSaveEnCurso;
-        }
-        setAutoSaveStatus("saving", "Guardando…");
-        autoSaveEnCurso = (async () => {
-            try {
-                const payload = rows.map(r => { const { _checked, ...resto } = r; return resto; });
-                const resp = await apiPost(OPC.urlGuardar, payload);
-                if (resp.status === "ok") {
-                    setAutoSaveStatus("saved", "Todo guardado");
-                } else {
-                    setAutoSaveStatus("error", "Error al guardar ❌");
-                    showToast(resp.message || "Error al guardar ❌", "error");
-                }
-            } catch (e) {
-                setAutoSaveStatus("error", "Error al guardar ❌");
-                showToast("Error al guardar ❌", "error");
-            } finally {
-                autoSaveEnCurso = null;
-                if (autoSaveDatosPendientes) {
-                    autoSaveDatosPendientes = false;
-                    programarGuardadoAutomatico();
-                }
-            }
-        })();
-        return autoSaveEnCurso;
+        if (!puedeEditar()) return;
+        cola.poner(payloadActual());
     }
 
     // Fuerza que todo lo pendiente llegue al servidor (antes de subir/aprobar).
-    async function vaciarColaDeGuardado() {
+    // Si no se logra, LANZA un error: así no se sube/aprueba una versión vieja.
+    async function vaciarColaDeGuardado(maxEsperaMs = 60000) {
         if (!puedeEditar()) return;
-        clearTimeout(autoSaveTimer);
-        autoSaveTimer = null;
-        if (autoSaveEnCurso) await autoSaveEnCurso;
-        autoSaveDatosPendientes = false;
-        await ejecutarGuardadoAutomatico();
+        if (autoSaveTimer) {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = null;
+            ejecutarGuardadoAutomatico();
+        }
+        await cola.vaciar(maxEsperaMs);
     }
 
+    const hayPendientes = () => !!autoSaveTimer || cola.hayPendientes()
+        || colasAnteriores.some(c => c.hayPendientes());
+
     window.addEventListener("beforeunload", (e) => {
-        if (autoSaveTimer || autoSaveEnCurso) { e.preventDefault(); e.returnValue = ""; }
+        if (hayPendientes()) { e.preventDefault(); e.returnValue = ""; }
     });
+
+    // ── Recuperar cambios que no alcanzaron a guardarse (página cerrada o
+    //    recargada durante un despliegue / corte de red) ──
+    const firmaFilas = (lista) => JSON.stringify((lista || []).map(r => [
+        String(r.zonnombre || ""), String(r.mcncuenta || ""), String(r.mcndetalle || ""),
+        String(r.comentario || ""), ...MESES.map(m => Number(r[m]) || 0),
+    ]));
+
+    function revisarRespaldoPendiente() {
+        if (!puedeEditar() || cola.hayPendientes()) return;      // lo de esta misma página ya va en cola
+        const respaldo = EnvioSeguro.respaldo(claveRespaldo());
+        if (!respaldo || !Array.isArray(respaldo.datos)) return;
+        if (firmaFilas(respaldo.datos) === firmaFilas(rows)) {   // sí había llegado al servidor
+            EnvioSeguro.descartar(claveRespaldo());
+            return;
+        }
+        const cuando = new Date(respaldo.ts).toLocaleString("es-CO",
+            { dateStyle: "medium", timeStyle: "short" });
+        const modal = $("modalRecuperarCambios");
+        if (!modal) {                                            // pantalla sin el modal: se recupera directo
+            aplicarRespaldo(respaldo);
+            return;
+        }
+        $("recuperarCuando").textContent = cuando;
+        $("recuperarFilas").textContent = respaldo.datos.length;
+        $("recuperarServidorFilas").textContent = rows.length;
+        abrirModal("modalRecuperarCambios");
+        $("recuperarAplicarBtn").onclick = () => { cerrarModal("modalRecuperarCambios"); aplicarRespaldo(respaldo); };
+        $("recuperarDescartarBtn").onclick = () => {
+            cerrarModal("modalRecuperarCambios");
+            EnvioSeguro.descartar(claveRespaldo());
+            showToast("Se descartaron los cambios sin guardar; quedó lo del servidor", "success", 4000);
+        };
+    }
+
+    function aplicarRespaldo(respaldo) {
+        instantanea();                                           // se puede deshacer con Ctrl+Z
+        rows = respaldo.datos.map(r => ({ ...r, _checked: false }));
+        sel = null;
+        render();
+        if (rows.length) seleccionar(0, COL_INI);
+        showToast("Cambios recuperados; guardando en el servidor…", "success", 4000);
+        ejecutarGuardadoAutomatico();
+    }
 
     // -----------------------------------------------------------------
     // Historial: deshacer / rehacer
@@ -321,8 +385,26 @@ function init(opciones) {
         } catch (e) { showToast("No se pudieron cargar las cuentas contables ❌", "error"); }
     }
 
+    // Si el servidor no responde (p. ej. se está actualizando) se reintenta
+    // solo; mientras tanto la grilla queda bloqueada para no guardar vacío.
+    async function obtenerConReintentos(url) {
+        const esperas = [1000, 2000, 4000, 8000, 15000, 30000];
+        for (let intento = 0; ; intento++) {
+            try {
+                return await apiGet(url);
+            } catch (e) {
+                const espera = esperas[Math.min(intento, esperas.length - 1)];
+                setAutoSaveStatus("error",
+                    `No se pudieron cargar los datos · reintento en ${Math.round(espera / 1000)} s (edición bloqueada)`);
+                await new Promise(r => setTimeout(r, espera));
+            }
+        }
+    }
+
     async function cargarDatos() {
-        const resp = await apiGet(OPC.urlObtener);
+        datosCargados = false;
+        const resp = await obtenerConReintentos(OPC.urlObtener);
+        datosCargados = true;
         rows = Array.isArray(resp) ? resp : (resp.data || []);
         rows.forEach(r => { r._checked = false; });
         pilaDeshacer.length = 0;
@@ -333,6 +415,7 @@ function init(opciones) {
         if (rows.length) seleccionar(0, COL_INI);
         setAutoSaveStatus("saved", OPC.soloLectura ? "Solo lectura" : "Todo guardado");
         if (typeof OPC.onCargado === "function") OPC.onCargado(rows);
+        revisarRespaldoPendiente();
     }
 
     // -----------------------------------------------------------------
@@ -1586,7 +1669,7 @@ function init(opciones) {
         }
 
         hoja.columns.forEach(col => { col.width = 22; });
-        await bloquearFilaEncabezado(hoja);
+        // La hoja se entrega SIN protección: se puede editar todo, incluido el encabezado.
 
         const buffer = await wb.xlsx.writeBuffer();
         descargarBuffer(buffer, `${OPC.nombreExport}.xlsx`);
@@ -1635,7 +1718,7 @@ function init(opciones) {
             };
         }
         hoja.columns.forEach(col => { col.width = 22; });
-        await bloquearFilaEncabezado(hoja);
+        // La hoja se entrega SIN protección: se puede editar todo, incluido el encabezado.
 
         const buffer = await wb.xlsx.writeBuffer();
         descargarBuffer(buffer, `plantilla_presupuesto_${OPC.sede}.xlsx`);
@@ -1662,24 +1745,67 @@ function init(opciones) {
         if (file) await procesarPlantillaImportada(file);
     });
 
-    function encabezadosValidos(hojaExcel) {
+    // ── Validación de encabezados (fila 1) ──
+    // Se compara cada columna con la plantilla, sin importar mayúsculas, tildes
+    // ni espacios de más ("ENERO", "Nombre asignacion del gasto" son válidos).
+    // Un nombre distinto, una columna borrada o movida se reporta con su letra.
+    const normalizarEncabezado = t => String(t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase().replace(/\s+/g, " ").trim();
+
+    function revisarEncabezados(hojaExcel) {
         const filasCrudas = XLSX.utils.sheet_to_json(hojaExcel, { header: 1, defval: "" });
-        const encabezados = (filasCrudas[0] || []).map(h => String(h).trim());
-        if (encabezados.length < PLANTILLA_HEADERS.length) return false;
-        return PLANTILLA_HEADERS.every((esperado, i) => encabezados[i] === esperado);
+        const encontrados = (filasCrudas[0] || []).map(h => String(h ?? "").trim());
+        const normalizados = encontrados.map(normalizarEncabezado);
+        const problemas = [];
+        PLANTILLA_HEADERS.forEach((esperado, i) => {
+            if (normalizados[i] === normalizarEncabezado(esperado)) return;
+            const enOtra = normalizados.indexOf(normalizarEncabezado(esperado));
+            problemas.push({
+                columna: colLetter(i + 1),
+                esperado,
+                encontrado: encontrados[i] || "(vacía)",
+                nota: enOtra >= 0 ? `“${esperado}” está en la columna ${colLetter(enOtra + 1)}: no se puede cambiar el orden`
+                                  : "",
+            });
+        });
+        return problemas;
+    }
+
+    function mostrarModalEncabezados(problemas) {
+        $("importEncabezadosBody").innerHTML = problemas.map(p => `
+            <tr>
+                <td>${p.columna}</td>
+                <td>${escaparHtml(p.esperado)}</td>
+                <td>${escaparHtml(p.encontrado)}${p.nota ? `<br><small>${escaparHtml(p.nota)}</small>` : ""}</td>
+            </tr>
+        `).join("");
+        abrirModal("modalImportEncabezados");
+    }
+
+    // La hoja de datos: la que se llama como en nuestros exportes; si no, la primera
+    // que no sea la hoja oculta de listas.
+    function hojaDeDatos(wb) {
+        const nombre = wb.SheetNames.find(n => ["plantilla", "presupuesto"].includes(n.trim().toLowerCase()))
+            || wb.SheetNames.find(n => n.trim().toLowerCase() !== "listas")
+            || wb.SheetNames[0];
+        return wb.Sheets[nombre];
     }
 
     async function procesarPlantillaImportada(file) {
         const buffer = await file.arrayBuffer();
         const wbLeida = XLSX.read(buffer, { type: "array" });
-        const hoja = wbLeida.Sheets[wbLeida.SheetNames[0]];
+        const hoja = hojaDeDatos(wbLeida);
 
-        if (!encabezadosValidos(hoja)) {
-            showToast("El archivo no tiene las columnas de la plantilla (nombres, orden o cantidad de columnas distintos) ❌", "error");
+        const problemas = revisarEncabezados(hoja);
+        if (problemas.length) {
+            mostrarModalEncabezados(problemas);
+            showToast(`El encabezado no coincide con la plantilla en ${problemas.length} columna(s); no se importó nada ❌`, "error");
             return;
         }
 
-        const filas = XLSX.utils.sheet_to_json(hoja, { defval: "" });
+        // Ya validados, los datos se leen POR POSICIÓN con los nombres oficiales
+        // (así "ENERO" o un encabezado sin tilde no dejan columnas vacías).
+        const filas = XLSX.utils.sheet_to_json(hoja, { header: PLANTILLA_HEADERS, range: 1, defval: "" });
         const nuevasFilas = [];
         const errores = [];
 
@@ -1842,11 +1968,20 @@ function init(opciones) {
         vaciarColaDeGuardado,
         recargar: cargarDatos,
         filas: () => rows,
-        hayPendientes: () => !!(autoSaveTimer || autoSaveEnCurso),
+        hayPendientes,
         async cambiarFuente(urlObtener, urlGuardar) {
-            await vaciarColaDeGuardado();
+            try {
+                await vaciarColaDeGuardado(15000);
+            } catch (e) {
+                // La cola anterior sigue viva en esta página y en el navegador: se guardará sola.
+                showToast("Los cambios de la versión anterior siguen en cola y se guardarán solos", "error", 6000);
+            }
             OPC.urlObtener = urlObtener;
-            if (urlGuardar) OPC.urlGuardar = urlGuardar;
+            if (urlGuardar && urlGuardar !== OPC.urlGuardar) {
+                OPC.urlGuardar = urlGuardar;
+                if (cola.hayPendientes()) colasAnteriores.push(cola);
+                cola = crearCola();
+            }
             await cargarDatos();
         },
     };

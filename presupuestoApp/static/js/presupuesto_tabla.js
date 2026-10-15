@@ -1226,7 +1226,22 @@
     async guardar(url, boton) {
       return conSpinner(boton, async () => {
         try {
-          const r = await enviarJSON(url, { filas: this.datos() });
+          // Con envio_seguro.js cargado, si el servidor no responde (p. ej. durante
+          // una actualización de la aplicación) se reintenta solo hasta 3 minutos.
+          // Es seguro: el guardado deja la tabla exactamente como se envía.
+          let avisado = false;
+          const r = global.EnvioSeguro
+            ? await global.EnvioSeguro.enviar(url, { filas: this.datos() }, {
+                maxEsperaMs: 180000,
+                onReintento: ({ error, espera }) => {
+                  if (!avisado) {
+                    avisado = true;
+                    toast(`${error.message}. Reintentando solo; no cierres la página ⏳`, 'warning', 8000);
+                  }
+                  console.warn(`Guardar: reintento en ${espera / 1000} s`, error);
+                },
+              })
+            : await enviarJSON(url, { filas: this.datos() });
           if (Array.isArray(r.data)) this.setDatos(r.data);
           toast(r.msg || 'Datos guardados ✅', 'success', r.recalculados && r.recalculados.length ? 6000 : 3500);
           return r;

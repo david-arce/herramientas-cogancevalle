@@ -30,7 +30,7 @@ from .models import (
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.db.models.functions import Coalesce, Concat, Trim
 from django.db.models import Sum, Max, Q, Avg, Value
-from django.db import transaction
+from django.db import DatabaseError, transaction
 import numpy as np
 import json
 import zlib
@@ -1341,27 +1341,61 @@ def aux_presupuesto_comercial_costos():
 
 @csrf_exempt
 def guardar_presupuesto_comercial(request):
+    """Guarda el % de crecimiento de ventas de las filas recibidas (solo año actual).
+
+    La pantalla envía SOLO las filas que cambiaron (antes mandaba la tabla
+    completa y se hacían 2 consultas por fila: con miles de filas el guardado
+    tardaba tanto que se quedaba en "Guardando…").
+
+    Es seguro repetir el mismo envío (el navegador reintenta si el servidor no
+    responde): deja exactamente los mismos valores.
+    Responde `cambios` = cuántos crecimientos cambiaron de verdad; la pantalla
+    usa ese dato para recalcular el presupuesto de ventas solo cuando hace falta.
+    """
     if request.method != "POST":
         return JsonResponse({"status": "error", "mensaje": "Método no permitido"}, status=405)
     try:
         data = json.loads(request.body)
+        if not isinstance(data, list):
+            raise ValueError("Se esperaba una lista de filas")
         year_actual = timezone.now().year
+        clave = lambda linea, centro, clase: (str(linea or ""), str(centro or ""), str(clase or ""))
+
+        nuevos = {}
+        for row in data:
+            if int(row.get("year", 0)) != year_actual:
+                continue          # solo el año actual es editable
+            nuevos[clave(row["linea"], row.get("nombre_centro_de_operacion"),
+                          row.get("nombre_clase_cliente"))] = float(row.get("crecimiento_ventas") or 0)
+
         with transaction.atomic():
-            for row in data:
-                if int(row.get("year", 0)) != year_actual:
-                    continue          # solo el año actual es editable
-                PresupuestoComercial.objects.update_or_create(
-                    linea=row["linea"], year=year_actual,
-                    nombre_centro_de_operacion=row.get("nombre_centro_de_operacion", ""),
-                    nombre_clase_cliente=row.get("nombre_clase_cliente", ""),
-                    defaults={
-                        "crecimiento_ventas": float(row.get("crecimiento_ventas") or 0),
-                    },
-                )
-        return JsonResponse({"status": "ok", "mensaje": "Crecimientos guardados ✅"})
-    except Exception as e:
-        return JsonResponse({"status": "error", "mensaje": str(e)}, status=400)
-    
+            existentes = {
+                clave(p.linea, p.nombre_centro_de_operacion, p.nombre_clase_cliente): p
+                for p in PresupuestoComercial.objects.select_for_update().filter(year=year_actual)
+            }
+            actualizar, crear = [], []
+            for (linea, centro, clase), valor in nuevos.items():
+                obj = existentes.get((linea, centro, clase))
+                if obj is None:
+                    crear.append(PresupuestoComercial(
+                        linea=linea, year=year_actual, nombre_centro_de_operacion=centro,
+                        nombre_clase_cliente=clase, crecimiento_ventas=valor))
+                elif obj.crecimiento_ventas != valor:
+                    obj.crecimiento_ventas = valor
+                    actualizar.append(obj)
+            PresupuestoComercial.objects.bulk_update(actualizar, ["crecimiento_ventas"], batch_size=500)
+            PresupuestoComercial.objects.bulk_create(crear, batch_size=500)
+
+        cambios = len(actualizar) + len(crear)
+        return JsonResponse({"status": "ok", "mensaje": "Crecimientos guardados ✅",
+                             "recibidas": len(nuevos), "cambios": cambios})
+    except DatabaseError:
+        # Base de datos no disponible (p. ej. durante un despliegue): el navegador reintenta.
+        return JsonResponse({"status": "error", "reintentar": True,
+                             "mensaje": "La base de datos no está disponible en este momento"}, status=503)
+    except (ValueError, TypeError, KeyError) as e:
+        return JsonResponse({"status": "error", "mensaje": f"Datos inválidos: {e}"}, status=400)
+
 # =====================================================================
 # NUEVO: comparativo año anterior vs año actual (para visualizar
 # crecimiento). No depende de `PresupuestoComercial` — la calcula al
@@ -3912,8 +3946,9 @@ def guardar_comentario_comparativo(request):
 #  1. Toma el EJECUTADO de esa sede en ConsolidadoTotalBase.
 #  2. Por cada mes: VENTAS NETAS = cuenta 1 + cuenta 2 + cuenta 41750201
 #     participación(cuenta) = valor(cuenta) / VENTAS NETAS
-#  3. valor = proyección del centro de operación en ese mes * (1 + participación)
-#     (proyección = tabla "Proyección presupuesto centro operación - Ventas")
+#  3. valor = proyección del centro de operación en ese mes × participación
+#     (proyección = tabla "Proyección presupuesto centro operación - Ventas").
+#     Así crédito + contado + descuentos = la proyección del mes.
 #  4. Guarda en ConsolidadoTotalBase con la sede y origen='presupuestado'.
 #
 #  Pegar al FINAL de views.py, reemplazando la versión anterior.
@@ -3932,9 +3967,27 @@ CUENTAS_VENTAS = {
     '41750201': 'Descuentos otorgados x pto pago',
 }
 
-# Cuentas que restan en VENTAS NETAS: su participación es negativa y el
-# presupuesto se calcula como proyección × participación (queda negativo).
-CUENTAS_DESCUENTO = {'41750201'}
+
+
+def repartir_proyeccion(proyeccion, participacion):
+    """Reparte la proyección de un mes entre las cuentas de ventas.
+
+    valor(cuenta) = proyección × participación(cuenta)
+    (los descuentos tienen participación negativa, así que quedan negativos).
+
+    Las participaciones suman 1, así que los valores suman la proyección; los
+    pesos que se pierden al redondear se le asignan a la cuenta de mayor peso
+    para que la suma sea EXACTA.
+
+    Ej. Tuluá enero: 1.238.511.267 × 61,6236 % = 763.215.019 (ventas a crédito).
+    """
+    valores = {cta: round(proyeccion * pct) for cta, pct in participacion.items()}
+    if valores:
+        residuo = round(proyeccion) - sum(valores.values())
+        if residuo:
+            mayor = max(participacion, key=lambda c: abs(participacion[c]))
+            valores[mayor] += residuo
+    return valores
 
 # sede (ConsolidadoTotalBase) -> nombre_centro_de_operacion (BdVentasComercial)
 # Se arma con los códigos de zona que ya existen, así no hay un tercer mapeo que mantener:
@@ -4072,18 +4125,13 @@ def generar_presupuesto_ventas(anio_base=None):
             omitidas[sede] = f"sin proyección de {centro} para: {', '.join(faltantes)}"
             continue
 
-        # ── cálculo ───────────────────────────────────────────────
-        #   ventas (1, 2):        proyección × (1 + participación)
-        #   descuentos (41750201): proyección × participación  → negativo
-        #   ej.: -29.151.316 / 1.085.596.428 = -2,685 %  →  proyección × -2,685 %
+        # ── cálculo: cada cuenta = proyección del mes × su participación ──
+        #   ej.: crédito 61,62 %, contado 38,90 %, descuentos -0,53 %
+        #        → la suma de las tres es la proyección del mes
         valores = {cta: {} for cta in CUENTAS_VENTAS}
         for mes in range(1, 13):
-            base = proy_centro[mes]
-            for cta, pct in participacion[mes].items():
-                if cta in CUENTAS_DESCUENTO:
-                    valores[cta][mes] = round(base * pct)
-                else:
-                    valores[cta][mes] = round(base * (1 + pct))
+            for cta, valor in repartir_proyeccion(proy_centro[mes], participacion[mes]).items():
+                valores[cta][mes] = valor
 
         for cta, meses in valores.items():
             total_anual = sum(meses.values())
@@ -4127,8 +4175,9 @@ def generar_presupuesto_ventas(anio_base=None):
         filtro_sede |= Q(sede__iexact=s)
 
     with transaction.atomic():
-        with connection.cursor() as cursor:
-            cursor.execute('SELECT pg_advisory_xact_lock(%s)', [LOCK_PRESUPUESTO_VENTAS])
+        if connection.vendor == 'postgresql':      # el candado solo existe en PostgreSQL
+            with connection.cursor() as cursor:
+                cursor.execute('SELECT pg_advisory_xact_lock(%s)', [LOCK_PRESUPUESTO_VENTAS])
 
         previas = (
             ConsolidadoTotalBase.objects

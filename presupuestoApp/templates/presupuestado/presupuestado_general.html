@@ -116,7 +116,6 @@
 ══════════════════════════════════════════════════════════════════ */
 // Esta página muestra el PRESUPUESTADO → obtener_presupuestado (antes obtener_consolidado)
 const URL_OBTENER_SEDE   = "{% url 'obtener_presupuestado' %}";
-const URL_GENERAR_VENTAS = "{% url 'generar_presupuesto_ventas' %}";
 const CSRF_TOKEN         = "{{ csrf_token }}";
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
@@ -495,41 +494,6 @@ function bloquearControles(bloquear) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   ACTUALIZAR PRESUPUESTO DE VENTAS (cuentas 1, 2, 41750201)
-   Se ejecuta al entrar a la página, antes de cargar la tabla.
-   Si falla, avisa y la tabla se carga igual con lo que haya guardado.
-══════════════════════════════════════════════════════════════════ */
-async function actualizarPresupuestoVentas() {
-    setLoading(true, 'Actualizando presupuesto de ventas...');
-    bloquearControles(true);
-    try {
-        const resp = await fetch(URL_GENERAR_VENTAS, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
-            body: '{}',
-        });
-        const json = await resp.json().catch(() => ({}));
-
-        if (!resp.ok || !json.success) {
-            showToast('No se actualizó el presupuesto de ventas: ' + (json.error || `HTTP ${resp.status}`)
-                      + '. Se muestran los últimos valores guardados.', 'error');
-            return;
-        }
-
-        const omitidas = Object.entries(json.sedes_omitidas || {});
-        if (omitidas.length) {
-            showToast('Presupuesto de ventas sin actualizar en: '
-                      + omitidas.map(([sede, motivo]) => `${sede} (${motivo})`).join(', '), 'error');
-        }
-    } catch (e) {
-        showToast('No se actualizó el presupuesto de ventas: ' + e.message
-                  + '. Se muestran los últimos valores guardados.', 'error');
-    } finally {
-        bloquearControles(false);
-    }
-}
-
-/* ══════════════════════════════════════════════════════════════════
    CARGA DE DATOS
 ══════════════════════════════════════════════════════════════════ */
 async function cargarDatos() {
@@ -640,12 +604,10 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
 actualizarTabsUI();
 
-// Al entrar: primero se recalcula el presupuesto de ventas y luego se carga la tabla,
-// para que la primera vista ya muestre los valores actualizados.
-(async () => {
-    await actualizarPresupuestoVentas();
-    await cargarDatos();
-})();
+// Al entrar solo se cargan los datos guardados. El presupuesto de ventas
+// (cuentas 1, 2 y 41750201) ya NO se recalcula aquí: se recalcula cuando se
+// edita la tabla de Presupuesto comercial (crecimientos), que es lo único que lo cambia.
+cargarDatos();
 </script>
 {% endblock %}
 {% endblock %}

@@ -2085,3 +2085,165 @@ class EliminarConsolidadoBaseTests(TestCase):
                              json.dumps({"sede": "tulua", "origen": "ejecutado"}), content_type="application/json")
         self.assertEqual(r.json()["eliminados"], 1501)       # 1500 + "TULUA "
         self.assertEqual(self.T.objects.count(), 2)
+
+
+class PresupuestoVentasRepartoTests(TestCase):
+    """Ventas a crédito / contado / descuentos = proyección del mes × participación (sin el "1 +")."""
+
+    # Ejecutado Tuluá, enero (pantalla Ejecutado) y proyección del centro (Proyección por centro de operación)
+    CREDITO, CONTADO, DESCUENTO = 759_222_744, 479_318_539, -6_508_501
+    PROYECCION = 1_238_511_267
+
+    def participacion(self):
+        netas = self.CREDITO + self.CONTADO + self.DESCUENTO
+        return {"1": self.CREDITO / netas, "2": self.CONTADO / netas, "41750201": self.DESCUENTO / netas}
+
+    def test_reparto_tulua_enero(self):
+        v = views.repartir_proyeccion(self.PROYECCION, self.participacion())
+        # 1.238.511.267 × 61,6236 % = 763.215.018,6. Redondeadas por separado, las tres
+        # cuentas suman $1 más que la proyección; ese $1 se le quita a crédito (la de mayor peso).
+        self.assertEqual(v["1"], 763_215_018)
+        self.assertEqual(v["2"], 481_838_974)          # × 38,9047 %
+        self.assertEqual(v["41750201"], -6_542_725)    # × -0,5283 %
+        self.assertEqual(sum(v.values()), self.PROYECCION)   # suma exacta (sin $1 de redondeo)
+
+    def test_genera_y_guarda_en_consolidado_total_base(self):
+        from .models import ConsolidadoTotalBase as T
+        anio_base = timezone.now().year
+        for cta, nombre, valor in (("1", "Ventas a crédito", self.CREDITO),
+                                   ("2", "Ventas a contado", self.CONTADO),
+                                   ("41750201", "Descuentos otorgados x pto pago", self.DESCUENTO)):
+            T.objects.create(mcncuenta=cta, ctanombre=nombre, mcnfecha=datetime.date(anio_base, 1, 1),
+                             valor=valor, sede="tulua", origen="ejecutado")
+        proyeccion = {"ALMACEN TULUA": {m: self.PROYECCION for m in range(1, 13)}}
+        with mock.patch.object(views, "_proyeccion_ventas_por_centro", return_value=proyeccion):
+            r = views.generar_presupuesto_ventas()
+        self.assertEqual(r["sedes_procesadas"], ["tulua"])
+
+        enero = datetime.date(anio_base + 1, 1, 1)
+        ppto = dict(T.objects.filter(origen="presupuestado", sede="tulua", mcnfecha=enero)
+                    .values_list("mcncuenta", "valor"))
+        self.assertEqual(ppto, {"1": 763_215_018, "2": 481_838_974, "41750201": -6_542_725})
+        # Ventas netas presupuestadas = proyección (antes daba ~3 veces: 3.715.533.802).
+        self.assertEqual(sum(ppto.values()), self.PROYECCION)
+
+        # Volver a generar reemplaza (no duplica).
+        with mock.patch.object(views, "_proyeccion_ventas_por_centro", return_value=proyeccion):
+            views.generar_presupuesto_ventas()
+        self.assertEqual(T.objects.filter(origen="presupuestado", sede="tulua").count(), 36)
+
+
+class GuardadoDuranteDespliegueTests(TestCase):
+    """Si la base de datos no responde (p. ej. durante un despliegue) se responde 503 = "reintenta"."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.aprobador = User.objects.create_user("NICOLAS")
+
+    def setUp(self):
+        self.client.force_login(self.aprobador)
+
+    def test_error_de_base_de_datos_responde_503(self):
+        from django.db import OperationalError
+        with mock.patch.object(vpa.PresupuestoArea.objects, "bulk_create", side_effect=OperationalError("server closed")):
+            r = self.client.post(reverse("guardar_temp_sede", args=[AREA]), json.dumps([fila("A")]),
+                                 content_type="application/json")
+        self.assertEqual(r.status_code, 503)
+        self.assertTrue(r.json()["reintentar"])
+
+    def test_datos_invalidos_siguen_siendo_400(self):
+        r = self.client.post(reverse("guardar_temp_sede", args=[AREA]), "no es json",
+                             content_type="application/json")
+        self.assertEqual(r.status_code, 400)
+
+    def test_reintentar_el_mismo_guardado_no_duplica(self):
+        url = reverse("guardar_temp_sede", args=[AREA])
+        for _ in range(3):   # la respuesta "se perdió" y el navegador reenvía
+            self.assertEqual(self.client.post(url, json.dumps([fila("A"), fila("B")]),
+                                              content_type="application/json").status_code, 200)
+        self.assertEqual(PresupuestoArea.objects.filter(area=AREA, etapa="auxiliar").count(), 24)
+
+    def test_pantallas_cargan_envio_seguro_antes_que_la_grilla(self):
+        PresupuestoArea.objects.bulk_create(filas_verticales(
+            [fila("A")], area=AREA, etapa="proyectado", version=1, fecha_version=timezone.localdate()))
+        html = self.client.get(reverse("presupuesto_sede", args=[AREA])).content.decode()
+        self.assertLess(html.index("js/envio_seguro.js"), html.index("js/grilla_presupuesto.js"))
+        self.assertIn('usuario: "NICOLAS"', html)
+
+
+class PresupuestoComercialGuardadoTests(TestCase):
+    """Autoguardado del presupuesto comercial: rápido, solo lo que cambió, seguro de repetir."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user("admin")
+
+    def setUp(self):
+        from .models import PresupuestoComercial
+        self.PC = PresupuestoComercial
+        self.anio = timezone.now().year
+        self.client.force_login(self.user)
+
+    def fila(self, linea, crec, centro="ALMACEN BUGA", clase="CLIENTES", year=None):
+        return {"linea": linea, "year": year or self.anio, "nombre_centro_de_operacion": centro,
+                "nombre_clase_cliente": clase, "crecimiento_ventas": crec}
+
+    def guardar(self, filas):
+        return self.client.post(reverse("guardar_presupuesto_comercial"), json.dumps(filas),
+                                content_type="application/json")
+
+    def test_cuenta_solo_cambios_reales_y_es_idempotente(self):
+        r = self.guardar([self.fila("L1", 5), self.fila("L2", 0)])
+        self.assertEqual(r.json()["cambios"], 2)                 # dos filas nuevas
+        r = self.guardar([self.fila("L1", 5), self.fila("L2", 3)])
+        self.assertEqual(r.json()["cambios"], 1)                 # solo L2 cambió
+        r = self.guardar([self.fila("L1", 5), self.fila("L2", 3)])   # reintento del mismo envío
+        self.assertEqual(r.json()["cambios"], 0)
+        self.assertEqual(self.PC.objects.filter(year=self.anio).count(), 2)
+        self.assertEqual(self.PC.objects.get(linea="L2").crecimiento_ventas, 3)
+
+    def test_ignora_otros_anios(self):
+        r = self.guardar([self.fila("L1", 9, year=self.anio - 1)])
+        self.assertEqual(r.json()["cambios"], 0)
+        self.assertFalse(self.PC.objects.exists())
+
+    def test_muchas_filas_con_pocas_consultas(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        filas = [self.fila(f"L{i}", i % 7) for i in range(3000)]
+        self.guardar(filas)
+        filas = [self.fila(f"L{i}", (i % 7) + 1) for i in range(3000)]
+        with CaptureQueriesContext(connection) as q:
+            r = self.guardar(filas)
+        self.assertEqual(r.json()["cambios"], 3000)
+        self.assertLess(len(q), 40)          # antes: 2 consultas por fila (6.000)
+
+    def test_error_de_base_de_datos_responde_503(self):
+        from django.db import OperationalError
+        with mock.patch.object(self.PC.objects, "bulk_create", side_effect=OperationalError("caida")):
+            r = self.guardar([self.fila("L1", 5)])
+        self.assertEqual(r.status_code, 503)
+
+    def test_datos_invalidos_400(self):
+        self.assertEqual(self.guardar({"no": "lista"}).status_code, 400)
+
+    def test_presupuestado_general_ya_no_genera_ventas_al_entrar(self):
+        html = self.client.get(reverse("presupuestado_general")).content.decode()
+        self.assertNotIn(reverse("generar_presupuesto_ventas"), html)
+
+    def test_pantalla_comercial_usa_envio_seguro_y_genera_ventas(self):
+        html = self.client.get(reverse("presupuestoComercial")).content.decode()
+        self.assertIn("js/envio_seguro.js", html)
+        self.assertIn(reverse("generar_presupuesto_ventas"), html)
+        self.assertIn('name="csrf-token"', html)
+
+
+class CerrarSesionComercialTests(TestCase):
+    def test_pantallas_comerciales_tienen_cerrar_sesion(self):
+        User.objects.create_user("admin", first_name="Ana")
+        self.client.force_login(User.objects.get(username="admin"))
+        for nombre in ("presupuestoComercial", "vistaComparativoAnual"):
+            r = self.client.get(reverse(nombre))
+            self.assertContains(r, "Cerrar sesión")
+            self.assertContains(r, f'action="{reverse("logout")}"')
+            self.assertContains(r, "Hola, Ana")

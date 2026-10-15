@@ -39,6 +39,10 @@
       </button>
     </aside>
     <main class="main-content" id="main" tabindex="-1">
+      {# Saludo + Cerrar sesión (mismo componente que las demás pantallas de presupuesto) #}
+      <header class="comercial-topbar">
+        {% include "presupuesto_general/_barra_usuario.html" %}
+      </header>
       {% block content %}{% endblock %}
     </main>
   </div>

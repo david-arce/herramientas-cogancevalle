@@ -1,5 +1,9 @@
 {% extends "presupuesto_comercial/base_presupuesto_comercial.html" %}
-{% load static %}
+{% load static %}{% load estaticos %}
+
+{% block css %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+{% endblock %}
 
 {% block content %}
 <div class="bloque-vista">
@@ -12,6 +16,7 @@
         <button type="button" id="exportarExcelBtn" class="pt-btn secondary">📥 Exportar a Excel Esta Tabla</button>
         <button type="button" id="colvisBtn" class="pt-btn secondary">👁️ Mostrar / ocultar columnas</button>
         <span id="autosaveStatus" class="pt-autosave-status" aria-live="polite"></span>
+        <span id="ventasStatus" class="pt-autosave-status" aria-live="polite"></span>
     </div>
 
     <div id="tablaComercial"></div>
@@ -19,6 +24,7 @@
 {% endblock %}
 
 {% block js %}
+<script src="{% static_v 'js/envio_seguro.js' %}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const ANIO_ACTUAL = new Date().getFullYear();
@@ -47,51 +53,173 @@ document.addEventListener('DOMContentLoaded', function () {
     const soloAnioActual = (row) => Number(row.year) === ANIO_ACTUAL;
 
     // ------------------------------------------------------------------
-    // Autoguardado: cada cambio en una celda editable dispara este
-    // callback. Se agrupan (debounce) para no disparar una petición por
-    // cada tecla y se muestra el estado junto a los botones en vez de
-    // depender de un botón "Guardar cambios" manual.
+    // Autoguardado — mismas reglas que las grillas de presupuesto
+    // (envio_seguro.js):
+    //   · solo se envían las filas que cambiaron (antes iba la tabla completa
+    //     y el guardado tardaba tanto que se quedaba en "Guardando…");
+    //   · un solo envío a la vez y siempre la versión más reciente;
+    //   · copia en este navegador + reintentos si el servidor no responde
+    //     (p. ej. durante una actualización de la aplicación);
+    //   · el estado siempre termina en "Guardado HH:MM", "reintentando…" o
+    //     un error claro; si quedó algo sin guardar, al volver se ofrece recuperarlo.
     // ------------------------------------------------------------------
-    const statusEl = document.getElementById('autosaveStatus');
+    const URL_GUARDAR = "{% url 'guardar_presupuesto_comercial' %}";
+    const URL_GENERAR_VENTAS = "{% url 'generar_presupuesto_ventas' %}";
+    const CLAVE_RESPALDO = 'comercial|{{ request.user.username|escapejs }}|' + ANIO_ACTUAL;
+    const DEBOUNCE_MS = 900;
+    const VENTAS_ESPERA_MS = 4000;    // tras la última edición guardada, se recalcula el presupuesto de ventas
 
+    const statusEl = document.getElementById('autosaveStatus');
+    const ventasEl = document.getElementById('ventasStatus');
     function mostrarEstado(texto, clase) {
         statusEl.textContent = texto;
         statusEl.className = 'pt-autosave-status' + (clase ? ' ' + clase : '');
     }
+    function estadoVentas(texto, clase, detalle) {
+        ventasEl.textContent = texto;
+        ventasEl.title = detalle || '';
+        ventasEl.className = 'pt-autosave-status' + (clase ? ' ' + clase : '');
+    }
+    const hora = () => new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+    const claveFila = r => [r.linea, r.nombre_centro_de_operacion || '', r.nombre_clase_cliente || ''].join('|');
+    const filaMinima = r => ({
+        linea: r.linea, year: r.year,
+        nombre_centro_de_operacion: r.nombre_centro_de_operacion || '',
+        nombre_clase_cliente: r.nombre_clase_cliente || '',
+        crecimiento_ventas: Number(r.crecimiento_ventas) || 0,
+    });
 
-    const guardarAhora = PresupuestoUtils.debounce(async function () {
-        mostrarEstado('💾 Guardando…', 'guardando');
-        try {
-            const resp = await PresupuestoUtils.postJSON("{% url 'guardar_presupuesto_comercial' %}", tabla.getRows(), "{{ csrf_token }}");
-            if (resp.status !== 'ok') throw new Error(resp.mensaje || 'Error desconocido');
-            hayCambiosSinGuardar = false;
-            mostrarEstado('✅ Cambios guardados', 'guardado');
-        } catch (err) {
-            console.error('Error al guardar automáticamente:', err);
-            mostrarEstado('❌ Error al guardar: ' + err.message, 'error');
+    const pendientes = new Map();   // claveFila -> fila mínima aún no confirmada
+    let ultimoEnvio = new Map();    // lo que se puso en la cola la última vez
+    let debounceTimer = null;
+    let huboCambiosReales = false;  // algún envío confirmado cambió un crecimiento
+
+    const cola = EnvioSeguro.cola({
+        clave: CLAVE_RESPALDO,
+        url: URL_GUARDAR,
+        esExito: j => j.status === 'ok',
+        onEstado(estado, info) {
+            if (estado === 'enviando') {
+                mostrarEstado('💾 Guardando…', 'guardando');
+            } else if (estado === 'enviado') {
+                if ((info.respuesta && info.respuesta.cambios) > 0) huboCambiosReales = true;
+            } else if (estado === 'guardado') {
+                // Se quitan de "pendientes" solo los valores que viajaron en ese envío
+                // (si el usuario editó otra vez mientras tanto, eso sigue pendiente).
+                ultimoEnvio.forEach((fila, k) => {
+                    const actual = pendientes.get(k);
+                    if (actual && actual.crecimiento_ventas === fila.crecimiento_ventas) pendientes.delete(k);
+                });
+                if (!debounceTimer && pendientes.size === 0) mostrarEstado(`✅ Guardado ${hora()}`, 'guardado');
+                if (huboCambiosReales) { huboCambiosReales = false; programarVentas(); }
+            } else if (estado === 'reintentando') {
+                const seg = Math.round(info.espera / 1000);
+                mostrarEstado(info.conRespaldo
+                    ? `⏳ Servidor no disponible · reintento en ${seg} s · cambios a salvo en este navegador`
+                    : `⏳ Servidor no disponible · reintento en ${seg} s · no cierres esta página`, 'editando');
+            } else if (estado === 'error') {
+                mostrarEstado('❌ No se guardó: ' + info.error.message, 'error');
+            }
+        },
+    });
+
+    function encolar() {
+        debounceTimer = null;
+        if (!pendientes.size) return;
+        ultimoEnvio = new Map(Array.from(pendientes, ([k, f]) => [k, { ...f }]));
+        cola.poner(Array.from(pendientes.values()));
+    }
+
+    function onChange(row) {
+        if (!soloAnioActual(row)) return;
+        pendientes.set(claveFila(row), filaMinima(row));
+        mostrarEstado('✏️ Cambios sin guardar…', 'editando');
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(encolar, DEBOUNCE_MS);
+    }
+
+    // ── Presupuesto de ventas (cuentas 1, 2, 41750201): se recalcula SOLO
+    //    cuando cambian los crecimientos de esta tabla (edición o Excel). ──
+    let ventasTimer = null, ventasPendiente = false, ventasCorriendo = false, ventasVersion = 0;
+
+    function programarVentas(esperaMs = VENTAS_ESPERA_MS) {
+        ventasPendiente = true;
+        ventasVersion += 1;
+        clearTimeout(ventasTimer);
+        estadoVentas('📈 El presupuesto de ventas se actualizará en unos segundos…', 'editando');
+        ventasTimer = setTimeout(generarVentas, esperaMs);
+    }
+
+    async function generarVentas() {
+        ventasTimer = null;
+        // Primero que termine de guardarse todo lo de la tabla.
+        if (debounceTimer || cola.hayPendientes() || ventasCorriendo) {
+            ventasTimer = setTimeout(generarVentas, 2000);
+            return;
         }
-    }, 900);
-
-    let hayCambiosSinGuardar = false;
-
-    function onChange() {
-        hayCambiosSinGuardar = true;
-        mostrarEstado('✏️ Editando…', 'editando');
-        guardarAhora();
+        const version = ventasVersion;
+        ventasCorriendo = true;
+        estadoVentas('📈 Actualizando presupuesto de ventas…', 'guardando');
+        try {
+            const r = await EnvioSeguro.enviar(URL_GENERAR_VENTAS, {}, {
+                maxEsperaMs: 180000,
+                onReintento: ({ espera }) => estadoVentas(
+                    `⏳ Presupuesto de ventas: servidor no disponible, reintento en ${Math.round(espera / 1000)} s`, 'editando'),
+            });
+            const omitidas = Object.entries(r.sedes_omitidas || {});
+            if (omitidas.length) {
+                estadoVentas(`⚠️ Presupuesto de ventas actualizado ${hora()} · sin actualizar: ${omitidas.map(([s]) => s).join(', ')}`,
+                             'error', omitidas.map(([s, m]) => `${s}: ${m}`).join('\n'));
+            } else {
+                estadoVentas(`✅ Presupuesto de ventas actualizado ${hora()}`, 'guardado');
+            }
+        } catch (e) {
+            estadoVentas('❌ No se actualizó el presupuesto de ventas: ' + e.message, 'error');
+        } finally {
+            ventasCorriendo = false;
+            if (version === ventasVersion) ventasPendiente = false;   // si hubo cambios nuevos, ya hay otro programado
+        }
     }
 
     window.addEventListener('beforeunload', function (e) {
-        if (!hayCambiosSinGuardar) return;
+        if (!(debounceTimer || cola.hayPendientes() || ventasPendiente || ventasCorriendo)) return;
         e.preventDefault();
         e.returnValue = '';
     });
+
+    // ── Cambios que no alcanzaron a guardarse (página cerrada o recargada
+    //    durante una actualización del sistema / corte de red) ──
+    function revisarRespaldo() {
+        const respaldo = EnvioSeguro.respaldo(CLAVE_RESPALDO);
+        if (!respaldo || !Array.isArray(respaldo.datos) || !respaldo.datos.length) return;
+        const filas = new Map(tabla.getRows().filter(soloAnioActual).map(r => [claveFila(r), r]));
+        const faltan = respaldo.datos.filter(d => {
+            const r = filas.get(claveFila(d));
+            return !r || (Number(r.crecimiento_ventas) || 0) !== (Number(d.crecimiento_ventas) || 0);
+        });
+        if (!faltan.length) { EnvioSeguro.descartar(CLAVE_RESPALDO); return; }   // sí había llegado
+        const cuando = new Date(respaldo.ts).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' });
+        const ok = confirm(`El ${cuando} cambiaste ${faltan.length} crecimiento(s) que no alcanzaron a guardarse ` +
+                           `(por ejemplo, porque la aplicación se estaba actualizando). Quedaron en este navegador.\n\n` +
+                           `¿Recuperarlos y guardarlos ahora?`);
+        if (!ok) { EnvioSeguro.descartar(CLAVE_RESPALDO); return; }
+        faltan.forEach(d => {
+            const r = filas.get(claveFila(d));
+            if (!r) return;
+            r.crecimiento_ventas = d.crecimiento_ventas;
+            onEdit(r, 'crecimiento_ventas', Number(d.crecimiento_ventas) || 0);
+            pendientes.set(claveFila(r), filaMinima(r));
+        });
+        if (typeof tabla._renderBody === 'function') tabla._renderBody(); else tabla.setData(tabla.getRows());
+        encolar();
+    }
 
     const tabla = new PresupuestoTable({
         container: 'tablaComercial',
         exportFileName: 'Presupuesto_Comercial',
         emptyMessage: 'No hay datos cargados todavía',
         onEdit: onEdit,
-        onChange: onChange,
+        onChange: (row) => onChange(row),
         columns: [
             { key: 'linea', label: 'Línea N1', type: 'text', filterable: true },
             { key: 'year', label: 'Año', type: 'text', filterable: true },
@@ -160,14 +288,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const texto = await res.text();
             let data;
             try { data = JSON.parse(texto); } catch (err) { data = { mensaje: texto }; }
-            if (!res.ok) throw new Error(data.mensaje || 'Error al procesar el archivo');
+            if (!res.ok) throw new Error(data.mensaje || data.error || 'Error al procesar el archivo');
             alert('✅ ' + data.mensaje);
             await cargarDatos();
+            programarVentas(500);      // los crecimientos cambiaron: recalcular el presupuesto de ventas
         }).catch(err => alert('❌ Error al procesar el archivo:\n' + err.message))
           .finally(() => { e.target.value = ''; });
     });
 
-    cargarDatos();
+    cargarDatos().then(revisarRespaldo).catch(err => {
+        console.error(err);
+        mostrarEstado('❌ No se pudieron cargar los datos; recarga la página en unos segundos', 'error');
+    });
 });
 </script>
 {% endblock %}

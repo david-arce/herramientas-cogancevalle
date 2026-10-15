@@ -23,7 +23,7 @@ import re
 
 import pandas as pd
 from django.contrib.auth.decorators import login_required
-from django.db import connection, transaction
+from django.db import DatabaseError, connection, transaction
 from django.db.models import Count, F, Max, Sum
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
@@ -262,6 +262,17 @@ def _entero(valor):
     return int(float(valor))
 
 
+def _respuesta_bd_no_disponible():
+    """503 = "inténtalo de nuevo": el navegador conserva los cambios y reintenta solo.
+
+    Pasa, por ejemplo, mientras se publica una versión nueva (la base de datos
+    se reinicia o se están aplicando migraciones). Antes esto respondía 400
+    ("datos inválidos") y el navegador no sabía que podía reintentar.
+    """
+    return JsonResponse({"status": "error", "reintentar": True,
+                         "message": "La base de datos no está disponible en este momento"}, status=503)
+
+
 def _limpiar_fila(row):
     """Deja solo los campos de negocio, pone 0 en numéricos vacíos y recalcula el total.
 
@@ -361,6 +372,8 @@ def guardar_temp_sede(request, sede):
             _filas(sede, AUXILIAR).delete()      # solo el borrador de ESTA área
             PresupuestoArea.objects.bulk_create(registros, batch_size=500)
         return JsonResponse({"status": "ok", "msg": f"{len(filas)} filas guardadas ✅"})
+    except DatabaseError:
+        return _respuesta_bd_no_disponible()
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
@@ -502,6 +515,8 @@ def guardar_version_sede(request, sede, version):
                 _nuevas(sede, PROYECTADO, filas, version, fecha_version), batch_size=500
             )
         return JsonResponse({"status": "ok", "msg": f"{len(filas)} filas guardadas ✅"})
+    except DatabaseError:
+        return _respuesta_bd_no_disponible()
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
@@ -653,6 +668,8 @@ def guardar_presupuesto_consolidado(request, area):
                 _nuevas(clave, APROBADO, filas, version, timezone.localdate()), batch_size=500
             )
         return JsonResponse({"status": "ok", "msg": f"{len(filas)} filas guardadas ✅"})
+    except DatabaseError:
+        return _respuesta_bd_no_disponible()
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
 

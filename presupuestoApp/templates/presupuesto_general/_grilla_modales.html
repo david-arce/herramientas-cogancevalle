@@ -32,6 +32,50 @@
     </div>
 </div>
 
+<div id="modalImportEncabezados" class="modal">
+    <div class="modal-content" style="width:600px; max-width:90%; text-align:left;">
+        <div class="modal-header" style="text-align:center;">⚠️ El encabezado del archivo no coincide con la plantilla</div>
+        <p style="font-size:13px;">No se importó ningún dato. Corrige estos nombres en la <b>fila 1</b> del Excel
+           (no importan mayúsculas ni tildes) o descarga de nuevo la plantilla vacía.</p>
+        <div style="max-height:320px; overflow:auto; margin-top:10px;">
+            <table class="grid" style="width:100%; font-size:12px;">
+                <thead>
+                    <tr>
+                        <th style="width:70px;">Columna</th>
+                        <th>Se esperaba</th>
+                        <th>Se encontró</th>
+                    </tr>
+                </thead>
+                <tbody id="importEncabezadosBody"></tbody>
+            </table>
+        </div>
+        <div class="modal-footer" style="justify-content:center;">
+            <button class="btn-cancel" data-modal="modalImportEncabezados">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalRecuperarCambios" class="modal">
+    <div class="modal-content" style="width:520px; max-width:90%; text-align:left;">
+        <div class="modal-header" style="text-align:center;">💾 Hay cambios que no alcanzaron a guardarse</div>
+        <p style="font-size:13px; line-height:1.5;">
+            El <b id="recuperarCuando"></b> hiciste cambios en esta tabla que no llegaron a guardarse en el
+            servidor (por ejemplo, porque la aplicación se estaba actualizando o se cayó la conexión).
+            Quedaron guardados en este navegador.
+        </p>
+        <ul style="font-size:13px; margin:0 0 10px 18px; padding:0;">
+            <li>Cambios sin guardar: <b id="recuperarFilas"></b> fila(s)</li>
+            <li>Lo que hay en el servidor: <b id="recuperarServidorFilas"></b> fila(s)</li>
+        </ul>
+        <p style="font-size:12px; color:#666;">Si los recuperas, reemplazan lo que muestra la tabla y se guardan
+           (puedes deshacer con Ctrl+Z).</p>
+        <div class="modal-footer">
+            <button class="btn-cancel" id="recuperarDescartarBtn">Descartar</button>
+            <button class="btn-confirm-aprobar" id="recuperarAplicarBtn">Recuperar y guardar</button>
+        </div>
+    </div>
+</div>
+
 <div id="modalConfirmarImport" class="modal">
     <div class="modal-content">
         <div class="modal-header">⚠️ Confirmar importación</div>

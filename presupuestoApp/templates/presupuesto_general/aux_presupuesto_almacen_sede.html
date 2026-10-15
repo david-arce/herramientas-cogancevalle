@@ -60,6 +60,7 @@
     </div>
 </div>
 
+<script src="{% static_v 'js/envio_seguro.js' %}"></script>
 <script src="{% static_v 'js/grilla_presupuesto.js' %}"></script>
 <script>
 const grilla = GrillaPresupuesto.init({
@@ -68,6 +69,7 @@ const grilla = GrillaPresupuesto.init({
     urlGuardar: "{% url 'guardar_temp_sede' sede=sede %}",
     urlCuentas: "{% url 'seleccionCuentasContables' %}",
     nombreExport: "presupuesto_{{ sede }}",
+    usuario: "{{ request.user.username|escapejs }}",
 });
 
 document.getElementById("subirBtn").addEventListener("click", () => GrillaPresupuesto.abrirModal("modalSubir"));
@@ -84,7 +86,8 @@ document.getElementById("confirmSubirBtn").addEventListener("click", async () =>
         GrillaPresupuesto.showToast(resp.msg, resp.success ? "success" : "error");
         if (resp.success) setTimeout(() => window.location.reload(), 1200);
     } catch (e) {
-        GrillaPresupuesto.showToast("Error en la subida ❌", "error");
+        // Si no se pudo guardar antes de subir, NO se sube (se subiría una versión vieja).
+        GrillaPresupuesto.showToast((e && e.message) || "Error en la subida ❌", "error", 8000);
     } finally {
         spinner.style.display = "none";
         btn.disabled = false;
