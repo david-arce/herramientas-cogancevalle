@@ -28,6 +28,7 @@ from django.db.models import Count, F, Max, Sum
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from .log_cargas import log_carga
@@ -41,6 +42,7 @@ from .models_presupuesto import (
 AUXILIAR = PresupuestoArea.Etapa.AUXILIAR
 PROYECTADO = PresupuestoArea.Etapa.PROYECTADO
 APROBADO = PresupuestoArea.Etapa.APROBADO
+PREAPROBADO = PresupuestoArea.Etapa.PREAPROBADO
 
 # Plantilla de gastos base: tablas externas "plantillagastosAAAA", una por año
 # (plantillagastos2025, plantillagastos2026, ...). El año se elige solo: la del
@@ -246,12 +248,20 @@ def _resumen_versiones(area):
         .annotate(fecha=Max("fecha_version"), filas=Count("linea", distinct=True))
         .order_by("version")
     )
+    # Copia de auditoría (lo que envió el área) y su total, por versión.
+    enviadas = dict(
+        _filas(area, PREAPROBADO).exclude(version__isnull=True)
+        .values("version").annotate(total=Coalesce(Sum("valor"), 0))
+        .values_list("version", "total")
+    )
     return [
         {
             "numero": r["version"],
             "fecha": r["fecha"],
             "filas": r["filas"],
             "aprobada": r["version"] in aprobadas,
+            "con_copia": r["version"] in enviadas,
+            "total_enviado": enviadas.get(r["version"]),
         }
         for r in resumen
     ]
@@ -345,10 +355,42 @@ def tabla_auxiliar_sede(request, sede):
     })
 
 
+# ── Control de cambios del borrador del área ──
+# El borrador se reemplaza completo en cada guardado. Si el revisor lo
+# actualiza ("Actualizar preaprobado o aprobado") mientras el área tiene la
+# pantalla abierta, el siguiente autoguardado del área lo pisaría sin avisar.
+# Para evitarlo, la pantalla del área recibe un "token" al cargar y lo envía
+# al guardar; si el borrador cambió entretanto, el guardado se rechaza (409).
+# El token es el id más alto de las filas del borrador: cambia en cada guardado
+# porque las filas se borran y se vuelven a crear. No requiere tablas nuevas.
+CABECERA_TOKEN = "HTTP_X_BORRADOR_TOKEN"
+CAMPOS_FIRMA = ("zonnombre", "mcncuenta", "ctanombre", "mcndetalle", "comentario")
+
+
+def _token_borrador(area):
+    return _filas(area, AUXILIAR).aggregate(t=Max("id"))["t"] or 0
+
+
+def _firma_filas(filas):
+    """Contenido comparable de un borrador (para reconocer un reenvío ya aplicado)."""
+    def texto(v):
+        if v in (None, ""):
+            return ""
+        try:
+            return str(int(float(v)))
+        except (TypeError, ValueError):
+            return str(v).strip()
+    return [tuple(texto(f.get(c)) for c in CAMPOS_FIRMA) + tuple(_entero(f.get(m) or 0) for m in MESES)
+            for f in filas]
+
+
 def obtener_temp_sede(request, sede):
     if not _config_sede(sede):
         return JsonResponse({"error": "Sede no configurada"}, status=404)
-    return JsonResponse(_filas(sede, AUXILIAR).horizontal(), safe=False)
+    filas = _filas(sede, AUXILIAR).horizontal()
+    if request.GET.get("con_token"):
+        return JsonResponse({"data": filas, "token": _token_borrador(sede)})
+    return JsonResponse(filas, safe=False)
 
 
 @login_required
@@ -368,10 +410,25 @@ def guardar_temp_sede(request, sede):
         data = json.loads(request.body.decode("utf-8"))
         filas = [_limpiar_fila(row) for row in data]
         registros = _nuevas(sede, AUXILIAR, filas)
+        token_cliente = request.META.get(CABECERA_TOKEN)
         with transaction.atomic():
-            _filas(sede, AUXILIAR).delete()      # solo el borrador de ESTA área
+            actual = _filas(sede, AUXILIAR).select_for_update()
+            if token_cliente not in (None, "") and str(_token_borrador(sede)) != str(token_cliente):
+                # El borrador cambió desde que esta pantalla lo cargó. Si ya tiene
+                # exactamente lo que se envía (p. ej. un reintento de un guardado que
+                # sí llegó), no es un conflicto.
+                if _firma_filas(actual.horizontal()) == _firma_filas(filas):
+                    return JsonResponse({"status": "ok", "msg": "Sin cambios", "token": _token_borrador(sede)})
+                return JsonResponse({
+                    "status": "error", "conflicto": True,
+                    "message": ("El revisor actualizó tu borrador (o se editó en otra pestaña) después de que "
+                                "abriste esta pantalla. Recarga para ver la versión actual; tus cambios quedaron "
+                                "guardados en este navegador y podrás recuperarlos."),
+                }, status=409)
+            actual.delete()                      # solo el borrador de ESTA área
             PresupuestoArea.objects.bulk_create(registros, batch_size=500)
-        return JsonResponse({"status": "ok", "msg": f"{len(filas)} filas guardadas ✅"})
+        return JsonResponse({"status": "ok", "msg": f"{len(filas)} filas guardadas ✅",
+                             "token": _token_borrador(sede)})
     except DatabaseError:
         return _respuesta_bd_no_disponible()
     except Exception as e:
@@ -433,9 +490,14 @@ def subir_presupuesto_sede(request, sede):
         if not list(borrador.select_for_update().values_list("id", flat=True)):
             return JsonResponse({"success": False, "msg": "No hay datos para subir ❌"}, status=400)
 
-        nueva_version = (_ultima_version(sede, PROYECTADO, APROBADO) or 0) + 1
+        nueva_version = (_ultima_version(sede, PROYECTADO, APROBADO, PREAPROBADO) or 0) + 1
+        # Dos copias con el mismo número de versión:
+        #   · preaprobado: lo que envió el área, tal cual (auditoría; nadie la edita)
+        #   · proyectado:  la versión de trabajo que el revisor ajusta y aprueba
         PresupuestoArea.objects.bulk_create(
-            _copiar(borrador, PROYECTADO, nueva_version, hoy), batch_size=500
+            _copiar(borrador, PREAPROBADO, nueva_version, hoy)
+            + _copiar(borrador, PROYECTADO, nueva_version, hoy),
+            batch_size=500,
         )
 
     return JsonResponse({
@@ -468,6 +530,8 @@ def presupuesto_sede(request, sede):
         "versiones": versiones,
         "version_actual": versiones[-1]["numero"] if versiones else None,
         "cuenta5": estado_cuenta5(sede),   # mismo estado que muestran las tarjetas
+        "ultima_aprobada": _ultima_version(sede, APROBADO),
+        "borrador_filas": _filas(sede, AUXILIAR).values("linea").distinct().count(),
     })
 
 
@@ -566,7 +630,7 @@ def borrar_presupuesto_sede(request, sede):
         return JsonResponse({"status": "error", "message": "No se especificó la versión"}, status=400)
 
     borradas, _ = PresupuestoArea.objects.filter(
-        area=sede, etapa__in=[PROYECTADO, APROBADO], version=version
+        area=sede, etapa__in=[PROYECTADO, APROBADO, PREAPROBADO], version=version
     ).delete()
     if not borradas:
         return JsonResponse({"status": "error", "message": "Esa versión no existe"}, status=404)
@@ -595,6 +659,90 @@ def presupuesto_aprobado_sede(request, sede):
         "sede_label": config["label"],
         "ultima_version": _ultima_version(sede, APROBADO) or "—",
     })
+
+
+@login_required
+def actualizar_borrador_sede(request, sede):
+    """El revisor reemplaza el borrador del área con su versión de trabajo o con el aprobado.
+
+    Body JSON: {"origen": "trabajo", "version": N}  → la versión que está revisando
+               {"origen": "aprobado"}               → el presupuesto aprobado vigente
+    """
+    config = _config_sede(sede)
+    if not config:
+        return JsonResponse({"success": False, "msg": "Área no configurada"}, status=404)
+    if not _es_aprobador(request):
+        return JsonResponse({"success": False, "msg": "Solo el revisor puede actualizar el borrador del área"}, status=403)
+    if request.method != "POST":
+        return JsonResponse({"success": False, "msg": "Método no permitido"}, status=405)
+
+    cuerpo = _cuerpo_json(request)
+    origen = cuerpo.get("origen")
+    if origen == "trabajo":
+        try:
+            version = int(cuerpo.get("version"))
+        except (TypeError, ValueError):
+            return JsonResponse({"success": False, "msg": "Falta la versión"}, status=400)
+        fuente = _filas(sede, PROYECTADO).filter(version=version)
+        descripcion = f"la versión de trabajo v{version}"
+    elif origen == "aprobado":
+        version = _ultima_version(sede, APROBADO)
+        fuente = _filas(sede, APROBADO).filter(version=version)
+        descripcion = f"el presupuesto aprobado v{version}"
+    else:
+        return JsonResponse({"success": False, "msg": "Origen inválido"}, status=400)
+
+    with log_carga("actualizar_borrador_sede", request, sede=sede, origen=origen, version=version) as info, \
+            transaction.atomic():
+        registros = _copiar(fuente, AUXILIAR, None, None)
+        if not registros:
+            info["resultado"] = "sin_datos"
+            return JsonResponse({"success": False, "msg": f"No hay datos en {descripcion} ❌"}, status=400)
+        anteriores = _filas(sede, AUXILIAR).values("linea").distinct().count()
+        _filas(sede, AUXILIAR).delete()
+        PresupuestoArea.objects.bulk_create(registros, batch_size=500)
+        filas = len({r.linea for r in registros})
+        info.update(registros=len(registros), filas_antes=anteriores)
+
+    return JsonResponse({
+        "success": True,
+        "msg": f"El borrador de {config['label']} quedó con {descripcion} ({filas} filas) ✅",
+        "filas": filas,
+    })
+
+
+@login_required
+def presupuesto_preaprobado_sede(request, sede, version):
+    """Lo que envió el área en una versión (copia de auditoría, solo lectura)."""
+    config = _config_sede(sede)
+    if not config:
+        return HttpResponseForbidden("⛔ Sede no configurada.")
+    if not _usuario_autorizado(request, sede):
+        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    copia = _filas(sede, PREAPROBADO).filter(version=version)
+    fecha = copia.aggregate(f=Max("fecha_version"))["f"]
+    return render(request, "presupuesto_general/presupuesto_sede_readonly.html", {
+        "sede": sede,
+        "sede_label": config["label"],
+        "titulo": f"Presupuesto {config['label']} — lo que envió el área (v{version})",
+        "subtitulo": ("Copia de auditoría: es exactamente lo que el área envió al pulsar “Subir presupuesto”. "
+                      "No se puede editar; los ajustes del revisor se hacen en la versión de trabajo."),
+        "aviso": (f"Versión <b>v{version}</b> enviada por el área el <b>{fecha:%d/%m/%Y}</b>" if fecha
+                  else f"La versión v{version} no tiene copia de lo que envió el área "
+                       "(se subió antes de que existiera la copia de auditoría)."),
+        "url_obtener": reverse("obtener_presupuesto_preaprobado_sede", args=[sede, version]),
+        "nombre_export": f"presupuesto_{sede}_v{version}_enviado_por_area",
+        "texto_vacio": "Esta versión no tiene copia de lo que envió el área.",
+    })
+
+
+@login_required
+def obtener_presupuesto_preaprobado_sede(request, sede, version):
+    if not _config_sede(sede):
+        return JsonResponse({"error": "Sede no configurada"}, status=404)
+    if not _usuario_autorizado(request, sede):
+        return JsonResponse({"error": "Sin permisos"}, status=403)
+    return JsonResponse({"data": _filas(sede, PREAPROBADO).filter(version=version).horizontal()})
 
 
 def obtener_presupuesto_aprobado_sede(request, sede):

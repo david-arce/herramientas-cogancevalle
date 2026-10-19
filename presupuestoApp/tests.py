@@ -2247,3 +2247,180 @@ class CerrarSesionComercialTests(TestCase):
             self.assertContains(r, "Cerrar sesión")
             self.assertContains(r, f'action="{reverse("logout")}"')
             self.assertContains(r, "Hola, Ana")
+
+
+class DobleVersionAlSubirTests(TestCase):
+    """Al subir se crean 2 copias: lo que envió el área (auditoría) y la versión de trabajo del revisor."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.usuario_area = User.objects.create_user("PLOZANO", password="x")
+        cls.aprobador = User.objects.create_user("NICOLAS", password="x")
+        cls.intruso = User.objects.create_user("OTRO", password="x")
+        asignar(cls.usuario_area, AREA)
+        abrir_plazo()
+
+    def post_json(self, url, datos):
+        return self.client.post(url, json.dumps(datos), content_type="application/json")
+
+    def subir(self, filas):
+        self.client.force_login(self.usuario_area)
+        self.post_json(reverse("guardar_temp_sede", args=[AREA]), filas)
+        r = self.client.post(reverse("subir_presupuesto_sede", args=[AREA]))
+        self.assertTrue(r.json()["success"], r.content)
+        return r.json()["version"]
+
+    def enviado(self, version):
+        return self.client.get(reverse("obtener_presupuesto_preaprobado_sede", args=[AREA, version])).json()["data"]
+
+    def test_subir_crea_dos_copias_iguales(self):
+        v = self.subir([fila("A", 5), fila("B", 6)])
+        self.assertEqual(v, 1)
+        pre = PresupuestoArea.objects.de(AREA, "preaprobado").filter(version=1)
+        pro = PresupuestoArea.objects.de(AREA, "proyectado").filter(version=1)
+        self.assertEqual(pre.count(), 24)
+        self.assertEqual(pro.count(), 24)
+        campos = ("linea", "fecha", "valor", "mcndetalle", "mcncuenta", "mcnccosto")
+        self.assertEqual(sorted(pre.values_list(*campos)), sorted(pro.values_list(*campos)))
+        self.assertEqual(self.subir([fila("C", 1)]), 2)       # la numeración sigue
+
+    def test_el_revisor_edita_y_aprueba_sin_tocar_lo_enviado(self):
+        self.subir([fila("A", 5), fila("B", 6)])
+        self.client.force_login(self.aprobador)
+        datos = self.client.get(reverse("obtener_presupuesto_sede", args=[AREA]) + "?version=1").json()["data"]
+        datos[0]["enero"] = 999_999
+        datos = datos[:1]                                      # y borra la fila B
+        self.assertEqual(self.post_json(reverse("guardar_version_sede", args=[AREA, 1]), datos).json()["status"], "ok")
+        self.assertTrue(self.client.post(reverse("aprobar_version_sede", args=[AREA, 1])).json()["success"])
+
+        enviado = self.enviado(1)                              # auditoría intacta
+        self.assertEqual([f["mcndetalle"] for f in enviado], ["A", "B"])
+        self.assertEqual(enviado[0]["enero"], fila("A", 5)["enero"])
+        aprobado = self.client.get(reverse("obtener_presupuesto_aprobado_sede", args=[AREA])).json()["data"]
+        self.assertEqual([(f["mcndetalle"], f["enero"]) for f in aprobado], [("A", 999_999)])
+
+        r = self.client.get(reverse("presupuesto_sede", args=[AREA]))
+        v1 = r.context["versiones"][0]
+        self.assertTrue(v1["con_copia"])
+        self.assertEqual(v1["total_enviado"], total_de(fila("A", 5)) + total_de(fila("B", 6)))
+        self.assertContains(r, reverse("presupuesto_preaprobado_sede", args=[AREA, 999999]))
+
+    def test_borrar_version_borra_las_tres_copias(self):
+        self.subir([fila("A", 5)])
+        self.client.force_login(self.aprobador)
+        self.client.post(reverse("aprobar_version_sede", args=[AREA, 1]))
+        r = self.post_json(reverse("borrar_presupuesto_sede", args=[AREA]), {"version": 1})
+        self.assertEqual(r.json()["status"], "ok")
+        self.assertFalse(PresupuestoArea.objects.filter(area=AREA, version=1).exists())
+
+    def test_vista_de_auditoria(self):
+        self.subir([fila("A", 5)])
+        self.client.force_login(self.aprobador)
+        r = self.client.get(reverse("presupuesto_preaprobado_sede", args=[AREA, 1]))
+        self.assertContains(r, "lo que envió el área (v1)")
+        self.assertContains(r, reverse("obtener_presupuesto_preaprobado_sede", args=[AREA, 1]))
+        self.client.force_login(self.intruso)
+        self.assertEqual(self.client.get(reverse("presupuesto_preaprobado_sede", args=[AREA, 1])).status_code, 403)
+        self.assertEqual(self.client.get(reverse("obtener_presupuesto_preaprobado_sede", args=[AREA, 1])).status_code, 403)
+
+    def test_version_antigua_sin_copia(self):
+        # Versiones subidas antes del cambio: solo existe la proyectada.
+        PresupuestoArea.objects.bulk_create(filas_verticales(
+            [fila("A")], area=AREA, etapa="proyectado", version=1, fecha_version=timezone.localdate()))
+        self.client.force_login(self.aprobador)
+        r = self.client.get(reverse("presupuesto_sede", args=[AREA]))
+        self.assertFalse(r.context["versiones"][0]["con_copia"])
+        r = self.client.get(reverse("presupuesto_preaprobado_sede", args=[AREA, 1]))
+        self.assertContains(r, "no tiene copia de lo que envió el área")
+
+    def test_la_copia_no_entra_en_cuenta5_ni_en_consolidados(self):
+        self.subir([fila("A", 5)])
+        self.client.force_login(self.aprobador)
+        self.client.post(reverse("aprobar_version_sede", args=[AREA, 1]))
+        self.client.post(reverse("subir_cuenta5_sede", args=[AREA]))
+        self.assertEqual(Cuenta5Presupuestado.objects.filter(origen_area=AREA).count(), 12)
+
+
+class ActualizarBorradorDelAreaTests(TestCase):
+    """El revisor pasa su tabla (preaprobado/trabajo o aprobado) al borrador del área, sin que el área la pise."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.usuario_area = User.objects.create_user("PLOZANO", password="x")
+        cls.aprobador = User.objects.create_user("NICOLAS", password="x")
+        asignar(cls.usuario_area, AREA)
+        abrir_plazo()
+
+    def post_json(self, url, datos, **extra):
+        return self.client.post(url, json.dumps(datos), content_type="application/json", **extra)
+
+    def preparar(self):
+        """El área sube A=5, B=6; el revisor deja solo A con enero=777."""
+        self.client.force_login(self.usuario_area)
+        self.post_json(reverse("guardar_temp_sede", args=[AREA]), [fila("A", 5), fila("B", 6)])
+        self.client.post(reverse("subir_presupuesto_sede", args=[AREA]))
+        self.client.force_login(self.aprobador)
+        datos = self.client.get(reverse("obtener_presupuesto_sede", args=[AREA]) + "?version=1").json()["data"]
+        datos[0]["enero"] = 777
+        self.post_json(reverse("guardar_version_sede", args=[AREA, 1]), datos[:1])
+
+    def borrador(self):
+        return self.client.get(reverse("obtener_temp_sede", args=[AREA])).json()
+
+    def test_pasa_la_version_de_trabajo_al_borrador(self):
+        self.preparar()
+        r = self.post_json(reverse("actualizar_borrador_sede", args=[AREA]), {"origen": "trabajo", "version": 1})
+        self.assertTrue(r.json()["success"], r.content)
+        b = self.borrador()
+        self.assertEqual([(f["mcndetalle"], f["enero"]) for f in b], [("A", 777)])
+        # Lo que envió el área (auditoría) no cambia.
+        self.assertEqual(len(PresupuestoArea.objects.de(AREA, "preaprobado").values("linea").distinct()), 2)
+
+    def test_pasa_el_aprobado(self):
+        self.preparar()
+        r = self.post_json(reverse("actualizar_borrador_sede", args=[AREA]), {"origen": "aprobado"})
+        self.assertEqual(r.status_code, 400)                      # aún no hay aprobado
+        self.client.post(reverse("aprobar_version_sede", args=[AREA, 1]))
+        r = self.post_json(reverse("actualizar_borrador_sede", args=[AREA]), {"origen": "aprobado"})
+        self.assertTrue(r.json()["success"])
+        self.assertEqual([f["enero"] for f in self.borrador()], [777])
+
+    def test_solo_el_revisor(self):
+        self.preparar()
+        self.client.force_login(self.usuario_area)
+        r = self.post_json(reverse("actualizar_borrador_sede", args=[AREA]), {"origen": "trabajo", "version": 1})
+        self.assertEqual(r.status_code, 403)
+
+    def test_el_area_no_pisa_la_tabla_del_revisor(self):
+        self.client.force_login(self.usuario_area)
+        self.post_json(reverse("guardar_temp_sede", args=[AREA]), [fila("A", 5), fila("B", 6)])
+        token = self.client.get(reverse("obtener_temp_sede", args=[AREA]) + "?con_token=1").json()["token"]
+        self.client.post(reverse("subir_presupuesto_sede", args=[AREA]))
+
+        # Con su token vigente, el área guarda normal y recibe uno nuevo.
+        r = self.post_json(reverse("guardar_temp_sede", args=[AREA]), [fila("A", 5)], HTTP_X_BORRADOR_TOKEN=str(token))
+        self.assertEqual(r.status_code, 200)
+        token = r.json()["token"]
+
+        # Reintento del MISMO guardado con el token viejo: no es conflicto.
+        r2 = self.post_json(reverse("guardar_temp_sede", args=[AREA]), [fila("A", 5)], HTTP_X_BORRADOR_TOKEN="1")
+        self.assertEqual(r2.status_code, 200, r2.content)
+
+        # El revisor reemplaza el borrador…
+        self.client.force_login(self.aprobador)
+        self.post_json(reverse("actualizar_borrador_sede", args=[AREA]), {"origen": "trabajo", "version": 1})
+        # …y el área, con su pantalla vieja, intenta guardar: se rechaza (409) sin tocar nada.
+        self.client.force_login(self.usuario_area)
+        r = self.post_json(reverse("guardar_temp_sede", args=[AREA]), [fila("X", 1)], HTTP_X_BORRADOR_TOKEN=str(token))
+        self.assertEqual(r.status_code, 409)
+        self.assertTrue(r.json()["conflicto"])
+        self.assertEqual([f["mcndetalle"] for f in self.borrador()], ["A", "B"])
+        # Sin token (pantallas viejas) se guarda como antes.
+        self.assertEqual(self.post_json(reverse("guardar_temp_sede", args=[AREA]), [fila("Y", 1)]).status_code, 200)
+
+    def test_revision_muestra_boton_y_busqueda(self):
+        self.preparar()
+        r = self.client.get(reverse("presupuesto_sede", args=[AREA]))
+        self.assertContains(r, "Actualizar preaprobado o aprobado")
+        self.assertContains(r, 'id="busquedaGrilla"')
+        self.assertEqual(r.context["borrador_filas"], 2)

@@ -15,7 +15,8 @@
 {% include "presupuesto_general/_barra_usuario.html" %}
 </header>
 <p class="subtitulo">
-    Versiones que envió el área. Puedes ajustarlas aquí mismo y aprobar la que quede en firme.
+    Versiones que envió el área. Cada envío guarda dos copias: <b>lo que envió el área</b> (solo lectura, para
+    auditoría) y <b>tu versión de trabajo</b>, que es la que ves aquí: puedes ajustarla y aprobarla.
 </p>
 
 {% if versiones %}
@@ -32,6 +33,8 @@
             <option value="{{ v.numero }}"
                     data-fecha="{{ v.fecha|date:'d/m/Y' }}"
                     data-aprobada="{% if v.aprobada %}1{% else %}0{% endif %}"
+                    data-copia="{% if v.con_copia %}1{% else %}0{% endif %}"
+                    data-total-enviado="{{ v.total_enviado|default_if_none:'' }}"
                     {% if v.numero == version_actual %}selected{% endif %}>
                 v{{ v.numero }} · {{ v.fecha|date:"d/m/Y" }} · {{ v.filas }} filas{% if v.aprobada %} ✅{% endif %}
             </option>
@@ -41,6 +44,10 @@
         <button id="borrarBtn" class="btn-peligro" title="Elimina esta versión (y su aprobación)">🗑️ Borrar versión</button>
         <a href="{% url 'presupuesto_aprobado_sede' sede=sede %}" target="_blank" rel="noopener">
             <button type="button">👁️ Ver aprobado</button>
+        </a>
+        <button type="button" id="actualizarBorradorBtn" title="Reemplaza la tabla del área (su borrador) con tu versión de trabajo o con el aprobado">🔄 Actualizar preaprobado o aprobado</button>
+        <a id="verEnviadoLink" href="#" target="_blank" rel="noopener">
+            <button type="button" id="verEnviadoBtn" title="Copia de auditoría: exactamente lo que envió el área (solo lectura)">📄 Ver lo que envió el área</button>
         </a>
     </div>
     {# Estado en Cuenta 5 presupuestado: el mismo que muestran las tarjetas del dashboard #}
@@ -53,6 +60,11 @@
                 title="Elimina de Cuenta 5 presupuestado lo que se subió de {{ sede_label }}">🗑️ Quitar de Cuenta 5</button>
     </div>
     {% include "presupuesto_general/_grilla_toolbar.html" %}
+    <div class="toolbar-group">
+        <input type="search" id="busquedaGrilla" class="busqueda-grilla" autocomplete="off"
+               placeholder="🔎 Buscar en la tabla (centro, cuenta, detalle, comentario…)"
+               aria-label="Búsqueda general en la tabla">
+    </div>
 </div>
 
 {% include "presupuesto_general/_grilla.html" %}
@@ -72,10 +84,33 @@
 <div id="modalBorrarVersion" class="modal">
     <div class="modal-content">
         <div class="modal-header">⚠️ Confirmar eliminación</div>
-        <p>¿Eliminar la versión <b id="versionABorrar"></b> del presupuesto? Esta acción no se puede deshacer.</p>
+        <p>¿Eliminar la versión <b id="versionABorrar"></b> del presupuesto? Se eliminan tu versión de trabajo,
+           la copia de lo que envió el área y su aprobación (si la tiene). Esta acción no se puede deshacer.</p>
         <div class="modal-footer">
             <button class="btn-cancel" data-modal="modalBorrarVersion">Cancelar</button>
             <button class="btn-confirm" id="confirmBorrarBtn">Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalActualizarBorrador" class="modal">
+    <div class="modal-content" style="width:560px; max-width:92%; text-align:left;">
+        <div class="modal-header" style="text-align:center;">🔄 Actualizar la tabla del área</div>
+        <p style="font-size:13px;">Elige con qué tabla se reemplaza el <b>borrador del área</b> (lo que el área ve y edita en su
+           pantalla de presupuesto). Ahora tiene <b>{{ borrador_filas }}</b> fila(s), que se reemplazarán.</p>
+        <label class="opcion-borrador">
+            <input type="radio" name="origenBorrador" value="trabajo" checked>
+            <span><b>Preaprobado:</b> tu versión de trabajo <b id="borradorVersionTrabajo"></b>, con tus ajustes (aún sin aprobar)</span>
+        </label>
+        <label class="opcion-borrador">
+            <input type="radio" name="origenBorrador" value="aprobado" {% if not ultima_aprobada %}disabled{% endif %}>
+            <span><b>Aprobado:</b> {% if ultima_aprobada %}el presupuesto aprobado vigente <b>v{{ ultima_aprobada }}</b>{% else %}todavía no hay una versión aprobada{% endif %}</span>
+        </label>
+        <p style="font-size:12px; color:#666;">Si el área tiene su pantalla abierta, al guardar se le avisará que recargue para ver
+           la nueva tabla (sus cambios sin guardar quedan en su navegador y puede recuperarlos o descartarlos).</p>
+        <div class="modal-footer">
+            <button class="btn-cancel" data-modal="modalActualizarBorrador">Cancelar</button>
+            <button class="btn-confirm-aprobar" id="confirmActualizarBorradorBtn">Actualizar tabla del área</button>
         </div>
     </div>
 </div>
@@ -114,16 +149,31 @@ const URL_OBTENER = "{% url 'obtener_presupuesto_sede' sede=sede %}";
 const URL_GUARDAR = v => "{% url 'guardar_version_sede' sede=sede version=999999 %}".replace("999999", v);
 const URL_APROBAR = v => "{% url 'aprobar_version_sede' sede=sede version=999999 %}".replace("999999", v);
 const URL_BORRAR  = "{% url 'borrar_presupuesto_sede' sede=sede %}";
+const URL_ENVIADO = v => "{% url 'presupuesto_preaprobado_sede' sede=sede version=999999 %}".replace("999999", v);
 const URL_SUBIR_C5  = "{% url 'subir_cuenta5_sede' sede=sede %}";
 const URL_QUITAR_C5 = "{% url 'quitar_cuenta5_sede' sede=sede %}";
+const URL_ACTUALIZAR_BORRADOR = "{% url 'actualizar_borrador_sede' sede=sede %}";
 
 const select = document.getElementById("versionSelect");
 const versionActual = () => select.value;
 
 function pintarEstado() {
     const op = select.selectedOptions[0];
+    const conCopia = op.dataset.copia === "1";
+    const totalEnviado = op.dataset.totalEnviado
+        ? new Intl.NumberFormat("es-CO").format(Number(op.dataset.totalEnviado)) : "";
     document.getElementById("estadoTexto").innerHTML =
-        `Viendo la versión <b>v${op.value}</b>, enviada el ${op.dataset.fecha}.`;
+        `Viendo tu versión de trabajo <b>v${op.value}</b>, enviada el ${op.dataset.fecha}.` +
+        (conCopia ? ` Total que envió el área: <b>$${totalEnviado}</b>.` : "");
+    // Botón de auditoría: solo si la versión tiene copia de lo que envió el área.
+    const link = document.getElementById("verEnviadoLink");
+    const btn = document.getElementById("verEnviadoBtn");
+    btn.disabled = !conCopia;
+    btn.textContent = conCopia ? `📄 Ver lo que envió el área (v${op.value})` : "📄 Sin copia de lo enviado";
+    btn.title = conCopia ? "Copia de auditoría: exactamente lo que envió el área (solo lectura)"
+                         : "Esta versión se subió antes de que se guardara la copia de lo que envió el área";
+    link.href = conCopia ? URL_ENVIADO(op.value) : "#";
+    link.style.pointerEvents = conCopia ? "" : "none";
     document.getElementById("estadoBadge").outerHTML = op.dataset.aprobada === "1"
         ? '<span class="badge badge-aprobada" id="estadoBadge">Aprobada</span>'
         : '<span class="badge badge-pendiente" id="estadoBadge">Pendiente de aprobación</span>';
@@ -217,6 +267,28 @@ document.getElementById("quitarC5Btn").addEventListener("click", () => {
 document.getElementById("confirmQuitarC5Btn").addEventListener("click", async () => {
     GrillaPresupuesto.cerrarModal("modalQuitarC5");
     await accionCuenta5(URL_QUITAR_C5, document.getElementById("quitarC5Btn"));
+});
+
+// ── Actualizar la tabla del área (su borrador) con la del revisor ──
+document.getElementById("actualizarBorradorBtn").addEventListener("click", () => {
+    document.getElementById("borradorVersionTrabajo").textContent = "v" + versionActual();
+    GrillaPresupuesto.abrirModal("modalActualizarBorrador");
+});
+document.getElementById("confirmActualizarBorradorBtn").addEventListener("click", async () => {
+    const origen = document.querySelector('input[name="origenBorrador"]:checked').value;
+    GrillaPresupuesto.cerrarModal("modalActualizarBorrador");
+    const btn = document.getElementById("actualizarBorradorBtn");
+    btn.disabled = true;
+    try {
+        // Primero que lleguen tus últimos cambios: se envía lo que ves en pantalla.
+        if (origen === "trabajo") await grilla.vaciarColaDeGuardado();
+        const resp = await GrillaPresupuesto.apiPost(URL_ACTUALIZAR_BORRADOR, { origen, version: versionActual() });
+        GrillaPresupuesto.showToast(resp.msg || "Listo", resp.success ? "success" : "error", 6000);
+    } catch (e) {
+        GrillaPresupuesto.showToast((e && e.message) || "No se pudo actualizar la tabla del área ❌", "error", 8000);
+    } finally {
+        btn.disabled = false;
+    }
 });
 
 // ── Borrar versión ──

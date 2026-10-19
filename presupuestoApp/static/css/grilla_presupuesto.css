@@ -71,7 +71,10 @@ h2 { margin-bottom: 4px; }
     overflow: auto; max-width: 100%; height: 65vh;
     border: 1px solid var(--color-borde); position: relative;
 }
-table.grid { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; }
+/* Ancho de columna fijo y ajustable (como Excel): el texto largo se corta con "…"
+   y se ve completo al pasar el mouse. El ancho total lo pone grilla_presupuesto.js. */
+table.grid { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; table-layout: fixed; }
+table.grid td { overflow: hidden; text-overflow: ellipsis; }
 table.grid th, table.grid td {
     border-right: 1px solid var(--color-borde); border-bottom: 1px solid var(--color-borde);
     padding: 4px 8px; white-space: nowrap; text-align: left;
@@ -191,3 +194,55 @@ td.editing input.combo-buscar::placeholder { color: #9aa0a6; font-weight: 400; }
     flex: none; padding: 6px 12px; border-top: 1px solid #eef0f4; background: #f8f9fb;
     color: #6b7280; font-size: 11.5px;
 }
+
+/* ── Encabezado: título + botón de filtro + manija de ancho ── */
+table.grid thead th { overflow: hidden; }
+.th-contenido { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.th-label { overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.filtro-btn {
+    flex: none; border: 1px solid rgba(255,255,255,.55); background: transparent; color: #fff;
+    border-radius: 4px; font-size: 11px; line-height: 1; padding: 2px 5px; cursor: pointer;
+}
+.filtro-btn:hover { background: rgba(255,255,255,.18); }
+.filtro-btn.activo { background: #ffd54a; border-color: #ffd54a; color: #1f2937; }
+.col-resizer {
+    position: absolute; top: 0; right: 0; width: 6px; height: 100%; cursor: col-resize; z-index: 4;
+}
+.col-resizer:hover, body.redimensionando .col-resizer:hover { background: rgba(255,255,255,.45); }
+body.redimensionando, body.redimensionando * { cursor: col-resize !important; user-select: none !important; }
+
+/* ── Panel de filtro tipo Excel ── */
+.filtro-panel {
+    position: fixed; z-index: 9500; width: 290px; max-height: 420px; display: flex; flex-direction: column;
+    background: #fff; border: 1px solid #b9c2d8; border-radius: 8px; box-shadow: 0 10px 28px rgba(16,32,80,.18);
+    font-size: 13px; color: #1f2937;
+}
+.filtro-titulo { padding: 8px 12px 4px; font-weight: 600; color: var(--color-primario); }
+.filtro-buscar { margin: 4px 12px 6px; padding: 6px 8px; border: 1px solid #ced4da; border-radius: 6px; font: inherit; }
+.filtro-op { display: flex; align-items: center; gap: 6px; padding: 3px 12px; cursor: pointer; }
+.filtro-op:hover { background: #f1f4fb; }
+.filtro-op span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filtro-op small { color: #888; }
+.filtro-todos { border-bottom: 1px solid #eef0f4; padding-bottom: 6px; }
+.filtro-lista { overflow-y: auto; flex: 1; padding: 4px 0; }
+.filtro-acciones { display: flex; gap: 6px; padding: 8px 12px; border-top: 1px solid #eef0f4; }
+.filtro-acciones .filtro-espacio { flex: 1; }
+.filtro-acciones button { padding: 5px 10px; border-radius: 6px; border: 1px solid #ced4da; background: #fff; cursor: pointer; font: inherit; font-size: 12px; }
+.filtro-acciones .filtro-aceptar { background: var(--color-primario); border-color: var(--color-primario); color: #fff; }
+.filtro-acciones button:disabled { opacity: .5; cursor: default; }
+
+/* ── Estado del filtro y búsqueda general ── */
+#estadoFiltro:not(:empty) { color: #8a5300; font-weight: 600; }
+.quitar-filtros-btn {
+    margin-left: 6px; padding: 2px 8px; border-radius: 5px; border: 1px solid #e0b252; background: #fff8d6;
+    color: #6b4e00; cursor: pointer; font: inherit; font-size: 12px;
+}
+td.sin-resultados { text-align: center !important; padding: 18px !important; color: #666; background: #fafafa; }
+.busqueda-grilla { padding: 6px 10px; border: 1px solid #ced4da; border-radius: 6px; font-size: 14px; width: 280px; }
+.busqueda-grilla:focus { outline: 2px solid #1f3a9333; border-color: var(--color-primario); }
+
+/* Modal "Actualizar preaprobado o aprobado" */
+.opcion-borrador { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; margin: 6px 0;
+                   border: 1px solid var(--color-borde); border-radius: 6px; font-size: 13px; cursor: pointer; }
+.opcion-borrador:has(input:checked) { border-color: var(--color-primario); background: #f3f6fd; }
+.opcion-borrador:has(input:disabled) { opacity: .55; cursor: default; }

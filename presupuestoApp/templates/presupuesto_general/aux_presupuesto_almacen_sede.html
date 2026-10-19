@@ -65,7 +65,7 @@
 <script>
 const grilla = GrillaPresupuesto.init({
     sede: "{{ sede }}",
-    urlObtener: "{% url 'obtener_temp_sede' sede=sede %}",
+    urlObtener: "{% url 'obtener_temp_sede' sede=sede %}?con_token=1",   // token: detecta si el revisor actualizó el borrador
     urlGuardar: "{% url 'guardar_temp_sede' sede=sede %}",
     urlCuentas: "{% url 'seleccionCuentasContables' %}",
     nombreExport: "presupuesto_{{ sede }}",

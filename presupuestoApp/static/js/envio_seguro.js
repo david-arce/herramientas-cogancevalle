@@ -58,7 +58,7 @@ function errorPermanente(mensaje, respuesta) {
 const mensajeDe = (j, por) => (j && (j.message || j.msg || j.mensaje || j.error)) || por;
 
 /** Un intento de POST JSON. Devuelve el JSON o lanza un error transitorio/permanente. */
-async function intentar(url, cuerpoTexto) {
+async function intentar(url, cuerpoTexto, cabecerasExtra = {}) {
     let resp;
     try {
         resp = await fetch(url, {
@@ -69,6 +69,7 @@ async function intentar(url, cuerpoTexto) {
                 "Content-Type": "application/json",
                 "X-CSRFToken": csrfToken(),
                 "X-Requested-With": "XMLHttpRequest",
+                ...cabecerasExtra,
             },
             body: cuerpoTexto,
         });
@@ -125,8 +126,9 @@ function dormilon() {
 }
 
 class Cola {
-    constructor({ clave, url, esExito = () => true, onEstado = () => {} }) {
+    constructor({ clave, url, esExito = () => true, onEstado = () => {}, cabeceras = () => ({}) }) {
         this.clave = clave;
+        this.cabeceras = cabeceras;     // cabeceras extra por envío (p. ej. el token del borrador)
         this.url = url;
         this.esExito = esExito;
         this.onEstado = onEstado;
@@ -183,7 +185,7 @@ class Cola {
             const seq = this.seq, datos = this.datos, url = this.url;
             this._estado("enviando", { conRespaldo: this.conRespaldo });
             try {
-                const json = await intentar(url, JSON.stringify(datos));
+                const json = await intentar(url, JSON.stringify(datos), this.cabeceras() || {});
                 if (!this.esExito(json)) throw errorPermanente(mensajeDe(json, "El servidor no aceptó los datos"), json);
                 intento = 0;
                 // Cada envío confirmado (aunque después haya otro con cambios más nuevos).

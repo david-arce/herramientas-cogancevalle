@@ -200,6 +200,17 @@ function init(opciones) {
 
     let rows = [];
     let mapaCuentaMayor = {};
+
+    // ── Vista filtrada (filtros por columna + búsqueda general) ──
+    // TODAS las coordenadas de la grilla (selección, edición, relleno, pegar,
+    // borrar, Ctrl+A, IPC…) son posiciones dentro de `vista`, no de `rows`:
+    // así cada operación toca SOLO las filas visibles, como en Excel.
+    // Sin filtros, vista === rows y todo funciona exactamente igual que antes.
+    let vista = rows;
+    const filtrosCol = {};            // key -> Set de valores permitidos (solo filtros activos)
+    let textoBusqueda = "";           // búsqueda general (normalizada)
+    let fijadas = new WeakSet();      // filas editadas/creadas con filtro activo: siguen visibles hasta cambiar el filtro
+    const hayFiltro = () => !!textoBusqueda || Object.keys(filtrosCol).length > 0;
     let sel = null;                 // { r1, c1, r2, c2 } → (r1,c1) es el ancla
     let editingInput = null;
     let editando = null;            // { rowIndex, colKey, td }
@@ -219,6 +230,11 @@ function init(opciones) {
     const AUTOSAVE_DEBOUNCE_MS = 800;
     let autoSaveTimer = null;
     let avisoReintentoMostrado = false;
+    // Token del borrador (solo la pantalla del área lo recibe, con ?con_token=1):
+    // si el revisor reemplazó el borrador después de cargarlo, el servidor
+    // rechaza el guardado (409) en vez de pisar la tabla del revisor.
+    let borradorToken = null;
+    let recargandoPorConflicto = false;
 
     function setAutoSaveStatus(estado, texto) {
         const el = $("autoSaveStatus");
@@ -251,7 +267,17 @@ function init(opciones) {
                 showToast(`${info.error.message}. Tus cambios quedan en cola y se guardarán solos cuando el servidor responda.`,
                           "error", 7000);
             }
+        } else if (estado === "enviado") {
+            if (info.respuesta && info.respuesta.token !== undefined) borradorToken = info.respuesta.token;
         } else if (estado === "error") {
+            if (info.error.respuesta && info.error.respuesta.conflicto) {
+                setAutoSaveStatus("error", "Tu borrador cambió en el servidor · recarga la página");
+                if (confirm(`${info.error.message}\n\n¿Recargar ahora?`)) {
+                    recargandoPorConflicto = true;
+                    window.location.reload();
+                }
+                return;
+            }
             setAutoSaveStatus("error", "Error al guardar ❌");
             showToast(`${info.error.message} ❌`, "error", 7000);
         }
@@ -263,6 +289,7 @@ function init(opciones) {
             url: OPC.urlGuardar,
             esExito: j => j.status === "ok",
             onEstado: pintarEstadoCola,
+            cabeceras: () => (borradorToken !== null ? { "X-Borrador-Token": String(borradorToken) } : {}),
         });
     }
     let cola = crearCola();
@@ -297,7 +324,7 @@ function init(opciones) {
         || colasAnteriores.some(c => c.hayPendientes());
 
     window.addEventListener("beforeunload", (e) => {
-        if (hayPendientes()) { e.preventDefault(); e.returnValue = ""; }
+        if (!recargandoPorConflicto && hayPendientes()) { e.preventDefault(); e.returnValue = ""; }
     });
 
     // ── Recuperar cambios que no alcanzaron a guardarse (página cerrada o
@@ -337,6 +364,7 @@ function init(opciones) {
     function aplicarRespaldo(respaldo) {
         instantanea();                                           // se puede deshacer con Ctrl+Z
         rows = respaldo.datos.map(r => ({ ...r, _checked: false }));
+        recomputarVista();
         sel = null;
         render();
         if (rows.length) seleccionar(0, COL_INI);
@@ -362,6 +390,7 @@ function init(opciones) {
         hacia.push(JSON.stringify(rows));
         rows = JSON.parse(desde.pop());
         rows.forEach(r => { if (r._checked === undefined) r._checked = false; });
+        recomputarVista();
         limitarSeleccion();
         render();
         actualizarBotonesHistorial();
@@ -406,7 +435,9 @@ function init(opciones) {
         const resp = await obtenerConReintentos(OPC.urlObtener);
         datosCargados = true;
         rows = Array.isArray(resp) ? resp : (resp.data || []);
+        if (resp && !Array.isArray(resp) && resp.token !== undefined) borradorToken = resp.token;
         rows.forEach(r => { r._checked = false; });
+        recomputarVista();
         pilaDeshacer.length = 0;
         pilaRehacer.length = 0;
         actualizarBotonesHistorial();
@@ -421,6 +452,9 @@ function init(opciones) {
     // -----------------------------------------------------------------
     // Render
     // -----------------------------------------------------------------
+    // Columnas con filtro tipo Excel (botón ▾ en el encabezado).
+    const FILTRABLES = ["zonnombre", "mcncuenta", "ctanombre", "mcndetalle"];
+
     function renderHeader() {
         const headerRow = $("gridHeaderRow");
         headerRow.innerHTML = "";
@@ -430,16 +464,264 @@ function init(opciones) {
             if (col.key === "_check") {
                 th.innerHTML = `<input type="checkbox" id="checkAllIPC" title="Seleccionar todo">`;
             } else {
-                th.textContent = col.label;
+                const filtrable = FILTRABLES.includes(col.key);
+                th.innerHTML = `<div class="th-contenido"><span class="th-label">${escaparHtml(col.label)}</span>` +
+                    (filtrable ? `<button type="button" class="filtro-btn" data-filtro="${col.key}" title="Filtrar ${escaparAttr(col.label)}">▾</button>` : "") +
+                    `</div>`;
+                th.title = col.label;
             }
+            // Manija para cambiar el ancho (como en Excel); doble clic = ajustar al contenido.
+            const manija = document.createElement("span");
+            manija.className = "col-resizer";
+            manija.title = "Arrastra para cambiar el ancho · doble clic: ajustar al contenido";
+            th.appendChild(manija);
             headerRow.appendChild(th);
         });
+        aplicarAnchos();
+        pintarIndicadoresFiltro();
     }
 
+    // -----------------------------------------------------------------
+    // Ancho de columnas (redimensionable, se recuerda en este navegador)
+    // -----------------------------------------------------------------
+    const ANCHOS_DEFECTO = { _check: 32, _acciones: 78, zonnombre: 190, mcncuenta: 90, ctanombre: 250,
+                             mcndetalle: 230, total: 115, comentario: 280 };
+    const ANCHO_MES = 100, ANCHO_MIN = 40, ANCHO_MAX = 900;
+    const CLAVE_ANCHOS = "grillaPresupuesto.anchos";
+    const anchos = (() => {
+        try { return JSON.parse(localStorage.getItem(CLAVE_ANCHOS)) || {}; } catch (e) { return {}; }
+    })();
+    const anchoDe = col => anchos[col.key] || ANCHOS_DEFECTO[col.key] || (MESES.includes(col.key) ? ANCHO_MES : 140);
+    function guardarAnchos() {
+        try { localStorage.setItem(CLAVE_ANCHOS, JSON.stringify(anchos)); } catch (e) { /* sin almacenamiento */ }
+    }
+    function aplicarAnchos() {
+        let total = 0;
+        document.querySelectorAll("#gridHeaderRow th").forEach(th => {
+            const w = anchoDe(COLUMNS[+th.dataset.colIndex]);
+            th.style.width = w + "px";
+            total += w;
+        });
+        $("gridTable").style.width = total + "px";
+        pintarSeleccion();
+    }
+    function anchoIdeal(ci) {
+        const col = COLUMNS[ci];
+        const th = document.querySelector(`#gridHeaderRow th[data-col-index="${ci}"]`);
+        const muestra = document.querySelector(`#gridBody td[data-col-index="${ci}"]`) || th;
+        const ctx = document.createElement("canvas").getContext("2d");
+        ctx.font = getComputedStyle(muestra).font;
+        let max = ctx.measureText(col.label).width + (FILTRABLES.includes(col.key) ? 26 : 0);
+        vista.forEach(r => {
+            const t = col.type === "number" ? fmt(r[col.key]) : String(r[col.key] ?? "");
+            max = Math.max(max, ctx.measureText(t).width);
+        });
+        return Math.min(ANCHO_MAX, Math.max(ANCHO_MIN, Math.ceil(max) + 22));
+    }
+    let redimension = null;
+    $("gridHeaderRow").addEventListener("mousedown", (e) => {
+        const manija = e.target.closest(".col-resizer");
+        if (!manija) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const th = manija.closest("th");
+        const col = COLUMNS[+th.dataset.colIndex];
+        redimension = { col, th, x: e.clientX, ancho: anchoDe(col) };
+        document.body.classList.add("redimensionando");
+    });
+    document.addEventListener("mousemove", (e) => {
+        if (!redimension) return;
+        const w = Math.min(ANCHO_MAX, Math.max(ANCHO_MIN, redimension.ancho + e.clientX - redimension.x));
+        anchos[redimension.col.key] = w;
+        aplicarAnchos();
+    });
+    document.addEventListener("mouseup", () => {
+        if (!redimension) return;
+        redimension = null;
+        document.body.classList.remove("redimensionando");
+        guardarAnchos();
+    });
+    $("gridHeaderRow").addEventListener("dblclick", (e) => {
+        const manija = e.target.closest(".col-resizer");
+        if (!manija) return;
+        const ci = +manija.closest("th").dataset.colIndex;
+        anchos[COLUMNS[ci].key] = anchoIdeal(ci);
+        aplicarAnchos();
+        guardarAnchos();
+    });
+
+    // -----------------------------------------------------------------
+    // Filtros por columna y búsqueda general
+    // -----------------------------------------------------------------
+    const normalizar = t => String(t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const CAMPOS_BUSQUEDA = ["zonnombre", "mcncuenta", "ctanombre", "mcndetalle", "comentario",
+                             "responsable", "proveedor", "mcnccosto"];
+    const valorFiltro = (row, key) => String(row[key] ?? "").trim();
+
+    function pasaFiltros(row, excepto = null) {
+        for (const key in filtrosCol) {
+            if (key !== excepto && !filtrosCol[key].has(valorFiltro(row, key))) return false;
+        }
+        if (textoBusqueda) {
+            const texto = CAMPOS_BUSQUEDA.map(k => normalizar(row[k])).join(" | ");
+            if (!textoBusqueda.split(/\s+/).every(p => texto.includes(p))) return false;
+        }
+        return true;
+    }
+    function recomputarVista() {
+        vista = hayFiltro() ? rows.filter(r => fijadas.has(r) || pasaFiltros(r)) : rows;
+    }
+    function aplicarCambioFiltros() {
+        if (editingInput) cerrarEdicion(false);
+        fijadas = new WeakSet();          // al cambiar el filtro se vuelve a evaluar TODO
+        sel = null;
+        rangoCopiado = null;
+        render();
+        if (vista.length) seleccionar(0, COL_INI);
+    }
+    function pintarIndicadoresFiltro() {
+        document.querySelectorAll("#gridHeaderRow .filtro-btn")
+            .forEach(b => b.classList.toggle("activo", !!filtrosCol[b.dataset.filtro]));
+        const el = $("estadoFiltro");
+        if (el) el.innerHTML = hayFiltro()
+            ? `🔎 Filtrado: <b>${vista.length}</b> de ${rows.length} filas ` +
+              `<button type="button" class="quitar-filtros-btn">Quitar filtros</button>`
+            : "";
+    }
+    function quitarFiltros() {
+        Object.keys(filtrosCol).forEach(k => delete filtrosCol[k]);
+        textoBusqueda = "";
+        const caja = $("busquedaGrilla");
+        if (caja) caja.value = "";
+        aplicarCambioFiltros();
+    }
+    document.addEventListener("click", (e) => {
+        if (e.target.closest(".quitar-filtros-btn")) quitarFiltros();
+    });
+
+    let panelFiltro = null;
+    function cerrarPanelFiltro() {
+        if (panelFiltro) { panelFiltro.remove(); panelFiltro = null; }
+    }
+    function abrirPanelFiltro(key, boton) {
+        cerrarPanelFiltro();
+        const col = COLUMNS.find(c => c.key === key);
+        // Valores posibles = los de las filas que pasan los OTROS filtros (en cascada, como Excel).
+        const conteo = new Map();
+        rows.forEach(r => {
+            if (!pasaFiltros(r, key)) return;
+            const v = valorFiltro(r, key);
+            conteo.set(v, (conteo.get(v) || 0) + 1);
+        });
+        const valores = [...conteo.keys()].sort((a, b) => a.localeCompare(b, "es", { numeric: true }));
+        const activos = filtrosCol[key];
+
+        const panel = document.createElement("div");
+        panel.className = "filtro-panel";
+        panel.innerHTML = `
+            <div class="filtro-titulo">Filtrar · ${escaparHtml(col.label)}</div>
+            <input type="text" class="filtro-buscar" placeholder="Buscar…" autocomplete="off">
+            <label class="filtro-op filtro-todos"><input type="checkbox" class="filtro-todos-chk"> <span>(Seleccionar todo)</span></label>
+            <div class="filtro-lista">${valores.map(v => `
+                <label class="filtro-op" data-texto="${escaparAttr(normalizar(v))}">
+                    <input type="checkbox" value="${escaparAttr(v)}" ${!activos || activos.has(v) ? "checked" : ""}>
+                    <span>${escaparHtml(v || "(Vacías)")}</span><small>${conteo.get(v)}</small>
+                </label>`).join("")}</div>
+            <div class="filtro-acciones">
+                <button type="button" class="filtro-limpiar" ${activos ? "" : "disabled"}>Quitar filtro</button>
+                <span class="filtro-espacio"></span>
+                <button type="button" class="filtro-cancelar">Cancelar</button>
+                <button type="button" class="filtro-aceptar">Aceptar</button>
+            </div>`;
+        document.body.appendChild(panel);
+        panelFiltro = panel;
+        const rect = boton.getBoundingClientRect();
+        panel.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - panel.offsetWidth - 8)) + "px";
+        panel.style.top = Math.min(rect.bottom + 4, window.innerHeight - panel.offsetHeight - 8) + "px";
+
+        const buscar = panel.querySelector(".filtro-buscar");
+        const todos = panel.querySelector(".filtro-todos-chk");
+        const opciones = [...panel.querySelectorAll(".filtro-lista .filtro-op")];
+        const visibles = () => opciones.filter(o => o.style.display !== "none");
+        const sincronizarTodos = () => {
+            const vis = visibles(), marcadas = vis.filter(o => o.querySelector("input").checked).length;
+            todos.checked = vis.length > 0 && marcadas === vis.length;
+            todos.indeterminate = marcadas > 0 && marcadas < vis.length;
+        };
+        buscar.addEventListener("input", () => {
+            const q = normalizar(buscar.value);
+            // Como Excel: al buscar, quedan marcados solo los resultados.
+            opciones.forEach(o => {
+                const coincide = !q || o.dataset.texto.includes(q);
+                o.style.display = coincide ? "" : "none";
+                if (q) o.querySelector("input").checked = coincide;
+            });
+            sincronizarTodos();
+        });
+        todos.addEventListener("change", () => {
+            visibles().forEach(o => { o.querySelector("input").checked = todos.checked; });
+            sincronizarTodos();
+        });
+        panel.querySelector(".filtro-lista").addEventListener("change", sincronizarTodos);
+        const aceptar = () => {
+            const elegidos = (buscar.value.trim() ? visibles() : opciones)
+                .filter(o => o.querySelector("input").checked).map(o => o.querySelector("input").value);
+            if (!elegidos.length) { showToast("Selecciona al menos un valor", "error"); return; }
+            if (elegidos.length === valores.length && !buscar.value.trim()) delete filtrosCol[key];
+            else filtrosCol[key] = new Set(elegidos);
+            cerrarPanelFiltro();
+            aplicarCambioFiltros();
+        };
+        panel.querySelector(".filtro-aceptar").addEventListener("click", aceptar);
+        panel.querySelector(".filtro-cancelar").addEventListener("click", cerrarPanelFiltro);
+        panel.querySelector(".filtro-limpiar").addEventListener("click", () => {
+            delete filtrosCol[key];
+            cerrarPanelFiltro();
+            aplicarCambioFiltros();
+        });
+        panel.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") { e.preventDefault(); aceptar(); }
+            if (e.key === "Escape") { e.preventDefault(); cerrarPanelFiltro(); }
+        });
+        sincronizarTodos();
+        buscar.focus();
+    }
+    $("gridHeaderRow").addEventListener("click", (e) => {
+        const boton = e.target.closest(".filtro-btn");
+        if (!boton) return;
+        e.stopPropagation();
+        if (panelFiltro && panelFiltro.dataset.key === boton.dataset.filtro) { cerrarPanelFiltro(); return; }
+        abrirPanelFiltro(boton.dataset.filtro, boton);
+        panelFiltro.dataset.key = boton.dataset.filtro;
+    });
+    document.addEventListener("mousedown", (e) => {
+        if (panelFiltro && !e.target.closest(".filtro-panel") && !e.target.closest(".filtro-btn")) cerrarPanelFiltro();
+    });
+
+    // Búsqueda general (si la pantalla tiene la caja #busquedaGrilla).
+    (function initBusqueda() {
+        const caja = $("busquedaGrilla");
+        if (!caja) return;
+        let t = null;
+        const aplicar = () => { textoBusqueda = normalizar(caja.value); aplicarCambioFiltros(); };
+        caja.addEventListener("input", () => { clearTimeout(t); t = setTimeout(aplicar, 250); });
+        caja.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") { clearTimeout(t); aplicar(); }
+            if (e.key === "Escape") { caja.value = ""; clearTimeout(t); aplicar(); }
+        });
+    })();
+
     function render() {
+        recomputarVista();
         const tbody = $("gridBody");
         const frag = document.createDocumentFragment();
-        rows.forEach((row, rowIndex) => {
+        if (!vista.length && rows.length) {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td colspan="${COLUMNS.length}" class="sin-resultados">Ninguna fila coincide con los filtros. ` +
+                           `<button type="button" class="quitar-filtros-btn">Quitar filtros</button></td>`;
+            frag.appendChild(tr);
+        }
+        vista.forEach((row, rowIndex) => {
             const tr = document.createElement("tr");
             tr.dataset.rowIndex = rowIndex;
             tr.classList.toggle("fila-marcada", !!row._checked);
@@ -451,6 +733,7 @@ function init(opciones) {
         syncCheckAllState();
         programarTotales();
         pintarSeleccion();
+        pintarIndicadoresFiltro();
     }
 
     // Fila de totales al pie. Se recalcula como máximo una vez por cuadro de
@@ -467,11 +750,14 @@ function init(opciones) {
         if (!fila) return;
         const sumas = {};
         COLUMNS.forEach(c => { if (c.type === "number") sumas[c.key] = 0; });
-        rows.forEach(r => { for (const k in sumas) sumas[k] += parseFloat(r[k]) || 0; });
+        vista.forEach(r => { for (const k in sumas) sumas[k] += parseFloat(r[k]) || 0; });
 
         fila.innerHTML = COLUMNS.map((col, ci) => {
             if (ci === COL_INI) {
-                return `<td class="total-etiqueta">TOTAL · ${rows.length} fila${rows.length === 1 ? "" : "s"}</td>`;
+                const etiqueta = vista === rows
+                    ? `TOTAL · ${rows.length} fila${rows.length === 1 ? "" : "s"}`
+                    : `TOTAL · ${vista.length} de ${rows.length} filas`;
+                return `<td class="total-etiqueta">${etiqueta}</td>`;
             }
             if (col.type === "number") {
                 const clase = col.key === "total" ? "numeric total-general" : "numeric";
@@ -501,13 +787,14 @@ function init(opciones) {
         td.classList.add(col.locked || !puedeEditar() ? "locked" : "editable");
         if (col.type === "number") td.classList.add("numeric");
         td.textContent = col.type === "number" ? fmt(row[col.key]) : (row[col.key] ?? "");
+        if (col.type !== "number" && td.textContent.length > 20) td.title = td.textContent;   // texto completo al pasar el mouse
         return td;
     }
 
     // Repinta solo una fila: reconstruir toda la tabla en cada edición hacía
     // perder el scroll y la selección.
     function pintarFila(rowIndex) {
-        const row = rows[rowIndex];
+        const row = vista[rowIndex];
         if (!row) return;
         marcarFila(rowIndex);
         COLUMNS.forEach((col, ci) => {
@@ -520,6 +807,7 @@ function init(opciones) {
             }
             if (col.type === "acciones") return;
             td.textContent = col.type === "number" ? fmt(row[col.key]) : (row[col.key] ?? "");
+            td.title = col.type !== "number" && td.textContent.length > 20 ? td.textContent : "";
         });
         programarTotales();
     }
@@ -527,12 +815,12 @@ function init(opciones) {
     // Sombrea la fila cuando está marcada con el checkbox (filas a las que se aplicará el IPC).
     function marcarFila(rowIndex) {
         const tr = document.querySelector(`#gridBody tr[data-row-index="${rowIndex}"]`);
-        if (tr) tr.classList.toggle("fila-marcada", !!rows[rowIndex]?._checked);
+        if (tr) tr.classList.toggle("fila-marcada", !!vista[rowIndex]?._checked);
     }
 
     function syncCheckAllState() {
-        const total = rows.length;
-        const marcados = rows.filter(r => r._checked).length;
+        const total = vista.length;
+        const marcados = vista.filter(r => r._checked).length;
         const checkAll = $("checkAllIPC");
         if (!checkAll) return;
         checkAll.checked = total > 0 && marcados === total;
@@ -552,16 +840,16 @@ function init(opciones) {
             c0: Math.min(s.c1, s.c2), c1: Math.max(s.c1, s.c2),
         };
     }
-    function clampFila(r) { return Math.max(0, Math.min(rows.length - 1, r)); }
+    function clampFila(r) { return Math.max(0, Math.min(vista.length - 1, r)); }
     function clampCol(c) { return Math.max(COL_INI, Math.min(COL_FIN, c)); }
     function limitarSeleccion() {
         if (!sel) return;
-        if (rows.length === 0) { sel = null; return; }
+        if (vista.length === 0) { sel = null; return; }
         sel = { r1: clampFila(sel.r1), c1: clampCol(sel.c1), r2: clampFila(sel.r2), c2: clampCol(sel.c2) };
     }
 
     function seleccionar(r, c, extender = false) {
-        if (rows.length === 0) return;
+        if (vista.length === 0) return;
         r = clampFila(r); c = clampCol(c);
         if (!extender || !sel) sel = { r1: r, c1: c, r2: r, c2: c };
         else { sel.r2 = r; sel.c2 = c; }
@@ -582,7 +870,7 @@ function init(opciones) {
 
     function pintarSeleccion() {
         const ov = $("overlaySel");
-        if (!sel || rows.length === 0) {
+        if (!sel || vista.length === 0) {
             ov.style.display = "none";
             pintarCopiado();
             actualizarBarraEstado();
@@ -624,7 +912,7 @@ function init(opciones) {
         for (let r = r0; r <= r1; r++) {
             for (let c = c0; c <= c1; c++) {
                 if (COLUMNS[c].type !== "number") continue;
-                const v = parseFloat(rows[r][COLUMNS[c].key]);
+                const v = parseFloat(vista[r][COLUMNS[c].key]);
                 if (!isNaN(v)) { n++; suma += v; }
             }
         }
@@ -653,6 +941,11 @@ function init(opciones) {
     // Escribe respetando las reglas de negocio (código de costo, centro de
     // trabajo, recálculo del total). Devuelve true si escribió.
     function aplicarValor(row, colKey, valor) {
+        const ok = aplicarValorBase(row, colKey, valor);
+        if (ok && hayFiltro()) fijadas.add(row);   // no desaparece mientras se edita
+        return ok;
+    }
+    function aplicarValorBase(row, colKey, valor) {
         const col = COLUMNS.find(c => c.key === colKey);
         if (!col || col.locked || col.type === "check" || col.type === "acciones") return false;
 
@@ -728,7 +1021,7 @@ function init(opciones) {
         const col = COLUMNS[c];
         const td = tdDe(r, c);
         if (!td || !col || col.locked || col.type === "check" || col.type === "acciones") return;
-        const row = rows[r];
+        const row = vista[r];
         td.classList.add("editing");
         editando = { rowIndex: r, colKey: col.key, colIdx: c, td };
 
@@ -991,10 +1284,10 @@ function init(opciones) {
 
         let huboCambio = false;
         if (!cancelar) {
-            const antes = JSON.stringify(rows[rowIndex]);
+            const antes = JSON.stringify(vista[rowIndex]);
             instantanea();
-            const ok = aplicarValor(rows[rowIndex], colKey, valor);
-            if (!ok || JSON.stringify(rows[rowIndex]) === antes) {
+            const ok = aplicarValor(vista[rowIndex], colKey, valor);
+            if (!ok || JSON.stringify(vista[rowIndex]) === antes) {
                 pilaDeshacer.pop();                      // no cambió nada: no ensuciar el historial
                 actualizarBotonesHistorial();
                 if (!ok && valor !== "") showToast("Ese valor no es válido para la columna ❌", "error");
@@ -1195,7 +1488,7 @@ function init(opciones) {
         const escribir = (r, c, valor) => {
             const col = COLUMNS[c];
             if (!col || col.locked) return;
-            if (aplicarValor(rows[r], col.key, valor)) { escrituras++; filasTocadas.add(r); }
+            if (aplicarValor(vista[r], col.key, valor)) { escrituras++; filasTocadas.add(r); }
             else rechazos++;
         };
 
@@ -1204,7 +1497,7 @@ function init(opciones) {
             for (let c = base.c0; c <= base.c1; c++) {
                 const col = COLUMNS[c];
                 let valoresBase = [];
-                for (let r = base.r0; r <= base.r1; r++) valoresBase.push(valorTextoCelda(rows[r], col));
+                for (let r = base.r0; r <= base.r1; r++) valoresBase.push(valorTextoCelda(vista[r], col));
                 if (!haciaAbajo) valoresBase = valoresBase.slice().reverse();
                 const cantidad = haciaAbajo ? destino.r1 - base.r1 : base.r0 - destino.r0;
                 const serie = generarSerie(valoresBase, cantidad, ctrl, forzarCopia);
@@ -1216,7 +1509,7 @@ function init(opciones) {
             const haciaDerecha = destino.c1 > base.c1;
             for (let r = base.r0; r <= base.r1; r++) {
                 let valoresBase = [];
-                for (let c = base.c0; c <= base.c1; c++) valoresBase.push(valorTextoCelda(rows[r], COLUMNS[c]));
+                for (let c = base.c0; c <= base.c1; c++) valoresBase.push(valorTextoCelda(vista[r], COLUMNS[c]));
                 if (!haciaDerecha) valoresBase = valoresBase.slice().reverse();
                 const cantidad = haciaDerecha ? destino.c1 - base.c1 : base.c0 - destino.c0;
                 const serie = generarSerie(valoresBase, cantidad, ctrl, forzarCopia);
@@ -1246,8 +1539,8 @@ function init(opciones) {
         if (colRef < COL_INI || colRef > COL_FIN) return;
         const key = COLUMNS[colRef].key;
         let ultima = base.r1;
-        while (ultima + 1 < rows.length) {
-            const v = rows[ultima + 1][key];
+        while (ultima + 1 < vista.length) {
+            const v = vista[ultima + 1][key];
             if (v === "" || v === null || v === undefined || v === 0) break;
             ultima++;
         }
@@ -1266,7 +1559,7 @@ function init(opciones) {
         const lineas = [];
         for (let r = r0; r <= r1; r++) {
             const celdas = [];
-            for (let c = c0; c <= c1; c++) celdas.push(valorTextoCelda(rows[r], COLUMNS[c]));
+            for (let c = c0; c <= c1; c++) celdas.push(valorTextoCelda(vista[r], COLUMNS[c]));
             lineas.push(celdas.join("\t"));
         }
         return lineas.join("\n");
@@ -1324,9 +1617,15 @@ function init(opciones) {
         instantanea();
 
         // Si hace falta, se agregan filas nuevas al final en vez de recortar.
-        const filasNecesarias = destino.r0 + filasDestino - rows.length;
+        const filasNecesarias = destino.r0 + filasDestino - vista.length;
         let filasAgregadas = 0;
-        for (let i = 0; i < filasNecesarias; i++) { rows.push(nuevaFilaVacia()); filasAgregadas++; }
+        for (let i = 0; i < filasNecesarias; i++) {
+            const nueva = nuevaFilaVacia();
+            rows.push(nueva);
+            fijadas.add(nueva);              // con filtro activo, la fila nueva sigue visible
+            filasAgregadas++;
+        }
+        if (filasAgregadas) recomputarVista();
 
         let escrituras = 0, rechazos = 0;
         for (let i = 0; i < filasDestino; i++) {
@@ -1336,19 +1635,19 @@ function init(opciones) {
                 const col = COLUMNS[c];
                 if (col.locked) continue;
                 const valor = (bloque[i % altoBloque][j % anchoBloque]) ?? "";
-                if (aplicarValor(rows[destino.r0 + i], col.key, valor)) escrituras++;
+                if (aplicarValor(vista[destino.r0 + i], col.key, valor)) escrituras++;
                 else rechazos++;
             }
         }
 
         // Cortar: se limpia el origen (solo si sigue siendo un rango de esta tabla)
         if (rangoCopiado && rangoCopiado.cortar) {
-            for (let r = rangoCopiado.r0; r <= rangoCopiado.r1 && r < rows.length; r++) {
+            for (let r = rangoCopiado.r0; r <= rangoCopiado.r1 && r < vista.length; r++) {
                 for (let c = rangoCopiado.c0; c <= rangoCopiado.c1; c++) {
                     const dentroDestino = r >= destino.r0 && r < destino.r0 + filasDestino &&
                                           c >= destino.c0 && c < destino.c0 + colsDestino;
                     if (dentroDestino || COLUMNS[c].locked) continue;
-                    aplicarValor(rows[r], COLUMNS[c].key, COLUMNS[c].type === "number" ? 0 : "");
+                    aplicarValor(vista[r], COLUMNS[c].key, COLUMNS[c].type === "number" ? 0 : "");
                 }
             }
             rangoCopiado = null;
@@ -1362,7 +1661,7 @@ function init(opciones) {
         }
 
         sel = { r1: destino.r0, c1: destino.c0,
-                r2: Math.min(rows.length - 1, destino.r0 + filasDestino - 1),
+                r2: Math.min(vista.length - 1, destino.r0 + filasDestino - 1),
                 c2: Math.min(COL_FIN, destino.c0 + colsDestino - 1) };
         render();
         let msg = `Pegado: ${escrituras} celda(s)`;
@@ -1384,7 +1683,7 @@ function init(opciones) {
             for (let c = c0; c <= c1; c++) {
                 const col = COLUMNS[c];
                 if (col.locked) continue;
-                if (aplicarValor(rows[r], col.key, col.type === "number" ? 0 : "")) cambios++;
+                if (aplicarValor(vista[r], col.key, col.type === "number" ? 0 : "")) cambios++;
             }
             pintarFila(r);
         }
@@ -1407,9 +1706,9 @@ function init(opciones) {
         const vacio = v => v === "" || v === null || v === undefined || v === 0;
         if (dr !== 0) {
             let i = r;
-            const partiaVacio = vacio(rows[i][key]);
-            while (i + dr >= 0 && i + dr < rows.length) {
-                const sig = vacio(rows[i + dr][key]);
+            const partiaVacio = vacio(vista[i][key]);
+            while (i + dr >= 0 && i + dr < vista.length) {
+                const sig = vacio(vista[i + dr][key]);
                 if (partiaVacio ? !sig : sig) { if (partiaVacio) i += dr; break; }
                 i += dr;
             }
@@ -1432,7 +1731,7 @@ function init(opciones) {
         if (ctrl && e.key.toLowerCase() === "y") { e.preventDefault(); rehacer(); return; }
         if (ctrl && e.key.toLowerCase() === "a") {
             e.preventDefault();
-            sel = { r1: 0, c1: COL_INI, r2: rows.length - 1, c2: COL_FIN };
+            sel = { r1: 0, c1: COL_INI, r2: vista.length - 1, c2: COL_FIN };
             pintarSeleccion();
             return;
         }
@@ -1472,7 +1771,7 @@ function init(opciones) {
             case "Home":
                 mover(ctrl ? 0 : r, COL_INI); return;
             case "End":
-                mover(ctrl ? rows.length - 1 : r, COL_FIN); return;
+                mover(ctrl ? vista.length - 1 : r, COL_FIN); return;
             case "PageDown":
                 mover(e.shiftKey ? focoR + 20 : r + 20, e.shiftKey ? focoC : c); return;
             case "PageUp":
@@ -1501,13 +1800,13 @@ function init(opciones) {
     // -----------------------------------------------------------------
     $("gridHeaderRow").addEventListener("change", (e) => {
         if (e.target.id !== "checkAllIPC") return;
-        rows.forEach(r => r._checked = e.target.checked);
-        rows.forEach((_, i) => pintarFila(i));
+        vista.forEach(r => r._checked = e.target.checked);   // solo las filas visibles
+        vista.forEach((_, i) => pintarFila(i));
     });
     $("gridBody").addEventListener("change", (e) => {
         if (!e.target.classList.contains("row-check")) return;
         const rowIndex = parseInt(e.target.closest("td").dataset.rowIndex, 10);
-        rows[rowIndex]._checked = e.target.checked;
+        vista[rowIndex]._checked = e.target.checked;
         marcarFila(rowIndex);
         syncCheckAllState();
     });
@@ -1518,15 +1817,18 @@ function init(opciones) {
         if (e.target.classList.contains("dupBtn")) {
             const rowIndex = parseInt(e.target.closest("td").dataset.rowIndex, 10);
             instantanea();
-            const nueva = { ...rows[rowIndex] };
+            const original = vista[rowIndex];
+            const nueva = { ...original };
             MESES.forEach(m => nueva[m] = 0);
             nueva.total = 0;
             nueva._checked = false;
             delete nueva.id;
-            rows.splice(rowIndex + 1, 0, nueva);
+            rows.splice(rows.indexOf(original) + 1, 0, nueva);
+            fijadas.add(nueva);
             render();
-            seleccionar(rowIndex + 1, COL_INI);
-            const tr = document.querySelector(`#gridBody tr[data-row-index="${rowIndex + 1}"]`);
+            const posNueva = vista.indexOf(nueva);
+            seleccionar(posNueva, COL_INI);
+            const tr = document.querySelector(`#gridBody tr[data-row-index="${posNueva}"]`);
             if (tr) { tr.classList.add("blink"); setTimeout(() => tr.classList.remove("blink"), 1800); }
             showToast("Fila duplicada 📑", "success");
             programarGuardadoAutomatico();
@@ -1539,7 +1841,9 @@ function init(opciones) {
     $("confirmEliminarBtn")?.addEventListener("click", () => {
         if (filaAEliminar !== null) {
             instantanea();
-            rows.splice(filaAEliminar, 1);
+            const aEliminar = vista[filaAEliminar];
+            if (aEliminar) rows.splice(rows.indexOf(aEliminar), 1);
+            recomputarVista();
             limitarSeleccion();
             render();
             showToast("Fila eliminada ❌", "error");
@@ -1562,9 +1866,11 @@ function init(opciones) {
     $("agregarFilaBtn")?.addEventListener("click", () => {
         if (!puedeEditar()) return;
         instantanea();
-        rows.push(nuevaFilaVacia());
+        const nueva = nuevaFilaVacia();
+        rows.push(nueva);
+        fijadas.add(nueva);
         render();
-        seleccionar(rows.length - 1, COL_INI);
+        seleccionar(vista.length - 1, COL_INI);
         showToast("Fila agregada ✅", "success");
         programarGuardadoAutomatico();
     });
@@ -1577,14 +1883,14 @@ function init(opciones) {
         const valor = $("ipcInput").value;
         if (!valor || isNaN(valor)) { showToast("Debe ingresar un número válido ❌", "error"); return; }
         const factor = 1 + (parseFloat(valor) / 100);
-        const marcadas = rows.filter(r => r._checked);
+        const marcadas = vista.filter(r => r._checked);      // solo las filas visibles
         if (marcadas.length === 0) { showToast("Selecciona al menos una fila ❌", "error"); return; }
         instantanea();
         marcadas.forEach(row => {
             MESES.forEach(m => { row[m] = Math.round((parseFloat(row[m]) || 0) * factor); });
             recalcularTotal(row);
         });
-        rows.forEach((_, i) => pintarFila(i));
+        vista.forEach((_, i) => pintarFila(i));
         showToast("IPC aplicado a filas seleccionadas 📈", "success");
         programarGuardadoAutomatico();
     });
@@ -1887,6 +2193,7 @@ function init(opciones) {
 
         instantanea();   // la importación también se puede deshacer con Ctrl+Z
         rows = nuevasFilas;
+        recomputarVista();
         sel = null;
         render();
         seleccionar(0, COL_INI);

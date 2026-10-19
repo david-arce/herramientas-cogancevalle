@@ -25,3 +25,6 @@ table.grid tfoot td {
 }
 .aviso { font-size: 13px; color: #155724; background: #e9f9ee; border: 1px solid #b7ecc5;
     padding: 8px 12px; border-radius: 6px; margin-bottom: 14px; }
+
+/* Comentario y textos largos: ancho fijo, el texto completo se ve al pasar el mouse */
+table.grid td.texto-largo { max-width: 280px; overflow: hidden; text-overflow: ellipsis; }

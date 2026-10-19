@@ -4,19 +4,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="csrf-token" content="{{ csrf_token }}">
-<title>Presupuesto aprobado · {{ sede_label }}</title>
+<title>{% if titulo %}{{ titulo }}{% else %}Presupuesto aprobado · {{ sede_label }}{% endif %}</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="stylesheet" href="{% static_v 'css/grilla_presupuesto.css' %}">
 <link rel="stylesheet" href="{% static_v 'css/presupuesto_sede_readonly.css' %}">
 </head>
 <body>
 <header class="barra-pagina">
-<h2>Presupuesto {{ sede_label }} — aprobado</h2>
+<h2>{% if titulo %}{{ titulo }}{% else %}Presupuesto {{ sede_label }} — aprobado{% endif %}</h2>
 {% include "presupuesto_general/_barra_usuario.html" %}
 </header>
-<p class="subtitulo">Solo lectura. Para cambiar algo, edita y vuelve a aprobar la versión desde la pantalla de revisión.</p>
+{# Esta misma vista sirve para el aprobado y para la copia de auditoría (lo que envió el área). #}
+<p class="subtitulo">{% if subtitulo %}{{ subtitulo }}{% else %}Solo lectura. Para cambiar algo, edita y vuelve a aprobar la versión desde la pantalla de revisión.{% endif %}</p>
 
-<div class="aviso">Versión aprobada vigente: <b>v{{ ultima_version }}</b></div>
+<div class="aviso">{% if aviso %}{{ aviso|safe }}{% else %}Versión aprobada vigente: <b>v{{ ultima_version }}</b>{% endif %}</div>
 
 <div class="toolbar">
     <div class="toolbar-group">
@@ -35,7 +36,9 @@
 
 <script>
 const SEDE = "{{ sede }}";
-const URL_OBTENER = "{% url 'obtener_presupuesto_aprobado_sede' sede=sede %}";
+const URL_OBTENER = "{% if url_obtener %}{{ url_obtener }}{% else %}{% url 'obtener_presupuesto_aprobado_sede' sede=sede %}{% endif %}";
+const NOMBRE_EXPORT = "{% if nombre_export %}{{ nombre_export }}{% else %}presupuesto_{{ sede }}_aprobado{% endif %}";
+const TEXTO_VACIO = "{% if texto_vacio %}{{ texto_vacio|escapejs }}{% else %}Todavía no hay un presupuesto aprobado.{% endif %}";
 
 const MESES = ["enero","febrero","marzo","abril","mayo","junio",
                "julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -91,12 +94,14 @@ function render() {
     renderTotales();
     const tbody = document.getElementById("gridBody");
     if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="${COLUMNS.length}" style="text-align:center; padding:20px; color:#888;">Todavía no hay un presupuesto aprobado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${COLUMNS.length}" style="text-align:center; padding:20px; color:#888;">${escaparHtml(TEXTO_VACIO)}</td></tr>`;
         return;
     }
     tbody.innerHTML = rows.map(row => `<tr>` + COLUMNS.map(col => {
-        const clase = col.type === "number" ? ' class="numeric"' : "";
         const texto = col.type === "number" ? fmt(row[col.key]) : (row[col.key] ?? "");
+        // Comentario / detalle: ancho fijo, el texto completo aparece al pasar el mouse.
+        const clase = col.type === "number" ? ' class="numeric"'
+            : (["comentario", "mcndetalle"].includes(col.key) ? ` class="texto-largo" title="${escaparHtml(texto)}"` : "");
         return `<td${clase}>${escaparHtml(texto)}</td>`;
     }).join("") + `</tr>`).join("");
 }
@@ -119,7 +124,7 @@ document.getElementById("exportarExcelBtn").addEventListener("click", () => {
     const ws = XLSX.utils.aoa_to_sheet([encabezados, ...datos]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Presupuesto");
-    XLSX.writeFile(wb, `presupuesto_${SEDE}_aprobado.xlsx`);
+    XLSX.writeFile(wb, `${NOMBRE_EXPORT}.xlsx`);
 });
 
 renderHeader();

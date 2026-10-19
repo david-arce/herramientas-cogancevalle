@@ -143,6 +143,11 @@ urlpatterns = [
     path('area/<str:sede>/obtener/', views.obtener_presupuesto_sede, name='obtener_presupuesto_sede'),
     path('area/<str:sede>/aprobado/', views.presupuesto_aprobado_sede, name='presupuesto_aprobado_sede'),
     path('area/<str:sede>/aprobado/obtener/', views.obtener_presupuesto_aprobado_sede, name='obtener_presupuesto_aprobado_sede'),
+    # Copia de auditoría: lo que envió el área en cada versión (solo lectura)
+    path('area/<str:sede>/enviado/<int:version>/', views.presupuesto_preaprobado_sede, name='presupuesto_preaprobado_sede'),
+    # El revisor pasa su versión de trabajo o el aprobado al borrador del área
+    path('area/<str:sede>/actualizar-borrador/', views.actualizar_borrador_sede, name='actualizar_borrador_sede'),
+    path('area/<str:sede>/enviado/<int:version>/obtener/', views.obtener_presupuesto_preaprobado_sede, name='obtener_presupuesto_preaprobado_sede'),
     path('area/<str:sede>/auxiliar/', views.tabla_auxiliar_sede, name='tabla_auxiliar_sede'),
     path('area/<str:sede>/auxiliar/obtener/', views.obtener_temp_sede, name='obtener_temp_sede'),
     path('area/<str:sede>/auxiliar/cargar-base/', views.cargar_base_sede, name='cargar_base_sede'),

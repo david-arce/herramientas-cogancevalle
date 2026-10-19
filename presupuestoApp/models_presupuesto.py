@@ -6,6 +6,10 @@ Antes había 42 modelos idénticos (3 por cada una de las 14 áreas):
     PresupuestoXxxAux       -> borrador editable   (etapa = "auxiliar")
     PresupuestoXxxAprobado  -> presupuesto aprobado (etapa = "aprobado")
 
+Al subir una versión se guardan DOS copias con el mismo número: "preaprobado"
+(lo que envió el área, solo lectura, para auditoría) y "proyectado" (la que
+edita el revisor y luego aprueba).
+
 Ahora cada registro dice a qué área y a qué etapa pertenece. Agregar un área
 nueva ya no requiere modelos ni migraciones: solo su entrada en SEDE_CONFIG
 (views_presupuesto_areas.py).
@@ -157,6 +161,10 @@ class PresupuestoArea(models.Model):
         AUXILIAR = "auxiliar", "Auxiliar (borrador editable)"
         PROYECTADO = "proyectado", "Proyectado (versiones subidas)"
         APROBADO = "aprobado", "Aprobado"
+        # Copia INTOCABLE de lo que envió el área al pulsar "Subir presupuesto"
+        # (auditoría). La versión "proyectado" del mismo número es la que edita
+        # el revisor.
+        PREAPROBADO = "preaprobado", "Preaprobado (lo que envió el área, solo lectura)"
 
     area = models.CharField(max_length=40)        # clave de SEDE_CONFIG: 'almacen-tulua', 'tecnologia', ...
     etapa = models.CharField(max_length=12, choices=Etapa.choices)
