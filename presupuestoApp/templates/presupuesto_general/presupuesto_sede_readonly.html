@@ -99,10 +99,11 @@ function render() {
     }
     tbody.innerHTML = rows.map(row => `<tr>` + COLUMNS.map(col => {
         const texto = col.type === "number" ? fmt(row[col.key]) : (row[col.key] ?? "");
-        // Comentario / detalle: ancho fijo, el texto completo aparece al pasar el mouse.
-        const clase = col.type === "number" ? ' class="numeric"'
-            : (["comentario", "mcndetalle"].includes(col.key) ? ` class="texto-largo" title="${escaparHtml(texto)}"` : "");
-        return `<td${clase}>${escaparHtml(texto)}</td>`;
+        // Comentario / detalle: ancho fijo en una línea; el texto completo aparece al pasar el mouse.
+        if (["comentario", "mcndetalle"].includes(col.key)) {
+            return `<td class="texto-largo"><div title="${escaparHtml(texto)}">${escaparHtml(texto)}</div></td>`;
+        }
+        return `<td${col.type === "number" ? ' class="numeric"' : ""}>${escaparHtml(texto)}</td>`;
     }).join("") + `</tr>`).join("");
 }
 

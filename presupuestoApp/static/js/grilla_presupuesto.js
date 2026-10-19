@@ -471,10 +471,13 @@ function init(opciones) {
                 th.title = col.label;
             }
             // Manija para cambiar el ancho (como en Excel); doble clic = ajustar al contenido.
-            const manija = document.createElement("span");
-            manija.className = "col-resizer";
-            manija.title = "Arrastra para cambiar el ancho · doble clic: ajustar al contenido";
-            th.appendChild(manija);
+            // Check y Acciones tienen ancho fijo para que los botones siempre se vean.
+            if (!ANCHO_FIJO.includes(col.key)) {
+                const manija = document.createElement("span");
+                manija.className = "col-resizer";
+                manija.title = "Arrastra para cambiar el ancho · doble clic: ajustar al contenido";
+                th.appendChild(manija);
+            }
             headerRow.appendChild(th);
         });
         aplicarAnchos();
@@ -484,14 +487,16 @@ function init(opciones) {
     // -----------------------------------------------------------------
     // Ancho de columnas (redimensionable, se recuerda en este navegador)
     // -----------------------------------------------------------------
-    const ANCHOS_DEFECTO = { _check: 32, _acciones: 78, zonnombre: 190, mcncuenta: 90, ctanombre: 250,
+    const ANCHOS_DEFECTO = { _check: 32, _acciones: 86, zonnombre: 190, mcncuenta: 90, ctanombre: 250,
                              mcndetalle: 230, total: 115, comentario: 280 };
     const ANCHO_MES = 100, ANCHO_MIN = 40, ANCHO_MAX = 900;
     const CLAVE_ANCHOS = "grillaPresupuesto.anchos";
     const anchos = (() => {
         try { return JSON.parse(localStorage.getItem(CLAVE_ANCHOS)) || {}; } catch (e) { return {}; }
     })();
-    const anchoDe = col => anchos[col.key] || ANCHOS_DEFECTO[col.key] || (MESES.includes(col.key) ? ANCHO_MES : 140);
+    const ANCHO_FIJO = ["_check", "_acciones"];
+    const anchoDe = col => (!ANCHO_FIJO.includes(col.key) && anchos[col.key])
+        || ANCHOS_DEFECTO[col.key] || (MESES.includes(col.key) ? ANCHO_MES : 140);
     function guardarAnchos() {
         try { localStorage.setItem(CLAVE_ANCHOS, JSON.stringify(anchos)); } catch (e) { /* sin almacenamiento */ }
     }
@@ -778,6 +783,7 @@ function init(opciones) {
             return td;
         }
         if (col.key === "_acciones") {
+            td.classList.add("acciones");
             td.innerHTML = puedeEditar()
                 ? `<button class="dupBtn" title="Duplicar fila">📑</button><button class="delBtn" title="Eliminar fila">❌</button>`
                 : "";
@@ -786,10 +792,15 @@ function init(opciones) {
 
         td.classList.add(col.locked || !puedeEditar() ? "locked" : "editable");
         if (col.type === "number") td.classList.add("numeric");
+        // Comentario: en una línea; al editarlo se despliega hacia abajo para ver todo el texto.
+        if (TEXTO_AJUSTADO.includes(col.key)) td.classList.add("texto-ajustado");
         td.textContent = col.type === "number" ? fmt(row[col.key]) : (row[col.key] ?? "");
-        if (col.type !== "number" && td.textContent.length > 20) td.title = td.textContent;   // texto completo al pasar el mouse
+        td.title = tituloCelda(col, td.textContent);   // texto completo al pasar el mouse
         return td;
     }
+
+    const TEXTO_AJUSTADO = ["comentario"];
+    const tituloCelda = (col, texto) => col.type !== "number" && texto.length > 20 ? texto : "";
 
     // Repinta solo una fila: reconstruir toda la tabla en cada edición hacía
     // perder el scroll y la selección.
@@ -807,7 +818,7 @@ function init(opciones) {
             }
             if (col.type === "acciones") return;
             td.textContent = col.type === "number" ? fmt(row[col.key]) : (row[col.key] ?? "");
-            td.title = col.type !== "number" && td.textContent.length > 20 ? td.textContent : "";
+            td.title = tituloCelda(col, td.textContent);
         });
         programarTotales();
     }
@@ -1031,12 +1042,27 @@ function init(opciones) {
             // Lista desplegable con buscador: el <input> es la caja de búsqueda y
             // el valor elegido se guarda aparte (input._valorCombo).
             td.innerHTML = `<input type="text" class="combo-buscar" autocomplete="off" spellcheck="false">`;
+        } else if (TEXTO_AJUSTADO.includes(col.key)) {
+            // Comentario: caja de varias líneas que se despliega hacia abajo mientras se edita
+            // (Enter sigue confirmando; al salir vuelve a verse en una línea).
+            td.innerHTML = `<textarea rows="1" spellcheck="false"></textarea>`;
+            td.querySelector("textarea").value = String(valorInicial ?? (row[col.key] ?? ""));
         } else {
             const val = valorInicial ?? (row[col.key] ?? "");
             td.innerHTML = `<input type="text" value="${escaparAttr(val)}">`;
         }
 
-        const input = td.querySelector("input");
+        const input = td.querySelector("input, textarea");
+        if (input.tagName === "TEXTAREA") {
+            const ajustarAlto = () => {
+                input.style.height = "auto";
+                input.style.height = input.scrollHeight + "px";
+                pintarSeleccion();
+            };
+            input.addEventListener("input", ajustarAlto);
+            requestAnimationFrame(ajustarAlto);
+            input.setSelectionRange(input.value.length, input.value.length);
+        }
 
         if (esSelect) {
             const actual = col.key === "ctanombre" ? row.mcncuenta : row.zonnombre;

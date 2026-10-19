@@ -101,6 +101,27 @@ td.editing input, td.editing select {
     width: 100%; height: 100%; border: none; outline: none; padding: 4px 8px;
     font-size: 13px; background: transparent; box-sizing: border-box;
 }
+/* Acciones: botones compactos con ancho fijo para que siempre se vean los dos. */
+table.grid td.acciones { padding: 2px 4px; text-overflow: clip; text-align: center; }
+td.acciones button {
+    width: 30px; height: 22px; padding: 0; margin: 0 1px; vertical-align: middle;
+    font-size: 12px; line-height: 20px; border: 1px solid #ced4da; border-radius: 4px;
+    background: #fff; cursor: pointer;
+}
+td.acciones button:hover { background: #eef2fb; border-color: var(--color-primario); }
+td.acciones .delBtn:hover { background: #fdecec; border-color: #c92a2a; }
+/* Comentario: en reposo se ve en una línea como las demás columnas (con "…" y el texto
+   completo al pasar el mouse). Al editarlo, la caja se despliega hacia abajo sobre las
+   filas siguientes para leer y escribir todo el texto, sin cambiar el alto de la fila. */
+table.grid td.texto-ajustado.editing { position: relative; overflow: visible; }
+td.editing textarea {
+    position: absolute; top: 0; left: 0; z-index: 5;
+    display: block; width: 100%; min-height: 100%; margin: 0; resize: none; overflow: hidden;
+    padding: 4px 8px; font: inherit; font-size: 13px; line-height: 1.35; box-sizing: border-box;
+    white-space: pre-wrap; overflow-wrap: anywhere; outline: none;
+    background: #fff; border: 2px solid var(--color-primario); border-radius: 2px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, .18);
+}
 tr.fila-activa td:not(.editing):not(.locked) { background: var(--color-fila-activa); }
 /* Filas marcadas con el checkbox (las que recibirán el IPC): sombreadas en verde. */
 tr.fila-marcada td:not(.editing) { background: var(--color-fila-ipc); }

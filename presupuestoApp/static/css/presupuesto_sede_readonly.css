@@ -11,7 +11,7 @@
     cursor: pointer; background: #5e5e5e; color: #fff; transition: all .2s ease;
 }
 #gridContainer { overflow: auto; max-width: 100%; height: 70vh; border: 1px solid var(--color-borde); }
-table.grid { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.grid { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 13px; table-layout: auto; }
 table.grid th, table.grid td {
     border: 1px solid var(--color-borde); padding: 5px 10px; white-space: nowrap; text-align: left;
 }
@@ -26,5 +26,5 @@ table.grid tfoot td {
 .aviso { font-size: 13px; color: #155724; background: #e9f9ee; border: 1px solid #b7ecc5;
     padding: 8px 12px; border-radius: 6px; margin-bottom: 14px; }
 
-/* Comentario y textos largos: ancho fijo, el texto completo se ve al pasar el mouse */
-table.grid td.texto-largo { max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
+/* Comentario y textos largos: ancho fijo en una línea; el texto completo se ve al pasar el mouse */
+table.grid td.texto-largo > div { width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
