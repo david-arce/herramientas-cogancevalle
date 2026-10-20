@@ -3218,3 +3218,30 @@ class IpcActualYEliminadosTests(TestCase):
         # también con el botón "Calcular auxilio de educación"
         self.client.post(reverse("nomina_cargar", args=["auxilio_educacion"]))
         self.assertFalse(PresupuestoNomina.objects.filter(tipo="auxilio_educacion", cedula="20").exists())
+
+
+
+class BaseBonificacionFocoE17Tests(TestCase):
+    """La base de la bonificación foco (quien no comisiona) sale del CONCEPTO E17 del año base."""
+
+    def setUp(self):
+        self.anio = timezone.localdate().year
+
+    def crear(self, cedula, concepto, enero, nombre_con="CUALQUIER NOMBRE"):
+        ConceptosNomina.objects.create(anio=self.anio, archivo="prueba", cedula=cedula, nombre="X",
+                                       concepto=concepto, nombre_con=nombre_con, enero=enero)
+
+    def base(self):
+        ctx = nomina_motor.Contexto()
+        return nomina_motor.base_bonificacion_foco(ctx, comisionan=set(), ingresos={})
+
+    def test_usa_el_codigo_e17_aunque_el_nombre_no_diga_foco(self):
+        for ced in (1, 2):
+            self.crear(ced, "E17", 250000)
+        self.crear(3, "E17", 260000)
+        self.crear(4, "X99", 999999, nombre_con="BONIFICACION FOCO")    # el nombre ya no cuenta
+        self.assertEqual(self.base(), 250000)                            # el valor que más se repite
+
+    def test_sin_e17_usa_el_valor_por_defecto(self):
+        self.crear(1, "X99", 300000, nombre_con="BONIFICACION FOCO")
+        self.assertEqual(self.base(), nomina_motor.BONIFICACION_FOCO_FIJA)

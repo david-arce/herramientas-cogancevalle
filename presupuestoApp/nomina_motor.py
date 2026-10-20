@@ -1001,7 +1001,7 @@ CARGOS_SIN_BONIFICACION_FOCO = {
 # Base mensual de quienes no comisionan, cuando no se puede leer de los datos
 BONIFICACION_FOCO_FIJA = 220000
 CODIGO_COMISIONES = '389'          # concepto de comisiones en ConceptosNomina
-TEXTO_FOCO = 'FOCO'                # para reconocer la bonificación foco real
+CODIGO_FOCO = 'E17'                # concepto de la bonificación foco real en ConceptosNomina
 
 
 def dias_360(desde, hasta_dia=30, hasta_mes=12):
@@ -1058,12 +1058,14 @@ def fechas_ingreso(anio):
 def base_bonificacion_foco(ctx, comisionan, ingresos):
     """Valor de enero de alguien que no comisiona y trabajó el año completo.
 
-    Se busca en ConceptosNomina el concepto de bonificación foco. Si no está
-    en los datos, se usa BONIFICACION_FOCO_FIJA.
+    Se busca en ConceptosNomina el concepto de bonificación foco (CONCEPTO =
+    E17) del año base: el valor de enero que más se repite entre quienes no
+    comisionan y trabajaron el año completo. Si no está en los datos, se usa
+    BONIFICACION_FOCO_FIJA.
     """
     candidatos = Counter()
     correcciones = ctx.correcciones()
-    for r in (ConceptosNomina.objects.filter(anio=ctx.anio, nombre_con__icontains=TEXTO_FOCO)
+    for r in (ConceptosNomina.objects.filter(anio=ctx.anio, concepto=CODIGO_FOCO)
               .values('cedula', 'enero')):
         cedula = cedula_corregida(r['cedula'], correcciones)
         valor = numero(r['enero'])
