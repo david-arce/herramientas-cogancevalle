@@ -3245,3 +3245,50 @@ class BaseBonificacionFocoE17Tests(TestCase):
     def test_sin_e17_usa_el_valor_por_defecto(self):
         self.crear(1, "X99", 300000, nombre_con="BONIFICACION FOCO")
         self.assertEqual(self.base(), nomina_motor.BONIFICACION_FOCO_FIJA)
+
+
+class AuxilioAntiguedadTests(TestCase):
+    """20 años → 2 SMMLV, 25 → 3, 30 → 4 (mínimo proyectado), en diciembre del año del presupuesto."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1000000, incremento_salarial=10)
+        self.anio = timezone.localdate().year                       # año base; presupuesto = +1
+        presupuesto = self.anio + 1
+        self.personas = {"20": presupuesto - 20, "25": presupuesto - 25, "30": presupuesto - 30,
+                         "21": presupuesto - 21, "sin": None}
+        for ced, anio_ingreso in self.personas.items():
+            cedula = 99 if ced == "sin" else int(ced)
+            ConceptosNomina.objects.create(
+                anio=self.anio, archivo="prueba", concepto="001", cedula=cedula, nombre=f"P{ced}",
+                nombre_cen="ALMACEN TULUA", nomcosto="VENTAS", concepto_f=2000000,
+                fecha_ingreso=datetime.date(anio_ingreso, 6, 15) if anio_ingreso else None,
+                **{m: 2000000 for m in MESES_N[:8]})
+        nomina_motor.recargar_bases()
+
+    def valores(self):
+        return {f.cedula: (f.diciembre, f.total, f.concepto)
+                for f in PresupuestoNomina.objects.filter(tipo="auxilio_antiguedad")}
+
+    def test_valores_por_anios(self):
+        v = self.valores()
+        minimo = 1000000 * 1.10
+        self.assertEqual(v["20"][:2], (round(2 * minimo), round(2 * minimo)))
+        self.assertEqual(v["25"][0], round(3 * minimo))
+        self.assertEqual(v["30"][0], round(4 * minimo))
+        self.assertEqual(v["20"][2], "AUXILIO DE ANTIGÜEDAD 20 AÑOS")
+        self.assertNotIn("21", v)                                     # no es 20, 25 ni 30
+        self.assertNotIn("99", v)                                     # sin fecha de ingreso
+
+    def test_sin_sueldo_en_diciembre_no_recibe(self):
+        f = PresupuestoNomina.objects.get(tipo="sueldos", cedula="25")
+        f.origen = "manual"
+        f.diciembre = 0
+        f.save()
+        nomina_motor.recalcular_todo()
+        self.assertNotIn("25", self.valores())
+
+    def test_aparece_en_el_tablero(self):
+        self.client.force_login(User.objects.create_user("admin"))
+        self.assertContains(self.client.get(reverse("presupuestoNomina")), "Auxilio de antigüedad")
+        self.assertEqual(self.client.get(reverse("nomina_tabla", args=["auxilio_antiguedad"])).status_code, 200)

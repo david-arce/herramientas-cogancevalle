@@ -198,6 +198,10 @@ _LISTA = [
              # IPC: base de quienes no comisionan · comisiones: julio (presupuestadas)
              parametros=('incremento_ipc', 'incremento_comisiones'),
              depende=('sueldos', 'comisiones')),   # enero: comisiones REALES · julio: PRESUPUESTADAS
+    Concepto('auxilio_antiguedad', 'Auxilio de antigüedad', G_PRESTACIONES, derivado=True,
+             # 20 años → 2 SMMLV · 25 → 3 · 30 → 4 (salario mínimo proyectado), en diciembre
+             parametros=('salario_minimo', 'incremento_salarial'),
+             depende=('sueldos',)),
     Concepto('seguridad_social', 'Seguridad social', G_SEGURIDAD, derivado=True, parametros=('incremento_salarial', 'salario_minimo'),
              depende=('sueldos', 'medios_transporte', 'comisiones', 'horas_extra', 'aprendiz')),
 ]
@@ -1137,6 +1141,43 @@ def gen_bonificaciones_foco(ctx, c):
         datos['enero'] = base / 360 * dias * cuota[id(fila)]['enero']
         yield dict(identidad(fila, concepto='BONIFICACIÓN FOCO'), clave=clave_persona(fila), **datos)
 
+# Años cumplidos en la empresa → salarios mínimos de auxilio de antigüedad
+ANTIGUEDAD_SALARIOS = {20: 2, 25: 3, 30: 4}
+
+
+def gen_auxilio_antiguedad(ctx, c):
+    """Auxilio de antigüedad, en DICIEMBRE del año del presupuesto.
+
+    Quien cumple 20, 25 o 30 años en la empresa durante el año del presupuesto
+    (año base + 1), según su fecha de ingreso en Conceptos, recibe 2, 3 o 4
+    salarios mínimos proyectados (mínimo × (1 + incremento salarial)).
+
+    Solo se paga a quien tiene sueldo en diciembre (sigue en la empresa). Si la
+    persona tiene varias filas, va a la(s) que tienen sueldo en diciembre.
+    """
+    anio = ctx.anio + 1
+    ingresos = fechas_ingreso(ctx.anio)
+    personas = ctx.personas()
+    persona_de = lambda f: f.cedula or f'#{id(f)}'  # noqa: E731
+    cuota = cuotas_mensuales(personas, persona_de)
+    con_sueldo_dic = defaultdict(float)
+    for f in personas:
+        con_sueldo_dic[persona_de(f)] += abs(f.diciembre or 0)
+    for persona in personas:
+        ingreso = ingresos.get(persona.cedula)
+        anios = anio - ingreso.year if ingreso else None
+        salarios = ANTIGUEDAD_SALARIOS.get(anios)
+        if not salarios or not con_sueldo_dic[persona_de(persona)]:
+            continue
+        valor = salarios * ctx.p.minimo_incrementado * cuota[id(persona)]['diciembre']
+        if not valor:
+            continue
+        meses = dict.fromkeys(MESES, 0)
+        meses['diciembre'] = valor
+        yield dict(identidad(persona, concepto=f'AUXILIO DE ANTIGÜEDAD {anios} AÑOS'),
+                   clave=clave_persona(persona), **meses)
+
+
 APORTES = {
     'APORTE PENSIÓN': 0.12,
     'APORTE SALUD': 0.085,
@@ -1270,6 +1311,7 @@ GENERADORES = {
     'intereses_cesantias': gen_intereses_cesantias,
     'bonificaciones': gen_bonificaciones,
     'bonificaciones_foco': gen_bonificaciones_foco,
+    'auxilio_antiguedad': gen_auxilio_antiguedad,
     'seguridad_social': gen_seguridad_social,
 }
 
