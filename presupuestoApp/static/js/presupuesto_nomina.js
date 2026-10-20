@@ -85,7 +85,7 @@
         base: config.tituloBase || null,
         opciones: soloLectura ? {} : listas,
         tipo: config.slug === 'todos',
-        codcosto: true
+        codcosto: false   // el código de costo no se muestra (sale del área y se sigue guardando)
       }),
       editable: !soloLectura,
       seleccionable: !soloLectura || !!config.seleccionable,

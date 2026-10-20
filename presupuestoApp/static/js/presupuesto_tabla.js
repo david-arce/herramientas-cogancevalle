@@ -345,7 +345,10 @@
       } else if (estado === 'enviado') {
         // Las filas nuevas reciben su id aunque ya haya otro envío en camino:
         // así el siguiente envío no las vuelve a crear.
-        const nuevos = (info.respuesta && info.respuesta.nuevos) || {};
+        const resp = info.respuesta || {};
+        // p. ej. "Cédula / nombre actualizado en todos los conceptos"
+        if (resp.aviso) toast(resp.aviso, resp.resumen && resp.resumen.personas_corregidas ? 'success' : 'warning', 8000);
+        const nuevos = resp.nuevos || {};
         this.filas.forEach(f => {
           if (!f.id && f._uid && nuevos[f._uid]) f.id = nuevos[f._uid];
         });

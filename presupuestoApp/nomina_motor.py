@@ -24,8 +24,8 @@ from django.db.models import Avg, Count, Q, Sum
 
 from . import nomina_conceptos as origen
 from .models import ParametrosPresupuestos
-from .models_nomina import (MESES, ConceptosNomina, DistribucionNomina, FocoSinComision,
-                            PresupuestoNomina)
+from .models_nomina import (MESES, ConceptosNomina, CorreccionPersonaNomina, DistribucionNomina,
+                            FocoSinComision, PresupuestoNomina)
 
 MESES = list(MESES)
 SISTEMA = PresupuestoNomina.ORIGEN_SISTEMA
@@ -385,6 +385,17 @@ class Contexto:
         self.repetidos = {}
         self.bloqueadas = {}     # {slug: personas cuya fila manual reemplaza a la calculada}
         self.anio = origen.anio_base()
+        self._correcciones = None
+
+    def correcciones(self):
+        """{cédula de origen: (cédula correcta, nombre correcto)}"""
+        if self._correcciones is None:
+            self._correcciones = mapa_correcciones()
+        return self._correcciones
+
+    def olvidar_todo(self):
+        self._cache.clear()
+        self._correcciones = None
 
     def sedes(self):
         if self._sedes is None:
@@ -448,10 +459,16 @@ class Contexto:
 
 def f_retroactivo(fila, c, p):
     """Enero y febrero con la base anterior; en marzo se paga el nuevo valor
-    más el retroactivo de enero y febrero; de abril en adelante, el nuevo."""
+    más el retroactivo de enero y febrero; de abril en adelante, el nuevo.
+
+    Sueldos (con_minimo): si el salario del año actual es menor o igual al
+    salario mínimo PROYECTADO (mínimo × (1 + incremento salarial)), se toma el
+    mínimo proyectado todo el año, porque sube por decreto desde enero y nadie
+    puede ganar menos (antes solo aplicaba a quien ganaba el mínimo actual, y
+    quien ganaba un poco más quedaba en enero y febrero por debajo del nuevo
+    mínimo). Si es mayor, se proyecta desde el salario del año actual."""
     base = fila.base or 0
-    if c.con_minimo and p.salario_minimo and 0 < base <= p.salario_minimo:
-        # El salario mínimo sube por decreto desde enero: sin retroactivo.
+    if c.con_minimo and p.salario_minimo and 0 < base <= p.minimo_incrementado:
         return dict.fromkeys(MESES, p.minimo_incrementado)
     nuevo = base * (1 + p.pct(c.pct))
     meses = dict.fromkeys(MESES, nuevo)
@@ -603,12 +620,14 @@ def filas_de_conceptos(c, ctx):
         ctx.repetidos[c.slug] = repetidos
 
     filas = []
+    correcciones = ctx.correcciones()
     for i, r in enumerate(registros):
-        cedula = cedula_normalizada(r['cedula'])
+        # cédula y nombre corregidos en el presupuesto (CorreccionPersonaNomina)
+        cedula, nombre = identidad_corregida(cedula_normalizada(r['cedula']), texto(r['nombre']), correcciones)
         fila = PresupuestoNomina(
             tipo=c.slug, origen=SISTEMA, clave=f'{cedula}#{i}',
             centro_origen=texto(r['nombre_cen']), area_origen=texto(r['nomcosto']),
-            cedula=cedula, nombre=texto(r['nombre']),
+            cedula=cedula, nombre=nombre,
             cuenta=ctx.cuenta(r['nomcosto']) or texto(r.get('cuenta')),
             codcosto=ctx.codcosto(r['nomcosto']) or texto(r.get('codcosto')),
             cargo=texto(r['nombrecar']), area=texto(r['nomcosto']), centro=texto(r['nombre_cen']),
@@ -909,9 +928,10 @@ def dias_360(desde, hasta_dia=30, hasta_mes=12):
 def comisiones_reales(ctx):
     """{cédula: {mes: valor}} de las comisiones REALES (no presupuestadas)."""
     reales = defaultdict(lambda: dict.fromkeys(MESES, 0.0))
+    correcciones = ctx.correcciones()
     for r in (ConceptosNomina.objects.filter(anio=ctx.anio, concepto=CODIGO_COMISIONES)
               .values('cedula', *MESES)):
-        destino = reales[cedula_normalizada(r['cedula'])]
+        destino = reales[cedula_corregida(r['cedula'], correcciones)]
         for mes in MESES:
             destino[mes] += numero(r[mes])
     return reales
@@ -938,9 +958,10 @@ def promedio_anual_comisiones(meses_reales_dict, n_meses):
 def fechas_ingreso(anio):
     """{cédula: fecha de ingreso} tomada de ConceptosNomina."""
     salida = {}
+    correcciones = mapa_correcciones()
     for cedula, fecha in (ConceptosNomina.objects.filter(anio=anio, fecha_ingreso__isnull=False)
                           .values_list('cedula', 'fecha_ingreso')):
-        clave = cedula_normalizada(cedula)
+        clave = cedula_corregida(cedula, correcciones)
         if clave and (clave not in salida or fecha < salida[clave]):
             salida[clave] = fecha
     return salida
@@ -953,9 +974,10 @@ def base_bonificacion_foco(ctx, comisionan, ingresos):
     en los datos, se usa BONIFICACION_FOCO_FIJA.
     """
     candidatos = Counter()
+    correcciones = ctx.correcciones()
     for r in (ConceptosNomina.objects.filter(anio=ctx.anio, nombre_con__icontains=TEXTO_FOCO)
               .values('cedula', 'enero')):
-        cedula = cedula_normalizada(r['cedula'])
+        cedula = cedula_corregida(r['cedula'], correcciones)
         valor = numero(r['enero'])
         ingreso = ingresos.get(cedula)
         anio_completo = not ingreso or ingreso.year < ctx.anio
@@ -1343,6 +1365,135 @@ def _cambio(antes, fila):
                for campo in (*CAMPOS_TEXTO, 'base', *MESES))
 
 
+# ══════════════════════════════════════════════════════════════════════
+#  Correcciones de cédula / nombre de una persona
+#  Los datos de origen traen la cédula y el nombre del Excel. Si en el
+#  presupuesto se corrigen, se cambian en TODOS los conceptos y la corrección
+#  se guarda para que las próximas cargas desde Conceptos la respeten.
+# ══════════════════════════════════════════════════════════════════════
+
+def mapa_correcciones():
+    """{cédula de origen: (cédula correcta, nombre correcto)}"""
+    return {c.cedula_origen: (c.cedula, c.nombre)
+            for c in CorreccionPersonaNomina.objects.all()}
+
+
+def identidad_corregida(cedula, nombre, correcciones):
+    """(cédula, nombre) con que debe verse en el presupuesto alguien que viene de Conceptos."""
+    if cedula in correcciones:
+        nueva, nombre_nuevo = correcciones[cedula]
+        return nueva or cedula, nombre_nuevo or nombre
+    return cedula, nombre
+
+
+def cedula_corregida(cedula, correcciones):
+    cedula = cedula_normalizada(cedula)
+    return (correcciones.get(cedula) or (cedula,))[0] or cedula
+
+
+def _clave_con_cedula(clave, vieja, nueva):
+    """Las claves empiezan por la cédula ('cédula#n' o 'cédula|centro|área')."""
+    clave = clave or ''
+    for separador in ('#', '|'):
+        if clave.startswith(vieja + separador):
+            return nueva + clave[len(vieja):]
+    return clave
+
+
+def corregir_persona(cedula_actual, cedula_nueva='', nombre_nuevo='', usuario='', ctx=None,
+                     recalcular=True):
+    """Cambia la cédula y/o el nombre de una persona en todo el presupuesto.
+
+    - Todas las filas de todos los conceptos con `cedula_actual` pasan a
+      `cedula_nueva` (y al nombre nuevo, si se indica). También las filas que
+      ya tienen la cédula nueva toman el nombre nuevo.
+    - Distribución por persona y bonificación foco se mueven a la cédula nueva.
+    - Si la persona viene de Conceptos, se guarda la corrección para que las
+      próximas cargas la respeten.
+    - Si la cédula nueva ya es de OTRA persona en un mismo concepto, no se hace
+      nada (ValueError): sería mezclar a dos personas.
+    Devuelve cuántas filas cambiaron.
+    """
+    vieja = cedula_normalizada(cedula_actual)
+    nueva = cedula_normalizada(cedula_nueva) or vieja
+    nombre_nuevo = ' '.join(texto(nombre_nuevo).upper().split())
+    if not vieja:
+        raise ValueError('Indique la cédula actual de la persona')
+    if nueva == vieja and not nombre_nuevo:
+        raise ValueError('Indique la cédula correcta o el nombre correcto')
+    if nueva != vieja:
+        con_vieja = set(PresupuestoNomina.objects.filter(cedula=vieja).values_list('tipo', flat=True))
+        con_nueva = set(PresupuestoNomina.objects.filter(cedula=nueva).values_list('tipo', flat=True))
+        choque = con_vieja & con_nueva
+        if choque:
+            raise ValueError(f'La cédula {nueva} ya es de otra persona en '
+                             f"{', '.join(sorted(CONCEPTOS[t].etiqueta for t in choque if t in CONCEPTOS))}")
+    ctx = ctx or Contexto()
+    with bloqueo():
+        filas = list(PresupuestoNomina.objects.filter(cedula__in={vieja, nueva}))
+        cambiadas = []
+        for fila in filas:
+            antes = (fila.cedula, fila.nombre, fila.clave)
+            if fila.cedula == vieja:
+                fila.cedula = nueva
+                fila.clave = _clave_con_cedula(fila.clave, vieja, nueva)
+            if nombre_nuevo:
+                fila.nombre = nombre_nuevo
+            if (fila.cedula, fila.nombre, fila.clave) != antes:
+                fila.actualizado_por = usuario or fila.actualizado_por
+                cambiadas.append(fila)
+        PresupuestoNomina.objects.bulk_update(cambiadas, ['cedula', 'nombre', 'clave', 'actualizado_por'],
+                                              batch_size=1000)
+
+        if nueva != vieja:
+            if DistribucionNomina.objects.filter(cedula=nueva).exists():
+                DistribucionNomina.objects.filter(cedula=vieja).delete()
+            else:
+                DistribucionNomina.objects.filter(cedula=vieja).update(cedula=nueva)
+            if FocoSinComision.objects.filter(cedula=nueva).exists():
+                FocoSinComision.objects.filter(cedula=vieja).delete()
+            else:
+                FocoSinComision.objects.filter(cedula=vieja).update(cedula=nueva)
+        if nombre_nuevo:
+            FocoSinComision.objects.filter(cedula=nueva).update(nombre=nombre_nuevo)
+
+        _guardar_correccion(vieja, nueva, nombre_nuevo, usuario)
+        ctx.olvidar_todo()
+        if recalcular:
+            for c in DERIVADOS:
+                regenerar(ctx, c)
+    return len(cambiadas)
+
+
+def _guardar_correccion(vieja, nueva, nombre_nuevo, usuario):
+    """Guarda (o actualiza / quita) la corrección respecto a los datos de origen."""
+    previa = CorreccionPersonaNomina.objects.filter(cedula=vieja).first()
+    cedula_origen = previa.cedula_origen if previa else vieja
+    fuente = None
+    if cedula_origen.isdigit():
+        fuente = (ConceptosNomina.objects.filter(cedula=int(cedula_origen))
+                  .order_by('-anio', '-id').values_list('nombre', flat=True).first())
+    if fuente is None:                       # la persona no viene de Conceptos: nada que recordar
+        return
+    nombre = nombre_nuevo or (previa.nombre if previa else '')
+    if nueva == cedula_origen and (not nombre or nombre == ' '.join(texto(fuente).upper().split())):
+        CorreccionPersonaNomina.objects.filter(cedula_origen=cedula_origen).delete()   # volvió a ser la original
+        return
+    CorreccionPersonaNomina.objects.update_or_create(
+        cedula_origen=cedula_origen,
+        defaults={'cedula': nueva, 'nombre': nombre, 'actualizado_por': usuario})
+
+
+def quitar_correccion(cedula_origen):
+    """Deja de aplicar una corrección en las próximas cargas (no cambia las filas actuales)."""
+    return CorreccionPersonaNomina.objects.filter(cedula_origen=cedula_normalizada(cedula_origen)).delete()[0]
+
+
+def listar_correcciones():
+    return list(CorreccionPersonaNomina.objects.values(
+        'cedula_origen', 'cedula', 'nombre', 'actualizado', 'actualizado_por'))
+
+
 def _firma_guardada(fila):
     """Contenido de una fila guardada (para reconocer un reenvío del autoguardado)."""
     return (*(getattr(fila, c) or '' for c in CAMPOS_TEXTO), int(fila.base or 0),
@@ -1355,6 +1506,42 @@ def _firma_entrante(datos):
               for c in CAMPOS_TEXTO)
     return (*textos, int(round(numero(datos.get('base')))),
             *(int(round(numero(datos.get(m)))) for m in MESES))
+
+
+def _propagar_identidades(identidades, finales, usuario, ctx, avisos):
+    """Lleva a todos los conceptos las cédulas / nombres corregidos al guardar.
+
+    Solo se toma como corrección de la PERSONA si se cambiaron todas sus filas
+    de este concepto y todas igual; si quedó alguna con la cédula anterior es
+    que se reasignó una fila suelta y no se toca nada más. Tampoco se hace si
+    la cédula nueva ya es de otra persona.
+    """
+    grupos = defaultdict(list)
+    for cedula_antes, nombre_antes, fila in identidades:
+        if cedula_antes:
+            grupos[cedula_antes].append((nombre_antes, fila))
+    corregidas = 0
+    for vieja, cambios in grupos.items():
+        destinos = {(f.cedula, f.nombre if f.nombre != nombre_antes else '') for nombre_antes, f in cambios}
+        if len(destinos) != 1:
+            avisos.append(f'La cédula {vieja} se cambió de formas distintas en sus filas: '
+                          'no se cambió en los demás conceptos')
+            continue
+        nueva, nombre = destinos.pop()
+        if not nueva:
+            continue
+        propias = {id(f) for _, f in cambios}
+        if any(f.cedula == vieja and id(f) not in propias for f in finales):
+            continue                       # se reasignó solo una fila: no es la misma persona
+        if nueva != vieja and any(f.cedula == nueva and id(f) not in propias for f in finales):
+            avisos.append(f'La cédula {nueva} ya es de otra persona: no se cambió en los demás conceptos')
+            continue
+        try:
+            corregir_persona(vieja, nueva, nombre, usuario, ctx=ctx, recalcular=False)
+            corregidas += 1
+        except ValueError as exc:
+            avisos.append(f'{exc}: no se cambió en los demás conceptos')
+    return corregidas
 
 
 def guardar(slug, filas_json, usuario=''):
@@ -1402,6 +1589,7 @@ def guardar(slug, filas_json, usuario=''):
                       if not c.derivado or f.origen == MANUAL}
         crear, actualizar, forzadas = [], [], False
         uids = []                                   # (_uid del navegador, fila)
+        identidades = []                            # (cédula antes, nombre antes, fila) si cambiaron
 
         def pk_de(datos):
             try:
@@ -1447,6 +1635,8 @@ def guardar(slug, filas_json, usuario=''):
             misma_area = not nueva and _clave_area(antes['area']) == _clave_area(fila.area)
             fila.cuenta = ctx.cuenta(fila.area) or (fila.cuenta if misma_area else '')
             fila.codcosto = ctx.codcosto(fila.area) or (fila.codcosto if misma_area else '')
+            if not nueva and (antes['cedula'], antes['nombre']) != (fila.cedula, fila.nombre):
+                identidades.append((antes['cedula'], antes['nombre'], fila))
             if c.derivado:
                 # así bloquea la fila calculada de esa misma persona
                 fila.clave = clave_persona(fila)
@@ -1495,10 +1685,22 @@ def guardar(slug, filas_json, usuario=''):
         PresupuestoNomina.objects.bulk_create(crear, batch_size=1000)
         ctx.olvidar(slug)
 
-        recalculados = propagar(slug, ctx)
+        # Cédula o nombre corregidos en un concepto base: se corrigen en todos
+        # los demás conceptos (y en las próximas cargas desde Conceptos).
+        avisos = []
+        corregidas = 0 if c.derivado else _propagar_identidades(identidades, crear + actualizar,
+                                                                usuario, ctx, avisos)
+        if corregidas:
+            resumen['personas_corregidas'] = corregidas
+            for d in DERIVADOS:
+                regenerar(ctx, d)
+            recalculados = [d.slug for d in DERIVADOS]
+        else:
+            recalculados = propagar(slug, ctx)
 
     resumen.update(creadas=len(crear), actualizadas=len(actualizar), eliminadas=len(eliminar))
     salida = dict(resumen)
+    salida['avisos'] = avisos
     salida['nuevos'] = {uid: fila.pk for uid, fila in uids if fila is not None and fila.pk}
     return salida, recalculados
 

@@ -87,3 +87,5 @@ table.or-tabla .or-col-acciones .pt-btn { margin-left: 4px; text-decoration: non
 .button-close-session { background: #dc3545; color: #fff; border: none; padding: 8px 16px;
                         border-radius: 6px; cursor: pointer; font: inherit; }
 .button-close-session:hover { background: #bb2d3b; }
+.cp-tarjeta { margin-top: 4px; }
+.cp-subtitulo { margin-top: 14px; }

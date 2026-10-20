@@ -194,6 +194,59 @@
       </section>
     </div>
 
+    <div class="pt-seccion__cuerpo">
+      <section class="or-tarjeta cp-tarjeta">
+        <header>
+          <h4 class="or-titulo">Corregir cédula o nombre de una persona</h4>
+          <p class="or-ayuda">Se cambia en <strong>todos los conceptos</strong> (sueldos, comisiones, medios de transporte…),
+            en la distribución por persona y en bonificación foco, y se recuerda para las próximas cargas desde Conceptos.
+            Al editar la cédula o el nombre de una persona en un concepto (por ejemplo en Sueldos) esto se hace solo.</p>
+        </header>
+        <form id="formCorregirPersona" class="or-form">
+          <div class="or-campo">
+            <label for="cpActual">Cédula actual</label>
+            <input type="text" id="cpActual" name="cedula_actual" inputmode="numeric" required>
+            <span class="or-ayuda">La que tienen hoy las filas que no se actualizaron.</span>
+          </div>
+          <div class="or-campo">
+            <label for="cpNueva">Cédula correcta <span class="or-opcional">opcional</span></label>
+            <input type="text" id="cpNueva" name="cedula_nueva" inputmode="numeric">
+            <span class="or-ayuda">Vacía = no cambia la cédula.</span>
+          </div>
+          <div class="or-campo or-campo--ancho">
+            <label for="cpNombre">Nombre correcto <span class="or-opcional">opcional</span></label>
+            <input type="text" id="cpNombre" name="nombre_nuevo">
+            <span class="or-ayuda">Vacío = no cambia el nombre.</span>
+          </div>
+        </form>
+        <footer class="or-acciones">
+          <button type="button" class="pt-btn pt-btn--primario" id="btnCorregirPersona">Aplicar en todos los conceptos</button>
+        </footer>
+        {% if correcciones %}
+          <h4 class="or-titulo cp-subtitulo">Correcciones que se aplican al cargar desde Conceptos</h4>
+          <div class="or-tabla-envoltura">
+            <table class="or-tabla">
+              <thead><tr><th>Cédula en el Excel</th><th>Cédula correcta</th><th>Nombre correcto</th><th>Actualizado</th><th class="or-col-acciones"></th></tr></thead>
+              <tbody>
+                {% for c in correcciones %}
+                  <tr>
+                    <td>{{ c.cedula_origen }}</td>
+                    <td><strong>{{ c.cedula }}</strong></td>
+                    <td>{{ c.nombre|default:"—" }}</td>
+                    <td class="dep" style="white-space:nowrap">{{ c.actualizado|date:"d/m/Y H:i" }}{% if c.actualizado_por %} · {{ c.actualizado_por }}{% endif %}</td>
+                    <td class="or-col-acciones">
+                      <button type="button" class="pt-btn pt-btn--icono pt-btn--suave-peligro" data-quitar-correccion="{{ c.cedula_origen }}"
+                              title="Dejar de aplicarla en las próximas cargas">🗑️</button>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+      </section>
+    </div>
+
     <div class="pt-seccion__cuerpo or-nota">
       ⚠️ Recargar reemplaza las filas calculadas que vienen de Conceptos (sueldos, comisiones, horas extra…).
       Se conservan las filas manuales y las agregadas en pantalla, aunque se les haya restablecido el cálculo.
@@ -494,6 +547,41 @@
           } catch (e) { PT.toast('❌ ' + e.message, 'error'); }
         }));
       }
+
+      const formCorregir = document.getElementById('formCorregirPersona');
+      const btnCorregir = document.getElementById('btnCorregirPersona');
+      formCorregir.nombre_nuevo.addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase(); });
+      btnCorregir.addEventListener('click', () => {
+        const actual = formCorregir.cedula_actual.value.trim();
+        const nueva = formCorregir.cedula_nueva.value.trim();
+        const nombre = formCorregir.nombre_nuevo.value.trim();
+        if (!actual) { PT.toast('Escriba la cédula actual ⚠️', 'warning'); return; }
+        if (!nueva && !nombre) { PT.toast('Escriba la cédula correcta o el nombre correcto ⚠️', 'warning'); return; }
+        const cambio = [nueva && nueva !== actual ? `cédula ${actual} → ${nueva}` : '', nombre ? `nombre → ${nombre}` : '']
+          .filter(Boolean).join(' y ');
+        if (!confirm(`Se cambiará ${cambio} en todos los conceptos de nómina y se recalcularán prestaciones y seguridad social. ¿Continuar?`)) return;
+        const datos = new FormData(formCorregir);
+        datos.append('action', 'corregir_persona');
+        PT.conSpinner(btnCorregir, async () => {
+          try {
+            const r = await enviar(datos);
+            PT.toast(r.msg, r.status === 'ok' ? 'success' : 'error', 7000);
+            if (r.status === 'ok') recargar();
+          } catch (e) { PT.toast('No se pudo aplicar la corrección ❌', 'error'); }
+        });
+      });
+      document.querySelectorAll('[data-quitar-correccion]').forEach(boton => {
+        boton.addEventListener('click', () => {
+          if (!confirm('¿Dejar de aplicar esta corrección? Las filas actuales no cambian, pero en la próxima carga desde Conceptos la persona volverá a salir con la cédula y el nombre del Excel.')) return;
+          const datos = new FormData();
+          datos.append('action', 'quitar_correccion');
+          datos.append('cedula_origen', boton.dataset.quitarCorreccion);
+          PT.conSpinner(boton, async () => {
+            try { const r = await enviar(datos); PT.toast(r.msg); recargar(); }
+            catch (e) { PT.toast('No se pudo quitar ❌', 'error'); }
+          });
+        });
+      });
 
       const btnRecargarBases = document.getElementById('btnRecargarBases');
       btnRecargarBases.addEventListener('click', () => {

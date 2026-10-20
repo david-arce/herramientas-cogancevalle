@@ -689,6 +689,7 @@ class EstaticosVersionadosTests(TestCase):
 # ═══════════════════════════════════════════════════════════════════════
 #  Nómina en vertical
 # ═══════════════════════════════════════════════════════════════════════
+from .models_nomina import CorreccionPersonaNomina  # noqa: E402
 from .models_nomina import (  # noqa: E402
     ConceptosNomina, ConfiguracionNomina, PresupuestoNomina, PresupuestoNominaMes,
 )
@@ -2497,3 +2498,110 @@ class NominaAutoguardadoTests(TestCase):
         self.assertNotIn("btnActualizar", barra)
         panel = html.split("Parámetros del presupuesto")[1].split("Resumen consolidado")[0]
         self.assertIn('id="btnActualizar"', panel)
+
+
+class SueldoMinimoProyectadoTests(TestCase):
+    """Sueldos: salario ≤ mínimo proyectado → mínimo proyectado todo el año;
+    si no, se proyecta desde el salario del año actual (con retroactivo)."""
+
+    def setUp(self):
+        self.p = nomina_motor.Parametros(incremento_salarial=7, salario_minimo=1423500)
+        self.c = nomina_motor.CONCEPTOS["sueldos"]
+        self.minimo_proy = 1423500 * 1.07                     # 1.523.145
+
+    def meses(self, base):
+        return nomina_motor.f_retroactivo(linea_nomina(base=base), self.c, self.p)
+
+    def test_quien_gana_el_minimo_toma_el_minimo_proyectado(self):
+        self.assertEqual(set(self.meses(1423500).values()), {self.minimo_proy})
+
+    def test_quien_gana_un_poco_mas_del_minimo_toma_el_minimo_proyectado(self):
+        meses = self.meses(1500000)
+        self.assertEqual(set(meses.values()), {self.minimo_proy})
+        self.assertGreaterEqual(meses["enero"], self.minimo_proy)
+
+    def test_igual_al_minimo_proyectado(self):
+        self.assertEqual(set(self.meses(1523145).values()), {self.minimo_proy})
+
+    def test_por_encima_se_proyecta_desde_su_salario(self):
+        meses = self.meses(2000000)
+        self.assertEqual(meses["enero"], 2000000)
+        self.assertEqual(meses["febrero"], 2000000)
+        self.assertAlmostEqual(meses["abril"], 2140000)
+        self.assertAlmostEqual(meses["marzo"], 2140000 + 2 * 140000)
+
+
+class NominaCorreccionPersonaTests(TestCase):
+    """Cédula / nombre corregidos en un concepto base llegan a TODOS los conceptos
+    (aunque no dependan de él, como medios de transporte) y se respetan al
+    volver a cargar desde Conceptos."""
+
+    def setUp(self):
+        anio = timezone.localdate().year
+        comunes = dict(anio=anio, archivo="prueba", nombre_cen="ALMACEN TULUA", nomcosto="VENTAS",
+                       nombrecar="ASESOR", cuenta="520506")
+        for cedula, nombre in [(111, "ANA MAL ESCRITA"), (222, "LUIS PEREZ")]:
+            meses = {m: 1500000 for m in MESES_N[:8]}
+            ConceptosNomina.objects.create(concepto="001", cedula=cedula, nombre=nombre,
+                                           concepto_f=1500000, **comunes, **meses)
+            ConceptosNomina.objects.create(concepto="011", cedula=cedula, nombre=nombre,
+                                           concepto_f=100000, **comunes, **{m: 100000 for m in MESES_N[:8]})
+            ConceptosNomina.objects.create(concepto="389", cedula=cedula, nombre=nombre,
+                                           **comunes, **{m: 300000 for m in MESES_N[:8]})
+        nomina_motor.recargar_bases()
+        self.client.force_login(User.objects.create_user("admin"))
+
+    def personas(self, tipo):
+        return sorted(PresupuestoNomina.objects.filter(tipo=tipo).values_list("cedula", "nombre").distinct())
+
+    def editar_sueldo(self, de, **cambios):
+        filas = self.client.get(reverse("nomina_datos", args=["sueldos"])).json()["data"]
+        for f in filas:
+            if f["cedula"] == de:
+                f.update(cambios)
+        r = self.client.post(reverse("nomina_guardar", args=["sueldos"]), json.dumps({"filas": filas}),
+                             content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        return r.json()
+
+    def test_editar_en_sueldos_corrige_todos_los_conceptos(self):
+        r = self.editar_sueldo("111", cedula="999", nombre="ANA BIEN ESCRITA")
+        self.assertIn("todos los conceptos", r["aviso"])
+        esperado = [("222", "LUIS PEREZ"), ("999", "ANA BIEN ESCRITA")]
+        for tipo in ("sueldos", "medios_transporte", "comisiones", "cesantias", "prima"):
+            self.assertEqual(self.personas(tipo), esperado, tipo)
+        self.assertFalse(PresupuestoNomina.objects.filter(cedula="111").exists())
+
+    def test_la_correccion_se_respeta_al_recargar_desde_conceptos(self):
+        self.editar_sueldo("111", cedula="999", nombre="ANA BIEN ESCRITA")
+        nomina_motor.recargar_bases()
+        for tipo in ("sueldos", "medios_transporte", "comisiones"):
+            self.assertEqual(self.personas(tipo), [("222", "LUIS PEREZ"), ("999", "ANA BIEN ESCRITA")], tipo)
+        # las comisiones reales (bonificación foco) también se buscan con la cédula corregida
+        self.assertIn("999", nomina_motor.comisiones_reales(nomina_motor.Contexto()))
+
+    def test_solo_nombre(self):
+        self.editar_sueldo("111", nombre="ANA BIEN ESCRITA")
+        self.assertEqual(self.personas("medios_transporte"), [("111", "ANA BIEN ESCRITA"), ("222", "LUIS PEREZ")])
+
+    def test_cedula_de_otra_persona_no_se_propaga(self):
+        r = self.editar_sueldo("111", cedula="222")
+        self.assertIn("ya es de otra persona", r["aviso"])
+        self.assertIn(("111", "ANA MAL ESCRITA"), self.personas("medios_transporte"))
+
+    def test_herramienta_del_tablero_para_un_cambio_ya_hecho(self):
+        # Caso real: en Sueldos ya se había cambiado la cédula antes de existir la propagación.
+        PresupuestoNomina.objects.filter(tipo="sueldos", cedula="111").update(cedula="999", nombre="ANA BIEN")
+        r = self.client.post(reverse("presupuestoNomina"),
+                             {"action": "corregir_persona", "cedula_actual": "111", "cedula_nueva": "999",
+                              "nombre_nuevo": "ana bien"}, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(r.json()["status"], "ok", r.content)
+        self.assertEqual(self.personas("medios_transporte"), [("222", "LUIS PEREZ"), ("999", "ANA BIEN")])
+        self.assertTrue(CorreccionPersonaNomina.objects.filter(cedula_origen="111", cedula="999").exists())
+        html = self.client.get(reverse("presupuestoNomina")).content.decode()
+        self.assertIn("Correcciones que se aplican al cargar desde Conceptos", html)
+
+    def test_volver_a_la_original_quita_la_correccion(self):
+        self.editar_sueldo("111", cedula="999")
+        self.editar_sueldo("999", cedula="111")
+        self.assertFalse(CorreccionPersonaNomina.objects.exists())

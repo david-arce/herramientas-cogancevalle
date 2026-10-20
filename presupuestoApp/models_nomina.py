@@ -290,3 +290,28 @@ class FocoSinComision(models.Model):
 
     def __str__(self):
         return f'{self.cedula} {self.nombre}'
+
+
+class CorreccionPersonaNomina(models.Model):
+    """Corrección de la cédula y/o el nombre de una persona.
+
+    Los datos de origen (ConceptosNomina) traen la cédula y el nombre tal como
+    vienen del Excel. Si en el presupuesto se corrigen (por ejemplo, en
+    Sueldos), la corrección se aplica a TODOS los conceptos y se guarda aquí
+    para que cada vez que se vuelva a cargar desde Conceptos la persona siga
+    apareciendo con la cédula y el nombre corregidos.
+    """
+    cedula_origen = models.CharField('cédula en los datos de origen', max_length=20, unique=True)
+    cedula = models.CharField('cédula correcta', max_length=20)
+    nombre = models.CharField('nombre correcto', max_length=150, blank=True, default='')
+    actualizado = models.DateTimeField(auto_now=True)
+    actualizado_por = models.CharField(max_length=150, blank=True, default='')
+
+    class Meta:
+        db_table = 'correccion_persona_nomina'
+        ordering = ['cedula_origen']
+        verbose_name = 'corrección de persona (nómina)'
+        verbose_name_plural = 'correcciones de personas (nómina)'
+
+    def __str__(self):
+        return f'{self.cedula_origen} → {self.cedula} {self.nombre}'

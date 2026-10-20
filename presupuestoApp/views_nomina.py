@@ -143,6 +143,23 @@ def presupuestoNomina(request):
                    else 'Se quitó la confirmación: el presupuesto de nómina queda en edición')
             return JsonResponse({'status': 'ok', 'msg': msg, 'listo': config.listo})
 
+        if accion == 'corregir_persona':
+            # Cambiar cédula y/o nombre de una persona en TODOS los conceptos
+            try:
+                n = nomina.corregir_persona(request.POST.get('cedula_actual'), request.POST.get('cedula_nueva'),
+                                            request.POST.get('nombre_nuevo'), request.user.get_username())
+            except ValueError as exc:
+                return JsonResponse({'status': 'error', 'msg': str(exc)})
+            if not n:
+                return JsonResponse({'status': 'error',
+                                     'msg': 'No hay filas con esa cédula en el presupuesto de nómina'})
+            return JsonResponse({'status': 'ok', 'msg': f'{n} filas actualizadas en todos los conceptos '
+                                                        '· prestaciones y seguridad social recalculadas ✅'})
+
+        if accion == 'quitar_correccion':
+            nomina.quitar_correccion(request.POST.get('cedula_origen'))
+            return JsonResponse({'status': 'ok', 'msg': 'La corrección ya no se aplicará en las próximas cargas'})
+
         altas = {'insertar_concepto': ('nombrecar', 'cargo'), 'insertar_nomcosto': ('nomcosto', 'costo')}
         if accion in altas:
             campo, etiqueta = altas[accion]
@@ -204,6 +221,7 @@ def presupuestoNomina(request):
         'parametros': params,
         'avisos_parametros': avisos,
         'foco_personas': foco,
+        'correcciones': nomina.listar_correcciones(),
         'foco_marcados': len(marcados),
         'origen': {
             'anios': origen.resumen_anios(),
@@ -530,12 +548,17 @@ def nomina_guardar(request, tipo):
         return _error(f'No se pudo guardar: {exc}', 500)
 
     nuevos = resumen.pop('nuevos', {})
+    avisos = resumen.pop('avisos', [])
     mensaje = (f"Guardado ✅ ({resumen.get('creadas', 0)} nuevas, "
                f"{resumen.get('actualizadas', 0)} actualizadas, "
                f"{resumen.get('eliminadas', 0)} eliminadas)")
     if resumen.get('calculadas'):
         mensaje += f" · {resumen['calculadas']} filas calculadas sin cambios"
-    return _respuesta_cambio(tipo, mensaje, recalculados, resumen=resumen, nuevos=nuevos)
+    aviso = ' · '.join(avisos)
+    if resumen.get('personas_corregidas'):
+        aviso = (f"Cédula / nombre actualizado en todos los conceptos para "
+                 f"{resumen['personas_corregidas']} persona(s) ✅" + (' · ' + aviso if aviso else ''))
+    return _respuesta_cambio(tipo, mensaje, recalculados, resumen=resumen, nuevos=nuevos, aviso=aviso)
 
 
 @login_required
