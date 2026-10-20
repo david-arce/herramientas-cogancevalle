@@ -421,7 +421,8 @@
         // así el siguiente envío no las vuelve a crear.
         const resp = info.respuesta || {};
         // p. ej. "Cédula / nombre actualizado en todos los conceptos"
-        if (resp.aviso) toast(resp.aviso, resp.resumen && resp.resumen.personas_corregidas ? 'success' : 'warning', 8000);
+        const r0 = resp.resumen || {};
+        if (resp.aviso) toast(resp.aviso, r0.personas_corregidas || r0.filas_en_cero ? 'success' : 'warning', 8000);
         const nuevos = resp.nuevos || {};
         Object.assign(this._idPorUid, nuevos);
         this.filas.forEach(f => {

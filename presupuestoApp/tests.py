@@ -2939,3 +2939,61 @@ class RestablecerConMesesEnCeroTests(TestCase):
         self.assertEqual((f.abril, f.agosto), (110000, 110000))         # real + 10 %
         self.assertEqual(f.septiembre, 110000)                          # promedio de abr-ago, sin diluir con los ceros
         self.assertEqual(f.diciembre, 110000)
+
+
+class SueldosCrearEnOtrosConceptosTests(TestCase):
+    """Persona nueva en Sueldos: se puede crear en cero en los conceptos que no
+    dependen de Sueldos (comisiones, horas extra, medios de transporte…)."""
+
+    def setUp(self):
+        self.client.force_login(User.objects.create_user("admin"))
+
+    def enviar(self, filas):
+        r = self.client.post(reverse("nomina_guardar", args=["sueldos"]), json.dumps({"filas": filas}),
+                             content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        return r.json()
+
+    def datos(self):
+        return self.client.get(reverse("nomina_datos", args=["sueldos"])).json()["data"]
+
+    def tipos(self, cedula):
+        return sorted(PresupuestoNomina.objects.filter(cedula=cedula).exclude(tipo="sueldos")
+                      .filter(tipo__in=[c.slug for c in nomina_motor.BASE]).values_list("tipo", flat=True))
+
+    def nueva(self, **kw):
+        return {"_uid": "u1", "origen": "manual", "nombre": "", "cedula": "", "centro": "ALMACEN TULUA",
+                "area": "VENTAS", "cargo": "CAJERO", "concepto": "SUELDO BASICO",
+                "crear_en": ["comisiones", "horas_extra", "medios_transporte", "cesantias", "sueldos"],
+                **{m: 0 for m in MESES_N}, **kw}
+
+    def test_se_crea_en_cero_cuando_tiene_cedula(self):
+        r = self.enviar([self.nueva(nombre="NUEVO")])                    # todavía sin cédula
+        self.assertEqual(self.tipos(""), [])
+        filas = self.datos()
+        filas[0]["cedula"] = "555"
+        r = self.enviar(filas)
+        self.assertIn("Fila en cero creada en", r["aviso"])
+        # solo conceptos base distintos de sueldos (cesantías es calculado: se ignora)
+        self.assertEqual(self.tipos("555"), ["comisiones", "horas_extra", "medios_transporte"])
+        otra = PresupuestoNomina.objects.get(tipo="comisiones", cedula="555")
+        self.assertEqual((otra.origen, otra.nombre, otra.total, otra.area), ("manual", "NUEVO", 0, "VENTAS"))
+        # no se vuelve a crear en el siguiente guardado
+        self.enviar(self.datos())
+        self.assertEqual(PresupuestoNomina.objects.filter(tipo="comisiones", cedula="555").count(), 1)
+
+    def test_con_cedula_desde_el_inicio_y_sin_duplicar(self):
+        linea_nomina(tipo="comisiones", cedula="777", origen="manual").save()
+        self.enviar([self.nueva(cedula="777", nombre="ANA")])
+        self.assertEqual(self.tipos("777"), ["comisiones", "horas_extra", "medios_transporte"])
+        self.assertEqual(PresupuestoNomina.objects.filter(tipo="comisiones", cedula="777").count(), 1)
+
+    def test_sin_elegir_no_crea_nada(self):
+        self.enviar([self.nueva(cedula="888", crear_en=[])])
+        self.assertEqual(self.tipos("888"), [])
+
+    def test_la_pantalla_lista_los_conceptos(self):
+        html = self.client.get(reverse("nomina_tabla", args=["sueldos"])).content.decode()
+        self.assertIn('"crearEnDetalle"', html)
+        self.assertIn("Horas extra", html)
+        self.assertIn('id="dlgCrearEn"', html)

@@ -15,10 +15,23 @@
    * detalle: [{slug, etiqueta, depende: [slugs], dependeNombres}] en orden de cálculo.
    * abrir({titulo, sub, boton, excluir}) → Promise<string[] | null> (slugs excluidos)
    */
-  function crearDialogoActualiza(slugConcepto, detalle) {
+  function crearDialogoActualiza(slugConcepto, detalle, crearEn = []) {
     const dlg = document.getElementById('dlgActualiza');
     if (!dlg || !detalle.length) return null;
     const lista = dlg.querySelector('#dlgActualizaLista');
+    const seccionCrear = dlg.querySelector('#dlgCrearEn');
+    const listaCrear = dlg.querySelector('#dlgCrearEnLista');
+    if (listaCrear) {
+      listaCrear.innerHTML = crearEn.map(d => `
+        <li><label>
+          <input type="checkbox" value="${escapar(d.slug)}">
+          <span class="da-nombre">${escapar(d.etiqueta)}</span>
+          <small class="da-dep">se crea con los meses en 0</small>
+        </label></li>`).join('');
+      dlg.querySelectorAll('[data-marcar-crear]').forEach(b => b.addEventListener('click', () => {
+        listaCrear.querySelectorAll('input').forEach(c => { c.checked = b.dataset.marcarCrear === 'todos'; });
+      }));
+    }
 
     lista.innerHTML = detalle.map(d => `
       <li data-slug="${escapar(d.slug)}">
@@ -50,7 +63,12 @@
       coherencia();
     }));
 
-    return function abrir({ titulo, sub, boton, excluir = [] }) {
+    /** Devuelve null (canceló) o {excluir: [slugs], crearEn: [slugs]}. */
+    return function abrir({ titulo, sub, boton, excluir = [], conCrear = false }) {
+      if (seccionCrear) {
+        seccionCrear.hidden = !(conCrear && crearEn.length);
+        listaCrear.querySelectorAll('input').forEach(c => { c.checked = false; });
+      }
       dlg.querySelector('#dlgActualizaTitulo').textContent = titulo;
       dlg.querySelector('#dlgActualizaSub').textContent = sub;
       dlg.querySelector('#dlgActualizaAceptar').textContent = boton;
@@ -61,7 +79,11 @@
       return new Promise(resolve => {
         dlg.addEventListener('close', () => {
           if (dlg.returnValue !== 'aceptar') { resolve(null); return; }
-          resolve(casillas().filter(c => !c.checked).map(c => c.value));
+          resolve({
+            excluir: casillas().filter(c => !c.checked).map(c => c.value),
+            crearEn: conCrear && listaCrear
+              ? [...listaCrear.querySelectorAll('input:checked')].map(c => c.value) : [],
+          });
         }, { once: true });
       });
     };
@@ -74,7 +96,9 @@
     const estado = document.querySelector('[data-rol="estado"]');
     const detalle = config.afectaDetalle || [];
     const nombreDe = (slug) => (detalle.find(d => d.slug === slug) || {}).etiqueta || slug;
-    const abrirDialogo = soloLectura ? null : crearDialogoActualiza(config.slug, detalle);
+    const crearEn = config.crearEnDetalle || [];
+    const nombreDe2 = (slug) => (crearEn.find(d => d.slug === slug) || {}).etiqueta || slug;
+    const abrirDialogo = soloLectura ? null : crearDialogoActualiza(config.slug, detalle, crearEn);
 
     const tabla = new PT.TablaPresupuesto({
       montaje: '#tabla',
@@ -116,13 +140,14 @@
       }] : [],
       alAccion: async (rol, fila) => {
         if (rol !== 'actualiza') return;
-        const excluir = await abrirDialogo({
+        const eleccion = await abrirDialogo({
           titulo: 'Qué actualiza esta fila',
           sub: [fila.nombre, fila.cedula, fila.area].filter(Boolean).join(' · ') || 'Fila agregada',
           boton: 'Aplicar',
           excluir: fila.excluir_de || []
         });
-        if (excluir === null) return;
+        if (eleccion === null) return;
+        const excluir = eleccion.excluir;
         tabla.antesDeCambiar();
         fila.excluir_de = excluir;
         tabla.pintar();
@@ -132,17 +157,20 @@
     });
 
     const agregar = abrirDialogo ? async () => {
-      const excluir = await abrirDialogo({
+      const eleccion = await abrirDialogo({
         titulo: `Agregar persona en ${config.etiqueta}`,
         sub: 'Elija qué conceptos se deben actualizar automáticamente con esta persona.',
         boton: 'Agregar fila',
-        excluir: []
+        excluir: [],
+        conCrear: true
       });
-      if (excluir === null) return;
-      tabla.agregarFila({ excluir_de: excluir });
-      PT.toast(excluir.length
-        ? `Fila agregada. No actualizará: ${excluir.map(nombreDe).join(', ')}`
-        : 'Fila agregada ✅', 'success', 5000);
+      if (eleccion === null) return;
+      const { excluir, crearEn: crear } = eleccion;
+      tabla.agregarFila(crear.length ? { excluir_de: excluir, crear_en: crear } : { excluir_de: excluir });
+      const partes = [];
+      if (excluir.length) partes.push(`No actualizará: ${excluir.map(nombreDe).join(', ')}`);
+      if (crear.length) partes.push(`Al escribir la cédula se creará en cero en: ${crear.map(nombreDe2).join(', ')}`);
+      PT.toast(partes.length ? `Fila agregada. ${partes.join(' · ')}` : 'Fila agregada ✅', 'success', 7000);
     } : undefined;
 
     PT.conectarBarra(tabla, config.urls, { agregar });

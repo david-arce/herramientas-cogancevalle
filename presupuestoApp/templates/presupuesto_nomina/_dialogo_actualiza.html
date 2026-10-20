@@ -16,6 +16,21 @@ con config.afectaDetalle.
       </div>
       <ul class="da-lista" id="dlgActualizaLista"></ul>
       <p class="da-nota">Los conceptos desmarcados no tendrán en cuenta esta fila. Se puede cambiar después con el botón 🔗 de la fila.</p>
+
+      <section class="da-crear" id="dlgCrearEn" hidden>
+        <div class="da-crear__cabecera">
+          <div>
+            <h4 class="da-subtitulo">Crear también a la persona en</h4>
+            <p class="da-nota da-nota--arriba">Estos conceptos no dependen de {{ config.etiqueta }}: la persona se crea con todos los meses en 0
+              para llenarla después. Se crea en cuanto la fila tenga cédula.</p>
+          </div>
+          <div class="da-atajos">
+            <button type="button" class="pt-btn pt-btn--enlace" data-marcar-crear="todos">Marcar todos</button>
+            <button type="button" class="pt-btn pt-btn--enlace" data-marcar-crear="ninguno">Ninguno</button>
+          </div>
+        </div>
+        <ul class="da-lista" id="dlgCrearEnLista"></ul>
+      </section>
     </div>
     <footer class="pt-dialogo__pie">
       <button type="submit" class="pt-btn" value="cancelar">Cancelar</button>

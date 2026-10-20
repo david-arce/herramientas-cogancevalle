@@ -560,3 +560,10 @@ table.pt-tabla tbody tr.pt-fila--activa td.pt-col-total { background: #cddff8; }
 .pt-tabla td.pt-col-total.pt-celda--rango { background: #d6e3f7; }
 /* al moverse con el teclado, la celda activa no queda escondida detrás del Total fijo */
 .pt-tabla-envoltura { scroll-padding-right: 140px; }
+
+/* Diálogo "Agregar persona": conceptos donde crearla en cero */
+.da-crear { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--pt-borde-fuerte); }
+.da-crear__cabecera { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 6px; }
+.da-subtitulo { margin: 0; font-size: 14px; }
+.da-nota--arriba { margin: 2px 0 0; }
+.da-crear__cabecera .da-atajos { flex: 0 0 auto; white-space: nowrap; }

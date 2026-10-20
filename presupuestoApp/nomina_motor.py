@@ -94,6 +94,7 @@ class Concepto:
     permite_manual: bool = False  # derivado que además acepta filas agregadas a mano
     con_minimo: bool = False     # sueldos: quien gana el mínimo sube desde enero
     base_editable: str = None    # parámetro (en pesos) que se edita en la pantalla del concepto
+    crea_en_otros: bool = False  # al agregar una persona se puede crear en cero en los demás conceptos base
     titulo_base: str = None      # None → la tabla no muestra la columna "base"
     con_cedula: bool = True
     con_pegar: bool = False
@@ -131,7 +132,7 @@ _LISTA = [
     #   'base':      True → la base es CONCEPTO_F,
     #   'agrupar':   True → suma varios conceptos en una fila por persona,
     # }
-    Concepto('sueldos', 'Sueldos', G_PRINCIPAL, formula='retroactivo',
+    Concepto('sueldos', 'Sueldos', G_PRINCIPAL, formula='retroactivo', crea_en_otros=True,
              pct='incremento_salarial', con_minimo=True, titulo_base='Salario base',
              parametros=('incremento_salarial', 'salario_minimo'),
              carga={'filtro': {'concepto': '001'}, 'base': True}),
@@ -1642,6 +1643,54 @@ def _firma_entrante(datos):
             *(int(round(numero(datos.get(m)))) for m in MESES))
 
 
+CREAR_EN = '_crear_en'
+
+
+def conceptos_para_crear(slug):
+    """Conceptos base (distintos de `slug`) donde se puede crear en cero a una persona nueva."""
+    return [c.slug for c in BASE if c.slug != slug and c.con_cedula]
+
+
+def _crear_en_otros(filas, usuario, ctx):
+    """Crea en cero, en los conceptos pendientes de cada fila, a la persona nueva.
+
+    Se hace cuando la fila ya tiene cédula (antes no se sabría quién es). Si la
+    persona ya tiene fila en ese concepto, no se duplica. Devuelve
+    {"NOMBRE (cédula)": [slugs creados]}.
+    """
+    hechas, limpiar = {}, []
+    for fila in filas:
+        pendientes = (fila.historico or {}).get(CREAR_EN)
+        if not pendientes or not fila.cedula:
+            continue
+        existentes = set(PresupuestoNomina.objects.filter(cedula=fila.cedula, tipo__in=pendientes)
+                         .values_list('tipo', flat=True))
+        nuevas = []
+        for slug in pendientes:
+            c = CONCEPTOS.get(slug)
+            if not c or slug in existentes:
+                continue
+            nueva = PresupuestoNomina(
+                tipo=slug, origen=MANUAL, clave='', cedula=fila.cedula, nombre=fila.nombre,
+                centro=fila.centro, area=fila.area, cargo=fila.cargo,
+                concepto=(c.carga or {}).get('concepto') or c.etiqueta.upper(),
+                cuenta=ctx.cuenta(fila.area) or fila.cuenta, codcosto=ctx.codcosto(fila.area) or fila.codcosto,
+                actualizado_por=usuario)
+            fijar_meses(nueva, {})
+            nuevas.append(nueva)
+        PresupuestoNomina.objects.bulk_create(nuevas, batch_size=1000)
+        for n in nuevas:
+            ctx.olvidar(n.tipo)
+        if nuevas:
+            hechas[f'{fila.nombre or "la persona"} ({fila.cedula})'] = [n.tipo for n in nuevas]
+        historico = dict(fila.historico)
+        historico.pop(CREAR_EN, None)
+        fila.historico = historico
+        limpiar.append(fila)
+    PresupuestoNomina.objects.bulk_update(limpiar, ['historico'], batch_size=1000)
+    return hechas
+
+
 def _propagar_identidades(identidades, finales, usuario, ctx, avisos):
     """Lleva a todos los conceptos las cédulas / nombres corregidos al guardar.
 
@@ -1773,6 +1822,12 @@ def guardar(slug, filas_json, usuario=''):
             for campo in CAMPOS_TEXTO:
                 valor = texto(datos.get(campo))
                 setattr(fila, campo, cedula_normalizada(valor) if campo == 'cedula' else valor)
+            if nueva and c.crea_en_otros and datos.get('crear_en'):
+                # conceptos donde la persona nueva debe aparecer (en cero); se crean
+                # en cuanto la fila tenga cédula (ver _crear_en_otros)
+                pendientes = [s for s in conceptos_para_crear(slug) if s in set(datos['crear_en'])]
+                if pendientes:
+                    fila.historico = dict(fila.historico or {}, **{CREAR_EN: pendientes})
             if 'excluir_de' in datos or nueva:
                 excluir = excluciones_validas(slug, datos.get('excluir_de'))
                 if not nueva and excluir != sorted(fila.excluir_de or []):
@@ -1852,6 +1907,11 @@ def guardar(slug, filas_json, usuario=''):
         PresupuestoNomina.objects.bulk_create(crear, batch_size=1000)
         ctx.olvidar(slug)
 
+        # Persona nueva en Sueldos: su fila en cero en los demás conceptos elegidos
+        en_cero = _crear_en_otros(crear + actualizar, usuario, ctx)
+        if en_cero:
+            resumen['filas_en_cero'] = sum(len(v) for v in en_cero.values())
+
         # Cédula o nombre corregidos en un concepto base: se corrigen en todos
         # los demás conceptos (y en las próximas cargas desde Conceptos).
         avisos = []
@@ -1868,6 +1928,9 @@ def guardar(slug, filas_json, usuario=''):
     resumen.update(creadas=len(crear), actualizadas=len(actualizar), eliminadas=len(eliminar))
     salida = dict(resumen)
     salida['avisos'] = avisos
+    if en_cero:
+        salida['avisos'].insert(0, 'Fila en cero creada en ' + ' · '.join(
+            f"{', '.join(CONCEPTOS[s].etiqueta for s in slugs)} para {quien}" for quien, slugs in en_cero.items()))
     salida['nuevos'] = {uid: fila.pk for uid, fila in uids if fila is not None and fila.pk}
     return salida, recalculados
 

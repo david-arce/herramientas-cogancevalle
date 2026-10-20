@@ -509,6 +509,9 @@ def nomina_tabla(request, tipo):
             for d in nomina.afectados_por(c.slug)
         ],
         'urls': _urls(c.slug, c.derivado, c.permite_manual),
+        # al agregar una persona: conceptos (que no dependen de este) donde crearla en cero
+        'crearEnDetalle': ([{'slug': s, 'etiqueta': nomina.CONCEPTOS[s].etiqueta}
+                            for s in nomina.conceptos_para_crear(c.slug)] if c.crea_en_otros else []),
         # la copia local del autoguardado es por usuario
         'usuario': request.user.get_username(),
     }
