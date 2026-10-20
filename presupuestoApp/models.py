@@ -110,6 +110,8 @@ class ParametrosPresupuestos(models.Model):
     incremento_comisiones = models.FloatField(blank=True, null=True)
     # Valor base (en pesos) del auxilio de transporte de nómina; vacío = 200.000
     base_auxilio_transporte = models.FloatField(blank=True, null=True)
+    # IPC del año en curso (%): lo usa el auxilio de educación antes del incremento del año proyectado
+    ipc_actual = models.FloatField(blank=True, null=True)
 
     class Meta:
         db_table = 'parametros_presupuestos'

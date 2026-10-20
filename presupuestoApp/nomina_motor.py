@@ -58,6 +58,7 @@ class Parametros:
     salario_minimo: float = 0
     incremento_comisiones: float = 0
     base_auxilio_transporte: float = 0
+    ipc_actual: float = 0
 
     @classmethod
     def cargar(cls):
@@ -95,6 +96,7 @@ class Concepto:
     con_minimo: bool = False     # sueldos: quien gana el mínimo sube desde enero
     base_editable: str = None    # parámetro (en pesos) que se edita en la pantalla del concepto
     crea_en_otros: bool = False  # al agregar una persona se puede crear en cero en los demás conceptos base
+    pct_previo: str = None       # incremento que se aplica ANTES de `pct` (auxilio de educación: IPC año actual)
     titulo_base: str = None      # None → la tabla no muestra la columna "base"
     con_cedula: bool = True
     con_pegar: bool = False
@@ -161,7 +163,8 @@ _LISTA = [
              pct='incremento_ipc', parametros=('incremento_ipc',),
              carga={'filtro': {'concepto': 'E33'}, 'historico': 'reales'}),
     Concepto('auxilio_educacion', 'Auxilio de educación', G_TRANSPORTE, formula='incrementar',
-             pct='incremento_ipc', con_pegar=True, parametros=('incremento_ipc',),
+             pct='incremento_ipc', pct_previo='ipc_actual', con_pegar=True,
+             parametros=('ipc_actual', 'incremento_ipc'),
              carga={'filtro': {'concepto': '016'}, 'anio': -1,
                     'historico': ['diciembre']}),
     Concepto('aprendiz', 'Aprendices', G_SEGURIDAD, formula='base_fija',
@@ -215,6 +218,7 @@ ETIQUETAS_PARAMETRO = {
     'salario_minimo': 'Salario mínimo',
     'incremento_comisiones': 'Incremento comisiones (%)',
     'base_auxilio_transporte': 'Base auxilio de transporte ($)',
+    'ipc_actual': 'IPC año actual (%)',
 }
 
 
@@ -529,7 +533,9 @@ def f_base_fija(fila, c, p):
 
 
 def f_incrementar(fila, c, p):
-    factor = 1 + p.pct(c.pct)
+    """Histórico × (1 + incremento). Con `pct_previo` (auxilio de educación):
+    histórico × (1 + IPC año actual) × (1 + incremento IPC del año proyectado)."""
+    factor = (1 + p.pct(c.pct_previo)) * (1 + p.pct(c.pct))
     historico = fila.historico or {}
     return {mes: numero(historico.get(mes)) * factor for mes in MESES}
 
@@ -1386,6 +1392,16 @@ def _recordar_eliminadas(c, filas, usuario):
                 defaults={'nombre': fila.nombre or fila.concepto, 'eliminado_por': usuario})
 
 
+def personas_retiradas():
+    """Cédulas que se eliminaron de Sueldos y no tienen ninguna otra fila de sueldo."""
+    eliminadas = set(FilaEliminadaNomina.objects.filter(tipo='sueldos').values_list('llave', flat=True))
+    if not eliminadas:
+        return set()
+    con_sueldo = set(PresupuestoNomina.objects.filter(tipo='sueldos', cedula__in=eliminadas)
+                     .values_list('cedula', flat=True))
+    return eliminadas - con_sueldo
+
+
 def listar_eliminadas():
     return [dict(f, etiqueta=CONCEPTOS[f['tipo']].etiqueta if f['tipo'] in CONCEPTOS else f['tipo'])
             for f in FilaEliminadaNomina.objects.values('id', 'tipo', 'llave', 'nombre',
@@ -1410,11 +1426,15 @@ def _reemplazar_base(c, ctx):
     """
     actuales = ctx.filas(c.slug)
     nuevas = filas_de_conceptos(c, ctx)
-    # Filas que se eliminaron en pantalla: no se vuelven a crear.
+    # Filas que se eliminaron en pantalla: no se vuelven a crear. Y quien se
+    # eliminó de Sueldos (y ya no tiene ninguna fila ahí) tampoco se carga en
+    # los demás conceptos: comisiones, auxilio de educación del año anterior…
     eliminadas = set(FilaEliminadaNomina.objects.filter(tipo=c.slug).values_list('llave', flat=True))
-    if eliminadas:
+    retiradas = personas_retiradas() if c.slug != 'sueldos' else set()
+    if eliminadas or retiradas:
         antes_n = len(nuevas)
-        nuevas = [f for f in nuevas if llave_eliminada(f) not in eliminadas]
+        nuevas = [f for f in nuevas
+                  if llave_eliminada(f) not in eliminadas and not (f.cedula and f.cedula in retiradas)]
         if antes_n != len(nuevas):
             ctx.omitidas[c.slug] = antes_n - len(nuevas)
     nombre_en_conceptos = {f.cedula: f.nombre for f in nuevas if f.cedula}

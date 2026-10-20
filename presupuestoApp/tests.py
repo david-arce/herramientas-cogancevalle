@@ -3174,3 +3174,47 @@ class CalcularSoloAuxilioEducacionTests(TestCase):
         ConceptosNomina.objects.filter(anio=self.anio - 1).delete()
         html = self.client.get(reverse("presupuestoNomina")).content.decode()
         self.assertIn("No hay datos cargados de", html)
+
+
+class IpcActualYEliminadosTests(TestCase):
+    """Auxilio de educación = base × (1 + IPC año actual) × (1 + incremento IPC), y
+    quien se eliminó de Sueldos no se carga en los demás conceptos."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, ipc_actual=5, incremento_ipc=4, salario_minimo=1423500)
+        self.client.force_login(User.objects.create_user("admin"))
+        anio = timezone.localdate().year
+        for ced, nombre in [(10, "ANA"), (20, "LUIS")]:
+            comunes = dict(archivo="prueba", cedula=ced, nombre=nombre, nombre_cen="ALMACEN TULUA", nomcosto="VENTAS")
+            ConceptosNomina.objects.create(anio=anio, concepto="001", concepto_f=2000000, **comunes,
+                                           **{m: 2000000 for m in MESES_N[:8]})
+            ConceptosNomina.objects.create(anio=anio, concepto="389", **comunes, **{m: 300000 for m in MESES_N[:8]})
+            ConceptosNomina.objects.create(anio=anio - 1, concepto="016", diciembre=100000, **comunes)
+        nomina_motor.recargar_bases()
+
+    def test_formula_auxilio_educacion(self):
+        f = PresupuestoNomina.objects.get(tipo="auxilio_educacion", cedula="10")
+        self.assertEqual(f.diciembre, round(100000 * 1.05 * 1.04))           # 109.200
+        self.assertEqual(f.total, f.diciembre)
+
+    def test_parametro_en_el_tablero(self):
+        html = self.client.get(reverse("presupuestoNomina")).content.decode()
+        self.assertIn('name="ipcActual"', html)
+        self.client.post(reverse("presupuestoNomina"), {"ipcActual": "10", "incrementoIPC": "4"},
+                         HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        f = PresupuestoNomina.objects.get(tipo="auxilio_educacion", cedula="10")
+        self.assertEqual(f.diciembre, round(100000 * 1.10 * 1.04))
+
+    def test_eliminado_de_sueldos_no_se_carga_en_otros_conceptos(self):
+        datos = self.client.get(reverse("nomina_datos", args=["sueldos"])).json()["data"]
+        self.client.post(reverse("nomina_guardar", args=["sueldos"]),
+                         json.dumps({"filas": [d for d in datos if d["cedula"] != "20"]}),
+                         content_type="application/json")
+        nomina_motor.recargar_bases()
+        for tipo in ("sueldos", "comisiones", "auxilio_educacion"):
+            self.assertEqual(sorted(PresupuestoNomina.objects.filter(tipo=tipo).values_list("cedula", flat=True)),
+                             ["10"], tipo)
+        # también con el botón "Calcular auxilio de educación"
+        self.client.post(reverse("nomina_cargar", args=["auxilio_educacion"]))
+        self.assertFalse(PresupuestoNomina.objects.filter(tipo="auxilio_educacion", cedula="20").exists())

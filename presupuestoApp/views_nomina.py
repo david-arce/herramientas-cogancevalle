@@ -41,6 +41,7 @@ DESTINOS = [
 # Valores habituales de cada porcentaje, para avisar si uno queda muy fuera de rango
 RANGOS_PARAMETROS = {
     'incremento_salarial': (0, 30), 'incremento_ipc': (0, 30), 'incremento_comisiones': (0, 30),
+    'ipc_actual': (0, 30),
     'auxilio_transporte': (0, 30), 'cesantias': (5, 12), 'intereses_cesantias': (8, 15),
     'prima': (5, 12), 'vacaciones': (2, 8),
 }
@@ -48,6 +49,7 @@ RANGOS_PARAMETROS = {
 CAMPOS_PARAMETROS = {
     'incrementoSalarial': 'incremento_salarial',
     'incrementoIPC': 'incremento_ipc',
+    'ipcActual': 'ipc_actual',
     'auxilioTransporte': 'auxilio_transporte',
     'cesantias': 'cesantias',
     'interesesCesantias': 'intereses_cesantias',
