@@ -2424,3 +2424,76 @@ class ActualizarBorradorDelAreaTests(TestCase):
         self.assertContains(r, "Actualizar preaprobado o aprobado")
         self.assertContains(r, 'id="busquedaGrilla"')
         self.assertEqual(r.context["borrador_filas"], 2)
+
+
+class NominaAutoguardadoTests(TestCase):
+    """El autoguardado de las tablas de nómina reenvía la tabla completa.
+
+    - Las filas nuevas llevan `_uid`; el servidor devuelve {_uid: id}.
+    - Si un envío sí se guardó pero la respuesta se perdió, el reintento
+      (mismo contenido, fila nueva aún sin id) NO crea un duplicado.
+    """
+
+    def setUp(self):
+        self.client.force_login(User.objects.create_user("admin"))
+        self.existente = linea_nomina(origen="manual")
+        self.existente.save()
+
+    def enviar(self, filas):
+        r = self.client.post(reverse("nomina_guardar", args=["sueldos"]), json.dumps({"filas": filas}),
+                             content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        return r.json()
+
+    def tabla(self):
+        return self.client.get(reverse("nomina_datos", args=["sueldos"])).json()["data"]
+
+    def nueva(self, **kw):
+        fila = {"_uid": "u-1", "cedula": "2002", "nombre": "PEDRO GIL", "centro": "ALMACEN BUGA",
+                "area": "VENTAS", "cargo": "CAJERO", "concepto": "SUELDO", **{m: 500 for m in MESES_N}}
+        fila.update(kw)
+        return fila
+
+    def test_devuelve_el_id_de_cada_fila_nueva(self):
+        r = self.enviar(self.tabla() + [self.nueva()])
+        self.assertIn("u-1", r["nuevos"])
+        self.assertTrue(PresupuestoNomina.objects.filter(pk=r["nuevos"]["u-1"], nombre="PEDRO GIL").exists())
+
+    def test_reintento_con_respuesta_perdida_no_duplica(self):
+        envio = self.tabla() + [self.nueva()]
+        primero = self.enviar(envio)
+        segundo = self.enviar(envio)              # el mismo envío otra vez (la fila nueva sigue sin id)
+        self.assertEqual(PresupuestoNomina.objects.filter(tipo="sueldos", nombre="PEDRO GIL").count(), 1)
+        self.assertEqual(segundo["nuevos"]["u-1"], primero["nuevos"]["u-1"])
+        self.assertEqual(segundo["resumen"].get("reutilizadas"), 1)
+
+    def test_fila_nueva_igual_a_una_existente_mencionada_si_se_crea(self):
+        # Duplicar a propósito una fila que sigue en la tabla: son dos filas.
+        tabla = self.tabla()
+        copia = {k: v for k, v in tabla[0].items() if k not in ("id", "clave")}
+        self.enviar(tabla + [dict(copia, _uid="u-2")])
+        self.assertEqual(PresupuestoNomina.objects.filter(tipo="sueldos", nombre="ANA PEREZ").count(), 2)
+
+    def test_lo_que_no_llega_se_borra(self):
+        self.enviar([])
+        self.assertFalse(PresupuestoNomina.objects.filter(tipo="sueldos").exists())
+
+    def test_base_de_datos_caida_responde_503(self):
+        from django.db import OperationalError
+        with mock.patch.object(nomina_motor, "guardar", side_effect=OperationalError("sin conexión")):
+            r = self.client.post(reverse("nomina_guardar", args=["sueldos"]), json.dumps({"filas": []}),
+                                 content_type="application/json")
+        self.assertEqual(r.status_code, 503)
+
+    def test_pantalla_sin_boton_guardar_y_con_autoguardado(self):
+        html = self.client.get(reverse("nomina_tabla", args=["sueldos"])).content.decode()
+        self.assertNotIn('data-rol="guardar"', html)
+        self.assertIn('data-rol="estado"', html)
+        self.assertIn('"usuario": "admin"', html)
+
+    def test_tablero_boton_parametros_en_su_panel(self):
+        html = self.client.get(reverse("presupuestoNomina")).content.decode()
+        barra = html.split('<div class="pt-barra">')[1].split("</div>")[0]
+        self.assertNotIn("btnActualizar", barra)
+        panel = html.split("Parámetros del presupuesto")[1].split("Resumen consolidado")[0]
+        self.assertIn('id="btnActualizar"', panel)

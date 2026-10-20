@@ -92,9 +92,12 @@
       acciones: soloLectura ? [] : (config.conCedula === false
         ? ['duplicar', 'eliminar']
         : ['duplicar', 'copiar', 'eliminar']),
-      filtros: config.slug === 'todos'
-        ? ['tipo_nombre', 'nombre', 'centro', 'area']
-        : (config.conCedula === false ? ['centro', 'area', 'concepto'] : ['nombre', 'centro', 'area']),
+      // Filtros tipo Excel en la cabecera de todas las columnas de texto
+      filtros: null,
+      // Guardado automático (sin botón Guardar), como los presupuestos generales
+      urlGuardar: soloLectura ? null : config.urls.guardar,
+      claveRespaldo: `nomina|${config.usuario || ''}|${config.slug}`,
+      indicador: estado,
       nombreArchivo: 'presupuesto_nomina_' + config.slug,
       conceptoNuevo: config.conceptoNuevo || '',
       accionesExtra: abrirDialogo ? [{
@@ -119,11 +122,7 @@
         fila.excluir_de = excluir;
         tabla.pintar();
         tabla.marcarCambios();
-        PT.toast('Cambio listo. Guarde para recalcular ✅');
-      },
-      alCambiar: (pendiente) => {
-        if (!estado) return;
-        estado.hidden = !pendiente;
+        PT.toast('Cambio aplicado; se guarda y recalcula solo ✅');
       }
     });
 
@@ -143,13 +142,12 @@
 
     PT.conectarBarra(tabla, config.urls, { agregar });
 
-    // Ctrl/Cmd + S guarda
-    if (!soloLectura) {
-      document.addEventListener('keydown', (e) => {
+    // Ctrl/Cmd + S: no hace falta (se guarda solo), pero envía ya lo pendiente.
+    if (!soloLectura && tabla.cola) {
+      document.addEventListener('keydown', async (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
           e.preventDefault();
-          const boton = document.querySelector('[data-rol="guardar"]');
-          if (boton) boton.click();
+          if (await tabla.guardarAhora()) PT.toast('Todo guardado ✅');
         }
       });
     }

@@ -123,7 +123,13 @@
     };
     $('#ndOtroDestino').addEventListener('click', () => agregarDestino().querySelector('select').focus());
     cuerpoDestinos.addEventListener('click', (e) => {
-      if (e.target.closest('.nd-quitar-destino')) { e.target.closest('tr').remove(); actualizarSuma(); }
+      if (e.target.closest('.nd-quitar-destino')) {
+        const tr = e.target.closest('tr');
+        const pct = parseFloat((tr.querySelector('input[type="number"]') || {}).value) || 0;
+        if (pct && !confirm(`¿Quitar este destino (${pct}%) del reparto?`)) return;
+        tr.remove();
+        actualizarSuma();
+      }
     });
     cuerpoDestinos.addEventListener('input', () => actualizarSuma());
     cuerpoDestinos.addEventListener('change', () => actualizarSuma());

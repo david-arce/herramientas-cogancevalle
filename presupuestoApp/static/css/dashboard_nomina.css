@@ -10,6 +10,7 @@
 .conf-listo__texto { display: flex; flex-direction: column; gap: 2px; }
 .conf-listo__texto small { color: var(--pt-texto-suave); }
 .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.dash-acciones { display: flex; justify-content: flex-end; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--pt-borde); }
 .dash-campo { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .dash-campo label { font-size: 13px; font-weight: 600; }
 .dash-aviso { margin: 6px 0 0; padding: 8px 12px; border-radius: 8px; background: #fffaeb; color: #7a5600; font-size: 13px; }

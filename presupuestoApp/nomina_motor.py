@@ -1343,6 +1343,20 @@ def _cambio(antes, fila):
                for campo in (*CAMPOS_TEXTO, 'base', *MESES))
 
 
+def _firma_guardada(fila):
+    """Contenido de una fila guardada (para reconocer un reenvío del autoguardado)."""
+    return (*(getattr(fila, c) or '' for c in CAMPOS_TEXTO), int(fila.base or 0),
+            *(int(getattr(fila, m) or 0) for m in MESES))
+
+
+def _firma_entrante(datos):
+    """La misma firma calculada sobre una fila tal como llega del navegador."""
+    textos = (cedula_normalizada(texto(datos.get(c))) if c == 'cedula' else texto(datos.get(c))
+              for c in CAMPOS_TEXTO)
+    return (*textos, int(round(numero(datos.get('base')))),
+            *(int(round(numero(datos.get(m)))) for m in MESES))
+
+
 def guardar(slug, filas_json, usuario=''):
     """Guarda lo que el usuario editó en la tabla y propaga los cambios.
 
@@ -1353,6 +1367,17 @@ def guardar(slug, filas_json, usuario=''):
     - Fila calculada con meses editados       → ajusta el histórico si la
                                                 fórmula lo permite; si no, manual
     - Fila con `_recalcular`                  → vuelve a ser calculada
+
+    La tabla llega completa (lo que no viene se borra), así que reenviar lo
+    mismo deja el mismo resultado. Para que eso también valga con las filas
+    NUEVAS (sin id) cuando el autoguardado reintenta un envío que sí alcanzó
+    a guardarse pero cuya respuesta se perdió, una fila nueva idéntica a una
+    fila manual que ya existe y que el envío no menciona reutiliza esa fila
+    en lugar de crear un duplicado.
+
+    Cada fila nueva puede traer `_uid` (identificador del navegador): se
+    devuelve en resumen['nuevos'] = {_uid: id} para que la pantalla sepa el
+    id que le tocó sin tener que recargar la tabla.
     """
     c = obtener(slug)
     ignoradas = 0
@@ -1376,18 +1401,38 @@ def guardar(slug, filas_json, usuario=''):
         existentes = {f.pk: f for f in ctx.filas(slug)
                       if not c.derivado or f.origen == MANUAL}
         crear, actualizar, forzadas = [], [], False
+        uids = []                                   # (_uid del navegador, fila)
+
+        def pk_de(datos):
+            try:
+                return int(datos.get('id') or 0)
+            except (TypeError, ValueError):
+                return 0
+
+        # Filas manuales que este envío no menciona: candidatas a ser la misma
+        # fila nueva de un envío anterior que sí se guardó (reintento).
+        mencionadas = {pk_de(d) for d in filas_json}
+        huerfanas = {}
+        for pk, f in existentes.items():
+            if pk not in mencionadas and f.origen == MANUAL:
+                huerfanas.setdefault(_firma_guardada(f), []).append(f)
 
         for datos in filas_json:
-            try:
-                pk = int(datos.get('id') or 0)
-            except (TypeError, ValueError):
-                pk = 0
+            pk = pk_de(datos)
             fila = existentes.pop(pk, None)
+            if fila is None and not pk:
+                repetida = huerfanas.get(_firma_entrante(datos))
+                if repetida:
+                    fila = repetida.pop(0)
+                    existentes.pop(fila.pk, None)
+                    resumen['reutilizadas'] += 1
             nueva = fila is None
             antes = None
             if nueva:
                 fila = PresupuestoNomina(tipo=slug, origen=MANUAL)
-            else:
+            if datos.get('_uid'):
+                uids.append((str(datos['_uid']), fila))
+            if not nueva:
                 antes = {campo: getattr(fila, campo) for campo in (*CAMPOS_TEXTO, 'base', *MESES)}
 
             for campo in CAMPOS_TEXTO:
@@ -1453,7 +1498,9 @@ def guardar(slug, filas_json, usuario=''):
         recalculados = propagar(slug, ctx)
 
     resumen.update(creadas=len(crear), actualizadas=len(actualizar), eliminadas=len(eliminar))
-    return dict(resumen), recalculados
+    salida = dict(resumen)
+    salida['nuevos'] = {uid: fila.pk for uid, fila in uids if fila is not None and fila.pk}
+    return salida, recalculados
 
 
 # ══════════════════════════════════════════════════════════════════════

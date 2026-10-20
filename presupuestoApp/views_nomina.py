@@ -12,6 +12,7 @@ import json
 
 import pandas as pd
 from django.contrib.auth.decorators import login_required
+from django.db import DatabaseError
 from django.http import Http404, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
@@ -476,6 +477,8 @@ def nomina_tabla(request, tipo):
             for d in nomina.afectados_por(c.slug)
         ],
         'urls': _urls(c.slug, c.derivado, c.permite_manual),
+        # la copia local del autoguardado es por usuario
+        'usuario': request.user.get_username(),
     }
     return render(request, 'presupuesto_nomina/tabla_concepto.html', {
         'config': config,
@@ -519,15 +522,20 @@ def nomina_guardar(request, tipo):
         resumen, recalculados = nomina.guardar(tipo, filas, request.user.get_username())
     except ValueError as exc:
         return _error(str(exc))
+    except DatabaseError:
+        # Base de datos no disponible (p. ej. durante un despliegue): 503 para
+        # que el autoguardado del navegador reintente solo.
+        return _error('La base de datos no está disponible en este momento; se reintentará.', 503)
     except Exception as exc:                      # noqa: BLE001
         return _error(f'No se pudo guardar: {exc}', 500)
 
+    nuevos = resumen.pop('nuevos', {})
     mensaje = (f"Guardado ✅ ({resumen.get('creadas', 0)} nuevas, "
                f"{resumen.get('actualizadas', 0)} actualizadas, "
                f"{resumen.get('eliminadas', 0)} eliminadas)")
     if resumen.get('calculadas'):
         mensaje += f" · {resumen['calculadas']} filas calculadas sin cambios"
-    return _respuesta_cambio(tipo, mensaje, recalculados, resumen=resumen)
+    return _respuesta_cambio(tipo, mensaje, recalculados, resumen=resumen, nuevos=nuevos)
 
 
 @login_required

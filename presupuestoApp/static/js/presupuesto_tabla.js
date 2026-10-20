@@ -8,7 +8,10 @@
  *  - Los cálculos (incrementos, retroactivo, promedios…) ya no se hacen en el
  *    navegador: viven en nomina_motor.py (se eliminó presupuesto_calculos.js).
  *  - Columna "Origen": ⚙️ calculada por el sistema / ✋ ajustada a mano.
- *  - Aviso de cambios sin guardar.
+ *  - Guardado automático (como los presupuestos generales): cada cambio se
+ *    encola con envio_seguro.js, se reintenta solo si el servidor no responde
+ *    y queda copia en el navegador hasta que el servidor lo confirma.
+ *  - Filtros tipo Excel en la cabecera de cada columna (▾) + búsqueda general.
  * ========================================================================== */
 (function (global) {
   'use strict';
@@ -47,6 +50,19 @@
   function normalizar(texto) {
     return String(texto ?? '').toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  /** ¿El texto es un número válido? (vacío = 0). Acepta 1234,5 · 1.234.567,89 · -500 · $ 1.000 */
+  function esNumeroValido(valor) {
+    if (typeof valor === 'number') return isFinite(valor);
+    const t = String(valor ?? '').trim().replace(/[$\s]/g, '');
+    return t === '' || /^-?\d+([.,]\d+)*$/.test(t);
+  }
+
+  /** Identificador de una fila creada en el navegador (el servidor devuelve su id). */
+  function nuevoUid() {
+    if (global.crypto && global.crypto.randomUUID) return global.crypto.randomUUID();
+    return 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
   }
 
   // ---------------------------------------------------------------- toasts
@@ -90,7 +106,7 @@
     const cuerpo = tipo.includes('application/json') ? await resp.json() : await resp.text();
     if (!resp.ok) {
       const mensaje = (cuerpo && (cuerpo.msg || cuerpo.message || cuerpo.error)) || ('HTTP ' + resp.status);
-      throw new Error(mensaje);
+      throw Object.assign(new Error(mensaje), { status: resp.status });
     }
     return cuerpo;
   }
@@ -132,98 +148,6 @@
     }
     return true;
   }
-  // ------------------------------------------------- multiselect con buscador
-  class MultiSelect {
-    constructor({ etiqueta, alCambiar }) {
-      this.valores = new Set();
-      this.opciones = [];
-      this.alCambiar = alCambiar || (() => {});
-
-      this.raiz = document.createElement('div');
-      this.raiz.className = 'pt-filtro';
-      this.raiz.innerHTML = `
-        <label>${escapar(etiqueta)}</label>
-        <div class="pt-multi">
-          <button type="button" class="pt-multi__control">
-            <span class="pt-multi__texto pt-multi__texto--vacio">Todos</span>
-            <span class="pt-multi__flecha">▼</span>
-          </button>
-          <div class="pt-multi__menu">
-            <input type="search" class="pt-multi__buscar" placeholder="Buscar…" autocomplete="off">
-            <div class="pt-multi__opciones"></div>
-            <div class="pt-multi__pie">
-              <button type="button" data-accion="todos">Seleccionar todo</button>
-              <button type="button" data-accion="ninguno">Limpiar</button>
-            </div>
-          </div>
-        </div>`;
-
-      this.caja      = this.raiz.querySelector('.pt-multi');
-      this.control   = this.raiz.querySelector('.pt-multi__control');
-      this.texto     = this.raiz.querySelector('.pt-multi__texto');
-      this.buscador  = this.raiz.querySelector('.pt-multi__buscar');
-      this.lista     = this.raiz.querySelector('.pt-multi__opciones');
-
-      this.control.addEventListener('click', () => this.alternar());
-      this.buscador.addEventListener('input', () => this.pintarOpciones());
-      this.lista.addEventListener('change', (e) => {
-        const casilla = e.target.closest('input[type="checkbox"]');
-        if (!casilla) return;
-        casilla.checked ? this.valores.add(casilla.value) : this.valores.delete(casilla.value);
-        this.actualizarTexto();
-        this.alCambiar(this.valores);
-      });
-      this.raiz.querySelector('[data-accion="todos"]').addEventListener('click', () => {
-        this.visibles().forEach(v => this.valores.add(v));
-        this.pintarOpciones(); this.actualizarTexto(); this.alCambiar(this.valores);
-      });
-      this.raiz.querySelector('[data-accion="ninguno"]').addEventListener('click', () => {
-        this.valores.clear();
-        this.pintarOpciones(); this.actualizarTexto(); this.alCambiar(this.valores);
-      });
-      document.addEventListener('click', (e) => {
-        if (!this.raiz.contains(e.target)) this.caja.classList.remove('pt-multi--abierto');
-      });
-    }
-
-    alternar() {
-      const abierto = this.caja.classList.toggle('pt-multi--abierto');
-      if (abierto) { this.pintarOpciones(); this.buscador.focus(); }
-    }
-
-    visibles() {
-      const q = normalizar(this.buscador.value);
-      return this.opciones.filter(o => !q || normalizar(o).includes(q));
-    }
-
-    setOpciones(opciones) {
-      this.opciones = [...new Set(opciones.filter(v => v !== null && v !== undefined && v !== ''))]
-        .map(String).sort((a, b) => a.localeCompare(b, 'es'));
-      [...this.valores].forEach(v => { if (!this.opciones.includes(v)) this.valores.delete(v); });
-      this.pintarOpciones();
-      this.actualizarTexto();
-    }
-
-    pintarOpciones() {
-      const visibles = this.visibles();
-      this.lista.innerHTML = visibles.length
-        ? visibles.map(v => `
-            <label class="pt-multi__opcion">
-              <input type="checkbox" value="${escapar(v)}" ${this.valores.has(v) ? 'checked' : ''}>
-              <span>${escapar(v)}</span>
-            </label>`).join('')
-        : '<div class="pt-multi__vacio">Sin coincidencias</div>';
-    }
-
-    actualizarTexto() {
-      const n = this.valores.size;
-      this.texto.classList.toggle('pt-multi__texto--vacio', n === 0);
-      this.texto.textContent = n === 0 ? 'Todos'
-        : n === 1 ? [...this.valores][0]
-        : `${n} seleccionados`;
-    }
-  }
-
   // ------------------------------------------------------------ definiciones
   const ORIGENES = {
     sistema: '<span class="pt-origen pt-origen--sistema" title="Lo calcula el sistema">⚙️ Calculado</span>',
@@ -276,18 +200,21 @@
      *  - alSeleccionar  fn(filasSeleccionadas) cada vez que se repinta la tabla
      *  - accionesExtra  [{rol, icono, titulo, mostrar(fila), clase(fila)}] botones propios por fila
      *  - alAccion       fn(rol, fila) al pulsar uno de esos botones
-     *  - filtros        campos con multiselect, p. ej. ['nombre','centro','area']
+     *  - filtros        columnas con filtro tipo Excel en la cabecera (null = todas las de texto)
      *  - buscador       caja de búsqueda global (por defecto true)
      *  - camposTotal    columnas que se suman en el pie (por defecto meses + total)
      *  - recalcular     fn(fila, campo) ejecutada tras cada edición (además del total)
      *  - alCambiar      fn(sinGuardar) cuando cambia el estado de "cambios sin guardar"
+     *  - urlGuardar     endpoint POST del guardado automático (sin él no se guarda solo)
+     *  - claveRespaldo  clave de la copia en el navegador (por usuario y tabla)
+     *  - indicador      elemento donde se muestra "Guardando… / Todo guardado"
      */
     constructor(cfg) {
       this.cfg = Object.assign({
         seleccionable: true,
         acciones: ['duplicar', 'eliminar'],
         editable: true,
-        filtros: ['nombre', 'centro', 'area'],
+        filtros: null,
         buscador: true,
         camposTotal: MESES.concat('total'),
         nombreArchivo: 'presupuesto'
@@ -299,9 +226,21 @@
       this.seleccion = new Set();
       this.filaActiva = null;
       this.orden = { campo: null, dir: 1 };
+      // Filtros tipo Excel: campo -> Set de valores permitidos (solo los activos)
       this.filtros = {};
+      this.camposFiltro = this.cfg.filtros ||
+        this.columnas.filter(c => c.tipo !== 'numero').map(c => c.campo);
       this.textoBusqueda = '';
+      // Filas editadas o agregadas con un filtro activo: siguen a la vista
+      // hasta que se cambie el filtro (como en Excel).
+      this.fijadas = new WeakSet();
       this.sinGuardar = false;
+      // Hasta que los datos no lleguen del servidor no se edita ni se guarda:
+      // una tabla vacía por una carga fallida NO puede reemplazar lo guardado.
+      this.datosCargados = false;
+      this._timerGuardado = null;
+      this._respuestaPendiente = null;
+      this._avisoReintento = false;
       // Selección de celdas tipo Excel: índices sobre `visibles` y `columnas`
       this.cursor = null;          // {f, c}
       this.ancla = null;           // esquina fija del rango
@@ -311,16 +250,200 @@
       this.raiz = typeof this.cfg.montaje === 'string'
         ? document.querySelector(this.cfg.montaje) : this.cfg.montaje;
 
+      this.cola = (this.cfg.editable && this.cfg.urlGuardar && global.EnvioSeguro)
+        ? global.EnvioSeguro.cola({
+            clave: this.cfg.claveRespaldo || ('nomina|' + this.cfg.urlGuardar),
+            url: this.cfg.urlGuardar,
+            esExito: (j) => j && j.status === 'ok',
+            onEstado: (estado, info) => this._alEstadoCola(estado, info),
+          })
+        : null;
+
       this._construirEsqueleto();
       this._conectarEventos();
       if (this.cfg.urlDatos) this.cargar();
+      else this.datosCargados = true;
     }
 
+    /** Se puede editar: tabla editable y datos ya cargados del servidor. */
+    _puedeEditar() { return !!this.cfg.editable && this.datosCargados; }
+
     // ------------------------------------------------------ cambios pendientes
+    /** Hubo un cambio: se programa el guardado automático. */
     marcarCambios(valor = true) {
-      if (this.sinGuardar === valor) return;
-      this.sinGuardar = valor;
-      if (this.cfg.alCambiar) this.cfg.alCambiar(valor);
+      if (this.sinGuardar !== valor) {
+        this.sinGuardar = valor;
+        if (this.cfg.alCambiar) this.cfg.alCambiar(valor);
+      }
+      if (valor) this._programarGuardado();
+    }
+
+    // ═════════════════════════════════════════════════════════════════
+    //  Guardado automático (igual que los presupuestos generales)
+    //  · 800 ms después del último cambio se encola la tabla completa.
+    //  · La cola reintenta sola si el servidor no responde (despliegue,
+    //    corte de red) y guarda copia en el navegador hasta confirmarlo.
+    //  · Si el servidor rechaza los datos (4xx) se avisa y no se insiste.
+    // ═════════════════════════════════════════════════════════════════
+    _estadoGuardado(clase, texto, titulo = '') {
+      const el = this.cfg.indicador;
+      if (!el) return;
+      el.className = 'pt-autoguardado pt-autoguardado--' + clase;
+      el.hidden = false;
+      const t = el.querySelector('[data-rol="estado-texto"]') || el;
+      t.textContent = texto;
+      el.title = titulo;
+    }
+
+    _programarGuardado() {
+      if (!this.cola || !this._puedeEditar()) return;
+      this._estadoGuardado('pendiente', 'Cambios sin guardar…');
+      clearTimeout(this._timerGuardado);
+      this._timerGuardado = setTimeout(() => { this._timerGuardado = null; this._encolar(); }, 800);
+    }
+
+    /** La tabla completa tal como se envía (las filas nuevas llevan su _uid). */
+    _payload() {
+      return {
+        filas: this.filas.map(f => {
+          if (!f.id && !f._uid) f._uid = nuevoUid();
+          return Object.assign({}, f);
+        })
+      };
+    }
+
+    _encolar() {
+      if (!this.cola || !this._puedeEditar()) return;
+      this.cola.poner(this._payload());
+    }
+
+    hayPendientes() { return !!this._timerGuardado || !!(this.cola && this.cola.hayPendientes()); }
+
+    /**
+     * Envía ya lo pendiente y espera a que el servidor lo confirme.
+     * Devuelve true si todo quedó guardado (o no había nada pendiente).
+     */
+    async guardarAhora(maxEsperaMs = 60000) {
+      if (!this.cola) return true;
+      if (this._timerGuardado) {
+        clearTimeout(this._timerGuardado);
+        this._timerGuardado = null;
+        this._encolar();
+      }
+      try {
+        await this.cola.vaciar(maxEsperaMs);
+        return true;
+      } catch (e) {
+        toast(e.message + ' ❌', 'error', 7000);
+        return false;
+      }
+    }
+
+    _alEstadoCola(estado, info) {
+      if (estado === 'enviando') {
+        this._estadoGuardado('guardando', 'Guardando…');
+      } else if (estado === 'enviado') {
+        // Las filas nuevas reciben su id aunque ya haya otro envío en camino:
+        // así el siguiente envío no las vuelve a crear.
+        const nuevos = (info.respuesta && info.respuesta.nuevos) || {};
+        this.filas.forEach(f => {
+          if (!f.id && f._uid && nuevos[f._uid]) f.id = nuevos[f._uid];
+        });
+      } else if (estado === 'guardado') {
+        const r = info.respuesta || {};
+        if (this._avisoReintento) {
+          toast('Conexión recuperada: los cambios se guardaron ✅', 'success', 5000);
+          this._avisoReintento = false;
+        }
+        if (this._timerGuardado) return;                // hay cambios más nuevos esperando
+        this.sinGuardar = false;
+        if (this.cfg.alCambiar) this.cfg.alCambiar(false);
+        const recalc = (r.recalculados || []).length ? 'Actualizado también: ' + r.recalculados.join(', ') : '';
+        this._estadoGuardado('guardado', 'Todo guardado', [r.msg, recalc].filter(Boolean).join('\n'));
+        if (Array.isArray(r.data)) {
+          // Los valores que recalculó el servidor (filas que pasaron a manual,
+          // histórico ajustado, conceptos dependientes…) se ven sin recargar.
+          if (this.tbody.querySelector('.pt-entrada')) this._respuestaPendiente = r.data;
+          else this._aplicarDatosServidor(r.data);
+        }
+      } else if (estado === 'reintentando') {
+        const seg = Math.round(info.espera / 1000);
+        this._estadoGuardado('guardando', info.conRespaldo
+          ? `Servidor no disponible · reintento en ${seg} s · cambios a salvo en este navegador`
+          : `Servidor no disponible · reintento en ${seg} s · no cierre esta página`, info.error.message);
+        if (!this._avisoReintento) {
+          this._avisoReintento = true;
+          toast(`${info.error.message}. Los cambios quedan en cola y se guardarán solos cuando el servidor responda ⏳`,
+                'warning', 8000);
+        }
+      } else if (estado === 'error') {
+        this._estadoGuardado('error', 'Error al guardar ❌', info.error.message);
+        toast('No se pudo guardar: ' + info.error.message + ' ❌', 'error', 8000);
+      }
+    }
+
+    /** Firma del contenido de una fila (para reconocerla sin id). */
+    static firma(f) {
+      return [f.cedula, f.nombre, f.centro, f.area, f.cargo, f.concepto].map(v => String(v ?? '').trim())
+        .concat(MESES.map(m => Math.round(aNumero(f[m])))).join('|');
+    }
+
+    /**
+     * Pone en la tabla lo que devolvió el servidor SIN reemplazar los objetos
+     * de las filas: se conservan la selección, el cursor, el orden en pantalla
+     * y las filas fijadas por el filtro.
+     */
+    _aplicarDatosServidor(data) {
+      this._respuestaPendiente = null;
+      const porId = new Map(data.map(d => [String(d.id), d]));
+      const usados = new Set();
+      const sinId = [];
+      const resultado = [];
+      this.filas.forEach(f => {
+        if (f.id === null || f.id === undefined || f.id === '') { sinId.push(f); resultado.push(f); return; }
+        const s = porId.get(String(f.id));
+        if (!s) { this.seleccion.delete(f); return; }   // ya no existe en el servidor
+        delete f._recalcular;
+        Object.assign(f, s);
+        usados.add(String(f.id));
+        resultado.push(f);
+      });
+      // Filas nuevas a las que no les llegó el id: se reconocen por su contenido.
+      sinId.forEach(f => {
+        const s = data.find(d => !usados.has(String(d.id)) &&
+                                 TablaPresupuesto.firma(d) === TablaPresupuesto.firma(f));
+        if (s) { Object.assign(f, s); usados.add(String(s.id)); }
+      });
+      data.forEach(d => { if (!usados.has(String(d.id))) resultado.push(Object.assign({}, d)); });
+      this.filas = resultado;
+      this.pintar();
+    }
+
+    /** Copia de una sesión anterior que no alcanzó a llegar al servidor. */
+    _revisarRespaldo() {
+      if (!this.cola || !this._puedeEditar() || this.cola.hayPendientes()) return;
+      const clave = this.cfg.claveRespaldo || ('nomina|' + this.cfg.urlGuardar);
+      const respaldo = global.EnvioSeguro.respaldo(clave);
+      const filas = respaldo && respaldo.datos && respaldo.datos.filas;
+      if (!Array.isArray(filas)) return;
+      const firmaTabla = (lista) => JSON.stringify(lista.map(f => [f.id || '', TablaPresupuesto.firma(f)]));
+      if (firmaTabla(filas) === firmaTabla(this.filas)) { global.EnvioSeguro.descartar(clave); return; }
+      const cuando = new Date(respaldo.ts).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' });
+      const recuperar = confirm(
+        `Hay cambios de esta tabla que no alcanzaron a guardarse en el servidor (${cuando}, ${filas.length} filas).\n\n` +
+        'Aceptar: recuperarlos y guardarlos ahora.\n' +
+        `Cancelar: descartarlos y quedarse con lo que hay en el servidor (${this.filas.length} filas).`);
+      if (!recuperar) {
+        global.EnvioSeguro.descartar(clave);
+        toast('Se descartaron los cambios sin guardar; quedó lo del servidor', 'success', 4000);
+        return;
+      }
+      this.filas = filas.map(f => Object.assign({}, f));
+      this.seleccion.clear();
+      this.pintar();
+      this.marcarCambios();
+      this.guardarAhora();
+      toast('Cambios recuperados; guardando en el servidor…', 'success', 4000);
     }
 
     // ------------------------------------------------------------ esqueleto
@@ -343,28 +466,31 @@
 
       if (this.cfg.buscador) {
         const caja = document.createElement('div');
-        caja.className = 'pt-filtro pt-buscador';
-        caja.innerHTML = '<label>Buscar</label><input type="search" placeholder="Buscar en toda la tabla…">';
-        caja.querySelector('input').addEventListener('input', (e) => {
-          this.textoBusqueda = normalizar(e.target.value);
-          this.pintar();
+        caja.className = 'pt-buscador';
+        caja.innerHTML = '<input type="search" placeholder="🔎 Buscar en toda la tabla…" aria-label="Buscar en toda la tabla">';
+        const input = caja.querySelector('input');
+        let t = null;
+        input.addEventListener('input', () => {
+          clearTimeout(t);
+          t = setTimeout(() => { this.textoBusqueda = normalizar(input.value).trim(); this._cambioDeFiltros(); }, 200);
+        });
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') { input.value = ''; clearTimeout(t); this.textoBusqueda = ''; this._cambioDeFiltros(); }
         });
         this.zonaFiltros.appendChild(caja);
       }
 
-      (this.cfg.filtros || []).forEach(campo => {
-        const col = this.columnas.find(c => c.campo === campo);
-        const ms = new MultiSelect({
-          etiqueta: col ? col.titulo : campo,
-          alCambiar: () => this.pintar()
-        });
-        this.filtros[campo] = ms;
-        this.zonaFiltros.appendChild(ms.raiz);
-      });
+      // "Filtrado: N de M filas · Quitar filtros"
+      this.estadoFiltro = document.createElement('span');
+      this.estadoFiltro.className = 'pt-estado-filtro';
+      this.zonaFiltros.appendChild(this.estadoFiltro);
 
       this.contador = document.createElement('span');
       this.contador.className = 'pt-contador';
       this.zonaFiltros.appendChild(this.contador);
+
+      // El estado del guardado automático va junto a la búsqueda, siempre a la vista.
+      if (this.cfg.indicador) this.zonaFiltros.insertBefore(this.cfg.indicador, this.contador);
 
       this._pintarCabecera();
     }
@@ -388,19 +514,188 @@
         }
         if (col.especial === 'acciones') return '<th class="pt-col-acciones">Acciones</th>';
         const clase = col.tipo === 'numero' ? 'pt-num pt-ordenable' : 'pt-ordenable';
-        return `<th class="${clase}" data-campo="${col.campo}">${escapar(col.titulo)}<span class="pt-orden"></span></th>`;
+        const filtro = this.camposFiltro.includes(col.campo)
+          ? `<button type="button" class="pt-filtro-btn" data-filtro="${col.campo}" title="Filtrar ${escapar(col.titulo)}" aria-label="Filtrar ${escapar(col.titulo)}">▾</button>`
+          : '';
+        return `<th class="${clase}" data-campo="${col.campo}"><span class="pt-th"><span class="pt-th__texto">${escapar(col.titulo)}</span><span class="pt-orden"></span>${filtro}</span></th>`;
       }).join('');
       this.thead.innerHTML = `<tr>${th}</tr>`;
     }
 
+    // ═════════════════════════════════════════════════════════════════
+    //  Filtros tipo Excel (botón ▾ en la cabecera de cada columna)
+    //  Los valores de cada lista dependen de los demás filtros activos
+    //  (en cascada, como Excel). Las operaciones (editar, pegar, borrar,
+    //  rellenar, marcar todo) solo tocan las filas visibles.
+    // ═════════════════════════════════════════════════════════════════
+    _valorFiltro(fila, campo) {
+      if (campo === 'origen') return fila.origen === 'sistema' ? 'Calculado' : 'Manual';
+      return String(fila[campo] ?? '').trim();
+    }
+
+    hayFiltro() { return !!this.textoBusqueda || Object.keys(this.filtros).length > 0; }
+
+    _pasaFiltros(fila, excepto = null) {
+      for (const campo in this.filtros) {
+        if (campo !== excepto && !this.filtros[campo].has(this._valorFiltro(fila, campo))) return false;
+      }
+      if (this.textoBusqueda) {
+        const texto = normalizar(this.columnas.map(c =>
+          c.tipo === 'origen' ? this._valorFiltro(fila, 'origen') : fila[c.campo]).join(' | '));
+        if (!this.textoBusqueda.split(/\s+/).every(p => texto.includes(p))) return false;
+      }
+      return true;
+    }
+
+    /** Al cambiar un filtro se vuelve a evaluar todo (las filas fijadas se sueltan). */
+    _cambioDeFiltros() {
+      this.fijadas = new WeakSet();
+      this.cursor = null;
+      this.ancla = null;
+      this.pintar();
+      if (this.visibles.length) this.irACelda(0, 0, { desplazar: false });
+    }
+
+    limpiarFiltros() {
+      this.filtros = {};
+      const buscador = this.raiz.querySelector('.pt-buscador input');
+      if (buscador) buscador.value = '';
+      this.textoBusqueda = '';
+      this._cerrarPanelFiltro();
+      this._cambioDeFiltros();
+    }
+
+    _cerrarPanelFiltro() {
+      if (this._panelFiltro) { this._panelFiltro.remove(); this._panelFiltro = null; }
+    }
+
+    _abrirPanelFiltro(campo, boton) {
+      this._cerrarPanelFiltro();
+      const col = this.columnas.find(c => c.campo === campo);
+      const conteo = new Map();
+      this.filas.forEach(f => {
+        if (!this._pasaFiltros(f, campo)) return;
+        const v = this._valorFiltro(f, campo);
+        conteo.set(v, (conteo.get(v) || 0) + 1);
+      });
+      const valores = [...conteo.keys()].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+      const activos = this.filtros[campo];
+
+      const panel = document.createElement('div');
+      panel.className = 'pt-fpanel';
+      panel.dataset.campo = campo;
+      panel.innerHTML = `
+        <div class="pt-fpanel__titulo">${escapar(col ? col.titulo : campo)}</div>
+        <div class="pt-fpanel__orden">
+          <button type="button" data-orden="1">↑ Ordenar A → Z</button>
+          <button type="button" data-orden="-1">↓ Ordenar Z → A</button>
+        </div>
+        <input type="search" class="pt-fpanel__buscar" placeholder="Buscar…" autocomplete="off">
+        <label class="pt-fpanel__op pt-fpanel__todos"><input type="checkbox"> <span>(Seleccionar todo)</span></label>
+        <div class="pt-fpanel__lista">${valores.map(v => `
+          <label class="pt-fpanel__op" data-texto="${escapar(normalizar(v))}">
+            <input type="checkbox" value="${escapar(v)}" ${!activos || activos.has(v) ? 'checked' : ''}>
+            <span>${escapar(v || '(Vacías)')}</span><small>${conteo.get(v)}</small>
+          </label>`).join('') || '<div class="pt-fpanel__vacio">Sin valores</div>'}</div>
+        <div class="pt-fpanel__pie">
+          <button type="button" data-accion="quitar" ${activos ? '' : 'disabled'}>Quitar filtro</button>
+          <span class="pt-espaciador"></span>
+          <button type="button" data-accion="cancelar">Cancelar</button>
+          <button type="button" data-accion="aceptar" class="pt-fpanel__aceptar">Aceptar</button>
+        </div>`;
+      document.body.appendChild(panel);
+      this._panelFiltro = panel;
+      const r = boton.getBoundingClientRect();
+      panel.style.left = Math.max(8, Math.min(r.left, global.innerWidth - panel.offsetWidth - 8)) + 'px';
+      panel.style.top = Math.max(8, Math.min(r.bottom + 4, global.innerHeight - panel.offsetHeight - 8)) + 'px';
+
+      const buscar = panel.querySelector('.pt-fpanel__buscar');
+      const todos = panel.querySelector('.pt-fpanel__todos input');
+      const opciones = [...panel.querySelectorAll('.pt-fpanel__lista .pt-fpanel__op')];
+      const visibles = () => opciones.filter(o => o.style.display !== 'none');
+      const sincronizar = () => {
+        const vis = visibles();
+        const marcadas = vis.filter(o => o.querySelector('input').checked).length;
+        todos.checked = vis.length > 0 && marcadas === vis.length;
+        todos.indeterminate = marcadas > 0 && marcadas < vis.length;
+      };
+      buscar.addEventListener('input', () => {
+        const q = normalizar(buscar.value).trim();
+        // Como Excel: al buscar quedan marcados solo los resultados.
+        opciones.forEach(o => {
+          const coincide = !q || o.dataset.texto.includes(q);
+          o.style.display = coincide ? '' : 'none';
+          if (q) o.querySelector('input').checked = coincide;
+        });
+        sincronizar();
+      });
+      todos.addEventListener('change', () => {
+        visibles().forEach(o => { o.querySelector('input').checked = todos.checked; });
+        sincronizar();
+      });
+      panel.querySelector('.pt-fpanel__lista').addEventListener('change', sincronizar);
+
+      const aceptar = () => {
+        const elegidos = (buscar.value.trim() ? visibles() : opciones)
+          .filter(o => o.querySelector('input').checked).map(o => o.querySelector('input').value);
+        if (!elegidos.length) { toast('Seleccione al menos un valor ⚠️', 'warning'); return; }
+        if (elegidos.length === valores.length && !buscar.value.trim()) delete this.filtros[campo];
+        else this.filtros[campo] = new Set(elegidos);
+        this._cerrarPanelFiltro();
+        this._cambioDeFiltros();
+      };
+      panel.addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        if (b.dataset.orden) {
+          this.orden = { campo, dir: Number(b.dataset.orden) };
+          this._cerrarPanelFiltro();
+          this.pintar();
+        } else if (b.dataset.accion === 'aceptar') aceptar();
+        else if (b.dataset.accion === 'cancelar') this._cerrarPanelFiltro();
+        else if (b.dataset.accion === 'quitar') {
+          delete this.filtros[campo];
+          this._cerrarPanelFiltro();
+          this._cambioDeFiltros();
+        }
+      });
+      panel.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); aceptar(); }
+        if (e.key === 'Escape') { e.preventDefault(); this._cerrarPanelFiltro(); }
+      });
+      sincronizar();
+      buscar.focus();
+    }
+
     // -------------------------------------------------------------- datos
+    /**
+     * Trae las filas del servidor. Si no responde (p. ej. se está publicando
+     * una versión nueva) reintenta solo; mientras tanto la tabla no se edita.
+     */
     async cargar() {
-      try {
-        const respuesta = await pedir(this.cfg.urlDatos);
-        this.setDatos(Array.isArray(respuesta) ? respuesta : (respuesta.data || []));
-      } catch (e) {
-        console.error(e);
-        toast('No se pudieron cargar los datos ❌ ' + e.message, 'error');
+      const esperas = [1000, 2000, 4000, 8000, 15000, 30000];
+      for (let intento = 0; ; intento++) {
+        try {
+          const respuesta = await pedir(this.cfg.urlDatos, { cache: 'no-store' });
+          const primeraVez = !this.datosCargados;
+          this.datosCargados = true;
+          this.setDatos(Array.isArray(respuesta) ? respuesta : (respuesta.data || []));
+          if (this.cola) this._estadoGuardado('guardado', 'Todo guardado');
+          if (primeraVez) this._revisarRespaldo();
+          return;
+        } catch (e) {
+          console.error(e);
+          const transitorio = !e.status || e.status >= 500;
+          if (!transitorio) {
+            toast('No se pudieron cargar los datos ❌ ' + e.message, 'error', 8000);
+            this._estadoGuardado('error', 'No se pudieron cargar los datos');
+            return;
+          }
+          const espera = esperas[Math.min(intento, esperas.length - 1)];
+          if (intento === 0) toast('El servidor no responde; se reintentará solo ⏳', 'warning', 6000);
+          this._estadoGuardado('guardando', `Cargando… servidor no disponible, reintento en ${Math.round(espera / 1000)} s`);
+          await new Promise(res => setTimeout(res, espera));
+        }
       }
     }
 
@@ -408,7 +703,7 @@
       this.filas = filas.map(f => Object.assign({}, f));
       this.seleccion.clear();
       this.filaActiva = null;
-      this._refrescarOpcionesFiltro();
+      this._respuestaPendiente = null;
       this.pintar();
       this.marcarCambios(false);
     }
@@ -418,25 +713,11 @@
 
     filasSeleccionadas() { return this.filas.filter(f => this.seleccion.has(f)); }
 
-    _refrescarOpcionesFiltro() {
-      Object.entries(this.filtros).forEach(([campo, ms]) => {
-        ms.setOpciones(this.filas.map(f => f[campo]));
-      });
-    }
-
     // ------------------------------------------------------------- pintado
     _aplicarFiltros() {
-      const activos = Object.entries(this.filtros).filter(([, ms]) => ms.valores.size);
-      this.visibles = this.filas.filter(fila => {
-        for (const [campo, ms] of activos) {
-          if (!ms.valores.has(String(fila[campo] ?? ''))) return false;
-        }
-        if (this.textoBusqueda) {
-          const texto = this.columnas.map(c => fila[c.campo]).join(' ');
-          if (!normalizar(texto).includes(this.textoBusqueda)) return false;
-        }
-        return true;
-      });
+      this.visibles = this.hayFiltro()
+        ? this.filas.filter(fila => this.fijadas.has(fila) || this._pasaFiltros(fila))
+        : this.filas.slice();
 
       if (this.orden.campo) {
         const col = this.columnas.find(c => c.campo === this.orden.campo);
@@ -488,8 +769,9 @@
           partes.push('</div></td>');
         }
 
+        const puedeEditar = this._puedeEditar();
         this.columnas.forEach((col, ic) => {
-          const editable = this.cfg.editable && col.editable !== false;
+          const editable = puedeEditar && col.editable !== false;
           const clase = [col.tipo === 'numero' ? 'pt-num' : '', editable ? 'pt-editable' : ''].filter(Boolean).join(' ');
           partes.push(`<td class="${clase}" data-campo="${col.campo}" data-fila="${iv}" data-col="${ic}">${this._celda(fila, col)}</td>`);
         });
@@ -497,8 +779,12 @@
         partes.push('</tr>');
       });
 
+      const vacio = !this.datosCargados ? 'Cargando…'
+        : (this.filas.length && this.hayFiltro()
+          ? 'Ninguna fila coincide con los filtros. <button type="button" class="pt-btn pt-btn--enlace" data-rol="quitar-filtros">Quitar filtros</button>'
+          : 'Sin registros para mostrar');
       this.tbody.innerHTML = partes.join('') ||
-        `<tr><td class="pt-vacio" colspan="${this._columnasVisibles().length}">Sin registros para mostrar</td></tr>`;
+        `<tr><td class="pt-vacio" colspan="${this._columnasVisibles().length}">${vacio}</td></tr>`;
 
       this._pintarSeleccionCeldas();
       this._pintarTotales();
@@ -507,6 +793,12 @@
         `${this.visibles.length} de ${this.filas.length} fila(s)` +
         (manuales ? ` · ${manuales} manual(es)` : '') +
         (this.seleccion.size ? ` · ${this.seleccion.size} seleccionada(s)` : '');
+      this.estadoFiltro.innerHTML = this.hayFiltro()
+        ? `🔎 Filtrado: <b>${this.visibles.length}</b> de ${this.filas.length} filas ` +
+          '<button type="button" class="pt-btn pt-btn--enlace" data-rol="quitar-filtros">Quitar filtros</button>'
+        : '';
+      this.thead.querySelectorAll('.pt-filtro-btn').forEach(b =>
+        b.classList.toggle('pt-filtro-btn--activo', !!this.filtros[b.dataset.filtro]));
 
       const todos = this.thead.querySelector('[data-rol="check-todos"]');
       if (todos) todos.checked = this.visibles.length > 0 && this.visibles.every(f => this.seleccion.has(f));
@@ -540,6 +832,14 @@
     // ------------------------------------------------------------- eventos
     _conectarEventos() {
       this.thead.addEventListener('click', (e) => {
+        const btnFiltro = e.target.closest('.pt-filtro-btn');
+        if (btnFiltro) {
+          e.stopPropagation();
+          const abierto = this._panelFiltro && this._panelFiltro.dataset.campo === btnFiltro.dataset.filtro;
+          if (abierto) this._cerrarPanelFiltro();
+          else this._abrirPanelFiltro(btnFiltro.dataset.filtro, btnFiltro);
+          return;
+        }
         const th = e.target.closest('th[data-campo]');
         if (!th) return;
         const campo = th.dataset.campo;
@@ -586,6 +886,15 @@
       this.tbody.addEventListener('dblclick', (e) => {
         const td = e.target.closest('td.pt-editable');
         if (td && !e.target.classList.contains('pt-arrastre')) this.editar(td);
+      });
+
+      this.raiz.addEventListener('click', (e) => {
+        if (e.target.closest('[data-rol="quitar-filtros"]')) this.limpiarFiltros();
+      });
+      document.addEventListener('mousedown', (e) => {
+        if (this._panelFiltro && !e.target.closest('.pt-fpanel') && !e.target.closest('.pt-filtro-btn')) {
+          this._cerrarPanelFiltro();
+        }
       });
 
       this._conectarCeldas();
@@ -637,7 +946,7 @@
         }
       }
       // cuadrito de relleno en la esquina inferior derecha
-      if (this.cfg.editable) {
+      if (this._puedeEditar()) {
         const esquina = this._td(r.f1, r.c1);
         if (esquina && !esquina.querySelector('.pt-entrada')) {
           const punto = document.createElement('span');
@@ -678,29 +987,46 @@
       return lineas.join('\n');
     }
 
-    _escribirCelda(fila, col, texto) {
-      if (!this.cfg.editable || col.editable === false) return false;
+    /**
+     * Valida un valor para una columna (las mismas reglas de los presupuestos
+     * generales): números válidos, opciones de la lista y texto en mayúsculas.
+     * Devuelve {ok, valor} con el valor ya normalizado.
+     */
+    _validar(col, texto) {
       if (col.tipo === 'numero') {
-        this.setValor(fila, col.campo, aNumero(texto));
-      } else {
-        let valor = String(texto ?? '').trim();
-        if (col.tipo === 'select' && col.opciones && valor) {
-          const igual = col.opciones.find(o => normalizar(o) === normalizar(valor));
-          valor = igual || valor;
-        }
-        this.setValor(fila, col.campo, valor);
+        return esNumeroValido(texto) ? { ok: true, valor: aNumero(texto) } : { ok: false };
       }
+      const valor = String(texto ?? '').trim();
+      if (col.tipo === 'select' && col.opciones && valor) {
+        const igual = col.opciones.find(o => normalizar(o).trim() === normalizar(valor).trim());
+        return igual ? { ok: true, valor: igual } : { ok: false };
+      }
+      return { ok: true, valor: valor.toUpperCase() };
+    }
+
+    /** Escribe en una celda. true = escrita · false = no editable · 'invalido' = valor rechazado. */
+    _escribirCelda(fila, col, texto) {
+      if (!this._puedeEditar() || col.editable === false) return false;
+      const v = this._validar(col, texto);
+      if (!v.ok) return 'invalido';
+      const actual = col.tipo === 'numero' ? aNumero(fila[col.campo]) : String(fila[col.campo] ?? '');
+      if (actual !== v.valor) this.setValor(fila, col.campo, v.valor);
       return true;
+    }
+
+    _avisoInvalidos(n) {
+      if (n) toast(`${n} valor(es) no válidos para su columna no se escribieron (números o valores de la lista) ⚠️`,
+                   'warning', 6000);
     }
 
     /** Pega un TSV (de Excel o de la misma tabla) desde la celda activa. */
     pegarTexto(texto) {
-      if (!this.cursor || !this.cfg.editable) return 0;
+      if (!this.cursor || !this._puedeEditar()) return 0;
       const matriz = String(texto).replace(/\r/g, '').replace(/\n$/, '')
         .split('\n').map(l => l.split('\t'));
       if (!matriz.length) return 0;
       const { f, c } = this.cursor;
-      let escritas = 0, agregadas = 0;
+      let escritas = 0, agregadas = 0, invalidos = 0;
       matriz.forEach((linea, df) => {
         let fila = this.visibles[f + df];
         if (!fila) {                       // más líneas que filas: se agregan al final
@@ -709,10 +1035,13 @@
         }
         linea.forEach((valor, dc) => {
           const col = this.columnas[c + dc];
-          if (col && this._escribirCelda(fila, col, valor)) escritas++;
+          const r = col ? this._escribirCelda(fila, col, valor) : false;
+          if (r === 'invalido') invalidos++;
+          else if (r) escritas++;
         });
       });
       this.pintar();
+      this._avisoInvalidos(invalidos);
       if (agregadas) {
         this.irACelda(this.visibles.indexOf(this.visibles[this.visibles.length - 1]), c);
         toast(`${escritas} celdas pegadas · ${agregadas} fila(s) nueva(s) ✅`);
@@ -729,12 +1058,12 @@
 
     borrarRango() {
       const r = this._rango();
-      if (!r || !this.cfg.editable) return 0;
+      if (!r || !this._puedeEditar()) return 0;
       let n = 0;
       for (let f = r.f0; f <= r.f1; f++) {
         for (let c = r.c0; c <= r.c1; c++) {
           const col = this.columnas[c];
-          if (this._escribirCelda(this.visibles[f], col, col.tipo === 'numero' ? 0 : '')) n++;
+          if (this._escribirCelda(this.visibles[f], col, col.tipo === 'numero' ? 0 : '') === true) n++;
         }
       }
       this.pintar();
@@ -744,7 +1073,7 @@
     /** Copia los valores del rango sobre el área arrastrada (como Excel). */
     rellenar(destino) {
       const r = this._rango();
-      if (!r || !destino || !this.cfg.editable) return 0;
+      if (!r || !destino || !this._puedeEditar()) return 0;
       const altoOrigen = r.f1 - r.f0 + 1;
       const anchoOrigen = r.c1 - r.c0 + 1;
       let n = 0;
@@ -755,7 +1084,7 @@
           const colOrigen = this.columnas[r.c0 + ((c - r.c0) % anchoOrigen + anchoOrigen) % anchoOrigen];
           const col = this.columnas[c];
           if (col.tipo !== colOrigen.tipo) continue;
-          if (this._escribirCelda(this.visibles[f], col, this._valorCelda(origen, colOrigen))) n++;
+          if (this._escribirCelda(this.visibles[f], col, this._valorCelda(origen, colOrigen)) === true) n++;
         }
       }
       this.cursor = { f: destino.f1, c: destino.c1 };
@@ -880,7 +1209,7 @@
         e.clipboardData.setData('text/plain', texto);
       });
       document.addEventListener('cut', (e) => {
-        if (!enFoco() || !this.cfg.editable) return;
+        if (!enFoco() || !this._puedeEditar()) return;
         const texto = this.textoDelRango();
         if (!texto) return;
         e.preventDefault();
@@ -888,7 +1217,7 @@
         this.borrarRango();
       });
       document.addEventListener('paste', (e) => {
-        if (!enFoco() || !this.cfg.editable) return;
+        if (!enFoco() || !this._puedeEditar()) return;
         const texto = (e.clipboardData || global.clipboardData).getData('text');
         if (!texto) return;
         e.preventDefault();
@@ -946,14 +1275,30 @@
 
       const posFila = [...this.tbody.rows].indexOf(td.parentElement);
 
+      let cerrado = false;
       const cerrar = (guardar) => {
-        if (!td.contains(entrada)) return;
+        if (cerrado || !td.contains(entrada)) return;
+        cerrado = true;                 // el blur que dispara el repintado ya no vuelve a cerrar
+        let cambio = false;
         if (guardar) {
-          const nuevo = col.tipo === 'numero' ? aNumero(entrada.value) : entrada.value;
-          const anterior = col.tipo === 'numero' ? aNumero(valorOriginal) : (valorOriginal ?? '');
-          if (nuevo !== anterior) this.setValor(fila, campo, nuevo);
+          const v = this._validar(col, entrada.value);
+          const anterior = col.tipo === 'numero' ? aNumero(valorOriginal) : String(valorOriginal ?? '');
+          if (!v.ok) {
+            toast(col.tipo === 'numero'
+              ? `"${entrada.value}" no es un número válido para ${col.titulo} ❌`
+              : `"${entrada.value}" no está en la lista de ${col.titulo} ❌`, 'error', 5000);
+          } else if (v.valor !== anterior) {
+            this.setValor(fila, campo, v.valor);
+            cambio = true;
+          }
         }
-        this.pintar();
+        // Lo que devolvió el servidor mientras se editaba se aplica ahora
+        // (si hubo cambio, llegará con el próximo guardado).
+        if (!cambio && this._respuestaPendiente && !this.hayPendientes()) {
+          this._aplicarDatosServidor(this._respuestaPendiente);
+        } else {
+          this.pintar();
+        }
       };
 
       entrada.addEventListener('blur', () => cerrar(true));
@@ -995,13 +1340,16 @@
     /** Guarda un valor y recalcula el total. El servidor decide si la fila pasa a manual. */
     setValor(fila, campo, valor) {
       fila[campo] = valor;
+      // Lo que se escribe a mano manda sobre un "restablecer cálculo" pendiente.
+      if (MESES.includes(campo) || campo === 'base') delete fila._recalcular;
+      if (this.hayFiltro()) this.fijadas.add(fila);     // no desaparece mientras se edita
       if (this.cfg.recalcular) this.cfg.recalcular(fila, campo);
       if (MESES.includes(campo) && 'total' in fila) TablaPresupuesto.recalcularTotal(fila);
       this.marcarCambios();
     }
 
     _enfocarCelda(posFila, campo, dCol = 0) {
-      const editables = this.columnas.filter(c => this.cfg.editable && c.editable !== false);
+      const editables = this.columnas.filter(c => this._puedeEditar() && c.editable !== false);
       let destino = campo;
       if (dCol) {
         const i = editables.findIndex(c => c.campo === campo) + dCol;
@@ -1084,34 +1432,21 @@
       const fila = {};
       this.columnas.forEach(c => { fila[c.campo] = c.tipo === 'numero' ? 0 : ''; });
       Object.assign(fila, TablaPresupuesto.filaManual(Object.assign(this._baseFilaNueva(), base)));
+      fila._uid = nuevoUid();
       this.filas.push(fila);
-      this._refrescarOpcionesFiltro();
+      this.fijadas.add(fila);             // se ve aunque un filtro la esconda
       this.filaActiva = fila;
       this.pintar();
-
-      // si algún filtro la esconde, se limpian para que se vea
-      if (!this.visibles.includes(fila)) {
-        this.limpiarFiltros();
-        toast('Se limpiaron los filtros para mostrar la fila nueva', 'warning');
-      }
       this.marcarCambios();
       this._irAFila(fila);
       return fila;
-    }
-
-    limpiarFiltros() {
-      Object.values(this.filtros).forEach(ms => { ms.valores.clear(); ms.actualizarTexto(); ms.pintarOpciones(); });
-      const buscador = this.raiz.querySelector('.pt-buscador input');
-      if (buscador) buscador.value = '';
-      this.textoBusqueda = '';
-      this.pintar();
     }
 
     /** Lleva el scroll a una fila, la resalta y deja el cursor en su primera celda editable. */
     _irAFila(fila) {
       const f = this.visibles.indexOf(fila);
       if (f < 0) return;
-      const primera = this.columnas.findIndex(c => this.cfg.editable && c.editable !== false);
+      const primera = this.columnas.findIndex(c => this._puedeEditar() && c.editable !== false);
       this.irACelda(f, primera < 0 ? 0 : primera);
       const tr = this.tbody.querySelector(`td[data-fila="${f}"]`)?.parentElement;
       if (tr) {
@@ -1126,7 +1461,9 @@
       MESES.forEach(m => { if (m in copia) copia[m] = 0; });
       copia.total = 0;
       delete copia._recalcular;
+      copia._uid = nuevoUid();
       this.filas.splice(this.filas.indexOf(fila) + 1, 0, copia);
+      this.fijadas.add(copia);
       this.filaActiva = copia;
       this.pintar();
       this.marcarCambios();
@@ -1135,11 +1472,19 @@
     }
 
     eliminar(fila) {
+      const quien = [fila.nombre || fila.cedula, fila.centro, fila.area, fila.concepto]
+        .filter(Boolean).join(' · ') || 'fila sin datos';
+      const total = formatearNumero(fila.total);
+      if (!confirm(`¿Eliminar esta fila?\n\n${quien}\nTotal: ${total}\n\nSe borrará del presupuesto y se recalcularán los conceptos que dependen de ella.`)) {
+        return false;
+      }
       this.filas.splice(this.filas.indexOf(fila), 1);
       this.seleccion.delete(fila);
+      if (this.filaActiva === fila) this.filaActiva = null;
       this.pintar();
       this.marcarCambios();
-      toast('Fila eliminada (se aplica al guardar) ❌', 'error');
+      toast('Fila eliminada 🗑️');
+      return true;
     }
 
     copiarAlPortapapeles(fila, campos = ['cedula', 'nombre', 'centro', 'area', 'cargo', 'concepto']) {
@@ -1175,7 +1520,7 @@
       const nuevas = [];
       seleccionadas.forEach(fila => {
         reparto.filter(r => r.porcentaje > 0).forEach(r => {
-          const copia = Object.assign({}, fila, { id: null, clave: '' });
+          const copia = Object.assign({}, fila, { id: null, clave: '', _uid: nuevoUid() });
           delete copia._recalcular;
           const parte = r.porcentaje / 100;
           MESES.forEach(m => { copia[m] = Math.round(aNumero(fila[m]) * parte * 100) / 100; });
@@ -1193,10 +1538,10 @@
 
       this.filas = this.filas.filter(f => !this.seleccion.has(f)).concat(nuevas);
       this.seleccion.clear();
-      this._refrescarOpcionesFiltro();
+      nuevas.forEach(f => this.fijadas.add(f));
       this.pintar();
       this.marcarCambios();
-      toast(`${seleccionadas.length} fila(s) reemplazadas por ${nuevas.length}. Recuerda guardar.`);
+      toast(`${seleccionadas.length} fila(s) reemplazadas por ${nuevas.length}. Se guardan solas.`);
       return nuevas.length;
     }
 
@@ -1222,35 +1567,9 @@
     }
 
     // ------------------------------------------------------------ guardado
-    /** Envía todas las filas; el servidor responde con la tabla ya recalculada. */
+    /** Compatibilidad: "guardar" ahora es enviar ya lo pendiente del autoguardado. */
     async guardar(url, boton) {
-      return conSpinner(boton, async () => {
-        try {
-          // Con envio_seguro.js cargado, si el servidor no responde (p. ej. durante
-          // una actualización de la aplicación) se reintenta solo hasta 3 minutos.
-          // Es seguro: el guardado deja la tabla exactamente como se envía.
-          let avisado = false;
-          const r = global.EnvioSeguro
-            ? await global.EnvioSeguro.enviar(url, { filas: this.datos() }, {
-                maxEsperaMs: 180000,
-                onReintento: ({ error, espera }) => {
-                  if (!avisado) {
-                    avisado = true;
-                    toast(`${error.message}. Reintentando solo; no cierres la página ⏳`, 'warning', 8000);
-                  }
-                  console.warn(`Guardar: reintento en ${espera / 1000} s`, error);
-                },
-              })
-            : await enviarJSON(url, { filas: this.datos() });
-          if (Array.isArray(r.data)) this.setDatos(r.data);
-          toast(r.msg || 'Datos guardados ✅', 'success', r.recalculados && r.recalculados.length ? 6000 : 3500);
-          return r;
-        } catch (e) {
-          console.error(e);
-          toast('Error al guardar ❌ ' + e.message, 'error', 6000);
-          return null;
-        }
-      });
+      return conSpinner(boton, () => this.guardarAhora());
     }
   }
 
@@ -1261,12 +1580,12 @@
    * data-rol admitidos: inicio | consolidado | guardar | cargar-base | borrar |
    *                     agregar | pegar | exportar | recalcular | distribuir
    * Si el botón tiene data-confirmar="texto", se pide confirmación antes.
+   * Ya no hay botón "Guardar": la tabla se guarda sola (urls.guardar es el
+   * endpoint del guardado automático).
    */
   function conectarBarra(tabla, urls = {}, extra = {}) {
     const boton = (rol) => document.querySelector(`[data-rol="${rol}"]`);
     const confirmar = (b) => {
-      if (tabla.sinGuardar && b.dataset.descarta !== undefined &&
-          !confirm('Hay cambios sin guardar que se perderán. ¿Continuar?')) return false;
       if (b.dataset.confirmarEscrito) return confirmarEscrito(b.dataset.confirmarEscrito, b.dataset.palabra);
       return !b.dataset.confirmar || confirm(b.dataset.confirmar);
     };
@@ -1285,13 +1604,15 @@
     /** Acción de servidor que devuelve la tabla ya actualizada. */
     const accionServidor = (url) => (b) => conSpinner(b, async () => {
       try {
+        // Primero se guarda lo pendiente: un envío atrasado del autoguardado
+        // no puede llegar DESPUÉS y deshacer lo que hizo esta acción.
+        if (!(await tabla.guardarAhora())) return;
         const r = await pedir(url, { method: 'POST' });
         if (Array.isArray(r.data)) tabla.setDatos(r.data); else await tabla.cargar();
         toast(r.msg || 'Listo ✅', 'success', 6000);
       } catch (e) { console.error(e); toast('Error ❌ ' + e.message, 'error', 6000); }
     });
 
-    if (urls.guardar) al('guardar', (b) => tabla.guardar(urls.guardar, b));
     if (urls.cargarBase) al('cargar-base', accionServidor(urls.cargarBase));
     if (urls.borrar) al('borrar', accionServidor(urls.borrar));
 
@@ -1301,13 +1622,13 @@
     if (urls.guardar) {
       al('recalcular', (b) => {
         if (!tabla.marcarParaRecalcular()) return;
-        tabla.guardar(urls.guardar, b);
+        conSpinner(b, () => tabla.guardarAhora());   // se envía ya, sin esperar
       });
     }
     if (extra.distribuir) al('distribuir', extra.distribuir);
 
     global.addEventListener('beforeunload', (e) => {
-      if (tabla.sinGuardar) { e.preventDefault(); e.returnValue = ''; }
+      if (tabla.hayPendientes()) { e.preventDefault(); e.returnValue = ''; }
     });
   }
 
@@ -1346,8 +1667,8 @@
   document.addEventListener('DOMContentLoaded', () => recordarSecciones());
 
   global.PT = {
-    MESES, Columnas, TablaPresupuesto, MultiSelect,
-    aNumero, formatearNumero, toast, pedir, enviarJSON, conSpinner, confirmarEscrito,
+    MESES, Columnas, TablaPresupuesto,
+    aNumero, formatearNumero, esNumeroValido, toast, pedir, enviarJSON, conSpinner, confirmarEscrito,
     conectarBarra, listaJSON, leerDistribucion, recordarSecciones
   };
 })(window);
