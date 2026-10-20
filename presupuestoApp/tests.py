@@ -2997,3 +2997,10 @@ class SueldosCrearEnOtrosConceptosTests(TestCase):
         self.assertIn('"crearEnDetalle"', html)
         self.assertIn("Horas extra", html)
         self.assertIn('id="dlgCrearEn"', html)
+
+
+class AyudaTransportePegarFilaTests(TestCase):
+    def test_tiene_boton_pegar_fila(self):
+        self.client.force_login(User.objects.create_user("admin"))
+        html = self.client.get(reverse("nomina_tabla", args=["ayuda_transporte"])).content.decode()
+        self.assertIn('data-rol="pegar"', html)

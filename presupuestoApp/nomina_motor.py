@@ -151,7 +151,7 @@ _LISTA = [
              pct='incremento_ipc', titulo_base='Base', parametros=('incremento_ipc',),
              carga={'filtro': {'concepto': '011'}, 'base': True}),
     Concepto('ayuda_transporte', 'Ayuda de transporte', G_TRANSPORTE, formula='retroactivo',
-             pct='incremento_ipc', titulo_base='Base', parametros=('incremento_ipc',),
+             pct='incremento_ipc', titulo_base='Base', con_pegar=True, parametros=('incremento_ipc',),
              carga={'filtro': {'concepto': '013'}, 'base': True}),
     Concepto('bolsa_consumibles', 'Bolsa de consumibles (auxilio movilidad)', G_TRANSPORTE,
              formula='incrementar', pct='incremento_ipc', con_pegar=True,
