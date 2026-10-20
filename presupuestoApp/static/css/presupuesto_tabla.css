@@ -540,3 +540,23 @@ tr.pt-destello { animation: pt-destello .6s ease-in-out 3; }
 }
 .pt-parametro--editable input.pt-cambiado { border-color: #e0a800; background: #fff8db; }
 .pt-btn--chico { padding: 4px 9px; font-size: 12px; }
+
+/* ──────────────────────────────────────────────────────────────────────
+   Columna "Total" (año) fija a la derecha: se ve siempre, sin desplazarse
+   hacia los meses. Fondo opaco para que los meses pasen por debajo.
+   ────────────────────────────────────────────────────────────────────── */
+table.pt-tabla .pt-col-total {
+  position: sticky; right: 0; z-index: 2;
+  background: #eef3fb;
+  font-weight: 700;
+  border-left: 2px solid #b9cbe6;
+  box-shadow: -6px 0 8px -6px rgba(16, 24, 40, .25);
+}
+table.pt-tabla thead th.pt-col-total { z-index: 5; background: #dfe8f5; }
+table.pt-tabla tfoot th.pt-col-total { z-index: 5; background: #1f3a93; color: #fff; }
+table.pt-tabla tbody tr:hover td.pt-col-total { background: #e1ebfa; }
+table.pt-tabla tbody tr.pt-fila--marcada td.pt-col-total { background: #f7efcc; }
+table.pt-tabla tbody tr.pt-fila--activa td.pt-col-total { background: #cddff8; }
+.pt-tabla td.pt-col-total.pt-celda--rango { background: #d6e3f7; }
+/* al moverse con el teclado, la celda activa no queda escondida detrás del Total fijo */
+.pt-tabla-envoltura { scroll-padding-right: 140px; }

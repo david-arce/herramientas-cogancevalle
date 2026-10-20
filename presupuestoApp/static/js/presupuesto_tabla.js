@@ -592,7 +592,8 @@
           return '<th class="pt-col-check"><input type="checkbox" data-rol="check-todos" title="Seleccionar todo"></th>';
         }
         if (col.especial === 'acciones') return '<th class="pt-col-acciones">Acciones</th>';
-        const clase = col.tipo === 'numero' ? 'pt-num pt-ordenable' : 'pt-ordenable';
+        const clase = (col.tipo === 'numero' ? 'pt-num pt-ordenable' : 'pt-ordenable') +
+                      (col.campo === 'total' ? ' pt-col-total' : '');
         const filtro = this.camposFiltro.includes(col.campo)
           ? `<button type="button" class="pt-filtro-btn" data-filtro="${col.campo}" title="Filtrar ${escapar(col.titulo)}" aria-label="Filtrar ${escapar(col.titulo)}">▾</button>`
           : '';
@@ -860,7 +861,8 @@
         const puedeEditar = this._puedeEditar();
         this.columnas.forEach((col, ic) => {
           const editable = puedeEditar && col.editable !== false;
-          const clase = [col.tipo === 'numero' ? 'pt-num' : '', editable ? 'pt-editable' : ''].filter(Boolean).join(' ');
+          const clase = [col.tipo === 'numero' ? 'pt-num' : '', editable ? 'pt-editable' : '',
+                         col.campo === 'total' ? 'pt-col-total' : ''].filter(Boolean).join(' ');
           partes.push(`<td class="${clase}" data-campo="${col.campo}" data-fila="${iv}" data-col="${ic}">${this._celda(fila, col)}</td>`);
         });
 
@@ -910,7 +912,9 @@
           if (!etiquetaPuesta && col.especial === 'acciones') { etiquetaPuesta = true; return '<th>Totales</th>'; }
           return '<th></th>';
         }
-        if (col.campo in sumas) return `<th class="pt-num">${formatearNumero(sumas[col.campo])}</th>`;
+        if (col.campo in sumas) {
+          return `<th class="pt-num${col.campo === 'total' ? ' pt-col-total' : ''}">${formatearNumero(sumas[col.campo])}</th>`;
+        }
         if (!etiquetaPuesta) { etiquetaPuesta = true; return '<th>Totales visibles</th>'; }
         return '<th></th>';
       });
