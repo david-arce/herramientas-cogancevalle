@@ -332,7 +332,10 @@
           // La edición la había vuelto manual: al deshacer vuelve a ser calculada.
           f._recalcular = true;
         }
-        if (antes.get(clave(f)) !== JSON.stringify(f)) this.fijadas.add(f);   // lo deshecho queda a la vista
+        if (antes.get(clave(f)) !== JSON.stringify(f)) {
+          this.fijadas.add(f);                         // lo deshecho queda a la vista
+          f._editados = ['*'];                         // y se envía completo
+        }
       });
       this.seleccion.clear();
       this.filaActiva = null;
@@ -379,6 +382,8 @@
     /** La tabla completa tal como se envía (las filas nuevas llevan su _uid). */
     _payload() {
       return {
+        // cada fila dice qué campos se editaron (_editados): el servidor solo toma esos
+        con_editados: true,
         filas: this.filas.map(f => {
           if (!f.id && !f._uid) f._uid = nuevoUid();
           return Object.assign({}, f);
@@ -483,6 +488,7 @@
         const s = porId.get(String(f.id));
         if (!s) { this.seleccion.delete(f); return; }   // ya no existe en el servidor
         delete f._recalcular;
+        delete f._editados;                            // ya quedó guardado
         Object.assign(f, s);
         usados.add(String(f.id));
         resultado.push(f);
@@ -1442,9 +1448,16 @@
     }
 
     /** Guarda un valor y recalcula el total. El servidor decide si la fila pasa a manual. */
+    /** Anota que el usuario cambió ese campo de la fila (se envía en `_editados`). */
+    marcarEditado(fila, campo) {
+      const actuales = fila._editados || [];
+      if (!actuales.includes(campo)) fila._editados = actuales.concat(campo);
+    }
+
     setValor(fila, campo, valor) {
       this.antesDeCambiar();
       fila[campo] = valor;
+      this.marcarEditado(fila, campo);
       // Lo que se escribe a mano manda sobre un "restablecer cálculo" pendiente.
       if (MESES.includes(campo) || campo === 'base') delete fila._recalcular;
       if (this.hayFiltro()) this.fijadas.add(fila);     // no desaparece mientras se edita

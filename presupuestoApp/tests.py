@@ -3004,3 +3004,142 @@ class AyudaTransportePegarFilaTests(TestCase):
         self.client.force_login(User.objects.create_user("admin"))
         html = self.client.get(reverse("nomina_tabla", args=["ayuda_transporte"])).content.decode()
         self.assertIn('data-rol="pegar"', html)
+
+
+class AuxilioTransporteRepartidoPorMesTests(TestCase):
+    """Una persona con el sueldo en dos filas según el mes: el auxilio de
+    transporte de cada mes va a la fila que tiene sueldo ese mes (no mitad y mitad)."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1750905, incremento_salarial=0,
+                                              auxilio_transporte=12, base_auxilio_transporte=249095)
+        aftosa = ["mayo", "junio", "noviembre", "diciembre"]
+        comunes = dict(cedula="1116250847", nombre="PANESSO BARRETO SONNIA LILIANA", origen="manual",
+                       cargo="SUPERNUMERARIO", concepto="SALARIO BASICO", base=2151008)
+        linea_nomina(area="PROYECTO AFTOSA GASTOS DE PERSONAL", **comunes,
+                     **{m: (2344599 if m in aftosa else 0) for m in MESES_N}).save()
+        linea_nomina(area="VENTAS GASTOS DE PERSONAL", **comunes,
+                     **{m: (0 if m in aftosa else 2344599) for m in MESES_N}).save()
+        self.aftosa = aftosa
+        nomina_motor.recalcular_todo()
+
+    def test_cada_mes_en_la_fila_con_sueldo(self):
+        valor = round(249095 * 1.12)                                       # 278.986
+        filas = {f.area: f for f in PresupuestoNomina.objects.filter(tipo="auxilio_transporte")}
+        aftosa = filas["PROYECTO AFTOSA GASTOS DE PERSONAL"]
+        ventas = filas["VENTAS GASTOS DE PERSONAL"]
+        for m in MESES_N:
+            esperado_aftosa = valor if m in self.aftosa else 0
+            self.assertEqual((m, getattr(aftosa, m)), (m, esperado_aftosa))
+            self.assertEqual((m, getattr(ventas, m)), (m, valor - esperado_aftosa))
+        self.assertEqual(aftosa.total + ventas.total, valor * 12)
+
+    def test_cuotas_mensuales_sin_valor_usa_el_factor(self):
+        class F:  # fila mínima
+            def __init__(self, **kw):
+                self.cedula, self.factor = "1", 1
+                for m in MESES_N:
+                    setattr(self, m, kw.get(m, 0))
+        a, b = F(enero=100), F()
+        cuota = nomina_motor.cuotas_mensuales([a, b], lambda f: f.cedula)
+        self.assertEqual((cuota[id(a)]["enero"], cuota[id(b)]["enero"]), (1, 0))
+        self.assertEqual((cuota[id(a)]["febrero"], cuota[id(b)]["febrero"]), (0.5, 0.5))
+
+
+class EditarFilaCalculadaVuelveManualTests(TestCase):
+    """En TODOS los conceptos base, editar un mes o un texto de una fila calculada
+    la vuelve manual (antes, en los de histórico como auxilio TBC y KIT, comisiones,
+    horas extra, bolsa de consumibles o auxilio de educación seguía "calculada")."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1423500, incremento_salarial=10,
+                                              incremento_ipc=5, incremento_comisiones=8)
+        config = origen_nomina.ConfiguracionNomina.actual()
+        config.meses_reales = 8
+        config.save()
+        self.client.force_login(User.objects.create_user("admin"))
+
+    def fila(self, slug):
+        f = PresupuestoNomina(tipo=slug, origen="sistema", clave="9#0", cedula="9", nombre="PRUEBA",
+                              centro="ALMACEN TULUA", area="VENTAS", cargo="X", concepto="C", base=1000000,
+                              historico={m: 50000 for m in nomina_motor.MESES[:8]})
+        nomina_motor.aplicar_formula(f, nomina_motor.CONCEPTOS[slug], nomina_motor.Parametros.cargar())
+        f.save()
+        return f
+
+    def enviar(self, slug, cambios, editados=None):
+        datos = self.client.get(reverse("nomina_datos", args=[slug])).json()["data"]
+        datos[0].update(cambios)
+        if editados is not None:
+            datos[0]["_editados"] = editados
+        cuerpo = {"filas": datos, **({"con_editados": True} if editados is not None else {})}
+        r = self.client.post(reverse("nomina_guardar", args=[slug]), json.dumps(cuerpo),
+                             content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+
+    def test_todos_los_conceptos_base(self):
+        for c in nomina_motor.BASE:
+            for cambio in ("nombre", "marzo", "diciembre"):
+                with self.subTest(concepto=c.slug, cambio=cambio):
+                    f = self.fila(c.slug)
+                    calculado = {m: getattr(f, m) for m in MESES_N}
+                    valor = "OTRO" if cambio == "nombre" else calculado[cambio] + 12345
+                    self.enviar(c.slug, {cambio: valor}, editados=[cambio])
+                    f.refresh_from_db()
+                    self.assertEqual(f.origen, "manual")
+                    if cambio != "nombre":
+                        self.assertEqual(getattr(f, cambio), valor)
+                        otro = "enero" if cambio != "enero" else "febrero"
+                        self.assertEqual(getattr(f, otro), calculado[otro])      # lo no editado no cambia
+                    f.delete()
+
+    def test_pantalla_vieja_no_deshace_lo_recalculado(self):
+        a, b = self.fila("auxilio_tbckit"), self.fila("auxilio_tbckit")
+        datos = self.client.get(reverse("nomina_datos", args=["auxilio_tbckit"])).json()["data"]
+        # mientras la pantalla estaba abierta cambió el IPC y se recalculó todo
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.filter(id=1).update(incremento_ipc=20)
+        nomina_motor.recalcular_todo()
+        nuevo_b = PresupuestoNomina.objects.get(pk=b.pk).enero
+        # la pantalla vieja edita marzo de la fila A y envía TODA la tabla con los valores viejos
+        fila_a = next(d for d in datos if d["id"] == a.pk)
+        fila_a["marzo"] = 777
+        fila_a["_editados"] = ["marzo"]
+        self.client.post(reverse("nomina_guardar", args=["auxilio_tbckit"]),
+                         json.dumps({"filas": datos, "con_editados": True}), content_type="application/json")
+        a.refresh_from_db(); b.refresh_from_db()
+        self.assertEqual((b.origen, b.enero), ("sistema", nuevo_b))                # B no se tocó
+        self.assertEqual((a.origen, a.marzo, a.enero), ("manual", 777, nuevo_b))   # A: solo marzo
+
+
+class InteresesCesantiasPersonaEnVariasFilasTests(TestCase):
+    """Misma persona en dos filas según el mes: el acumulado de intereses no se
+    reinicia cuando una de las filas tiene el mes en 0 (se lleva como una sola línea)."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, intereses_cesantias=12)
+        self.aftosa = ["mayo", "junio", "noviembre", "diciembre"]
+        self.ces = 218544                                    # cesantías del mes de la persona
+        comunes = dict(tipo="cesantias", cedula="1116250847", nombre="PANESSO BARRETO SONNIA LILIANA",
+                       origen="sistema", concepto="CESANTÍAS")
+        PresupuestoNomina(area="PROYECTO AFTOSA GASTOS DE PERSONAL", clave="a", **comunes,
+                          **{m: (self.ces if m in self.aftosa else 0) for m in MESES_N}).save()
+        PresupuestoNomina(area="VENTAS GASTOS DE PERSONAL", clave="v", **comunes,
+                          **{m: (0 if m in self.aftosa else self.ces) for m in MESES_N}).save()
+        ctx = nomina_motor.Contexto()
+        nomina_motor.regenerar(ctx, nomina_motor.CONCEPTOS["intereses_cesantias"])
+        filas = PresupuestoNomina.objects.filter(tipo="intereses_cesantias")
+        self.aftosa_f = filas.get(area__startswith="PROYECTO")
+        self.ventas_f = filas.get(area__startswith="VENTAS")
+
+    def test_valores_del_ejemplo(self):
+        self.assertEqual((self.aftosa_f.mayo, self.aftosa_f.junio), (19669, 24040))
+        self.assertEqual(self.ventas_f.julio, 28411)
+        self.assertEqual((self.aftosa_f.julio, self.ventas_f.mayo), (0, 0))
+
+    def test_total_igual_a_una_sola_linea(self):
+        una_linea = nomina_motor.intereses_acumulados({m: self.ces for m in MESES_N}, 0.12)
+        self.assertAlmostEqual(self.aftosa_f.total + self.ventas_f.total, sum(una_linea.values()), delta=12)

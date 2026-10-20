@@ -554,7 +554,8 @@ def nomina_guardar(request, tipo):
         return _error('Se esperaba una lista de filas')
 
     try:
-        resumen, recalculados = nomina.guardar(tipo, filas, request.user.get_username())
+        resumen, recalculados = nomina.guardar(tipo, filas, request.user.get_username(),
+                                               con_editados=isinstance(cuerpo, dict) and bool(cuerpo.get('con_editados')))
     except ValueError as exc:
         return _error(str(exc))
     except DatabaseError:

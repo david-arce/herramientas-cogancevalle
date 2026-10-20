@@ -150,6 +150,7 @@
         const excluir = eleccion.excluir;
         tabla.antesDeCambiar();
         fila.excluir_de = excluir;
+        tabla.marcarEditado(fila, 'excluir_de');
         tabla.pintar();
         tabla.marcarCambios();
         PT.toast('Cambio aplicado; se guarda y recalcula solo ✅');

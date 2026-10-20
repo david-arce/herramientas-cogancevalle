@@ -103,7 +103,7 @@ class Concepto:
     depende: tuple = ()
 
     def invertibles(self, fila, meses_reales):
-        """Meses que, al editarlos, ajustan el histórico en vez de volver la fila manual."""
+        """Meses que, al restablecer el cálculo de una fila escrita a mano, pasan a ser su histórico."""
         if self.formula == 'incrementar':
             return set(MESES)
         if self.formula == 'incremento_promedio':
@@ -299,6 +299,28 @@ def cuotas(filas, clave):
         id(fila): ((fila.factor or 0) / sumas[clave(fila)]) if sumas[clave(fila)] else 0
         for fila in filas
     }
+
+
+def cuotas_mensuales(filas, clave):
+    """Parte de cada fila dentro de su grupo, MES A MES: {id(fila): {mes: 0‑1}}.
+
+    Si una persona tiene el sueldo repartido en varias filas por meses (p. ej.
+    en VENTAS de enero a abril y en PROYECTO AFTOSA en mayo y junio), lo que se
+    calcula "por persona" en cada mes va a la fila que tiene valor ese mes, en
+    proporción a su valor. Si ese mes ninguna fila tiene valor se reparte según
+    el `factor` (como `cuotas`).
+    """
+    fija = cuotas(filas, clave)
+    sumas = defaultdict(lambda: dict.fromkeys(MESES, 0.0))
+    for fila in filas:
+        for mes in MESES:
+            sumas[clave(fila)][mes] += abs(getattr(fila, mes) or 0)
+    salida = {}
+    for fila in filas:
+        total = sumas[clave(fila)]
+        salida[id(fila)] = {mes: (abs(getattr(fila, mes) or 0) / total[mes]) if total[mes] else fija[id(fila)]
+                            for mes in MESES}
+    return salida
 
 
 def identidad(fila, **extra):
@@ -578,14 +600,6 @@ def aplicar_formula(fila, c, p):
     fijar_meses(fila, calcular(fila, c, p))
 
 
-def ajustar_historico(fila, c, p, mes, valor):
-    """Inverso de la fórmula: el usuario escribió `valor` para `mes`."""
-    divisor = (1 + p.pct(c.pct)) * (fila.factor or 1)
-    historico = dict(fila.historico or {})
-    historico[mes] = valor / divisor if divisor else 0
-    fila.historico = historico
-
-
 # ══════════════════════════════════════════════════════════════════════
 #  Carga de conceptos base desde ConceptosNomina (filtrado por año)
 # ══════════════════════════════════════════════════════════════════════
@@ -847,7 +861,7 @@ def gen_auxilio_transporte(ctx, c):
     totales = {t: sumar_por(ctx.filas(t), por_cedula)
                for t in ('medios_transporte', 'sueldos', 'comisiones', 'horas_extra', 'aprendiz')}
     personas = ctx.personas()
-    cuota = cuotas(personas, por_cedula)
+    cuota = cuotas_mensuales(personas, por_cedula)   # mes a mes: va a la fila que tiene sueldo ese mes
 
     for persona in personas:
         meses = dict.fromkeys(MESES, 0)
@@ -858,7 +872,7 @@ def gen_auxilio_transporte(ctx, c):
                 sueldo = totales['sueldos'].get(persona.cedula, {})
                 devengado += sueldo.get('abril', 0) - sueldo.get('marzo', 0)
             if devengado and devengado < limite:
-                meses[mes] = valor * cuota[id(persona)]
+                meses[mes] = valor * cuota[id(persona)][mes]
         yield dict(identidad(persona, concepto='AUXILIO DE TRANSPORTE'),
                    base=base, clave=clave_persona(persona), **meses)
 
@@ -874,7 +888,7 @@ def _prestacion(ctx, c, fuentes, concepto):
     por_clave = lambda f: (f.cedula, f.area)  # noqa: E731
     indices = {t: sumar_por(ctx.filas(t), por_clave) for t in fuentes}
     personas = ctx.personas()
-    cuota = cuotas(personas, por_clave)
+    cuota = cuotas_mensuales(personas, por_clave)
 
     for persona in personas:
         meses = valores(persona)
@@ -885,7 +899,7 @@ def _prestacion(ctx, c, fuentes, concepto):
             if otros:
                 parte = cuota[id(persona)]
                 for mes in MESES:
-                    meses[mes] += otros[mes] * parte
+                    meses[mes] += otros[mes] * parte[mes]
         yield dict(identidad(persona, concepto=concepto), clave=clave_persona(persona),
                    **{mes: v * pct for mes, v in meses.items()})
 
@@ -918,7 +932,8 @@ def intereses_acumulados(cesantias_mes, pct):
     Una persona puede tener varios periodos en el año (por ejemplo mayo–junio
     y noviembre–diciembre). Un mes sin cesantías corta el periodo: no causa
     intereses y el siguiente periodo vuelve a empezar en 30 días, con el
-    acumulado en cero.
+    acumulado en cero. (Si la persona tiene varias filas, aquí llega la SUMA
+    de sus filas: ver gen_intereses_cesantias.)
     """
     salida, acumulado, causado, meses_trabajados = {}, 0.0, 0.0, 0
     for mes in MESES:
@@ -937,10 +952,30 @@ def intereses_acumulados(cesantias_mes, pct):
 
 
 def gen_intereses_cesantias(ctx, c):
+    """Intereses de cesantías POR PERSONA.
+
+    Si la persona tiene varias filas (p. ej. VENTAS de enero a abril y
+    PROYECTO AFTOSA en mayo y junio), el acumulado se lleva como si fuera una
+    sola línea: se suman sus cesantías de cada mes, se calculan los intereses
+    sobre esa suma (sin reiniciar cuando una de las filas tiene el mes en 0) y
+    el interés de cada mes se reparte entre las filas según las cesantías que
+    cada una tiene ese mes.
+    """
     pct = ctx.p.pct(c.pct)
-    for ces in ctx.filas('cesantias'):
+    filas = ctx.filas('cesantias')
+    persona = lambda f: f.cedula or f'#{id(f)}'  # noqa: E731  sin cédula: cada fila por su lado
+    cuota = cuotas_mensuales(filas, persona)
+    grupos = defaultdict(list)
+    for ces in filas:
+        grupos[persona(ces)].append(ces)
+    intereses = {}
+    for clave, del_grupo in grupos.items():
+        suma = {mes: sum(getattr(f, mes) or 0 for f in del_grupo) for mes in MESES}
+        intereses[clave] = intereses_acumulados(suma, pct)
+    for ces in filas:
+        total = intereses[persona(ces)]
         yield dict(identidad(ces, concepto='INTERESES CESANTÍAS'), clave=clave_persona(ces),
-                   **intereses_acumulados(valores(ces), pct))
+                   **{mes: total[mes] * cuota[id(ces)][mes] for mes in MESES})
 
 
 def gen_bonificaciones(ctx, c):
@@ -1069,12 +1104,12 @@ def gen_bonificaciones_foco(ctx, c):
 
     # 1) Quienes comisionan: enero con las comisiones reales (sin incremento)
     #    y julio con la mitad del promedio presupuestado de enero a junio
-    cuota = cuotas(por_promedio, lambda f: f.cedula)
+    cuota = cuotas_mensuales(por_promedio, lambda f: f.cedula)
     vistos = set()
     for fila in por_promedio:
         promedio = promedio_anual_comisiones(reales.get(fila.cedula, {}), ctx.meses_reales())
         datos = dict.fromkeys(MESES, 0)
-        datos['enero'] = promedio * cuota[id(fila)]
+        datos['enero'] = promedio * cuota[id(fila)]['enero']
         datos['julio'] = promedio_primer_semestre(fila) / 2
         vistos.add(fila.cedula)
         yield dict(identidad(fila, concepto='BONIFICACIÓN FOCO'), clave=clave_persona(fila), **datos)
@@ -1086,12 +1121,12 @@ def gen_bonificaciones_foco(ctx, c):
              # quien está en la lista la recibe aunque su cargo sea comercial
              and (f.cedula in sin_comision
                   or (f.cargo or '').strip().upper() not in CARGOS_SIN_BONIFICACION_FOCO)]
-    cuota = cuotas(fijos, lambda f: f.cedula)
+    cuota = cuotas_mensuales(fijos, lambda f: f.cedula)
     for fila in fijos:
         ingreso = ingresos.get(fila.cedula)
         dias = dias_360(ingreso) if ingreso and ingreso.year >= ctx.anio else 360
         datos = dict.fromkeys(MESES, 0)
-        datos['enero'] = base / 360 * dias * cuota[id(fila)]
+        datos['enero'] = base / 360 * dias * cuota[id(fila)]['enero']
         yield dict(identidad(fila, concepto='BONIFICACIÓN FOCO'), clave=clave_persona(fila), **datos)
 
 APORTES = {
@@ -1727,16 +1762,23 @@ def _propagar_identidades(identidades, finales, usuario, ctx, avisos):
     return corregidas
 
 
-def guardar(slug, filas_json, usuario=''):
+def guardar(slug, filas_json, usuario='', con_editados=False):
     """Guarda lo que el usuario editó en la tabla y propaga los cambios.
 
     Solo se puede guardar en los conceptos base (los que se cargan desde
     Conceptos). Los calculados se rehacen solos.
 
     - Fila nueva                              → manual
-    - Fila calculada con meses editados       → ajusta el histórico si la
-                                                fórmula lo permite; si no, manual
+    - Fila calculada con un mes, la cédula, el nombre u otro texto editado
+                                              → manual (los meses no editados
+                                                quedan con su valor calculado)
     - Fila con `_recalcular`                  → vuelve a ser calculada
+
+    con_editados=True (pantalla con autoguardado): cada fila trae en
+    `_editados` los campos que el usuario cambió ('*' = todos). Solo esos se
+    toman del navegador; los demás se dejan como están en la base de datos.
+    Así una pestaña abierta desde hace rato no deshace lo que se recalculó o
+    corrigió mientras tanto (parámetros, cédulas corregidas, distribuciones).
 
     La tabla llega completa (lo que no viene se borra), así que reenviar lo
     mismo deja el mismo resultado. Para que eso también valga con las filas
@@ -1819,7 +1861,15 @@ def guardar(slug, filas_json, usuario=''):
             if not nueva:
                 antes = {campo: getattr(fila, campo) for campo in (*CAMPOS_TEXTO, 'base', *MESES)}
 
+            marcas = set(datos.get('_editados') or []) if con_editados else None
+
+            def tocado(campo, nueva=nueva, marcas=marcas):
+                """¿Este campo se toma de lo que envió el navegador?"""
+                return nueva or marcas is None or '*' in marcas or campo in marcas
+
             for campo in CAMPOS_TEXTO:
+                if not tocado(campo):
+                    continue
                 valor = texto(datos.get(campo))
                 setattr(fila, campo, cedula_normalizada(valor) if campo == 'cedula' else valor)
             if nueva and c.crea_en_otros and datos.get('crear_en'):
@@ -1828,7 +1878,7 @@ def guardar(slug, filas_json, usuario=''):
                 pendientes = [s for s in conceptos_para_crear(slug) if s in set(datos['crear_en'])]
                 if pendientes:
                     fila.historico = dict(fila.historico or {}, **{CREAR_EN: pendientes})
-            if 'excluir_de' in datos or nueva:
+            if ('excluir_de' in datos or nueva) and tocado('excluir_de'):
                 excluir = excluciones_validas(slug, datos.get('excluir_de'))
                 if not nueva and excluir != sorted(fila.excluir_de or []):
                     resumen['exclusiones'] += 1
@@ -1842,10 +1892,12 @@ def guardar(slug, filas_json, usuario=''):
             if c.derivado:
                 # así bloquea la fila calculada de esa misma persona
                 fila.clave = clave_persona(fila)
-            fila.base = int(round(numero(datos.get('base'))))
-            factor = numero(datos.get('factor'), 1)
-            fila.factor = factor if factor > 0 else 1
-            entrantes = {m: int(round(numero(datos.get(m)))) for m in MESES}
+            if tocado('base'):
+                fila.base = int(round(numero(datos.get('base'))))
+            if nueva or marcas is None:          # el factor lo maneja la distribución, no la pantalla
+                factor = numero(datos.get('factor'), 1)
+                fila.factor = factor if factor > 0 else 1
+            entrantes = {m: int(round(numero(datos.get(m)))) if tocado(m) else antes[m] for m in MESES}
             fila.actualizado_por = usuario
 
             forzar = bool(datos.get('_recalcular'))
@@ -1854,10 +1906,10 @@ def guardar(slug, filas_json, usuario=''):
                 fila.origen = SISTEMA
                 forzadas = True
                 invertibles = c.invertibles(fila, ctx.meses_reales())
-                if not c.derivado and not fila.historico and invertibles:
+                if not c.derivado and invertibles and not any(m in (fila.historico or {}) for m in MESES):
                     # fila escrita a mano: sus valores pasan a ser el histórico
                     divisor = fila.factor or 1
-                    fila.historico = {m: entrantes[m] / divisor for m in invertibles}
+                    fila.historico = dict(fila.historico or {}, **{m: entrantes[m] / divisor for m in invertibles})
                 if not c.derivado:
                     # Los meses que la fila manual tenía en 0 se quedan en 0
                     # (si todos estaban en 0 se calcula todo el año).
@@ -1880,14 +1932,13 @@ def guardar(slug, filas_json, usuario=''):
                 calculado = calcular(fila, c, p)
                 editados = {m for m in MESES if abs(entrantes[m] - calculado[m]) > TOLERANCIA}
                 if editados and not forzar:
-                    if editados <= c.invertibles(fila, ctx.meses_reales()):
-                        for mes in editados:
-                            ajustar_historico(fila, c, p, mes, entrantes[mes])
-                        calculado = calcular(fila, c, p)
-                        resumen['historico_ajustado'] += 1
-                    else:
-                        fila.origen = MANUAL
-                fijar_meses(fila, calculado if fila.origen == SISTEMA else entrantes)
+                    # Editar un mes de una fila calculada la vuelve MANUAL (en todos
+                    # los conceptos, también en los de histórico como auxilio TBC y
+                    # KIT o comisiones). Los meses no editados quedan como estaban.
+                    fila.origen = MANUAL
+                    fijar_meses(fila, {m: entrantes[m] if m in editados else calculado[m] for m in MESES})
+                else:
+                    fijar_meses(fila, calculado)
             else:
                 fijar_meses(fila, entrantes)
 
