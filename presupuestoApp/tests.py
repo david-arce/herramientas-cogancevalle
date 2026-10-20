@@ -2830,3 +2830,112 @@ class AuxilioTransporteBaseTests(TestCase):
         self.assertIn('id="baseEditable"', html)
         self.assertIn('value="200000"', html)
         self.assertNotIn('id="baseEditable"', self.client.get(reverse("nomina_tabla", args=["prima"])).content.decode())
+
+
+class HorasExtraSeptiembreTests(TestCase):
+    """Datos reales hasta septiembre: septiembre toma su valor real (aunque sea 0)
+    y el promedio va desde octubre. También si los meses reales se cambian
+    después de cargar y solo se pulsa "Recalcular todo"."""
+
+    def setUp(self):
+        self.anio = timezone.localdate().year
+        comunes = dict(anio=self.anio, archivo="prueba", cedula=10, nombre="ANA", nombre_cen="ALMACEN TULUA",
+                       nomcosto="VENTAS")
+        horas = {m: 100000 for m in MESES_N[:7]}                       # ene..jul; ago y sep en 0
+        ConceptosNomina.objects.create(concepto="110", **comunes, **horas)
+        ConceptosNomina.objects.create(concepto="001", concepto_f=2000000, **comunes,
+                                       **{m: 2000000 for m in MESES_N[:9]})    # hay datos hasta septiembre
+        self.config = origen_nomina.ConfiguracionNomina.actual()
+
+    def horas(self):
+        return PresupuestoNomina.objects.get(tipo="horas_extra")
+
+    def test_septiembre_real_en_cero_y_promedio_desde_octubre(self):
+        nomina_motor.recargar_bases()
+        f = self.horas()
+        self.assertEqual((f.agosto, f.septiembre), (0, 0))
+        self.assertGreater(f.octubre, 0)
+        self.assertEqual(f.octubre, f.diciembre)
+
+    def test_cambiar_meses_reales_y_recalcular_todo(self):
+        self.config.meses_reales = 8
+        self.config.save()
+        nomina_motor.recargar_bases()
+        self.assertGreater(self.horas().septiembre, 0)                  # con 8 meses, septiembre es promedio
+        self.config.meses_reales = 9
+        self.config.save()
+        nomina_motor.recalcular_todo()                                   # sin "Cargar desde Conceptos"
+        f = self.horas()
+        self.assertEqual(f.septiembre, 0)
+        self.assertGreater(f.octubre, 0)
+
+
+class RestablecerConMesesEnCeroTests(TestCase):
+    """Restablecer el cálculo de una fila MANUAL: los meses que estaban en 0 se
+    quedan en 0. Si todos estaban en 0 (solo se escribió la base) se calcula
+    todo el año."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1423500, incremento_salarial=10)
+        self.client.force_login(User.objects.create_user("admin"))
+
+    def manual(self, meses, base=2000000, tipo="sueldos"):
+        f = linea_nomina(tipo=tipo, origen="manual", base=base, clave="",
+                         **{m: meses.get(m, 0) for m in MESES_N})
+        f.save()
+        return f
+
+    def restablecer(self, fila, tipo="sueldos", **extra):
+        datos = self.client.get(reverse("nomina_datos", args=[tipo])).json()["data"]
+        for d in datos:
+            if d["id"] == fila.pk:
+                d["_recalcular"] = True
+                d.update(extra)
+        r = self.client.post(reverse("nomina_guardar", args=[tipo]), json.dumps({"filas": datos}),
+                             content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        fila.refresh_from_db()
+        return r.json()
+
+    def test_los_meses_en_cero_se_quedan_en_cero(self):
+        f = self.manual({m: 1000 for m in MESES_N[3:]})                 # ingresa en abril
+        r = self.restablecer(f)
+        self.assertEqual(f.origen, "sistema")
+        self.assertEqual((f.enero, f.febrero, f.marzo), (0, 0, 0))
+        self.assertEqual(f.abril, 2200000)                              # base + 10 %
+        self.assertEqual(f.diciembre, 2200000)
+        self.assertIn("se dejaron en 0", r["msg"])
+        nomina_motor.recalcular_todo()                                  # se respeta al recalcular
+        f.refresh_from_db()
+        self.assertEqual((f.enero, f.marzo, f.abril), (0, 0, 2200000))
+
+    def test_solo_la_base_calcula_todo_el_anio(self):
+        f = self.manual({})
+        self.restablecer(f)
+        self.assertEqual((f.enero, f.abril, f.diciembre), (2000000, 2200000, 2200000))
+        self.assertFalse(nomina_motor.meses_en_cero(f))
+
+    def test_escribir_en_un_mes_fijo_en_cero_lo_libera(self):
+        f = self.manual({m: 1000 for m in MESES_N[3:]})
+        self.restablecer(f)
+        datos = self.client.get(reverse("nomina_datos", args=["sueldos"])).json()["data"]
+        datos[0]["marzo"] = 2200000
+        self.client.post(reverse("nomina_guardar", args=["sueldos"]), json.dumps({"filas": datos}),
+                         content_type="application/json")
+        f.refresh_from_db()
+        self.assertNotIn("marzo", nomina_motor.meses_en_cero(f))
+        self.assertEqual(f.enero, 0)
+
+    def test_promedio_sin_los_meses_en_cero(self):
+        # horas extra (promedio): datos reales hasta agosto; 100.000 al mes desde abril
+        config = origen_nomina.ConfiguracionNomina.actual()
+        config.meses_reales = 8
+        config.save()
+        # (ingresó en abril: enero a marzo en 0; de septiembre a diciembre tenía valores escritos)
+        f = self.manual({m: 100000 for m in MESES_N[3:]}, base=0, tipo="horas_extra")
+        self.restablecer(f, tipo="horas_extra")
+        self.assertEqual((f.enero, f.marzo), (0, 0))
+        self.assertEqual((f.abril, f.agosto), (110000, 110000))         # real + 10 %
+        self.assertEqual(f.septiembre, 110000)                          # promedio de abr-ago, sin diluir con los ceros
+        self.assertEqual(f.diciembre, 110000)

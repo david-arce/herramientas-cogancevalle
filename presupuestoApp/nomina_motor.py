@@ -522,7 +522,9 @@ def f_incremento_promedio(fila, c, p):
     historico = fila.historico or {}
     base = [mes for mes in MESES if mes in historico]
     meses = {mes: numero(historico.get(mes)) * factor for mes in base}
-    promedio = sum(meses.values()) / len(base) if base else 0
+    # Los meses fijos en 0 (no trabajó) no bajan el promedio de los demás
+    con_dato = [mes for mes in base if mes not in meses_en_cero(fila)]
+    promedio = sum(meses[mes] for mes in con_dato) / len(con_dato) if con_dato else 0
     for mes in MESES:
         meses.setdefault(mes, promedio)
     return meses
@@ -543,11 +545,32 @@ FORMULAS = {
 }
 
 
+# Meses que quedan en 0 aunque la fórmula dé otro valor: los que estaban en 0
+# cuando a una fila MANUAL se le restableció el cálculo (p. ej. alguien que no
+# trabaja esos meses). Se guardan dentro del histórico con esta clave.
+MESES_CERO = '_meses_cero'
+
+
+def meses_en_cero(fila):
+    return set((fila.historico or {}).get(MESES_CERO) or [])
+
+
+def _fijar_meses_cero(fila, meses):
+    historico = dict(fila.historico or {})
+    meses = [m for m in MESES if m in set(meses)]
+    if meses:
+        historico[MESES_CERO] = meses
+    else:
+        historico.pop(MESES_CERO, None)
+    fila.historico = historico
+
+
 def calcular(fila, c, p):
     """Los 12 meses que le corresponden a la fila según su fórmula y factor."""
     meses = FORMULAS[c.formula](fila, c, p)
     factor = fila.factor if fila.factor is not None else 1
-    return {mes: int(round((meses.get(mes) or 0) * factor)) for mes in MESES}
+    ceros = meses_en_cero(fila)
+    return {mes: 0 if mes in ceros else int(round((meses.get(mes) or 0) * factor)) for mes in MESES}
 
 
 def aplicar_formula(fila, c, p):
@@ -1263,11 +1286,27 @@ def propagar(slug, ctx=None):
     return hechos
 
 
+def _ventana_desactualizada(c, ctx):
+    """True si las filas calculadas de `c` se cargaron con otros meses reales
+    que los que hay configurados ahora (histórico 'reales')."""
+    if c.carga.get('historico') != 'reales':
+        return False
+    ventana = set(ctx.meses_historico(c))
+    return any({m for m in (f.historico or {}) if m in MESES} != ventana
+               for f in ctx.filas(c.slug) if f.origen == SISTEMA and _viene_de_conceptos(f))
+
+
 def recalcular_todo():
     """Tras cambiar parámetros: fórmulas de los conceptos base + todos los derivados."""
     ctx = Contexto()
     with bloqueo():
         for c in BASE:
+            if _ventana_desactualizada(c, ctx):
+                # Cambiaron los meses con datos reales (o la fecha de corte) desde
+                # la última carga: el histórico guardado ya no sirve, se vuelve a
+                # leer de Conceptos (las filas manuales se conservan).
+                _reemplazar_base(c, ctx)
+                continue
             automaticas = [f for f in ctx.filas(c.slug) if f.origen == SISTEMA]
             for fila in automaticas:
                 aplicar_formula(fila, c, ctx.p)
@@ -1358,6 +1397,13 @@ def _reemplazar_base(c, ctx):
         PresupuestoNomina.objects.bulk_update(retocadas, ['origen'], batch_size=1000)
 
     reemplazables = {f.pk for f in actuales if f.origen == SISTEMA and _viene_de_conceptos(f)}
+    # Los meses fijos en 0 de una persona pasan a sus filas recargadas
+    ceros_por_cedula = {_cedula_de_clave(f): sorted(meses_en_cero(f)) for f in actuales
+                        if f.pk in reemplazables and meses_en_cero(f)}
+    for f in nuevas:
+        if f.cedula in ceros_por_cedula:
+            _fijar_meses_cero(f, ceros_por_cedula[f.cedula])
+            aplicar_formula(f, c, ctx.p)
     conservadas = [f for f in actuales if f.pk not in reemplazables]
     # La persona se reconoce por la cédula con que salió de Conceptos (la de
     # la clave): así una fila a la que se le cambió la cédula también reemplaza
@@ -1748,6 +1794,7 @@ def guardar(slug, filas_json, usuario=''):
             fila.actualizado_por = usuario
 
             forzar = bool(datos.get('_recalcular'))
+            era_manual = fila.origen == MANUAL
             if forzar:
                 fila.origen = SISTEMA
                 forzadas = True
@@ -1756,6 +1803,16 @@ def guardar(slug, filas_json, usuario=''):
                     # fila escrita a mano: sus valores pasan a ser el histórico
                     divisor = fila.factor or 1
                     fila.historico = {m: entrantes[m] / divisor for m in invertibles}
+                if not c.derivado:
+                    # Los meses que la fila manual tenía en 0 se quedan en 0
+                    # (si todos estaban en 0 se calcula todo el año).
+                    ceros = [m for m in MESES if not entrantes[m]] if era_manual else []
+                    _fijar_meses_cero(fila, ceros if len(ceros) < len(MESES) else [])
+                    if ceros and len(ceros) < len(MESES):
+                        resumen['meses_cero'] += len(ceros)
+            elif meses_en_cero(fila):
+                # Si se escribe un valor en un mes que estaba fijo en 0, ese mes se libera.
+                _fijar_meses_cero(fila, [m for m in meses_en_cero(fila) if not entrantes[m]])
 
             # Cambiar a mano la cédula, el nombre, el centro, el área, el cargo o
             # el concepto de una fila calculada la vuelve MANUAL (como editar un mes).

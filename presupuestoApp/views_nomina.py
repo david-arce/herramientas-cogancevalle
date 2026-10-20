@@ -568,6 +568,8 @@ def nomina_guardar(request, tipo):
                f"{resumen.get('eliminadas', 0)} eliminadas)")
     if resumen.get('calculadas'):
         mensaje += f" · {resumen['calculadas']} filas calculadas sin cambios"
+    if resumen.get('meses_cero'):
+        mensaje += f" · {resumen['meses_cero']} mes(es) que estaban en 0 se dejaron en 0"
     aviso = ' · '.join(avisos)
     if resumen.get('personas_corregidas'):
         aviso = (f"Cédula / nombre actualizado en todos los conceptos para "

@@ -814,7 +814,15 @@
 
     _celda(fila, col) {
       if (col.tipo === 'numero') return formatearNumero(fila[col.campo]);
-      if (col.tipo === 'origen') return ORIGENES[fila.origen] || ORIGENES.manual;
+      if (col.tipo === 'origen') {
+        const ceros = (fila.historico && fila.historico._meses_cero) || [];
+        if (fila.origen === 'sistema' && ceros.length) {
+          // Restablecida desde manual: esos meses se quedan en 0
+          const lista = ceros.map(m => m.slice(0, 3)).join(', ');
+          return `<span class="pt-origen pt-origen--sistema" title="Calculado, salvo los meses que estaban en 0: ${escapar(lista)}">⚙️ Calculado·0</span>`;
+        }
+        return ORIGENES[fila.origen] || ORIGENES.manual;
+      }
       return escapar(fila[col.campo] ?? '');
     }
 
