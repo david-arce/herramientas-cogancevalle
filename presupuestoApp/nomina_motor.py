@@ -461,19 +461,26 @@ def f_retroactivo(fila, c, p):
     """Enero y febrero con la base anterior; en marzo se paga el nuevo valor
     más el retroactivo de enero y febrero; de abril en adelante, el nuevo.
 
-    Sueldos (con_minimo): si el salario del año actual es menor o igual al
-    salario mínimo PROYECTADO (mínimo × (1 + incremento salarial)), se toma el
-    mínimo proyectado todo el año, porque sube por decreto desde enero y nadie
-    puede ganar menos (antes solo aplicaba a quien ganaba el mínimo actual, y
-    quien ganaba un poco más quedaba en enero y febrero por debajo del nuevo
-    mínimo). Si es mayor, se proyecta desde el salario del año actual."""
+    Sueldos (con_minimo):
+    - Quien gana el mínimo actual: mínimo proyectado (mínimo × (1 + incremento))
+      todo el año, porque sube por decreto desde enero.
+    - Quien gana más del mínimo actual pero no alcanza el mínimo proyectado:
+      enero y febrero con el mínimo proyectado (nadie puede ganar menos) y desde
+      marzo su salario + el incremento, con el retroactivo de enero y febrero
+      sobre lo que ya se le pagó.
+    - Los demás: enero y febrero con su salario actual y desde marzo el
+      incremento con retroactivo.
+    """
     base = fila.base or 0
-    if c.con_minimo and p.salario_minimo and 0 < base <= p.minimo_incrementado:
+    if c.con_minimo and p.salario_minimo and 0 < base <= p.salario_minimo:
         return dict.fromkeys(MESES, p.minimo_incrementado)
     nuevo = base * (1 + p.pct(c.pct))
+    pagado = base
+    if c.con_minimo and p.salario_minimo and base > 0:
+        pagado = max(base, p.minimo_incrementado)     # enero y febrero nunca por debajo del mínimo nuevo
     meses = dict.fromkeys(MESES, nuevo)
-    meses['enero'] = meses['febrero'] = base
-    meses['marzo'] = nuevo + 2 * (nuevo - base)
+    meses['enero'] = meses['febrero'] = pagado
+    meses['marzo'] = nuevo + 2 * (nuevo - pagado)
     return meses
 
 
@@ -1618,6 +1625,12 @@ def guardar(slug, filas_json, usuario=''):
             antes = None
             if nueva:
                 fila = PresupuestoNomina(tipo=slug, origen=MANUAL)
+                if datos.get('_restaurada') and not c.derivado and datos.get('origen') == SISTEMA:
+                    # Fila eliminada que se recuperó con "Deshacer": vuelve tal como
+                    # era (calculada, con su clave y su histórico), no como manual.
+                    fila.origen = SISTEMA
+                    fila.clave = texto(datos.get('clave'))
+                    fila.historico = datos.get('historico') if isinstance(datos.get('historico'), dict) else {}
             if datos.get('_uid'):
                 uids.append((str(datos['_uid']), fila))
             if not nueva:

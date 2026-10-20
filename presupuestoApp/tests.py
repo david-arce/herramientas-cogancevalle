@@ -2501,8 +2501,7 @@ class NominaAutoguardadoTests(TestCase):
 
 
 class SueldoMinimoProyectadoTests(TestCase):
-    """Sueldos: salario ≤ mínimo proyectado → mínimo proyectado todo el año;
-    si no, se proyecta desde el salario del año actual (con retroactivo)."""
+    """Sueldos con mínimo 1.423.500 e incremento 7 % (mínimo proyectado 1.523.145)."""
 
     def setUp(self):
         self.p = nomina_motor.Parametros(incremento_salarial=7, salario_minimo=1423500)
@@ -2512,18 +2511,20 @@ class SueldoMinimoProyectadoTests(TestCase):
     def meses(self, base):
         return nomina_motor.f_retroactivo(linea_nomina(base=base), self.c, self.p)
 
-    def test_quien_gana_el_minimo_toma_el_minimo_proyectado(self):
+    def test_quien_gana_el_minimo_toma_el_minimo_proyectado_todo_el_anio(self):
         self.assertEqual(set(self.meses(1423500).values()), {self.minimo_proy})
 
-    def test_quien_gana_un_poco_mas_del_minimo_toma_el_minimo_proyectado(self):
+    def test_un_poco_mas_del_minimo(self):
+        # ene-feb: mínimo proyectado · desde marzo: salario + 7 % con retroactivo sobre lo pagado
         meses = self.meses(1500000)
-        self.assertEqual(set(meses.values()), {self.minimo_proy})
-        self.assertGreaterEqual(meses["enero"], self.minimo_proy)
+        nuevo = 1500000 * 1.07                                # 1.605.000
+        self.assertEqual(meses["enero"], self.minimo_proy)
+        self.assertEqual(meses["febrero"], self.minimo_proy)
+        self.assertAlmostEqual(meses["marzo"], nuevo + 2 * (nuevo - self.minimo_proy))   # 1.768.710
+        self.assertAlmostEqual(meses["abril"], nuevo)
+        self.assertAlmostEqual(meses["diciembre"], nuevo)
 
-    def test_igual_al_minimo_proyectado(self):
-        self.assertEqual(set(self.meses(1523145).values()), {self.minimo_proy})
-
-    def test_por_encima_se_proyecta_desde_su_salario(self):
+    def test_por_encima_del_minimo_proyectado(self):
         meses = self.meses(2000000)
         self.assertEqual(meses["enero"], 2000000)
         self.assertEqual(meses["febrero"], 2000000)
@@ -2605,3 +2606,34 @@ class NominaCorreccionPersonaTests(TestCase):
         self.editar_sueldo("111", cedula="999")
         self.editar_sueldo("999", cedula="111")
         self.assertFalse(CorreccionPersonaNomina.objects.exists())
+
+
+class NominaDeshacerEliminarTests(TestCase):
+    """Deshacer la eliminación de una fila calculada la devuelve calculada
+    (con su clave y su histórico), no como fila manual."""
+
+    def setUp(self):
+        self.client.force_login(User.objects.create_user("admin"))
+        self.fila = linea_nomina(origen="sistema", clave="1001#0", base=1000, historico={"enero": 1000})
+        # sus meses son los calculados (como cualquier fila calculada)
+        nomina_motor.aplicar_formula(self.fila, nomina_motor.CONCEPTOS["sueldos"], nomina_motor.Parametros.cargar())
+        self.fila.save()
+
+    def enviar(self, filas):
+        r = self.client.post(reverse("nomina_guardar", args=["sueldos"]), json.dumps({"filas": filas}),
+                             content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        return r.json()
+
+    def test_fila_restaurada_vuelve_calculada(self):
+        datos = self.client.get(reverse("nomina_datos", args=["sueldos"])).json()["data"]
+        self.enviar([])                                            # se eliminó por error
+        restaurada = dict(datos[0], id=None, _uid="u-r", _restaurada=True)
+        r = self.enviar([restaurada])                              # Deshacer
+        nueva = PresupuestoNomina.objects.get(pk=r["nuevos"]["u-r"])
+        self.assertEqual((nueva.origen, nueva.clave, nueva.historico), ("sistema", "1001#0", {"enero": 1000}))
+
+    def test_sin_marca_una_fila_nueva_sigue_siendo_manual(self):
+        datos = self.client.get(reverse("nomina_datos", args=["sueldos"])).json()["data"]
+        r = self.enviar(datos + [dict(datos[0], id=None, _uid="u-n", nombre="OTRA")])
+        self.assertEqual(PresupuestoNomina.objects.get(pk=r["nuevos"]["u-n"]).origen, "manual")
