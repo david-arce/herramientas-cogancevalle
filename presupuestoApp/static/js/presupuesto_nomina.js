@@ -98,6 +98,10 @@
       urlGuardar: soloLectura ? null : config.urls.guardar,
       claveRespaldo: `nomina|${config.usuario || ''}|${config.slug}`,
       indicador: estado,
+      botonesHistorial: {
+        deshacer: document.querySelector('[data-rol="deshacer"]'),
+        rehacer: document.querySelector('[data-rol="rehacer"]'),
+      },
       nombreArchivo: 'presupuesto_nomina_' + config.slug,
       conceptoNuevo: config.conceptoNuevo || '',
       accionesExtra: abrirDialogo ? [{
@@ -119,6 +123,7 @@
           excluir: fila.excluir_de || []
         });
         if (excluir === null) return;
+        tabla.antesDeCambiar();
         fila.excluir_de = excluir;
         tabla.pintar();
         tabla.marcarCambios();

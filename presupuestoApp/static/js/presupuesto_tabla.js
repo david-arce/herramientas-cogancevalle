@@ -241,6 +241,11 @@
       this._timerGuardado = null;
       this._respuestaPendiente = null;
       this._avisoReintento = false;
+      // Deshacer / rehacer: fotos de la tabla antes de cada cambio
+      this._pilaDeshacer = [];
+      this._pilaRehacer = [];
+      this._fotoTomada = false;
+      this._idPorUid = {};          // id que el servidor dio a cada fila nueva
       // Selección de celdas tipo Excel: índices sobre `visibles` y `columnas`
       this.cursor = null;          // {f, c}
       this.ancla = null;           // esquina fija del rango
@@ -267,6 +272,75 @@
 
     /** Se puede editar: tabla editable y datos ya cargados del servidor. */
     _puedeEditar() { return !!this.cfg.editable && this.datosCargados; }
+
+    // ═════════════════════════════════════════════════════════════════
+    //  Deshacer / rehacer (botones ↩️ ↪️, Ctrl+Z y Ctrl+Y)
+    //  Antes de cada cambio se guarda una foto de la tabla. Todo lo que se
+    //  hace en una misma operación (pegar un bloque, rellenar, Supr sobre un
+    //  rango, eliminar una fila…) es UN solo paso de deshacer.
+    //  Deshacer también se guarda solo (autoguardado).
+    // ═════════════════════════════════════════════════════════════════
+    _foto() { return JSON.stringify(this.filas); }
+
+    /** Llamar ANTES de modificar la tabla. */
+    antesDeCambiar() {
+      if (this._fotoTomada || !this._puedeEditar()) return;
+      this._fotoTomada = true;
+      this._pilaDeshacer.push(this._foto());
+      if (this._pilaDeshacer.length > 50) this._pilaDeshacer.shift();
+      this._pilaRehacer.length = 0;
+      queueMicrotask(() => { this._fotoTomada = false; this._pintarHistorial(); });
+    }
+
+    puedeDeshacer() { return this._puedeEditar() && this._pilaDeshacer.length > 0; }
+    puedeRehacer() { return this._puedeEditar() && this._pilaRehacer.length > 0; }
+    deshacer() { if (this._restaurar(this._pilaDeshacer, this._pilaRehacer)) toast('Cambio deshecho ↩️'); }
+    rehacer() { if (this._restaurar(this._pilaRehacer, this._pilaDeshacer)) toast('Cambio rehecho ↪️'); }
+
+    _limpiarHistorial() {
+      this._pilaDeshacer.length = 0;
+      this._pilaRehacer.length = 0;
+      this._pintarHistorial();
+    }
+
+    _pintarHistorial() {
+      const b = this.cfg.botonesHistorial || {};
+      if (b.deshacer) b.deshacer.disabled = !this.puedeDeshacer();
+      if (b.rehacer) b.rehacer.disabled = !this.puedeRehacer();
+    }
+
+    _restaurar(desde, hacia) {
+      if (!desde.length || !this._puedeEditar()) return false;
+      const editor = this.tbody.querySelector('.pt-entrada');
+      if (editor) editor.blur();                      // cierra (y guarda) la celda en edición
+      const clave = (f) => String(f._uid || f.id || '');
+      const antes = new Map(this.filas.map(f => [clave(f), JSON.stringify(f)]));
+      const origenAntes = new Map(this.filas.map(f => [clave(f), f.origen]));
+      const ids = new Set(this.filas.filter(f => f.id).map(f => String(f.id)));
+      hacia.push(this._foto());
+      this.filas = JSON.parse(desde.pop());
+      this.fijadas = new WeakSet();
+      this.filas.forEach(f => {
+        if (!f.id && f._uid && this._idPorUid[f._uid]) f.id = this._idPorUid[f._uid];
+        if (f.id && !ids.has(String(f.id))) {
+          // Fila que se había eliminado: vuelve como fila nueva; el servidor
+          // la recrea con su origen, su clave y su histórico (_restaurada).
+          f.id = null;
+          f._uid = f._uid || nuevoUid();
+          f._restaurada = true;
+        } else if (f.origen === 'sistema' && origenAntes.get(clave(f)) === 'manual') {
+          // La edición la había vuelto manual: al deshacer vuelve a ser calculada.
+          f._recalcular = true;
+        }
+        if (antes.get(clave(f)) !== JSON.stringify(f)) this.fijadas.add(f);   // lo deshecho queda a la vista
+      });
+      this.seleccion.clear();
+      this.filaActiva = null;
+      this.pintar();
+      this.marcarCambios();
+      this._pintarHistorial();
+      return true;
+    }
 
     // ------------------------------------------------------ cambios pendientes
     /** Hubo un cambio: se programa el guardado automático. */
@@ -349,8 +423,9 @@
         // p. ej. "Cédula / nombre actualizado en todos los conceptos"
         if (resp.aviso) toast(resp.aviso, resp.resumen && resp.resumen.personas_corregidas ? 'success' : 'warning', 8000);
         const nuevos = resp.nuevos || {};
+        Object.assign(this._idPorUid, nuevos);
         this.filas.forEach(f => {
-          if (!f.id && f._uid && nuevos[f._uid]) f.id = nuevos[f._uid];
+          if (!f.id && f._uid && nuevos[f._uid]) { f.id = nuevos[f._uid]; delete f._restaurada; }
         });
       } else if (estado === 'guardado') {
         const r = info.respuesta || {};
@@ -443,6 +518,7 @@
       }
       this.filas = filas.map(f => Object.assign({}, f));
       this.seleccion.clear();
+      this._limpiarHistorial();
       this.pintar();
       this.marcarCambios();
       this.guardarAhora();
@@ -707,6 +783,7 @@
       this.seleccion.clear();
       this.filaActiva = null;
       this._respuestaPendiente = null;
+      this._limpiarHistorial();       // la tabla vino entera del servidor
       this.pintar();
       this.marcarCambios(false);
     }
@@ -1097,6 +1174,17 @@
     }
 
     _conectarCeldas() {
+      // Ctrl+Z deshacer · Ctrl+Y (o Ctrl+Shift+Z) rehacer. Dentro de una caja
+      // de texto se deja el deshacer propio del navegador.
+      document.addEventListener('keydown', (e) => {
+        if (!(e.ctrlKey || e.metaKey) || e.altKey || !this.cfg.editable) return;
+        const k = e.key.toLowerCase();
+        if (k !== 'z' && k !== 'y') return;
+        if (e.target.closest && e.target.closest('input, select, textarea, .pt-entrada, dialog')) return;
+        e.preventDefault();
+        if (k === 'y' || e.shiftKey) this.rehacer(); else this.deshacer();
+      });
+
       const coords = (el) => {
         const td = el.closest ? el.closest('td[data-col]') : null;
         return td ? { f: Number(td.dataset.fila), c: Number(td.dataset.col) } : null;
@@ -1342,6 +1430,7 @@
 
     /** Guarda un valor y recalcula el total. El servidor decide si la fila pasa a manual. */
     setValor(fila, campo, valor) {
+      this.antesDeCambiar();
       fila[campo] = valor;
       // Lo que se escribe a mano manda sobre un "restablecer cálculo" pendiente.
       if (MESES.includes(campo) || campo === 'base') delete fila._recalcular;
@@ -1404,6 +1493,7 @@
         if (avisar) toast('Selecciona al menos una fila ⚠️', 'warning');
         return 0;
       }
+      this.antesDeCambiar();
       filas.forEach(fila => { fn(fila); TablaPresupuesto.recalcularTotal(fila); });
       this.pintar();
       this.marcarCambios();
@@ -1432,6 +1522,7 @@
     }
 
     agregarFila(base = {}) {
+      this.antesDeCambiar();
       const fila = {};
       this.columnas.forEach(c => { fila[c.campo] = c.tipo === 'numero' ? 0 : ''; });
       Object.assign(fila, TablaPresupuesto.filaManual(Object.assign(this._baseFilaNueva(), base)));
@@ -1460,6 +1551,7 @@
     }
 
     duplicar(fila) {
+      this.antesDeCambiar();
       const copia = TablaPresupuesto.filaManual(fila);
       MESES.forEach(m => { if (m in copia) copia[m] = 0; });
       copia.total = 0;
@@ -1481,12 +1573,13 @@
       if (!confirm(`¿Eliminar esta fila?\n\n${quien}\nTotal: ${total}\n\nSe borrará del presupuesto y se recalcularán los conceptos que dependen de ella.`)) {
         return false;
       }
+      this.antesDeCambiar();
       this.filas.splice(this.filas.indexOf(fila), 1);
       this.seleccion.delete(fila);
       if (this.filaActiva === fila) this.filaActiva = null;
       this.pintar();
       this.marcarCambios();
-      toast('Fila eliminada 🗑️');
+      toast('Fila eliminada 🗑️ · Ctrl+Z o ↩️ Deshacer para recuperarla', 'success', 5000);
       return true;
     }
 
@@ -1520,6 +1613,7 @@
       const seleccionadas = this.filasSeleccionadas();
       if (!seleccionadas.length) { toast('Selecciona al menos una fila ⚠️', 'warning'); return 0; }
 
+      this.antesDeCambiar();
       const nuevas = [];
       seleccionadas.forEach(fila => {
         reparto.filter(r => r.porcentaje > 0).forEach(r => {
@@ -1619,6 +1713,8 @@
     if (urls.cargarBase) al('cargar-base', accionServidor(urls.cargarBase));
     if (urls.borrar) al('borrar', accionServidor(urls.borrar));
 
+    al('deshacer', () => tabla.deshacer());
+    al('rehacer',  () => tabla.rehacer());
     al('agregar',  extra.agregar || (() => { tabla.agregarFila(); toast('Fila agregada ✅'); }));
     al('pegar',    () => tabla.pegarDelPortapapeles());
     al('exportar', () => tabla.exportar());

@@ -23,19 +23,23 @@
     <button type="button" class="pt-btn" data-rol="cargar-base"
             title="Vuelve a calcularlo con los datos de hoy">🔄 Recalcular</button>
     {% if config.soloAgregar %}
+      <button type="button" class="pt-btn" data-rol="deshacer" title="Deshacer el último cambio (Ctrl + Z)" disabled>↩️ Deshacer</button>
+      <button type="button" class="pt-btn" data-rol="rehacer" title="Rehacer (Ctrl + Y)" disabled>↪️ Rehacer</button>
       <button type="button" class="pt-btn" data-rol="agregar">➕ Agregar fila</button>
       <span class="pt-autoguardado pt-autoguardado--guardando" data-rol="estado" role="status" aria-live="polite"
             title="Los cambios se guardan solos"><span class="pt-autoguardado__punto" aria-hidden="true"></span><span data-rol="estado-texto">Cargando…</span></span>
     {% endif %}
   {% elif not config.soloLectura %}
     <span class="pt-espaciador"></span>
+    <button type="button" class="pt-btn" data-rol="deshacer" title="Deshacer el último cambio (Ctrl + Z)" disabled>↩️ Deshacer</button>
+    <button type="button" class="pt-btn" data-rol="rehacer" title="Rehacer (Ctrl + Y)" disabled>↪️ Rehacer</button>
     <button type="button" class="pt-btn" data-rol="cargar-base"
         data-palabra="CARGAR"
         data-confirmar-escrito="Se volverán a cargar las filas de {{ config.etiqueta }} que vienen de Conceptos. Las filas manuales y las agregadas en pantalla se conservan.">📂 Cargar desde Conceptos</button>
     <button type="button" class="pt-btn" data-rol="agregar">➕ Agregar fila</button>
     {% if config.conPegar %}<button type="button" class="pt-btn" data-rol="pegar">📋 Pegar fila copiada</button>{% endif %}
     <button type="button" class="pt-btn pt-btn--primario" data-rol="recalcular"
-            title="Las filas seleccionadas vuelven a ser calculadas por el sistema">⚙️ Restablecer cálculo en seleccionadas</button>
+            title="Las filas seleccionadas (✔) vuelven a ser calculadas por el sistema">⚙️ Restablecer cálculo</button>
     <span class="pt-autoguardado pt-autoguardado--guardando" data-rol="estado" role="status" aria-live="polite"
             title="Los cambios se guardan solos"><span class="pt-autoguardado__punto" aria-hidden="true"></span><span data-rol="estado-texto">Cargando…</span></span>
     {% comment %} <button type="button" class="pt-btn pt-btn--peligro" data-rol="borrar" data-descarta
@@ -61,7 +65,7 @@
       {% if config.depende %}<span>Se calcula a partir de: <strong>{{ config.depende|join:", " }}</strong>.</span>{% endif %}
       {% if config.afecta %}<span>Al guardarse se actualiza también: <strong>{{ config.afecta|join:", " }}</strong>.</span>{% endif %}
       <span>Los cambios <strong>se guardan solos</strong> unos segundos después de editar.</span>
-      <span class="pt-ayuda-excel">Se edita como en Excel: flechas para moverse, <kbd>Shift</kbd>+flechas para seleccionar, <kbd>Ctrl</kbd>+<kbd>C</kbd>/<kbd>V</kbd>, <kbd>Supr</kbd> para borrar y arrastre del cuadrito azul para copiar.</span>
+      <span class="pt-ayuda-excel">Se edita como en Excel: flechas para moverse, <kbd>Shift</kbd>+flechas para seleccionar, <kbd>Ctrl</kbd>+<kbd>C</kbd>/<kbd>V</kbd>, <kbd>Supr</kbd> para borrar, arrastre del cuadrito azul para copiar y <kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd> para deshacer y rehacer.</span>
     {% endif %}
   </div>
 {% endblock %}
