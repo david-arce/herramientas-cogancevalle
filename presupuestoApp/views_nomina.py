@@ -55,6 +55,7 @@ CAMPOS_PARAMETROS = {
     'vacaciones': 'vacaciones',
     'salarioMinimo': 'salario_minimo',
     'incrementoComisiones': 'incremento_comisiones',
+    'baseAuxilioTransporte': 'base_auxilio_transporte',
 }
 
 
@@ -156,6 +157,10 @@ def presupuestoNomina(request):
             return JsonResponse({'status': 'ok', 'msg': f'{n} filas actualizadas en todos los conceptos '
                                                         '· prestaciones y seguridad social recalculadas ✅'})
 
+        if accion == 'volver_a_cargar':
+            nomina.quitar_eliminada(request.POST.get('id'))
+            return JsonResponse({'status': 'ok', 'msg': 'La fila volverá en la próxima carga desde Conceptos'})
+
         if accion == 'quitar_correccion':
             nomina.quitar_correccion(request.POST.get('cedula_origen'))
             return JsonResponse({'status': 'ok', 'msg': 'La corrección ya no se aplicará en las próximas cargas'})
@@ -222,6 +227,7 @@ def presupuestoNomina(request):
         'avisos_parametros': avisos,
         'foco_personas': foco,
         'correcciones': nomina.listar_correcciones(),
+        'eliminadas': nomina.listar_eliminadas(),
         'foco_marcados': len(marcados),
         'origen': {
             'anios': origen.resumen_anios(),
@@ -349,6 +355,7 @@ def nomina_recargar_bases(request):
     repetidos = conteo.pop('_repetidos', 0)
     manuales = conteo.pop('_manuales', 0)
     bloqueadas = conteo.pop('_bloqueadas', 0)
+    eliminadas = conteo.pop('_eliminadas', 0)
     total = sum(conteo.values())
     msg = (f'{total} filas cargadas desde Conceptos {origen.anio_base()} '
            'y todo el presupuesto recalculado ✅')
@@ -358,6 +365,8 @@ def nomina_recargar_bases(request):
         msg += f' · {bloqueadas} persona(s) conservan su fila editada'
     if repetidos:
         msg += f' · {repetidos} repetidas omitidas (la misma persona en otra sede)'
+    if eliminadas:
+        msg += f' · {eliminadas} no se cargaron porque se habían eliminado'
     return JsonResponse({'status': 'ok', 'conteo': conteo, 'msg': msg})
 
 
@@ -485,6 +494,11 @@ def nomina_tabla(request, tipo):
         'conceptoNuevo': (c.carga or {}).get('concepto') or c.etiqueta.upper(),
         'parametros': [{'etiqueta': nomina.ETIQUETAS_PARAMETRO[p], 'valor': getattr(params, p)}
                        for p in c.parametros],
+        # valor en pesos que se edita en esta misma pantalla (p. ej. base del auxilio de transporte)
+        'baseEditable': ({'campo': c.base_editable, 'etiqueta': nomina.ETIQUETAS_PARAMETRO[c.base_editable],
+                          'valor': getattr(params, c.base_editable) or nomina.BASES_POR_DEFECTO.get(c.base_editable),
+                          'url': reverse('nomina_base_editable', args=[c.slug])}
+                         if c.base_editable else None),
         'depende': _nombres(c.depende),
         'afecta': _nombres(nomina.afectados_por(c.slug)),
         # para el diálogo "qué se actualiza con esta fila"
@@ -563,10 +577,35 @@ def nomina_guardar(request, tipo):
 
 @login_required
 @require_POST
+def nomina_base_editable(request, tipo):
+    """Guarda el valor base editable de un concepto (p. ej. la base del auxilio
+    de transporte) y vuelve a calcular ese concepto y los que dependen de él."""
+    c = _concepto_o_404(tipo)
+    if not c.base_editable:
+        return _error('Este concepto no tiene un valor base editable')
+    crudo = (_json(request) or {}).get('valor')
+    try:
+        valor = float(crudo) if isinstance(crudo, (int, float)) else nomina.numero(crudo, None)
+    except (TypeError, ValueError):
+        valor = None
+    if valor is None:
+        return _error('Escriba un valor numérico')
+    if not 0 < valor < 100_000_000:
+        return _error('El valor debe ser mayor que 0')
+    params, _ = ParametrosPresupuestos.objects.get_or_create(id=1)
+    setattr(params, c.base_editable, valor)
+    params.save(update_fields=[c.base_editable])
+    creadas, recalculados, *_ = nomina.cargar_base(c.slug)
+    return _respuesta_cambio(tipo, f'{nomina.ETIQUETAS_PARAMETRO[c.base_editable]}: {_pesos(valor)} · '
+                                   f'{c.etiqueta} recalculado ({creadas} filas) ✅', recalculados, valor=valor)
+
+
+@login_required
+@require_POST
 def nomina_cargar(request, tipo):
     c = _concepto_o_404(tipo)
     try:
-        creadas, recalculados, repetidos, conservadas, bloqueadas = nomina.cargar_base(tipo)
+        creadas, recalculados, repetidos, conservadas, bloqueadas, omitidas = nomina.cargar_base(tipo)
     except Exception as exc:                      # noqa: BLE001
         return _error(f'No se pudo cargar: {exc}', 500)
     origen = 'calculadas' if c.derivado else 'cargadas desde Conceptos'
@@ -577,6 +616,8 @@ def nomina_cargar(request, tipo):
         mensaje += f' · {bloqueadas} persona(s) conservan su fila editada en lugar de la calculada'
     if repetidos:
         mensaje += f' · {repetidos} repetidas omitidas (la misma persona en otra sede)'
+    if omitidas:
+        mensaje += f' · {omitidas} no se cargaron porque se habían eliminado'
     return _respuesta_cambio(tipo, mensaje, recalculados)
 
 

@@ -147,6 +147,38 @@
 
     PT.conectarBarra(tabla, config.urls, { agregar });
 
+    // Valor base editable del concepto (p. ej. base del auxilio de transporte)
+    const entradaBase = document.getElementById('baseEditable');
+    const botonBase = document.querySelector('[data-rol="guardar-base"]');
+    if (entradaBase && botonBase && config.baseEditable) {
+      let guardado = entradaBase.value;
+      const guardarBase = () => {
+        // pesos: los puntos son separadores de miles (249.095 = 249095)
+        const texto = entradaBase.value.trim().replace(/[.\s$]/g, '').replace(',', '.');
+        const valor = Number(texto);
+        if (!texto || !/^\d+(\.\d+)?$/.test(texto) || !(valor > 0)) {
+          PT.toast('Escriba un valor mayor que 0 (solo números) ⚠️', 'warning');
+          entradaBase.focus();
+          return;
+        }
+        PT.conSpinner(botonBase, async () => {
+          try {
+            const r = await PT.enviarJSON(config.baseEditable.url, { valor });
+            if (Array.isArray(r.data)) tabla.setDatos(r.data);
+            entradaBase.value = guardado = String(Math.round(r.valor));
+            entradaBase.classList.remove('pt-cambiado');
+            PT.toast(r.msg, 'success', 6000);
+          } catch (e) { PT.toast('No se pudo guardar la base ❌ ' + e.message, 'error', 6000); }
+        });
+      };
+      botonBase.addEventListener('click', guardarBase);
+      entradaBase.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); guardarBase(); }
+        if (e.key === 'Escape') { entradaBase.value = guardado; entradaBase.classList.remove('pt-cambiado'); }
+      });
+      entradaBase.addEventListener('input', () => entradaBase.classList.toggle('pt-cambiado', entradaBase.value !== guardado));
+    }
+
     // Ctrl/Cmd + S: no hace falta (se guarda solo), pero envía ya lo pendiente.
     if (!soloLectura && tabla.cola) {
       document.addEventListener('keydown', async (e) => {

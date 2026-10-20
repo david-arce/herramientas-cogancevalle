@@ -315,3 +315,28 @@ class CorreccionPersonaNomina(models.Model):
 
     def __str__(self):
         return f'{self.cedula_origen} → {self.cedula} {self.nombre}'
+
+
+class FilaEliminadaNomina(models.Model):
+    """Fila que vino de Conceptos y se eliminó en la pantalla del concepto.
+
+    Al volver a cargar desde Conceptos (o recargar todo) esa fila NO se vuelve
+    a crear. `llave` es la cédula de la persona o, en los conceptos sin cédula,
+    'centro|área|concepto'. Deshacer la eliminación (o "Volver a cargar" en el
+    tablero) borra el registro.
+    """
+    tipo = models.CharField(max_length=40)
+    llave = models.CharField(max_length=400)
+    nombre = models.CharField(max_length=150, blank=True, default='')
+    eliminado = models.DateTimeField(auto_now=True)
+    eliminado_por = models.CharField(max_length=150, blank=True, default='')
+
+    class Meta:
+        db_table = 'fila_eliminada_nomina'
+        ordering = ['tipo', 'nombre', 'llave']
+        constraints = [models.UniqueConstraint(fields=['tipo', 'llave'], name='fila_eliminada_nomina_unica')]
+        verbose_name = 'fila eliminada (nómina)'
+        verbose_name_plural = 'filas eliminadas (nómina)'
+
+    def __str__(self):
+        return f'{self.tipo} · {self.llave} {self.nombre}'

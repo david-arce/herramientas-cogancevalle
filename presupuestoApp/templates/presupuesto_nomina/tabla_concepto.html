@@ -17,6 +17,15 @@
   {% for p in config.parametros %}
     <span class="pt-parametro">{{ p.etiqueta }}: <strong>{{ p.valor|floatformat:"-2" }}</strong></span>
   {% endfor %}
+  {% if config.baseEditable %}
+    <span class="pt-parametro pt-parametro--editable">
+      <label for="baseEditable">{{ config.baseEditable.etiqueta }}:</label>
+      <input type="text" id="baseEditable" inputmode="numeric" autocomplete="off"
+             value="{{ config.baseEditable.valor|floatformat:'0' }}" title="Escriba el valor y pulse Enter o Guardar">
+      <button type="button" class="pt-btn pt-btn--primario pt-btn--chico" data-rol="guardar-base"
+              title="Guarda la base y recalcula {{ config.etiqueta|lower }} y lo que depende de él">💾 Guardar y recalcular</button>
+    </span>
+  {% endif %}
 
   {% if config.derivado %}
     <span class="pt-espaciador"></span>

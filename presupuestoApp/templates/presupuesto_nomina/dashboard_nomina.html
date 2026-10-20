@@ -247,6 +247,36 @@
       </section>
     </div>
 
+    {% if eliminadas %}
+    <div class="pt-seccion__cuerpo">
+      <section class="or-tarjeta">
+        <header>
+          <h4 class="or-titulo">Filas eliminadas que no se vuelven a cargar</h4>
+          <p class="or-ayuda">Se eliminaron en la pantalla del concepto, así que al cargar desde Conceptos no vuelven a aparecer.
+            Con <strong>Volver a cargar</strong> reaparecen en la próxima carga.</p>
+        </header>
+        <div class="or-tabla-envoltura">
+          <table class="or-tabla">
+            <thead><tr><th>Concepto</th><th>Persona / fila</th><th>Cédula o llave</th><th>Eliminada</th><th class="or-col-acciones"></th></tr></thead>
+            <tbody>
+              {% for e in eliminadas %}
+                <tr>
+                  <td>{{ e.etiqueta }}</td>
+                  <td>{{ e.nombre|default:"—" }}</td>
+                  <td class="dep">{{ e.llave }}</td>
+                  <td class="dep" style="white-space:nowrap">{{ e.eliminado|date:"d/m/Y H:i" }}{% if e.eliminado_por %} · {{ e.eliminado_por }}{% endif %}</td>
+                  <td class="or-col-acciones">
+                    <button type="button" class="pt-btn" data-volver-a-cargar="{{ e.id }}" title="Que vuelva en la próxima carga desde Conceptos">↩️ Volver a cargar</button>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+    {% endif %}
+
     <div class="pt-seccion__cuerpo or-nota">
       ⚠️ Recargar reemplaza las filas calculadas que vienen de Conceptos (sueldos, comisiones, horas extra…).
       Se conservan las filas manuales y las agregadas en pantalla, aunque se les haya restablecido el cálculo.
@@ -319,6 +349,8 @@
         <input type="number" id="vacaciones" name="vacaciones" min="0" step="0.01" value="{{ parametros.vacaciones|default_if_none:''|cut:',' }}"></div>
       <div class="dash-campo"><label for="salarioMinimo">Salario mínimo</label>
         <input type="number" id="salarioMinimo" name="salarioMinimo" min="0" step="0.01" value="{{ parametros.salario_minimo|default_if_none:''|cut:',' }}"></div>
+      <div class="dash-campo"><label for="baseAuxilioTransporte">Base auxilio de transporte ($)</label>
+        <input type="number" id="baseAuxilioTransporte" name="baseAuxilioTransporte" min="0" step="1" placeholder="200000" value="{{ parametros.base_auxilio_transporte|default_if_none:''|cut:',' }}"></div>
     </div>
     <div class="dash-acciones">
       <button type="button" class="pt-btn pt-btn--exito" id="btnActualizar">Guardar parámetros y recalcular</button>
@@ -568,6 +600,17 @@
             PT.toast(r.msg, r.status === 'ok' ? 'success' : 'error', 7000);
             if (r.status === 'ok') recargar();
           } catch (e) { PT.toast('No se pudo aplicar la corrección ❌', 'error'); }
+        });
+      });
+      document.querySelectorAll('[data-volver-a-cargar]').forEach(boton => {
+        boton.addEventListener('click', () => {
+          const datos = new FormData();
+          datos.append('action', 'volver_a_cargar');
+          datos.append('id', boton.dataset.volverACargar);
+          PT.conSpinner(boton, async () => {
+            try { const r = await enviar(datos); PT.toast(r.msg); recargar(); }
+            catch (e) { PT.toast('No se pudo ❌', 'error'); }
+          });
         });
       });
       document.querySelectorAll('[data-quitar-correccion]').forEach(boton => {

@@ -108,7 +108,9 @@ class ParametrosPresupuestos(models.Model):
     vacaciones = models.FloatField(blank=True, null=True)
     salario_minimo = models.FloatField(blank=True, null=True)
     incremento_comisiones = models.FloatField(blank=True, null=True)
-    
+    # Valor base (en pesos) del auxilio de transporte de nómina; vacío = 200.000
+    base_auxilio_transporte = models.FloatField(blank=True, null=True)
+
     class Meta:
         db_table = 'parametros_presupuestos'
 

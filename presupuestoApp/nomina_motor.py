@@ -25,7 +25,7 @@ from django.db.models import Avg, Count, Q, Sum
 from . import nomina_conceptos as origen
 from .models import ParametrosPresupuestos
 from .models_nomina import (MESES, ConceptosNomina, CorreccionPersonaNomina, DistribucionNomina,
-                            FocoSinComision, PresupuestoNomina)
+                            FilaEliminadaNomina, FocoSinComision, PresupuestoNomina)
 
 MESES = list(MESES)
 SISTEMA = PresupuestoNomina.ORIGEN_SISTEMA
@@ -41,6 +41,11 @@ LOCK_NOMINA = 874231002   # candado de PostgreSQL para no recalcular en paralelo
 #  Parámetros
 # ══════════════════════════════════════════════════════════════════════
 
+# Base del auxilio de transporte si no se ha definido en los parámetros
+AUXILIO_TRANSPORTE_BASE = 200000
+BASES_POR_DEFECTO = {'base_auxilio_transporte': AUXILIO_TRANSPORTE_BASE}
+
+
 @dataclass
 class Parametros:
     incremento_salarial: float = 0
@@ -52,6 +57,7 @@ class Parametros:
     vacaciones: float = 0
     salario_minimo: float = 0
     incremento_comisiones: float = 0
+    base_auxilio_transporte: float = 0
 
     @classmethod
     def cargar(cls):
@@ -62,6 +68,11 @@ class Parametros:
 
     def pct(self, campo):
         return (getattr(self, campo, 0) or 0) / 100 if campo else 0
+
+    @property
+    def base_auxilio(self):
+        """Base del auxilio de transporte (se edita en la pantalla del concepto)."""
+        return self.base_auxilio_transporte or AUXILIO_TRANSPORTE_BASE
 
     @property
     def minimo_incrementado(self):
@@ -82,6 +93,7 @@ class Concepto:
     pct: str = None              # campo de ParametrosPresupuestos que usa la fórmula
     permite_manual: bool = False  # derivado que además acepta filas agregadas a mano
     con_minimo: bool = False     # sueldos: quien gana el mínimo sube desde enero
+    base_editable: str = None    # parámetro (en pesos) que se edita en la pantalla del concepto
     titulo_base: str = None      # None → la tabla no muestra la columna "base"
     con_cedula: bool = True
     con_pegar: bool = False
@@ -129,8 +141,10 @@ _LISTA = [
              carga={'filtro': {'concepto': '389'}, 'historico': 'reales'}),
     Concepto('horas_extra', 'Horas extra', G_PRINCIPAL, formula='incremento_promedio',
              pct='incremento_salarial', parametros=('incremento_salarial',),
+             # Histórico: de enero hasta el mes de corte / "meses con datos reales"
+             # elegido (incluido); los meses siguientes se llenan con su promedio.
              carga={'filtro': {'concepto__in': ['114', '110', '111']},
-                    'historico': 'reales', 'descartar': 1,
+                    'historico': 'reales',
                     'agrupar': True, 'concepto': 'HORAS EXTRA'}),
     Concepto('medios_transporte', 'Medios de transporte', G_TRANSPORTE, formula='retroactivo',
              pct='incremento_ipc', titulo_base='Base', parametros=('incremento_ipc',),
@@ -161,6 +175,7 @@ _LISTA = [
     # ── Conceptos derivados: el ORDEN importa (topológico) ─────────────
     Concepto('auxilio_transporte', 'Auxilio de transporte', G_TRANSPORTE, derivado=True,
              titulo_base='Base', parametros=('auxilio_transporte', 'salario_minimo'),
+             base_editable='base_auxilio_transporte',
              depende=('sueldos', 'comisiones', 'horas_extra', 'medios_transporte', 'aprendiz')),
     Concepto('cesantias', 'Cesantías', G_PRESTACIONES, derivado=True, pct='cesantias',
              parametros=('cesantias',), depende=PRESTACION),
@@ -198,6 +213,7 @@ ETIQUETAS_PARAMETRO = {
     'vacaciones': 'Vacaciones (%)',
     'salario_minimo': 'Salario mínimo',
     'incremento_comisiones': 'Incremento comisiones (%)',
+    'base_auxilio_transporte': 'Base auxilio de transporte ($)',
 }
 
 
@@ -384,6 +400,7 @@ class Contexto:
         self._sedes = None
         self.repetidos = {}
         self.bloqueadas = {}     # {slug: personas cuya fila manual reemplaza a la calculada}
+        self.omitidas = {}       # {slug: filas de Conceptos que no se cargan porque se eliminaron}
         self.anio = origen.anio_base()
         self._correcciones = None
 
@@ -795,14 +812,13 @@ def clave_persona(fila):
     return f'{fila.cedula}|{fila.centro}|{fila.area}'
 
 
-AUXILIO_TRANSPORTE_BASE = 200000
-
-
 def gen_auxilio_transporte(ctx, c):
-    """Auxilio para quien devengue menos de 2 salarios mínimos en el mes."""
+    """Auxilio para quien devengue menos de 2 salarios mínimos en el mes:
+    base (editable en la pantalla del concepto) × (1 + % auxilio de transporte)."""
     p = ctx.p
     limite = p.minimo_incrementado * 2
-    valor = AUXILIO_TRANSPORTE_BASE * (1 + p.pct('auxilio_transporte'))
+    base = p.base_auxilio
+    valor = base * (1 + p.pct('auxilio_transporte'))
     por_cedula = lambda f: f.cedula  # noqa: E731
     totales = {t: sumar_por(ctx.filas(t), por_cedula)
                for t in ('medios_transporte', 'sueldos', 'comisiones', 'horas_extra', 'aprendiz')}
@@ -820,7 +836,7 @@ def gen_auxilio_transporte(ctx, c):
             if devengado and devengado < limite:
                 meses[mes] = valor * cuota[id(persona)]
         yield dict(identidad(persona, concepto='AUXILIO DE TRANSPORTE'),
-                   base=AUXILIO_TRANSPORTE_BASE, clave=clave_persona(persona), **meses)
+                   base=base, clave=clave_persona(persona), **meses)
 
 
 def _prestacion(ctx, c, fuentes, concepto):
@@ -1271,6 +1287,41 @@ def _viene_de_conceptos(fila):
     return bool(fila.clave) and '#m' not in fila.clave
 
 
+def _cedula_de_clave(fila):
+    """Cédula con que la fila salió de Conceptos (clave 'cédula#n')."""
+    return (fila.clave or '').split('#')[0] if _viene_de_conceptos(fila) else fila.cedula
+
+
+def llave_eliminada(fila):
+    """Cómo se reconoce una fila de Conceptos eliminada: la cédula de la persona
+    (la de la clave) o, si el concepto no tiene cédula, centro|área|concepto."""
+    cedula = _cedula_de_clave(fila)
+    if cedula:
+        return cedula
+    return '|'.join(texto(v).upper() for v in (fila.centro_origen or fila.centro,
+                                               fila.area_origen or fila.area, fila.concepto))
+
+
+def _recordar_eliminadas(c, filas, usuario):
+    """Las filas de Conceptos que se eliminaron no vuelven en la próxima carga."""
+    for fila in filas:
+        if _viene_de_conceptos(fila):
+            FilaEliminadaNomina.objects.update_or_create(
+                tipo=c.slug, llave=llave_eliminada(fila)[:400],
+                defaults={'nombre': fila.nombre or fila.concepto, 'eliminado_por': usuario})
+
+
+def listar_eliminadas():
+    return [dict(f, etiqueta=CONCEPTOS[f['tipo']].etiqueta if f['tipo'] in CONCEPTOS else f['tipo'])
+            for f in FilaEliminadaNomina.objects.values('id', 'tipo', 'llave', 'nombre',
+                                                       'eliminado', 'eliminado_por')]
+
+
+def quitar_eliminada(pk):
+    """La fila vuelve a cargarse desde Conceptos en la próxima carga."""
+    return FilaEliminadaNomina.objects.filter(pk=pk).delete()[0]
+
+
 def _reemplazar_base(c, ctx):
     """Vuelve a cargar un concepto base desde Conceptos.
 
@@ -1283,12 +1334,37 @@ def _reemplazar_base(c, ctx):
     Devuelve (creadas, conservadas).
     """
     actuales = ctx.filas(c.slug)
+    nuevas = filas_de_conceptos(c, ctx)
+    # Filas que se eliminaron en pantalla: no se vuelven a crear.
+    eliminadas = set(FilaEliminadaNomina.objects.filter(tipo=c.slug).values_list('llave', flat=True))
+    if eliminadas:
+        antes_n = len(nuevas)
+        nuevas = [f for f in nuevas if llave_eliminada(f) not in eliminadas]
+        if antes_n != len(nuevas):
+            ctx.omitidas[c.slug] = antes_n - len(nuevas)
+    nombre_en_conceptos = {f.cedula: f.nombre for f in nuevas if f.cedula}
+
+    # Filas calculadas a las que se les cambió la cédula o el nombre a mano
+    # antes de que eso las volviera manuales: se conservan como manuales en
+    # lugar de reemplazarlas (si no, se perdería el cambio).
+    retocadas = []
+    for f in actuales:
+        if f.origen == SISTEMA and _viene_de_conceptos(f):
+            original = _cedula_de_clave(f)
+            if original in nombre_en_conceptos and (f.cedula, f.nombre) != (original, nombre_en_conceptos[original]):
+                f.origen = MANUAL
+                retocadas.append(f)
+    if retocadas:
+        PresupuestoNomina.objects.bulk_update(retocadas, ['origen'], batch_size=1000)
+
     reemplazables = {f.pk for f in actuales if f.origen == SISTEMA and _viene_de_conceptos(f)}
     conservadas = [f for f in actuales if f.pk not in reemplazables]
-    editadas = {f.cedula for f in conservadas
-                if f.origen == MANUAL and f.cedula and _viene_de_conceptos(f)}
+    # La persona se reconoce por la cédula con que salió de Conceptos (la de
+    # la clave): así una fila a la que se le cambió la cédula también reemplaza
+    # a la nueva y la persona no queda dos veces.
+    editadas = {_cedula_de_clave(f) for f in conservadas
+                if f.origen == MANUAL and _viene_de_conceptos(f)} - {''}
 
-    nuevas = filas_de_conceptos(c, ctx)
     bloqueadas = {f.cedula for f in nuevas if f.cedula in editadas}
     nuevas = [f for f in nuevas if f.cedula not in editadas]
 
@@ -1312,7 +1388,7 @@ def cargar_base(slug):
             creadas, conservadas = _reemplazar_base(c, ctx)
         recalculados = propagar(slug, ctx)
     return (creadas, recalculados, sum(ctx.repetidos.values()),
-            conservadas, sum(ctx.bloqueadas.values()))
+            conservadas, sum(ctx.bloqueadas.values()), sum(ctx.omitidas.values()))
 
 def personas_que_comisionan():
     """[(cédula, nombre)] de quienes tienen comisiones en el presupuesto."""
@@ -1353,6 +1429,7 @@ def recargar_bases():
     conteo['_repetidos'] = sum(ctx.repetidos.values())
     conteo['_manuales'] = manuales
     conteo['_bloqueadas'] = sum(ctx.bloqueadas.values())
+    conteo['_eliminadas'] = sum(ctx.omitidas.values())
     return conteo
 
 def borrar(slug):
@@ -1437,14 +1514,16 @@ def corregir_persona(cedula_actual, cedula_nueva='', nombre_nuevo='', usuario=''
                              f"{', '.join(sorted(CONCEPTOS[t].etiqueta for t in choque if t in CONCEPTOS))}")
     ctx = ctx or Contexto()
     with bloqueo():
-        filas = list(PresupuestoNomina.objects.filter(cedula__in={vieja, nueva}))
         cambiadas = []
+        filas = list(PresupuestoNomina.objects.filter(
+            Q(cedula__in={vieja, nueva}) | Q(clave__startswith=vieja + '#') | Q(clave__startswith=vieja + '|')))
         for fila in filas:
             antes = (fila.cedula, fila.nombre, fila.clave)
             if fila.cedula == vieja:
                 fila.cedula = nueva
-                fila.clave = _clave_con_cedula(fila.clave, vieja, nueva)
-            if nombre_nuevo:
+            # la clave guarda la cédula con que la fila salió de Conceptos
+            fila.clave = _clave_con_cedula(fila.clave, vieja, nueva)
+            if nombre_nuevo and fila.cedula == nueva:
                 fila.nombre = nombre_nuevo
             if (fila.cedula, fila.nombre, fila.clave) != antes:
                 fila.actualizado_por = usuario or fila.actualizado_por
@@ -1453,6 +1532,8 @@ def corregir_persona(cedula_actual, cedula_nueva='', nombre_nuevo='', usuario=''
                                               batch_size=1000)
 
         if nueva != vieja:
+            FilaEliminadaNomina.objects.filter(llave=vieja).exclude(
+                tipo__in=FilaEliminadaNomina.objects.filter(llave=nueva).values('tipo')).update(llave=nueva)
             if DistribucionNomina.objects.filter(cedula=nueva).exists():
                 DistribucionNomina.objects.filter(cedula=vieja).delete()
             else:
@@ -1631,6 +1712,13 @@ def guardar(slug, filas_json, usuario=''):
                     fila.origen = SISTEMA
                     fila.clave = texto(datos.get('clave'))
                     fila.historico = datos.get('historico') if isinstance(datos.get('historico'), dict) else {}
+                if datos.get('_restaurada') and not c.derivado:
+                    # ya no cuenta como eliminada
+                    fila.centro_origen = texto(datos.get('centro_origen'))
+                    fila.area_origen = texto(datos.get('area_origen'))
+                    fila.clave = fila.clave or texto(datos.get('clave'))
+                    fila.concepto = texto(datos.get('concepto'))
+                    FilaEliminadaNomina.objects.filter(tipo=slug, llave=llave_eliminada(fila)[:400]).delete()
             if datos.get('_uid'):
                 uids.append((str(datos['_uid']), fila))
             if not nueva:
@@ -1669,6 +1757,13 @@ def guardar(slug, filas_json, usuario=''):
                     divisor = fila.factor or 1
                     fila.historico = {m: entrantes[m] / divisor for m in invertibles}
 
+            # Cambiar a mano la cédula, el nombre, el centro, el área, el cargo o
+            # el concepto de una fila calculada la vuelve MANUAL (como editar un mes).
+            if (not nueva and not forzar and not c.derivado and fila.origen == SISTEMA
+                    and any(antes[campo] != getattr(fila, campo) for campo in CAMPOS_TEXTO)):
+                fila.origen = MANUAL
+                resumen['texto_editado'] += 1
+
             if not c.derivado and fila.origen == SISTEMA:
                 calculado = calcular(fila, c, p)
                 editados = {m for m in MESES if abs(entrantes[m] - calculado[m]) > TOLERANCIA}
@@ -1688,8 +1783,10 @@ def guardar(slug, filas_json, usuario=''):
                 resumen['manuales'] += 1
             (crear if nueva else actualizar).append(fila)
 
-        # Filas que el usuario quitó de la tabla
+        # Filas que el usuario quitó de la tabla (las de Conceptos no vuelven al recargar)
         eliminar = [fila.pk for fila in existentes.values()]
+        if not c.derivado:
+            _recordar_eliminadas(c, existentes.values(), usuario)
 
         campos = [*CAMPOS_TEXTO, 'cuenta', 'codcosto', 'excluir_de', 'base', 'factor', 'historico',
                   *MESES, 'total', 'origen', 'actualizado_por']
@@ -1722,7 +1819,7 @@ def guardar(slug, filas_json, usuario=''):
 #  Lectura
 # ══════════════════════════════════════════════════════════════════════
 
-CAMPOS_SALIDA = ('id', 'tipo', *CAMPOS_TEXTO, 'cuenta', 'codcosto', 'excluir_de', 'base', 'factor', 'historico',
+CAMPOS_SALIDA = ('id', 'tipo', *CAMPOS_TEXTO, 'centro_origen', 'area_origen', 'cuenta', 'codcosto', 'excluir_de', 'base', 'factor', 'historico',
                  *MESES, 'total', 'origen', 'clave', 'actualizado', 'actualizado_por')
 
 

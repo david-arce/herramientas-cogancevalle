@@ -37,5 +37,6 @@ urlpatterns = [
     path('nomina/<slug:tipo>/datos/', v.nomina_datos, name='nomina_datos'),
     path('nomina/<slug:tipo>/guardar/', v.nomina_guardar, name='nomina_guardar'),
     path('nomina/<slug:tipo>/cargar/', v.nomina_cargar, name='nomina_cargar'),
+    path('nomina/<slug:tipo>/base/', v.nomina_base_editable, name='nomina_base_editable'),
     path('nomina/<slug:tipo>/borrar/', v.nomina_borrar, name='nomina_borrar'),
 ]

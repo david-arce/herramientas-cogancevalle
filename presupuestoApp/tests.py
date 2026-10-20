@@ -689,11 +689,12 @@ class EstaticosVersionadosTests(TestCase):
 # ═══════════════════════════════════════════════════════════════════════
 #  Nómina en vertical
 # ═══════════════════════════════════════════════════════════════════════
-from .models_nomina import CorreccionPersonaNomina  # noqa: E402
+from .models_nomina import CorreccionPersonaNomina, FilaEliminadaNomina  # noqa: E402
 from .models_nomina import (  # noqa: E402
     ConceptosNomina, ConfiguracionNomina, PresupuestoNomina, PresupuestoNominaMes,
 )
 from . import nomina_motor  # noqa: E402
+from . import nomina_conceptos as origen_nomina  # noqa: E402
 
 
 def confirmar_nomina(listo):
@@ -2637,3 +2638,195 @@ class NominaDeshacerEliminarTests(TestCase):
         datos = self.client.get(reverse("nomina_datos", args=["sueldos"])).json()["data"]
         r = self.enviar(datos + [dict(datos[0], id=None, _uid="u-n", nombre="OTRA")])
         self.assertEqual(PresupuestoNomina.objects.get(pk=r["nuevos"]["u-n"]).origen, "manual")
+
+
+class NominaTextoEditadoManualTests(TestCase):
+    """Cambiar a mano la cédula, el nombre u otro texto de una fila calculada la
+    vuelve MANUAL, y al recargar desde Conceptos no se pierde ni se duplica."""
+
+    def setUp(self):
+        anio = timezone.localdate().year
+        comunes = dict(anio=anio, archivo="prueba", nombre_cen="ALMACEN TULUA", nomcosto="VENTAS",
+                       nombrecar="ASESOR", cuenta="520506", concepto="001", concepto_f=2000000,
+                       **{m: 2000000 for m in MESES_N[:8]})
+        ConceptosNomina.objects.create(cedula=10, nombre="VACANTE", **comunes)
+        ConceptosNomina.objects.create(cedula=20, nombre="LUIS PEREZ", **comunes)
+        nomina_motor.recargar_bases()
+        self.client.force_login(User.objects.create_user("admin"))
+
+    def guardar_con(self, de, **cambios):
+        filas = self.client.get(reverse("nomina_datos", args=["sueldos"])).json()["data"]
+        for f in filas:
+            if f["cedula"] == de:
+                f.update(cambios)
+        r = self.client.post(reverse("nomina_guardar", args=["sueldos"]), json.dumps({"filas": filas}),
+                             content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+
+    def sueldos(self):
+        return sorted(PresupuestoNomina.objects.filter(tipo="sueldos").values_list("cedula", "nombre", "origen"))
+
+    def test_cambiar_nombre_la_vuelve_manual_y_se_conserva_al_recargar(self):
+        self.guardar_con("10", nombre="VACANTE - REEMPLAZO OSWALDO CAMPO")
+        esperado = [("10", "VACANTE - REEMPLAZO OSWALDO CAMPO", "manual"), ("20", "LUIS PEREZ", "sistema")]
+        self.assertEqual(self.sueldos(), esperado)
+        nomina_motor.recargar_bases()
+        self.assertEqual(self.sueldos(), esperado)
+
+    def test_cambiar_cedula_la_vuelve_manual_sin_duplicar_al_recargar(self):
+        self.guardar_con("10", cedula="14")
+        self.assertEqual(self.sueldos(), [("14", "VACANTE", "manual"), ("20", "LUIS PEREZ", "sistema")])
+        nomina_motor.recargar_bases()
+        self.assertEqual(self.sueldos(), [("14", "VACANTE", "manual"), ("20", "LUIS PEREZ", "sistema")])
+
+    def test_cambiar_cargo_tambien_la_vuelve_manual(self):
+        self.guardar_con("20", cargo="CAJERO")
+        self.assertIn(("20", "LUIS PEREZ", "manual"), self.sueldos())
+
+    def test_sin_cambios_sigue_calculada(self):
+        self.guardar_con("20")
+        self.assertIn(("20", "LUIS PEREZ", "sistema"), self.sueldos())
+
+    def test_filas_editadas_antes_de_esta_version_no_se_pierden_al_recargar(self):
+        # Antes, cambiar el nombre dejaba la fila "calculada"; recargar la reemplazaba.
+        PresupuestoNomina.objects.filter(tipo="sueldos", cedula="10").update(nombre="VACANTE - SANCHEZ DAVID")
+        nomina_motor.recargar_bases()
+        self.assertEqual(self.sueldos(), [("10", "VACANTE - SANCHEZ DAVID", "manual"), ("20", "LUIS PEREZ", "sistema")])
+
+
+class NominaFilaEliminadaTests(TestCase):
+    """Una fila de Conceptos eliminada en pantalla no vuelve al recargar."""
+
+    def setUp(self):
+        anio = timezone.localdate().year
+        comunes = dict(anio=anio, archivo="prueba", nombre_cen="ALMACEN TULUA", nomcosto="VENTAS",
+                       nombrecar="ASESOR", cuenta="520506", concepto="001", concepto_f=2000000,
+                       **{m: 2000000 for m in MESES_N[:8]})
+        ConceptosNomina.objects.create(cedula=10, nombre="VACANTE", **comunes)
+        ConceptosNomina.objects.create(cedula=20, nombre="LUIS PEREZ", **comunes)
+        nomina_motor.recargar_bases()
+        self.client.force_login(User.objects.create_user("admin"))
+
+    def datos(self):
+        return self.client.get(reverse("nomina_datos", args=["sueldos"])).json()["data"]
+
+    def enviar(self, filas):
+        r = self.client.post(reverse("nomina_guardar", args=["sueldos"]), json.dumps({"filas": filas}),
+                             content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        return r.json()
+
+    def cedulas(self):
+        return sorted(PresupuestoNomina.objects.filter(tipo="sueldos").values_list("cedula", flat=True))
+
+    def test_no_vuelve_al_cargar_ni_al_recargar_todo(self):
+        self.enviar([f for f in self.datos() if f["cedula"] != "10"])
+        self.assertEqual(self.cedulas(), ["20"])
+        r = self.client.post(reverse("nomina_cargar", args=["sueldos"]))
+        self.assertIn("se habían eliminado", r.json()["msg"])
+        self.assertEqual(self.cedulas(), ["20"])
+        nomina_motor.recargar_bases()
+        self.assertEqual(self.cedulas(), ["20"])
+        self.assertFalse(PresupuestoNomina.objects.filter(cedula="10").exists())   # tampoco en prestaciones
+
+    def test_deshacer_la_eliminacion_quita_la_marca(self):
+        filas = self.datos()
+        vacante = next(f for f in filas if f["cedula"] == "10")
+        self.enviar([f for f in filas if f["cedula"] != "10"])
+        self.enviar([f for f in self.datos()] + [dict(vacante, id=None, _uid="u1", _restaurada=True)])
+        self.assertFalse(FilaEliminadaNomina.objects.exists())
+        nomina_motor.recargar_bases()
+        self.assertEqual(self.cedulas(), ["10", "20"])
+
+    def test_volver_a_cargar_desde_el_tablero(self):
+        self.enviar([f for f in self.datos() if f["cedula"] != "10"])
+        e = FilaEliminadaNomina.objects.get()
+        self.assertEqual((e.tipo, e.llave, e.nombre), ("sueldos", "10", "VACANTE"))
+        html = self.client.get(reverse("presupuestoNomina")).content.decode()
+        self.assertIn("Filas eliminadas que no se vuelven a cargar", html)
+        self.client.post(reverse("presupuestoNomina"), {"action": "volver_a_cargar", "id": e.pk},
+                         HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        nomina_motor.recargar_bases()
+        self.assertEqual(self.cedulas(), ["10", "20"])
+
+    def test_filas_agregadas_en_pantalla_no_se_marcan(self):
+        filas = self.datos()
+        r = self.enviar(filas + [dict(filas[0], id=None, clave="", _uid="n1", cedula="30", nombre="NUEVA")])
+        self.enviar([f for f in self.datos() if f["cedula"] != "30"])
+        self.assertFalse(FilaEliminadaNomina.objects.exists())
+
+
+class HorasExtraMesesRealesTests(TestCase):
+    """Horas extra: histórico de enero hasta el mes elegido (fecha de corte o
+    "meses con datos reales"), sin descartar el último; el resto con el promedio."""
+
+    def setUp(self):
+        anio = timezone.localdate().year
+        valores = {m: (i + 1) * 100 for i, m in enumerate(MESES_N[:9])}      # ene=100 … sep=900
+        ConceptosNomina.objects.create(anio=anio, archivo="prueba", concepto="110", cedula=10, nombre="ANA",
+                                       nombre_cen="ALMACEN TULUA", nomcosto="VENTAS", **valores)
+        self.config = origen_nomina.ConfiguracionNomina.actual()
+
+    def horas(self):
+        nomina_motor.recargar_bases()
+        return PresupuestoNomina.objects.get(tipo="horas_extra")
+
+    def test_meses_reales_elegidos(self):
+        self.config.meses_reales = 8
+        self.config.save()
+        fila = self.horas()
+        self.assertEqual([m for m in MESES_N if m in fila.historico], MESES_N[:8])   # enero..agosto (incluye agosto)
+        factor = 1 + (nomina_motor.Parametros.cargar().incremento_salarial or 0) / 100
+        self.assertEqual(fila.agosto, round(800 * factor))
+        self.assertEqual(fila.septiembre, round(450 * factor))             # promedio de ene..ago = 450
+
+    def test_fecha_de_corte(self):
+        ConceptosNomina.objects.update(fecha_corte=datetime.date(timezone.localdate().year, 6, 30))
+        fila = self.horas()
+        self.assertEqual([m for m in MESES_N if m in fila.historico], MESES_N[:6])   # enero..junio
+
+
+class AuxilioTransporteBaseTests(TestCase):
+    """La base del auxilio de transporte ya no está fija en el código: se edita
+    en la pantalla del concepto (o en los parámetros del tablero)."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1423500, incremento_salarial=7,
+                                              auxilio_transporte=10)
+        linea_nomina(origen="sistema", base=1500000, **{m: 1500000 for m in MESES_N}).save()
+        nomina_motor.recalcular_todo()
+        self.client.force_login(User.objects.create_user("admin"))
+
+    def auxilio(self):
+        return PresupuestoNomina.objects.get(tipo="auxilio_transporte")
+
+    def test_sin_definir_usa_200000(self):
+        f = self.auxilio()
+        self.assertEqual((f.base, f.enero), (200000, 220000))
+
+    def test_editar_la_base_recalcula(self):
+        r = self.client.post(reverse("nomina_base_editable", args=["auxilio_transporte"]),
+                             json.dumps({"valor": 249095}), content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["valor"], 249095)
+        f = self.auxilio()
+        self.assertEqual((f.base, f.enero), (249095, round(249095 * 1.1)))
+        self.assertTrue(any(d["tipo"] == "auxilio_transporte" for d in r.json()["data"]))
+
+    def test_valor_invalido(self):
+        for malo in ("abc", 0, -5):
+            r = self.client.post(reverse("nomina_base_editable", args=["auxilio_transporte"]),
+                                 json.dumps({"valor": malo}), content_type="application/json")
+            self.assertEqual(r.status_code, 400, malo)
+
+    def test_otro_concepto_no_tiene_base_editable(self):
+        r = self.client.post(reverse("nomina_base_editable", args=["cesantias"]),
+                             json.dumps({"valor": 5}), content_type="application/json")
+        self.assertEqual(r.status_code, 400)
+
+    def test_pantalla_muestra_el_campo(self):
+        html = self.client.get(reverse("nomina_tabla", args=["auxilio_transporte"])).content.decode()
+        self.assertIn('id="baseEditable"', html)
+        self.assertIn('value="200000"', html)
+        self.assertNotIn('id="baseEditable"', self.client.get(reverse("nomina_tabla", args=["prima"])).content.decode())
