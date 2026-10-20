@@ -161,6 +161,19 @@
         <header>
           <h4 class="or-titulo">Qué datos usar</h4>
           <p class="or-ayuda">El auxilio de educación toma siempre el año anterior al año base.</p>
+          <p class="or-aviso-alcance">ℹ️ Este apartado afecta todo menos el auxilio de educación.</p>
+          <div class="or-educacion">
+            <div>
+              <strong>🎓 Auxilio de educación</strong>
+              <span class="or-ayuda">
+                {% if origen.educacion_cargado %}Usa los datos de {{ origen.anio_educacion }}. Se calcula solo este concepto, sin recalcular el resto de la nómina.
+                {% else %}⚠️ No hay datos cargados de {{ origen.anio_educacion }}: suba el Excel de ese año para poder calcularlo.{% endif %}
+              </span>
+            </div>
+            <button type="button" class="pt-btn" id="btnCalcularEducacion"
+                    data-url="{% url 'nomina_cargar' 'auxilio_educacion' %}" data-anio="{{ origen.anio_educacion }}"
+                    {% if not origen.educacion_cargado %}disabled{% endif %}>Calcular auxilio de educación</button>
+          </div>
         </header>
         <form id="formConfigOrigen" class="or-form" action="{% url 'nomina_origen_config' %}">
           <div class="or-campo">
@@ -623,6 +636,19 @@
             try { const r = await enviar(datos); PT.toast(r.msg); recargar(); }
             catch (e) { PT.toast('No se pudo quitar ❌', 'error'); }
           });
+        });
+      });
+
+      const btnEducacion = document.getElementById('btnCalcularEducacion');
+      btnEducacion.addEventListener('click', () => {
+        if (!confirm(`Se volverá a calcular SOLO el auxilio de educación con los datos de ${btnEducacion.dataset.anio}. ` +
+                     'Las filas manuales y las eliminadas se respetan; el resto de la nómina no cambia. ¿Continuar?')) return;
+        PT.conSpinner(btnEducacion, async () => {
+          try {
+            const r = await PT.pedir(btnEducacion.dataset.url, { method: 'POST' });
+            PT.toast(r.msg || 'Auxilio de educación calculado ✅', 'success', 6000);
+            recargar();
+          } catch (e) { PT.toast('❌ ' + e.message, 'error', 7000); }
         });
       });
 

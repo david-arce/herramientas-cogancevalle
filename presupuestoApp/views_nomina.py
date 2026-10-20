@@ -233,6 +233,7 @@ def presupuestoNomina(request):
             'anios': origen.resumen_anios(),
             'anio_base': anio_base,
             'anio_educacion': anio_base - 1,
+            'educacion_cargado': (anio_base - 1) in origen.anios_cargados(),
             'meses_reales': origen.meses_reales(anio_base),
             'mes_reales_nombre': (nomina.MESES[origen.meses_reales(anio_base) - 1].capitalize()
                                   if origen.meses_reales(anio_base) else '—'),

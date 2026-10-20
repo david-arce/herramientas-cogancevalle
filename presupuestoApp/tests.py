@@ -3143,3 +3143,34 @@ class InteresesCesantiasPersonaEnVariasFilasTests(TestCase):
     def test_total_igual_a_una_sola_linea(self):
         una_linea = nomina_motor.intereses_acumulados({m: self.ces for m in MESES_N}, 0.12)
         self.assertAlmostEqual(self.aftosa_f.total + self.ventas_f.total, sum(una_linea.values()), delta=12)
+
+
+class CalcularSoloAuxilioEducacionTests(TestCase):
+    """Botón del tablero: calcula solo el auxilio de educación (datos del año anterior)."""
+
+    def setUp(self):
+        self.client.force_login(User.objects.create_user("admin"))
+        anio = timezone.localdate().year
+        comunes = dict(archivo="prueba", cedula=10, nombre="ANA", nombre_cen="ALMACEN TULUA", nomcosto="VENTAS")
+        ConceptosNomina.objects.create(anio=anio, concepto="001", concepto_f=2000000, **comunes,
+                                       **{m: 2000000 for m in MESES_N[:8]})
+        ConceptosNomina.objects.create(anio=anio - 1, concepto="016", diciembre=300000, **comunes)
+        self.anio = anio
+
+    def test_boton_y_calculo(self):
+        html = self.client.get(reverse("presupuestoNomina")).content.decode()
+        self.assertIn('id="btnCalcularEducacion"', html)
+        self.assertIn(f"Usa los datos de {self.anio - 1}", html)
+        sueldo = linea_nomina(cedula="10", origen="manual", enero=1)
+        sueldo.save()
+        r = self.client.post(reverse("nomina_cargar", args=["auxilio_educacion"]))
+        self.assertEqual(r.json()["status"], "ok", r.content)
+        self.assertTrue(PresupuestoNomina.objects.filter(tipo="auxilio_educacion", cedula="10").exists())
+        sueldo.refresh_from_db()
+        self.assertEqual(sueldo.enero, 1)                              # lo demás no se tocó
+        self.assertFalse(PresupuestoNomina.objects.filter(tipo="cesantias").exists())
+
+    def test_sin_datos_del_anio_anterior_deshabilitado(self):
+        ConceptosNomina.objects.filter(anio=self.anio - 1).delete()
+        html = self.client.get(reverse("presupuestoNomina")).content.decode()
+        self.assertIn("No hay datos cargados de", html)

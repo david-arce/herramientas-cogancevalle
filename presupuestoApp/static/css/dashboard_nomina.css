@@ -89,3 +89,9 @@ table.or-tabla .or-col-acciones .pt-btn { margin-left: 4px; text-decoration: non
 .button-close-session:hover { background: #bb2d3b; }
 .cp-tarjeta { margin-top: 4px; }
 .cp-subtitulo { margin-top: 14px; }
+.or-aviso-alcance { margin-top: 6px; padding: 6px 10px; border-left: 3px solid var(--pt-azul); border-radius: 0 6px 6px 0;
+  background: #eef5ff; color: var(--pt-texto); font-size: 12.5px; font-weight: 600; }
+.or-educacion { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px;
+  padding: 10px 12px; border: 1px solid var(--pt-borde); border-radius: 8px; background: var(--pt-fondo); }
+.or-educacion > div { display: flex; flex-direction: column; gap: 2px; }
+.or-educacion .pt-btn { white-space: nowrap; }
