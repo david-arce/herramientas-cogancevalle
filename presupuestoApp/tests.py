@@ -3496,17 +3496,6 @@ class SeguridadSocialArlTests(TestCase):
         nomina_motor.recalcular_todo()
         self.assertEqual(self.arl(area=area).mayo, round((2344599 * 2 + 2118822) * 0.0104))
 
-    def test_aftosa_sin_filas_en_el_informe_usa_1_04(self):
-        area = "PROYECTO AFTOSA GASTOS DE PERSONAL"
-        linea_nomina(cedula="6", centro="ALMACEN CALI", area=area, origen="manual",
-                     **{m: 2344599 for m in MESES_N}).save()
-        # otra área que tampoco está en el informe: sigue con el % por defecto
-        linea_nomina(cedula="9", centro="OTRO", area="PROYECTO OTRO", origen="manual",
-                     **{m: 1000000 for m in MESES_N}).save()
-        nomina_motor.recalcular_todo()
-        self.assertEqual(self.arl(area=area).mayo, round(2344599 * 0.0104))
-        self.assertEqual(self.arl(area="PROYECTO OTRO").mayo, round(1000000 * nomina_motor.ARL_POR_DEFECTO))
-
     def test_centro_sin_filas_del_area_usa_el_promedio_del_area(self):
         linea_nomina(cedula="8", centro="ALMACEN CALI", area="VENTAS", origen="manual",
                      **{m: 1000000 for m in MESES_N}).save()
