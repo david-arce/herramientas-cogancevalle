@@ -3479,3 +3479,43 @@ class SeguridadSocialArlPorPersonaTests(TestCase):
         nomina_motor.recalcular_todo()
         arl = PresupuestoNomina.objects.get(tipo="seguridad_social", concepto="APORTE A.R.L", area="OTRA")
         self.assertEqual(arl.enero, round(1000000 * nomina_motor.ARL_POR_DEFECTO))
+
+
+class SeguridadSocialAltosPorDevengadoTests(TestCase):
+    """Salud, SENA e ICBF: quien devenga más de 10 SMMLV en el mes (sueldo + medios de
+    transporte + comisiones + horas extra) cotiza ese mes sobre todo lo que devenga.
+    Caso real: gerente con base 17.275.463 (18.830.255 con 9 %) + medios de transporte."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1750905, incremento_salarial=9,
+                                              incremento_ipc=7)
+        comunes = dict(cedula="31793592", nombre="HINCAPIE BERMUDEZ LEIDY DIANA", centro="ALMACEN TULUA",
+                       area="ADMINISTRACION DE PERSONAL", cargo="GERENTE", origen="manual")
+        sueldo = [17275463, 17275463, 21939838] + [18830255] * 9
+        medios = [1724817, 1724817, 2087029] + [1845554] * 9
+        linea_nomina(tipo="sueldos", base=17275463, **comunes, **dict(zip(MESES_N, sueldo))).save()
+        linea_nomina(tipo="medios_transporte", **comunes, **dict(zip(MESES_N, medios))).save()
+        linea_nomina(tipo="sueldos", cedula="2", nombre="OTRA", centro="ALMACEN TULUA",
+                     area="ADMINISTRACION DE PERSONAL", origen="manual", **{m: 3000000 for m in MESES_N}).save()
+        nomina_motor.recalcular_todo()
+        self.sueldo, self.medios = sueldo, medios
+
+    def aporte(self, concepto):
+        return PresupuestoNomina.objects.filter(tipo="seguridad_social", concepto=concepto).first()
+
+    def test_salud_sena_icbf_desde_que_supera_el_tope(self):
+        tope = 1750905 * 1.09 * 10                                    # 19.084.864
+        salud = self.aporte("APORTE SALUD")
+        self.assertIsNotNone(salud)
+        for i, m in enumerate(MESES_N):
+            devenga = self.sueldo[i] + self.medios[i]
+            esperado = round(devenga * 0.085) if devenga > tope else 0
+            self.assertEqual((m, getattr(salud, m)), (m, esperado))
+        self.assertEqual(salud.enero, 0)                              # 19.000.280 no supera el tope
+        self.assertEqual(self.aporte("APORTE SENA").abril, round((18830255 + 1845554) * 0.02))
+        self.assertEqual(self.aporte("APORTE I.C.B.F").abril, round((18830255 + 1845554) * 0.03))
+
+    def test_pension_incluye_a_todos(self):
+        pension = self.aporte("APORTE PENSIÓN")
+        self.assertEqual(pension.enero, round((17275463 + 1724817 + 3000000) * 0.12))

@@ -1250,7 +1250,6 @@ AREAS_POR_PERSONA = {'ASISTENCIA TECNICA PROPIA', 'ASISTENCIA TECNICA CONVENIO'}
 AREAS_AGRUPADAS = [
     ['PROYECTO AFTOSA GASTOS DE PERSONAL'],
 ]
-CEDULA_ESPECIAL = '31793592'     # tratamiento heredado del cálculo original
 
 
 def porcentajes_arl_persona(ctx):
@@ -1315,26 +1314,31 @@ def gen_seguridad_social(ctx, c):
             for mes in MESES:
                 arl_valor[llave][mes] += meses[mes] * pct
 
-    hay_altos = False
-    for emp in ctx.filas('sueldos'):
-        sumar(generales, emp)
-        if (emp.base or 0) * (1 + p.pct('incremento_salarial')) > tope:
-            hay_altos = True
-            sumar(altos, emp)
+    # Salud, SENA e ICBF: solo quien DEVENGA más de 10 salarios mínimos en el
+    # mes (sueldo + medios de transporte + comisiones + horas extra de todas
+    # sus filas). Ese mes cotiza sobre todo lo que devenga. Antes se miraba
+    # solo el salario base y había una cédula fija para sumarle el resto.
+    devengables = ('sueldos', 'medios_transporte', 'comisiones', 'horas_extra')
+    persona = lambda f: f.cedula or f'#{id(f)}'  # noqa: E731
+    devengado = defaultdict(lambda: dict.fromkeys(MESES, 0))
+    for tipo in devengables:
+        for fila in ctx.filas(tipo):
+            for mes in MESES:
+                devengado[persona(fila)][mes] += getattr(fila, mes) or 0
 
-    for tipo in ('medios_transporte', 'comisiones', 'horas_extra'):
+    for tipo in devengables:
         for fila in ctx.filas(tipo):
             sumar(generales, fila)
-            if hay_altos and fila.cedula == CEDULA_ESPECIAL:
-                sumar(altos, fila)
+            total = devengado[persona(fila)]
+            meses_altos = {m: (getattr(fila, m) or 0) if total[m] > tope else 0 for m in MESES}
+            if any(meses_altos.values()):
+                sumar(altos, fila, meses_altos)
 
     for apr in ctx.filas('aprendiz'):
         # el aprendiz cotiza siempre sobre un salario mínimo incrementado
         meses = {m: (p.minimo_incrementado if v > 0 else v) for m, v in valores(apr).items()}
         destino = aprendices_salud if (apr.concepto or '').strip().upper() == 'SALARIO APRENDIZ' else generales
         sumar(destino, apr, meses)
-        if hay_altos and apr.cedula == CEDULA_ESPECIAL:
-            sumar(altos, apr, meses)
 
     def mas(a, b):
         return {m: a[m] + b[m] for m in MESES}
