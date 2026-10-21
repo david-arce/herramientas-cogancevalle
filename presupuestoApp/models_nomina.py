@@ -340,3 +340,19 @@ class FilaEliminadaNomina(models.Model):
 
     def __str__(self):
         return f'{self.tipo} · {self.llave} {self.nombre}'
+
+
+class FocoCargoInforme(models.Model):
+    """Cargos cuya bonificación foco NO se calcula con la base general: se toma
+    directamente el valor de cada persona en el informe (concepto E17 del Excel
+    del año base), mes a mes, más el incremento de IPC."""
+    cargo = models.CharField(max_length=150, unique=True)
+    actualizado = models.DateTimeField(auto_now=True)
+    actualizado_por = models.CharField(max_length=150, blank=True, default='')
+
+    class Meta:
+        db_table = 'foco_cargo_informe'
+        ordering = ['cargo']
+
+    def __str__(self):
+        return self.cargo

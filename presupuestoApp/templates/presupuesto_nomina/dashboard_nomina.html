@@ -307,6 +307,7 @@
       <span class="or-resumen">
         <span class="or-dato"><small>Comisionan</small><b>{{ foco_personas|length }}</b></span>
         <span class="or-dato"><small>Como sin comisión</small><b>{{ foco_marcados }}</b></span>
+        <span class="or-dato"><small>Cargos con valor del informe</small><b>{{ foco_cargos_marcados }}</b></span>
       </span>
       <span class="pt-seccion__toggle" aria-hidden="true"></span>
     </summary>
@@ -335,6 +336,30 @@
       {% else %}
         <p class="vacio">No hay personas con comisiones en el presupuesto.</p>
       {% endif %}
+
+      <section class="foco-cargos">
+        <h4 class="or-titulo">Cargos que toman el valor del informe + IPC</h4>
+        <p class="or-ayuda" style="margin-bottom:10px">
+          Para las personas con estos cargos la bonificación foco NO se calcula con la base general ni con las comisiones:
+          cada mes se toma su valor del informe (concepto {{ codigo_foco }} del Excel del año base) × (1 + incremento IPC).
+          Quien no tenga valor en el informe no recibe.
+        </p>
+        <div class="foco-acciones">
+          <input type="search" id="focoCargoBuscar" placeholder="Buscar cargo…">
+          <button type="button" class="pt-btn pt-btn--enlace" data-foco-cargo="ninguno">Desmarcar todos</button>
+          <button type="button" class="pt-btn pt-btn--primario" id="btnFocoCargos">Guardar y recalcular</button>
+        </div>
+        <div class="foco-lista" id="focoCargoLista">
+          {% for c in foco_cargos %}
+            <label class="foco-item" data-texto="{{ c.cargo|lower }}">
+              <input type="checkbox" value="{{ c.cargo }}" {% if c.marcado %}checked{% endif %}>
+              <span>{{ c.cargo }}<small>{{ c.personas }} persona{{ c.personas|pluralize }}</small></span>
+            </label>
+          {% empty %}
+            <p class="vacio">No hay cargos en Sueldos ni en Comisiones.</p>
+          {% endfor %}
+        </div>
+      </section>
     </div>
   </details>
 
@@ -654,6 +679,28 @@
           } catch (e) { PT.toast('❌ ' + e.message, 'error', 7000); }
         });
       });
+
+      const btnFocoCargos = document.getElementById('btnFocoCargos');
+      if (btnFocoCargos) {
+        const listaCargos = document.getElementById('focoCargoLista');
+        document.getElementById('focoCargoBuscar').addEventListener('input', (e) => {
+          const t = e.target.value.trim().toLowerCase();
+          listaCargos.querySelectorAll('.foco-item').forEach(el => { el.hidden = !!t && !el.dataset.texto.includes(t); });
+        });
+        document.querySelector('[data-foco-cargo="ninguno"]').addEventListener('click', () => {
+          listaCargos.querySelectorAll('input:checked').forEach(i => { i.checked = false; });
+        });
+        btnFocoCargos.addEventListener('click', () => PT.conSpinner(btnFocoCargos, async () => {
+          const datos = new FormData();
+          datos.append('action', 'foco_cargos_informe');
+          listaCargos.querySelectorAll('input:checked').forEach(i => datos.append('cargos', i.value));
+          try {
+            const r = await PT.pedir("{% url 'presupuestoNomina' %}", { method: 'POST', body: datos });
+            PT.toast(r.msg, 'success', 6000);
+            recargar();
+          } catch (e) { PT.toast('❌ ' + e.message, 'error'); }
+        }));
+      }
 
       const btnRecargarBases = document.getElementById('btnRecargarBases');
       btnRecargarBases.addEventListener('click', () => {

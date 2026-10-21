@@ -25,7 +25,7 @@ from django.db.models import Avg, Count, Q, Sum
 from . import nomina_conceptos as origen
 from .models import ParametrosPresupuestos
 from .models_nomina import (MESES, ConceptosNomina, CorreccionPersonaNomina, DistribucionNomina,
-                            FilaEliminadaNomina, FocoSinComision, PresupuestoNomina)
+                            FilaEliminadaNomina, FocoCargoInforme, FocoSinComision, PresupuestoNomina)
 
 MESES = list(MESES)
 SISTEMA = PresupuestoNomina.ORIGEN_SISTEMA
@@ -1065,6 +1065,31 @@ def fechas_ingreso(anio):
     return {**corregidas, **propias}
 
 
+def valores_foco_informe(ctx):
+    """{cédula: {mes: valor}} de la bonificación foco del informe (concepto E17, año base)."""
+    salida = defaultdict(lambda: dict.fromkeys(MESES, 0.0))
+    correcciones = ctx.correcciones()
+    for r in (ConceptosNomina.objects.filter(anio=ctx.anio, concepto=CODIGO_FOCO)
+              .values('cedula', *MESES)):
+        destino = salida[cedula_corregida(r['cedula'], correcciones)]
+        for mes in MESES:
+            destino[mes] += numero(r[mes])
+    return {ced: meses for ced, meses in salida.items() if any(meses.values())}
+
+
+def guardar_foco_cargos_informe(cargos, usuario=''):
+    """Guarda los cargos que toman el valor del informe + IPC y recalcula la bonificación foco."""
+    cargos = sorted({' '.join(texto(c_).upper().split()) for c_ in cargos} - {''})
+    with transaction.atomic():
+        FocoCargoInforme.objects.exclude(cargo__in=cargos).delete()
+        for cargo in cargos:
+            FocoCargoInforme.objects.update_or_create(cargo=cargo, defaults={'actualizado_por': usuario})
+        ctx = Contexto()
+        with bloqueo():
+            regenerar(ctx, obtener('bonificaciones_foco'))
+    return len(cargos)
+
+
 def base_bonificacion_foco(ctx, comisionan, ingresos):
     """Valor de enero de alguien que no comisiona y trabajó el año completo.
 
@@ -1110,14 +1135,38 @@ def gen_bonificaciones_foco(ctx, c):
     - Solo quien comisiona y NO está en la lista "sin comisión": la mitad del
       promedio de sus comisiones PRESUPUESTADAS de enero a junio.
     - Quien no comisiona o está en la lista: no recibe pago en julio.
+
+    Cargos elegidos en el tablero ("valor del informe"): para esas personas no
+    se usa nada de lo anterior. Cada mes se toma su valor del informe (concepto
+    E17 del Excel del año base) × (1 + incremento IPC).
     """
     p = ctx.p
     reales = comisiones_reales(ctx)
     ingresos = fechas_ingreso(ctx.anio)
     sin_comision = set(FocoSinComision.objects.values_list('cedula', flat=True))
 
-    filas_comisiones = ctx.filas('comisiones')
-    comisionan = {f.cedula for f in filas_comisiones if f.cedula}
+    # 0) Cargos que toman el valor del informe + IPC
+    cargos_informe = {c_.strip().upper() for c_ in FocoCargoInforme.objects.values_list('cargo', flat=True)}
+    cargo_elegido = lambda f: (f.cargo or '').strip().upper() in cargos_informe  # noqa: E731
+    con_sueldo = [f for f in ctx.filas('sueldos') if f.cedula and cargo_elegido(f)]
+    del_informe = {f.cedula for f in con_sueldo}
+    solo_comision = [f for f in ctx.filas('comisiones')
+                     if f.cedula and cargo_elegido(f) and f.cedula not in del_informe]
+    del_informe |= {f.cedula for f in solo_comision}
+    if del_informe:
+        valores_informe = valores_foco_informe(ctx)
+        factor = 1 + p.pct('incremento_ipc')
+        filas_informe = con_sueldo + solo_comision
+        cuota = cuotas_mensuales(filas_informe, lambda f: f.cedula)
+        for fila in filas_informe:
+            informe = valores_informe.get(fila.cedula)
+            if not informe:
+                continue                       # no tiene valor en el informe: no recibe
+            datos = {mes: informe[mes] * factor * cuota[id(fila)][mes] for mes in MESES}
+            yield dict(identidad(fila, concepto='BONIFICACIÓN FOCO'), clave=clave_persona(fila), **datos)
+
+    filas_comisiones = [f for f in ctx.filas('comisiones') if f.cedula not in del_informe]
+    comisionan = {f.cedula for f in ctx.filas('comisiones') if f.cedula}
     por_promedio = [f for f in filas_comisiones if f.cedula and f.cedula not in sin_comision]
 
     # 1) Quienes comisionan: enero con las comisiones reales (sin incremento)
@@ -1135,7 +1184,7 @@ def gen_bonificaciones_foco(ctx, c):
     # 2) Quienes no comisionan (y los de la lista): solo enero, base proporcional a los días
     base = base_bonificacion_foco(ctx, comisionan, ingresos) * (1 + p.pct('incremento_ipc'))
     fijos = [f for f in ctx.filas('sueldos')
-             if f.cedula not in vistos
+             if f.cedula not in vistos and f.cedula not in del_informe
              # quien está en la lista la recibe aunque su cargo sea comercial
              and (f.cedula in sin_comision
                   or (f.cargo or '').strip().upper() not in CARGOS_SIN_BONIFICACION_FOCO)]

@@ -689,7 +689,7 @@ class EstaticosVersionadosTests(TestCase):
 # ═══════════════════════════════════════════════════════════════════════
 #  Nómina en vertical
 # ═══════════════════════════════════════════════════════════════════════
-from .models_nomina import CorreccionPersonaNomina, FilaEliminadaNomina  # noqa: E402
+from .models_nomina import CorreccionPersonaNomina, FilaEliminadaNomina, FocoCargoInforme  # noqa: E402
 from .models_nomina import (  # noqa: E402
     ConceptosNomina, ConfiguracionNomina, PresupuestoNomina, PresupuestoNominaMes,
 )
@@ -3333,3 +3333,48 @@ class ReasignarFilaAOtraPersonaTests(TestCase):
                              HTTP_X_REQUESTED_WITH="XMLHttpRequest")
         self.assertEqual(r.json()["status"], "error")
         self.assertIn("ya existe en el Excel", r.json()["msg"])
+
+
+class FocoCargosValorInformeTests(TestCase):
+    """Cargos elegidos: la bonificación foco = valor del informe (E17) de cada mes × (1 + IPC)."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, incremento_ipc=10, salario_minimo=1423500)
+        anio = timezone.localdate().year
+        comunes = dict(anio=anio, archivo="prueba", nombre_cen="ALMACEN TULUA", nomcosto="VENTAS",
+                       fecha_ingreso=datetime.date(2015, 1, 1))
+        for ced, cargo in [(1, "COORDINADOR"), (2, "CAJERO"), (3, "COORDINADOR"), (4, "CAJERO")]:
+            ConceptosNomina.objects.create(concepto="001", cedula=ced, nombre=f"P{ced}", nombrecar=cargo,
+                                           concepto_f=2000000, **comunes, **{m: 2000000 for m in MESES_N[:8]})
+        # informe: P1 tiene foco en enero y julio; P2 en enero (base general 200.000); P3 sin E17
+        ConceptosNomina.objects.create(concepto="E17", cedula=1, nombre="P1", enero=500000, julio=300000, **comunes)
+        ConceptosNomina.objects.create(concepto="E17", cedula=2, nombre="P2", enero=200000, **comunes)
+        ConceptosNomina.objects.create(concepto="E17", cedula=4, nombre="P4", enero=200000, **comunes)
+        nomina_motor.recargar_bases()
+        self.client.force_login(User.objects.create_user("admin"))
+
+    def foco(self):
+        return {f.cedula: (f.enero, f.julio) for f in PresupuestoNomina.objects.filter(tipo="bonificaciones_foco")}
+
+    def test_sin_cargos_elegidos_calculo_normal(self):
+        f = self.foco()
+        self.assertEqual(f["1"], (220000, 0))           # base general 200.000 × 1,10
+        self.assertEqual(f["2"], (220000, 0))
+
+    def test_cargo_elegido_toma_el_informe_mas_ipc(self):
+        r = self.client.post(reverse("presupuestoNomina"), {"action": "foco_cargos_informe", "cargos": ["coordinador"]},
+                             HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(r.json()["status"], "ok")
+        self.assertEqual(list(FocoCargoInforme.objects.values_list("cargo", flat=True)), ["COORDINADOR"])
+        f = self.foco()
+        self.assertEqual(f["1"], (550000, 330000))       # 500.000 y 300.000 × 1,10
+        self.assertEqual(f["2"], (220000, 0))            # CAJERO sigue con el cálculo normal
+        self.assertNotIn("3", f)                         # coordinador sin valor en el informe: no recibe
+        nomina_motor.recalcular_todo()                   # se mantiene al recalcular
+        self.assertEqual(self.foco()["1"], (550000, 330000))
+
+    def test_tablero_lista_los_cargos(self):
+        html = self.client.get(reverse("presupuestoNomina")).content.decode()
+        self.assertIn('id="focoCargoLista"', html)
+        self.assertIn('value="COORDINADOR"', html)

@@ -134,6 +134,11 @@ def presupuestoNomina(request):
             return JsonResponse({'status': 'ok', 'msg': f'{n} persona(s) se calculan como sin comisión '
                                                         '· bonificación foco recalculada ✅'})
 
+        if accion == 'foco_cargos_informe':
+            n = nomina.guardar_foco_cargos_informe(request.POST.getlist('cargos'), request.user.get_username())
+            return JsonResponse({'status': 'ok', 'msg': f'{n} cargo(s) toman el valor del informe + IPC '
+                                                        '· bonificación foco recalculada ✅'})
+
         if accion == 'confirmar_listo':
             # Confirmar (o quitar la confirmación de) que el presupuesto está listo.
             # Sin confirmar, el dashboard no deja subirlo a Cuenta 5 presupuestado.
@@ -231,6 +236,9 @@ def presupuestoNomina(request):
         'correcciones': nomina.listar_correcciones(),
         'eliminadas': nomina.listar_eliminadas(),
         'foco_marcados': len(marcados),
+        'foco_cargos': _cargos_foco(),
+        'foco_cargos_marcados': nomina.FocoCargoInforme.objects.count(),
+        'codigo_foco': nomina.CODIGO_FOCO,
         'origen': {
             'anios': origen.resumen_anios(),
             'anio_base': anio_base,
@@ -259,6 +267,19 @@ def presupuestoNomina(request):
 # ══════════════════════════════════════════════════════════════════════
 #  Datos de origen (conceptos_nomina): Excel, año base, meses reales
 # ══════════════════════════════════════════════════════════════════════
+
+def _cargos_foco():
+    """Cargos de Sueldos y Comisiones, con cuántas personas tiene cada uno y si está elegido."""
+    elegidos = set(nomina.FocoCargoInforme.objects.values_list('cargo', flat=True))
+    personas = {}
+    for cargo, cedula in (nomina.PresupuestoNomina.objects.filter(tipo__in=['sueldos', 'comisiones'])
+                          .exclude(cargo='').values_list('cargo', 'cedula')):
+        personas.setdefault(' '.join(cargo.upper().split()), set()).add(cedula)
+    for cargo in elegidos:
+        personas.setdefault(cargo, set())
+    return [{'cargo': cargo, 'personas': len(ceds), 'marcado': cargo in elegidos}
+            for cargo, ceds in sorted(personas.items())]
+
 
 def _entero_o_none(valor):
     try:

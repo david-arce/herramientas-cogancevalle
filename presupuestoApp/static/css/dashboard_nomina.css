@@ -95,3 +95,4 @@ table.or-tabla .or-col-acciones .pt-btn { margin-left: 4px; text-decoration: non
   padding: 10px 12px; border: 1px solid var(--pt-borde); border-radius: 8px; background: var(--pt-fondo); }
 .or-educacion > div { display: flex; flex-direction: column; gap: 2px; }
 .or-educacion .pt-btn { white-space: nowrap; }
+.foco-cargos { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--pt-borde-fuerte); }
