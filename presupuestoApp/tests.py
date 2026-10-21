@@ -3482,6 +3482,27 @@ class SeguridadSocialArlTests(TestCase):
         self.assertEqual(self.arl(cedula="3").enero, round(2000000 * 0.0435))
         self.assertEqual(self.arl(cedula="4").enero, round(2000000 * 0.00522))
 
+    def test_aftosa_usa_un_solo_promedio_del_area(self):
+        anio = timezone.localdate().year
+        ConceptosNomina.objects.create(anio=anio, archivo="prueba", cedula=5, nombre="P5",
+                                       nombre_cen="ALMACEN TULUA", concepto="001",
+                                       nomcosto="PROYECTO AFTOSA GASTOS DE PERSONAL", arlporc=1.044)
+        area = "PROYECTO AFTOSA GASTOS DE PERSONAL"
+        # Cali y Cartago no tienen filas de aftosa en el informe: igual usan 1,04 %
+        for ced, centro, valor in (("5", "ALMACEN TULUA", 2344599), ("6", "ALMACEN CALI", 2344599),
+                                   ("7", "ALMACEN CARTAGO", 2118822)):
+            linea_nomina(cedula=ced, centro=centro, area=area, origen="manual",
+                         **{m: valor for m in MESES_N}).save()
+        nomina_motor.recalcular_todo()
+        self.assertEqual(self.arl(area=area).mayo, round((2344599 * 2 + 2118822) * 0.0104))
+
+    def test_centro_sin_filas_del_area_usa_el_promedio_del_area(self):
+        linea_nomina(cedula="8", centro="ALMACEN CALI", area="VENTAS", origen="manual",
+                     **{m: 1000000 for m in MESES_N}).save()
+        nomina_motor.recalcular_todo()
+        promedio = round((0.522 + 6.96 + 0) / 3 / 100, 4)
+        self.assertEqual(self.arl(area="VENTAS", centro="ALMACEN CALI").enero, round(1000000 * promedio))
+
     def test_sin_arl_en_el_excel_usa_el_por_defecto(self):
         linea_nomina(cedula="9", centro="OTRO", area="OTRA", origen="manual",
                      **{m: 1000000 for m in MESES_N}).save()

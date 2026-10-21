@@ -1267,13 +1267,24 @@ def porcentajes_arl_persona(ctx):
 
 
 def porcentajes_arl(anio):
-    promedios = (ConceptosNomina.objects.filter(anio=anio, arlporc__isnull=False)
-                 .values('nombre_cen', 'nomcosto')
-                 .annotate(promedio=Avg('arlporc')))
-    return {
+    """{(centro, área): %} y {área: %}: promedio de ARLPORC redondeado a 4 decimales.
+
+    El promedio por área (todos los centros juntos) sirve para las áreas que se
+    consolidan sin centro (aftosa) y como respaldo cuando un centro no tiene
+    filas de esa área en el informe.
+    """
+    base = ConceptosNomina.objects.filter(anio=anio, arlporc__isnull=False)
+    por_centro = {
         (texto(p['nombre_cen']), texto(p['nomcosto'])): round((p['promedio'] or 0) / 100.0, 4)
-        for p in promedios if p['promedio'] is not None
+        for p in base.values('nombre_cen', 'nomcosto').annotate(promedio=Avg('arlporc'))
+        if p['promedio'] is not None
     }
+    por_area = {
+        _sin_tildes(p['nomcosto']): round((p['promedio'] or 0) / 100.0, 4)
+        for p in base.values('nomcosto').annotate(promedio=Avg('arlporc'))
+        if p['promedio'] is not None
+    }
+    return por_centro, por_area
 
 
 def _sin_tildes(valor):
@@ -1292,20 +1303,25 @@ def gen_seguridad_social(ctx, c):
     p = ctx.p
     tope = p.minimo_incrementado * 10
     arl_persona = porcentajes_arl_persona(ctx)
-    arl_centro = porcentajes_arl(ctx.anio)
+    arl_centro, arl_area = porcentajes_arl(ctx.anio)
+    agrupadas = {_sin_tildes(a) for grupo in AREAS_AGRUPADAS for a in grupo}
     generales = defaultdict(lambda: dict.fromkeys(MESES, 0))
     altos = defaultdict(lambda: dict.fromkeys(MESES, 0))
     aprendices_salud = defaultdict(lambda: dict.fromkeys(MESES, 0))
     # ARL:
     #  · filas agrupadas "SEGURIDAD SOCIAL" (centro + área): promedio de ARLPORC
-    #    del centro de costo, como siempre.
+    #    del centro de costo; si ese centro no tiene filas del área en el
+    #    informe, el promedio del área en todos los centros.
+    #  · áreas que se consolidan sin centro (aftosa): un solo promedio del área.
     #  · filas por persona (asistencia técnica): el ARLPORC de la persona tal
     #    cual viene del informe; si no tiene, el promedio de su centro.
-    #  En ambos casos, sin dato se usa 0,93 %.
+    #  Sin ningún dato se usa 0,93 %.
     arl_valor = defaultdict(lambda: dict.fromkeys(MESES, 0))
 
     def pct_arl(fila, llave):
-        del_centro = arl_centro.get((fila.centro, fila.area))
+        area = _sin_tildes(fila.area)
+        del_area = arl_area.get(area)
+        del_centro = del_area if area in agrupadas else (arl_centro.get((fila.centro, fila.area)) or del_area)
         if llave[2]:                                   # fila por persona
             return arl_persona.get(fila.cedula) or del_centro or ARL_POR_DEFECTO
         return del_centro or ARL_POR_DEFECTO
