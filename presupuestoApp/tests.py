@@ -3450,35 +3450,43 @@ class BonificacionFocoEditarEliminarTests(TestCase):
         self.assertEqual(self.foco(), antes)
 
 
-class SeguridadSocialArlPorPersonaTests(TestCase):
-    """ARL: cada persona aporta con su propio ARLPORC (no el promedio del centro de costo)."""
+class SeguridadSocialArlTests(TestCase):
+    """ARL: las filas agrupadas por centro de costo usan el promedio de ARLPORC del centro;
+    las filas por persona (asistencia técnica) usan el ARLPORC de la persona tal cual."""
 
     def setUp(self):
         from .models import ParametrosPresupuestos
         ParametrosPresupuestos.objects.create(id=1, salario_minimo=1000000, incremento_salarial=0)
         anio = timezone.localdate().year
-        comunes = dict(anio=anio, archivo="prueba", nombre_cen="ALMACEN TULUA", nomcosto="VENTAS",
-                       concepto="001", concepto_f=2000000, **{m: 2000000 for m in MESES_N[:8]})
-        ConceptosNomina.objects.create(cedula=1, nombre="UNO", arlporc=0.522, **comunes)
-        ConceptosNomina.objects.create(cedula=2, nombre="DOS", arlporc=6.96, **comunes)
-        # filas sin ARL de la persona 2: no cambian su porcentaje
-        ConceptosNomina.objects.create(anio=anio, archivo="prueba", cedula=2, nombre="DOS", concepto="X",
-                                       nombre_cen="ALMACEN TULUA", nomcosto="VENTAS", arlporc=0)
+        valores = dict(concepto="001", concepto_f=2000000, **{m: 2000000 for m in MESES_N[:8]})
+
+        def persona(cedula, nomcosto, arl, **extra):
+            ConceptosNomina.objects.create(anio=anio, archivo="prueba", cedula=cedula, nombre=f"P{cedula}",
+                                           nombre_cen="ALMACEN TULUA", nomcosto=nomcosto, arlporc=arl,
+                                           **(extra or valores))
+        persona(1, "VENTAS", 0.522)
+        persona(2, "VENTAS", 6.96)
+        persona(2, "VENTAS", 0, concepto="X")               # cuenta en el promedio del centro
+        persona(3, "ASISTENCIA TECNICA PROPIA", 4.35)
+        persona(4, "ASISTENCIA TECNICA PROPIA", 0.522)
         nomina_motor.recargar_bases()
 
-    def test_arl_es_la_suma_de_cada_persona_con_su_porcentaje(self):
-        arl = PresupuestoNomina.objects.get(tipo="seguridad_social", concepto="APORTE A.R.L")
-        esperado = round(2000000 * 0.00522 + 2000000 * 0.0696)     # 10.440 + 139.200
-        self.assertEqual(arl.enero, esperado)
-        # con el promedio del centro (0,522 + 6,96 + 0) / 3 ≈ 2,49 % daría otra cosa
-        self.assertNotEqual(arl.enero, round(4000000 * 0.0249))
+    def arl(self, **filtro):
+        return PresupuestoNomina.objects.get(tipo="seguridad_social", concepto="APORTE A.R.L", **filtro)
+
+    def test_agrupada_usa_el_promedio_del_centro_de_costo(self):
+        promedio = round((0.522 + 6.96 + 0) / 3 / 100, 4)    # 0,0249
+        self.assertEqual(self.arl(area="VENTAS").enero, round(4000000 * promedio))
+
+    def test_por_persona_usa_el_porcentaje_del_informe(self):
+        self.assertEqual(self.arl(cedula="3").enero, round(2000000 * 0.0435))
+        self.assertEqual(self.arl(cedula="4").enero, round(2000000 * 0.00522))
 
     def test_sin_arl_en_el_excel_usa_el_por_defecto(self):
         linea_nomina(cedula="9", centro="OTRO", area="OTRA", origen="manual",
                      **{m: 1000000 for m in MESES_N}).save()
         nomina_motor.recalcular_todo()
-        arl = PresupuestoNomina.objects.get(tipo="seguridad_social", concepto="APORTE A.R.L", area="OTRA")
-        self.assertEqual(arl.enero, round(1000000 * nomina_motor.ARL_POR_DEFECTO))
+        self.assertEqual(self.arl(area="OTRA").enero, round(1000000 * nomina_motor.ARL_POR_DEFECTO))
 
 
 class SeguridadSocialAltosPorDevengadoTests(TestCase):

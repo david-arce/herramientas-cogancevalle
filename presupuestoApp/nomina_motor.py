@@ -1296,13 +1296,19 @@ def gen_seguridad_social(ctx, c):
     generales = defaultdict(lambda: dict.fromkeys(MESES, 0))
     altos = defaultdict(lambda: dict.fromkeys(MESES, 0))
     aprendices_salud = defaultdict(lambda: dict.fromkeys(MESES, 0))
-    # ARL: cada persona aporta con SU porcentaje (ARLPORC del Excel). Si no
-    # tiene, se usa el promedio de su centro + área y, si tampoco, 0,93 %.
+    # ARL:
+    #  · filas agrupadas "SEGURIDAD SOCIAL" (centro + área): promedio de ARLPORC
+    #    del centro de costo, como siempre.
+    #  · filas por persona (asistencia técnica): el ARLPORC de la persona tal
+    #    cual viene del informe; si no tiene, el promedio de su centro.
+    #  En ambos casos, sin dato se usa 0,93 %.
     arl_valor = defaultdict(lambda: dict.fromkeys(MESES, 0))
 
-    def pct_arl(fila):
-        return (arl_persona.get(fila.cedula) or arl_centro.get((fila.centro, fila.area))
-                or ARL_POR_DEFECTO)
+    def pct_arl(fila, llave):
+        del_centro = arl_centro.get((fila.centro, fila.area))
+        if llave[2]:                                   # fila por persona
+            return arl_persona.get(fila.cedula) or del_centro or ARL_POR_DEFECTO
+        return del_centro or ARL_POR_DEFECTO
 
     def sumar(destino, fila, meses=None):
         meses = meses or valores(fila)
@@ -1310,7 +1316,7 @@ def gen_seguridad_social(ctx, c):
         for mes in MESES:
             destino[llave][mes] += meses[mes]
         if destino is generales or destino is aprendices_salud:     # la base de ARL incluye ambos
-            pct = pct_arl(fila)
+            pct = pct_arl(fila, llave)
             for mes in MESES:
                 arl_valor[llave][mes] += meses[mes] * pct
 
@@ -1358,7 +1364,7 @@ def gen_seguridad_social(ctx, c):
                 if not datos:
                     continue
             elif aporte == 'APORTE A.R.L':
-                datos = arl_valor.get(llave, dict.fromkeys(MESES, 0))   # ya va con el % de cada persona
+                datos = arl_valor.get(llave, dict.fromkeys(MESES, 0))   # ya va con su % (centro o persona)
                 porcentaje = 1
             else:
                 datos = base
