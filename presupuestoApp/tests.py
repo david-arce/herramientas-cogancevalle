@@ -3448,3 +3448,34 @@ class BonificacionFocoEditarEliminarTests(TestCase):
         antes = self.foco()
         self.enviar(self.datos())
         self.assertEqual(self.foco(), antes)
+
+
+class SeguridadSocialArlPorPersonaTests(TestCase):
+    """ARL: cada persona aporta con su propio ARLPORC (no el promedio del centro de costo)."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1000000, incremento_salarial=0)
+        anio = timezone.localdate().year
+        comunes = dict(anio=anio, archivo="prueba", nombre_cen="ALMACEN TULUA", nomcosto="VENTAS",
+                       concepto="001", concepto_f=2000000, **{m: 2000000 for m in MESES_N[:8]})
+        ConceptosNomina.objects.create(cedula=1, nombre="UNO", arlporc=0.522, **comunes)
+        ConceptosNomina.objects.create(cedula=2, nombre="DOS", arlporc=6.96, **comunes)
+        # filas sin ARL de la persona 2: no cambian su porcentaje
+        ConceptosNomina.objects.create(anio=anio, archivo="prueba", cedula=2, nombre="DOS", concepto="X",
+                                       nombre_cen="ALMACEN TULUA", nomcosto="VENTAS", arlporc=0)
+        nomina_motor.recargar_bases()
+
+    def test_arl_es_la_suma_de_cada_persona_con_su_porcentaje(self):
+        arl = PresupuestoNomina.objects.get(tipo="seguridad_social", concepto="APORTE A.R.L")
+        esperado = round(2000000 * 0.00522 + 2000000 * 0.0696)     # 10.440 + 139.200
+        self.assertEqual(arl.enero, esperado)
+        # con el promedio del centro (0,522 + 6,96 + 0) / 3 ≈ 2,49 % daría otra cosa
+        self.assertNotEqual(arl.enero, round(4000000 * 0.0249))
+
+    def test_sin_arl_en_el_excel_usa_el_por_defecto(self):
+        linea_nomina(cedula="9", centro="OTRO", area="OTRA", origen="manual",
+                     **{m: 1000000 for m in MESES_N}).save()
+        nomina_motor.recalcular_todo()
+        arl = PresupuestoNomina.objects.get(tipo="seguridad_social", concepto="APORTE A.R.L", area="OTRA")
+        self.assertEqual(arl.enero, round(1000000 * nomina_motor.ARL_POR_DEFECTO))

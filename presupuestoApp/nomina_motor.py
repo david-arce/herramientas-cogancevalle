@@ -1253,6 +1253,20 @@ AREAS_AGRUPADAS = [
 CEDULA_ESPECIAL = '31793592'     # tratamiento heredado del cálculo original
 
 
+def porcentajes_arl_persona(ctx):
+    """{cédula: % ARL (fracción)} de cada persona según el Excel del año base.
+
+    Se toma el ARLPORC que más se repite en sus filas (ignorando vacíos y ceros),
+    sin redondear.
+    """
+    conteo = defaultdict(Counter)
+    correcciones = ctx.correcciones()
+    for cedula, valor in (ConceptosNomina.objects.filter(anio=ctx.anio, arlporc__isnull=False, arlporc__gt=0)
+                          .values_list('cedula', 'arlporc')):
+        conteo[cedula_corregida(cedula, correcciones)][valor] += 1
+    return {ced: c.most_common(1)[0][0] / 100.0 for ced, c in conteo.items() if ced}
+
+
 def porcentajes_arl(anio):
     promedios = (ConceptosNomina.objects.filter(anio=anio, arlporc__isnull=False)
                  .values('nombre_cen', 'nomcosto')
@@ -1278,15 +1292,28 @@ def llave_seguridad_social(fila):
 def gen_seguridad_social(ctx, c):
     p = ctx.p
     tope = p.minimo_incrementado * 10
-    arl = porcentajes_arl(ctx.anio)
+    arl_persona = porcentajes_arl_persona(ctx)
+    arl_centro = porcentajes_arl(ctx.anio)
     generales = defaultdict(lambda: dict.fromkeys(MESES, 0))
     altos = defaultdict(lambda: dict.fromkeys(MESES, 0))
     aprendices_salud = defaultdict(lambda: dict.fromkeys(MESES, 0))
+    # ARL: cada persona aporta con SU porcentaje (ARLPORC del Excel). Si no
+    # tiene, se usa el promedio de su centro + área y, si tampoco, 0,93 %.
+    arl_valor = defaultdict(lambda: dict.fromkeys(MESES, 0))
+
+    def pct_arl(fila):
+        return (arl_persona.get(fila.cedula) or arl_centro.get((fila.centro, fila.area))
+                or ARL_POR_DEFECTO)
 
     def sumar(destino, fila, meses=None):
         meses = meses or valores(fila)
+        llave = llave_seguridad_social(fila)
         for mes in MESES:
-            destino[llave_seguridad_social(fila)][mes] += meses[mes]
+            destino[llave][mes] += meses[mes]
+        if destino is generales or destino is aprendices_salud:     # la base de ARL incluye ambos
+            pct = pct_arl(fila)
+            for mes in MESES:
+                arl_valor[llave][mes] += meses[mes] * pct
 
     hay_altos = False
     for emp in ctx.filas('sueldos'):
@@ -1327,10 +1354,8 @@ def gen_seguridad_social(ctx, c):
                 if not datos:
                     continue
             elif aporte == 'APORTE A.R.L':
-                datos = base
-                if llave in aprendices_salud:
-                    datos = mas(base, aprendices_salud[llave])
-                porcentaje = arl.get((centro, area), ARL_POR_DEFECTO)
+                datos = arl_valor.get(llave, dict.fromkeys(MESES, 0))   # ya va con el % de cada persona
+                porcentaje = 1
             else:
                 datos = base
             if not any(datos.values()):
