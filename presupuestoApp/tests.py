@@ -309,7 +309,7 @@ class FlujoAreaTests(TestCase):
 
         v1 = PresupuestoArea.objects.de(AREA, "proyectado").filter(version=1)
         self.assertEqual(v1.count(), 36)
-        self.assertEqual(set(v1.values_list("fecha_version", flat=True)), {timezone.now().date()})
+        self.assertEqual(set(v1.values_list("fecha_version", flat=True)), {timezone.localdate()})
         self.assertEqual(
             sorted(set(v1.values_list("fecha", flat=True))),
             [datetime.date(ANIO, m, 1) for m in range(1, 13)],
@@ -320,7 +320,7 @@ class FlujoAreaTests(TestCase):
         r = self.client.get(reverse("presupuesto_sede", args=[AREA]))
         self.assertEqual(r.status_code, 200)
         self.assertEqual([v["filas"] for v in r.context["versiones"]], [3, 3])
-        self.assertEqual(r.context["versiones"][0]["fecha"], timezone.now().date())
+        self.assertEqual(r.context["versiones"][0]["fecha"], timezone.localdate())
         self.assertContains(r, "3 filas")
 
     def test_subir_sin_datos(self):
@@ -3292,3 +3292,44 @@ class AuxilioAntiguedadTests(TestCase):
         self.client.force_login(User.objects.create_user("admin"))
         self.assertContains(self.client.get(reverse("presupuestoNomina")), "Auxilio de antigüedad")
         self.assertEqual(self.client.get(reverse("nomina_tabla", args=["auxilio_antiguedad"])).status_code, 200)
+
+
+class ReasignarFilaAOtraPersonaTests(TestCase):
+    """Pasar una fila (p. ej. de Bonos Kyrovet) a OTRA persona que ya existe no es
+    corregir una cédula: no se propaga, no se guarda corrección y cada quien
+    conserva su fecha de ingreso."""
+
+    def setUp(self):
+        anio = timezone.localdate().year
+        comunes = dict(anio=anio, archivo="prueba", nombre_cen="ALMACEN TULUA", nomcosto="VENTAS")
+        ConceptosNomina.objects.create(concepto="001", cedula=1116160108, nombre="HERRERA HINCAPIE ERIKA LUCIA",
+                                       fecha_ingreso=datetime.date(anio, 5, 22), concepto_f=2000000,
+                                       **comunes, **{m: 2000000 for m in MESES_N[:8]})
+        ConceptosNomina.objects.create(nombre_con="BONOS CANASTA KYROVET", concepto="K1", cedula=555,
+                                       nombre="OTRA PERSONA", fecha_ingreso=datetime.date(anio - 1, 8, 8),
+                                       concepto_f=100000, **comunes)
+        nomina_motor.recargar_bases()
+        self.client.force_login(User.objects.create_user("admin"))
+
+    def test_no_se_propaga_ni_cambia_la_fecha(self):
+        datos = self.client.get(reverse("nomina_datos", args=["bonos_kyrovet"])).json()["data"]
+        datos[0].update(cedula="1116160108", nombre="HERRERA HINCAPIE ERIKA LUCIA",
+                        _editados=["cedula", "nombre"])
+        r = self.client.post(reverse("nomina_guardar", args=["bonos_kyrovet"]),
+                             json.dumps({"filas": datos, "con_editados": True}), content_type="application/json")
+        self.assertIn("ya es de otra persona", r.json()["aviso"])
+        self.assertFalse(CorreccionPersonaNomina.objects.exists())
+        fechas = nomina_motor.fechas_ingreso(timezone.localdate().year)
+        self.assertEqual(fechas["1116160108"], datetime.date(timezone.localdate().year, 5, 22))
+
+    def test_la_fecha_propia_manda_sobre_una_correccion(self):
+        anio = timezone.localdate().year
+        CorreccionPersonaNomina.objects.create(cedula_origen="555", cedula="1116160108")
+        self.assertEqual(nomina_motor.fechas_ingreso(anio)["1116160108"], datetime.date(anio, 5, 22))
+
+    def test_herramienta_del_tablero_no_mezcla_personas_del_excel(self):
+        r = self.client.post(reverse("presupuestoNomina"),
+                             {"action": "corregir_persona", "cedula_actual": "555", "cedula_nueva": "1116160108"},
+                             HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(r.json()["status"], "error")
+        self.assertIn("ya existe en el Excel", r.json()["msg"])

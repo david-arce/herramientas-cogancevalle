@@ -1049,14 +1049,20 @@ def promedio_anual_comisiones(meses_reales_dict, n_meses):
 
 def fechas_ingreso(anio):
     """{cédula: fecha de ingreso} tomada de ConceptosNomina."""
-    salida = {}
+    propias, corregidas = {}, {}
     correcciones = mapa_correcciones()
     for cedula, fecha in (ConceptosNomina.objects.filter(anio=anio, fecha_ingreso__isnull=False)
                           .values_list('cedula', 'fecha_ingreso')):
+        original = cedula_normalizada(cedula)
         clave = cedula_corregida(cedula, correcciones)
-        if clave and (clave not in salida or fecha < salida[clave]):
-            salida[clave] = fecha
-    return salida
+        if not clave:
+            continue
+        # La fecha de la propia persona manda sobre la que llega por una
+        # corrección de cédula (que podría ser de otra persona).
+        destino = corregidas if original != clave else propias
+        if clave not in destino or fecha < destino[clave]:
+            destino[clave] = fecha
+    return {**corregidas, **propias}
 
 
 def base_bonificacion_foco(ctx, comisionan, ingresos):
@@ -1630,6 +1636,20 @@ def _clave_con_cedula(clave, vieja, nueva):
     return clave
 
 
+def _vuelve_a_su_cedula(vieja, nueva):
+    """¿Se está deshaciendo una corrección (volver a la cédula que trae el Excel)?"""
+    return CorreccionPersonaNomina.objects.filter(cedula_origen=nueva, cedula=vieja).exists()
+
+
+def _cedula_de_otra_persona(cedula, excluir_pks=(), vieja=''):
+    """¿La cédula ya es de alguien: está en el Excel de Conceptos o en otras filas del presupuesto?"""
+    if vieja and _vuelve_a_su_cedula(vieja, cedula):
+        return False
+    if cedula.isdigit() and ConceptosNomina.objects.filter(cedula=int(cedula)).exists():
+        return True
+    return PresupuestoNomina.objects.filter(cedula=cedula).exclude(pk__in=list(excluir_pks)).exists()
+
+
 def corregir_persona(cedula_actual, cedula_nueva='', nombre_nuevo='', usuario='', ctx=None,
                      recalcular=True):
     """Cambia la cédula y/o el nombre de una persona en todo el presupuesto.
@@ -1655,6 +1675,9 @@ def corregir_persona(cedula_actual, cedula_nueva='', nombre_nuevo='', usuario=''
         con_vieja = set(PresupuestoNomina.objects.filter(cedula=vieja).values_list('tipo', flat=True))
         con_nueva = set(PresupuestoNomina.objects.filter(cedula=nueva).values_list('tipo', flat=True))
         choque = con_vieja & con_nueva
+        if (nueva.isdigit() and ConceptosNomina.objects.filter(cedula=int(nueva)).exists()
+                and not _vuelve_a_su_cedula(vieja, nueva)):
+            raise ValueError(f'La cédula {nueva} ya existe en el Excel de Conceptos (es otra persona)')
         if choque:
             raise ValueError(f'La cédula {nueva} ya es de otra persona en '
                              f"{', '.join(sorted(CONCEPTOS[t].etiqueta for t in choque if t in CONCEPTOS))}")
@@ -1815,8 +1838,12 @@ def _propagar_identidades(identidades, finales, usuario, ctx, avisos):
         propias = {id(f) for _, f in cambios}
         if any(f.cedula == vieja and id(f) not in propias for f in finales):
             continue                       # se reasignó solo una fila: no es la misma persona
-        if nueva != vieja and any(f.cedula == nueva and id(f) not in propias for f in finales):
-            avisos.append(f'La cédula {nueva} ya es de otra persona: no se cambió en los demás conceptos')
+        if nueva != vieja and (any(f.cedula == nueva and id(f) not in propias for f in finales)
+                               or _cedula_de_otra_persona(nueva, {f.pk for _, f in cambios if f.pk}, vieja)):
+            # La fila se le pasó a OTRA persona que ya existe (no es corregir una
+            # cédula mal escrita): solo cambia esa fila, nada más.
+            avisos.append(f'La cédula {nueva} ya es de otra persona: solo se cambió esta fila, '
+                          'no los demás conceptos')
             continue
         try:
             corregir_persona(vieja, nueva, nombre, usuario, ctx=ctx, recalcular=False)
