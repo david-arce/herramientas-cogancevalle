@@ -1243,6 +1243,9 @@ APORTES = {
 }
 APORTES_SOLO_ALTOS = {'APORTE SALUD', 'APORTE SENA', 'APORTE I.C.B.F'}
 ARL_POR_DEFECTO = 0.0093
+# Proyecto aftosa: su ARL es 1,04 %. Se usa cuando el informe no trae filas de esa área.
+AREA_AFTOSA = 'PROYECTO AFTOSA GASTOS DE PERSONAL'
+ARL_AFTOSA = 0.0104
 APORTE_SALUD_APRENDIZ = 0.125
 # Técnicos: su seguridad social se calcula por persona (no se consolida por área)
 AREAS_POR_PERSONA = {'ASISTENCIA TECNICA PROPIA', 'ASISTENCIA TECNICA CONVENIO'}
@@ -1304,7 +1307,6 @@ def gen_seguridad_social(ctx, c):
     tope = p.minimo_incrementado * 10
     arl_persona = porcentajes_arl_persona(ctx)
     arl_centro, arl_area = porcentajes_arl(ctx.anio)
-    agrupadas = {_sin_tildes(a) for grupo in AREAS_AGRUPADAS for a in grupo}
     generales = defaultdict(lambda: dict.fromkeys(MESES, 0))
     altos = defaultdict(lambda: dict.fromkeys(MESES, 0))
     aprendices_salud = defaultdict(lambda: dict.fromkeys(MESES, 0))
@@ -1312,7 +1314,9 @@ def gen_seguridad_social(ctx, c):
     #  · filas agrupadas "SEGURIDAD SOCIAL" (centro + área): promedio de ARLPORC
     #    del centro de costo; si ese centro no tiene filas del área en el
     #    informe, el promedio del área en todos los centros.
-    #  · áreas que se consolidan sin centro (aftosa): un solo promedio del área.
+    #  · aftosa (se consolida sin centro): un solo promedio del área; si el
+    #    informe no trae filas de aftosa, 1,04 % (ARL_AFTOSA). Solo aplica a
+    #    filas cuya área es exactamente PROYECTO AFTOSA GASTOS DE PERSONAL.
     #  · filas por persona (asistencia técnica): el ARLPORC de la persona tal
     #    cual viene del informe; si no tiene, el promedio de su centro.
     #  Sin ningún dato se usa 0,93 %.
@@ -1321,10 +1325,15 @@ def gen_seguridad_social(ctx, c):
     def pct_arl(fila, llave):
         area = _sin_tildes(fila.area)
         del_area = arl_area.get(area)
-        del_centro = del_area if area in agrupadas else (arl_centro.get((fila.centro, fila.area)) or del_area)
+        if area == AREA_AFTOSA:
+            # aftosa: un solo % para toda el área; si el informe no lo trae, 1,04 %
+            del_centro = del_area or ARL_AFTOSA
+        else:
+            del_centro = arl_centro.get((fila.centro, fila.area)) or del_area
         if llave[2]:                                   # fila por persona
             return arl_persona.get(fila.cedula) or del_centro or ARL_POR_DEFECTO
         return del_centro or ARL_POR_DEFECTO
+
 
     def sumar(destino, fila, meses=None):
         meses = meses or valores(fila)
