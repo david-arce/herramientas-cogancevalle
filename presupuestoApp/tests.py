@@ -3378,3 +3378,73 @@ class FocoCargosValorInformeTests(TestCase):
         html = self.client.get(reverse("presupuestoNomina")).content.decode()
         self.assertIn('id="focoCargoLista"', html)
         self.assertIn('value="COORDINADOR"', html)
+
+
+class BonificacionFocoEditarEliminarTests(TestCase):
+    """En bonificaciones foco las filas calculadas se pueden editar (pasan a manual)
+    o eliminar, y eso se respeta al recalcular."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, incremento_ipc=10, salario_minimo=1423500)
+        anio = timezone.localdate().year
+        comunes = dict(anio=anio, archivo="prueba", nombre_cen="ALMACEN TULUA", nomcosto="VENTAS",
+                       nombrecar="CAJERO", fecha_ingreso=datetime.date(2015, 1, 1))
+        for ced in (1, 2):
+            ConceptosNomina.objects.create(concepto="001", cedula=ced, nombre=f"P{ced}", concepto_f=2000000,
+                                           **comunes, **{m: 2000000 for m in MESES_N[:8]})
+        nomina_motor.recargar_bases()
+        self.client.force_login(User.objects.create_user("admin"))
+
+    def datos(self):
+        return self.client.get(reverse("nomina_datos", args=["bonificaciones_foco"])).json()["data"]
+
+    def enviar(self, filas):
+        r = self.client.post(reverse("nomina_guardar", args=["bonificaciones_foco"]),
+                             json.dumps({"filas": filas, "con_editados": True}), content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        return r.json()
+
+    def foco(self):
+        return sorted(PresupuestoNomina.objects.filter(tipo="bonificaciones_foco")
+                      .values_list("cedula", "origen", "enero"))
+
+    def test_editar_una_calculada_pasa_a_manual_y_se_respeta(self):
+        filas = self.datos()
+        uno = next(f for f in filas if f["cedula"] == "1")
+        uno.update(enero=123456, _editados=["enero"])
+        self.enviar(filas)
+        nomina_motor.recalcular_todo()
+        self.assertEqual(self.foco(), [("1", "manual", 123456), ("2", "sistema", 242000)])
+
+    def test_eliminar_una_calculada_no_vuelve(self):
+        self.enviar([f for f in self.datos() if f["cedula"] != "1"])
+        nomina_motor.recalcular_todo()
+        self.client.post(reverse("nomina_cargar", args=["bonificaciones_foco"]))     # botón Recalcular
+        self.assertEqual([c for c, *_ in self.foco()], ["2"])
+        e = FilaEliminadaNomina.objects.get(tipo="bonificaciones_foco")
+        nomina_motor.quitar_eliminada(e.pk)                                           # "Volver a cargar"
+        nomina_motor.recalcular_todo()
+        self.assertEqual([c for c, *_ in self.foco()], ["1", "2"])
+
+    def test_restablecer_calculo_de_una_manual(self):
+        filas = self.datos()
+        next(f for f in filas if f["cedula"] == "1").update(enero=1, _editados=["enero"])
+        self.enviar(filas)
+        filas = self.datos()
+        next(f for f in filas if f["cedula"] == "1")["_recalcular"] = True
+        self.enviar(filas)
+        self.assertEqual(self.foco(), [("1", "sistema", 242000), ("2", "sistema", 242000)])
+
+    def test_deshacer_la_eliminacion(self):
+        filas = self.datos()
+        uno = next(f for f in filas if f["cedula"] == "1")
+        self.enviar([f for f in filas if f["cedula"] != "1"])
+        self.enviar(self.datos() + [dict(uno, id=None, _uid="u1", _restaurada=True)])
+        self.assertEqual(self.foco(), [("1", "sistema", 242000), ("2", "sistema", 242000)])
+        self.assertFalse(FilaEliminadaNomina.objects.exists())
+
+    def test_sin_cambios_no_toca_nada(self):
+        antes = self.foco()
+        self.enviar(self.datos())
+        self.assertEqual(self.foco(), antes)

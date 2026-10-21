@@ -1389,6 +1389,9 @@ def regenerar(ctx, c):
     """
     manuales = ([f for f in ctx.filas(c.slug) if f.origen == MANUAL] if c.permite_manual else [])
     bloqueadas = {f.clave for f in manuales if f.clave}
+    if c.permite_manual:
+        # filas calculadas que se eliminaron en pantalla: no vuelven
+        bloqueadas |= set(FilaEliminadaNomina.objects.filter(tipo=c.slug).values_list('llave', flat=True))
     vistas = Counter()
     nuevas = []
     ctx.derivado_actual = c.slug
@@ -1936,13 +1939,6 @@ def guardar(slug, filas_json, usuario='', con_editados=False):
     if c.derivado and not c.permite_manual:
         raise ValueError(f'{c.etiqueta} se calcula solo: edite el concepto de origen '
                          f"({', '.join(CONCEPTOS[d].etiqueta for d in c.depende)})")
-    if c.derivado:
-        # en estos conceptos solo se guardan las filas agregadas a mano
-        pks_manuales = set(PresupuestoNomina.objects.filter(tipo=slug, origen=MANUAL)
-                           .values_list('pk', flat=True))
-        antes_n = len(filas_json)
-        filas_json = [f for f in filas_json if not f.get('id') or int(f['id']) in pks_manuales]
-        ignoradas = antes_n - len(filas_json)
     ctx = Contexto()
     p = ctx.p
     resumen = Counter()
@@ -1950,9 +1946,13 @@ def guardar(slug, filas_json, usuario='', con_editados=False):
         resumen['calculadas'] = ignoradas
 
     with bloqueo():
-        existentes = {f.pk: f for f in ctx.filas(slug)
-                      if not c.derivado or f.origen == MANUAL}
+        # En los calculados que admiten filas a mano (bonificaciones foco) también
+        # se pueden editar o eliminar las filas calculadas (ver más abajo).
+        existentes = {f.pk: f for f in ctx.filas(slug)}
         crear, actualizar, forzadas = [], [], False
+        regenerar_concepto = False                  # derivado: volver a calcularlo al final
+        restablecidas = []                          # derivado: filas manuales que vuelven a ser calculadas
+        bloquear = []                               # derivado: claves calculadas que ya no deben salir
         uids = []                                   # (_uid del navegador, fila)
         identidades = []                            # (cédula antes, nombre antes, fila) si cambiaron
 
@@ -1973,6 +1973,35 @@ def guardar(slug, filas_json, usuario='', con_editados=False):
         for datos in filas_json:
             pk = pk_de(datos)
             fila = existentes.pop(pk, None)
+            if c.derivado and fila is not None:
+                marcas0 = set(datos.get('_editados') or []) if con_editados else None
+                if fila.origen == MANUAL and datos.get('_recalcular'):
+                    # "Restablecer cálculo": se quita la fila manual y vuelve la calculada
+                    restablecidas.append(fila)
+                    regenerar_concepto = True
+                    continue
+                if fila.origen == SISTEMA:
+                    if marcas0 is None:
+                        editada = (any(texto(datos.get(k)) != (getattr(fila, k) or '') for k in CAMPOS_TEXTO
+                                       if k != 'cedula')
+                                   or cedula_normalizada(texto(datos.get('cedula'))) != (fila.cedula or '')
+                                   or any(abs(int(round(numero(datos.get(m)))) - (getattr(fila, m) or 0)) > TOLERANCIA
+                                          for m in MESES))
+                    else:
+                        editada = bool(marcas0 & {'*', 'base', *CAMPOS_TEXTO, *MESES})
+                    if not editada:
+                        continue                    # fila calculada sin cambios: se deja como está
+                    # Editar una fila calculada la vuelve MANUAL (y ya no se recalcula)
+                    clave_calculada = fila.clave
+                    fila.origen = MANUAL
+                    resumen['calculadas_editadas'] += 1
+                    bloquear.append((clave_calculada, fila))
+            if c.derivado and fila is None and not pk_de(datos) and datos.get('_restaurada') \
+                    and datos.get('origen') == SISTEMA:
+                # se deshizo la eliminación de una fila calculada: vuelve a calcularse
+                FilaEliminadaNomina.objects.filter(tipo=slug, llave=texto(datos.get('clave'))).delete()
+                regenerar_concepto = True
+                continue
             if fila is None and not pk:
                 repetida = huerfanas.get(_firma_entrante(datos))
                 if repetida:
@@ -2032,6 +2061,8 @@ def guardar(slug, filas_json, usuario='', con_editados=False):
             if c.derivado:
                 # así bloquea la fila calculada de esa misma persona
                 fila.clave = clave_persona(fila)
+                if nueva and datos.get('_restaurada'):
+                    FilaEliminadaNomina.objects.filter(tipo=slug, llave=fila.clave).delete()
             if tocado('base'):
                 fila.base = int(round(numero(datos.get('base'))))
             if nueva or marcas is None:          # el factor lo maneja la distribución, no la pantalla
@@ -2090,6 +2121,24 @@ def guardar(slug, filas_json, usuario='', con_editados=False):
         eliminar = [fila.pk for fila in existentes.values()]
         if not c.derivado:
             _recordar_eliminadas(c, existentes.values(), usuario)
+        else:
+            # calculados (bonificaciones foco): lo eliminado no vuelve al recalcular
+            for fila in existentes.values():
+                if fila.clave:
+                    FilaEliminadaNomina.objects.update_or_create(
+                        tipo=slug, llave=fila.clave[:400],
+                        defaults={'nombre': fila.nombre or fila.concepto, 'eliminado_por': usuario})
+            # la fila editada (ahora manual) reemplaza a la calculada aunque se le cambie el área
+            for clave_calculada, fila in bloquear:
+                if clave_calculada and clave_calculada != fila.clave:
+                    FilaEliminadaNomina.objects.update_or_create(
+                        tipo=slug, llave=clave_calculada[:400],
+                        defaults={'nombre': fila.nombre or fila.concepto, 'eliminado_por': usuario})
+            for fila in restablecidas:
+                eliminar.append(fila.pk)
+                FilaEliminadaNomina.objects.filter(tipo=slug, llave=fila.clave).delete()
+            if crear:
+                regenerar_concepto = True           # una fila nueva puede reemplazar a una calculada
 
         campos = [*CAMPOS_TEXTO, 'cuenta', 'codcosto', 'excluir_de', 'base', 'factor', 'historico',
                   *MESES, 'total', 'origen', 'actualizado_por']
@@ -2097,6 +2146,8 @@ def guardar(slug, filas_json, usuario='', con_editados=False):
         PresupuestoNomina.objects.bulk_update(actualizar, campos, batch_size=1000)
         PresupuestoNomina.objects.bulk_create(crear, batch_size=1000)
         ctx.olvidar(slug)
+        if c.derivado and regenerar_concepto:
+            regenerar(ctx, c)
 
         # Persona nueva en Sueldos: su fila en cero en los demás conceptos elegidos
         en_cero = _crear_en_otros(crear + actualizar, usuario, ctx)

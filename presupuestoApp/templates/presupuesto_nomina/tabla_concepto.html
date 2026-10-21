@@ -35,6 +35,8 @@
       <button type="button" class="pt-btn" data-rol="deshacer" title="Deshacer el último cambio (Ctrl + Z)" disabled>↩️ Deshacer</button>
       <button type="button" class="pt-btn" data-rol="rehacer" title="Rehacer (Ctrl + Y)" disabled>↪️ Rehacer</button>
       <button type="button" class="pt-btn" data-rol="agregar">➕ Agregar fila</button>
+      <button type="button" class="pt-btn pt-btn--primario" data-rol="recalcular"
+              title="Las filas manuales seleccionadas (✔) vuelven a ser calculadas por el sistema">⚙️ Restablecer cálculo</button>
       <span class="pt-autoguardado pt-autoguardado--guardando" data-rol="estado" role="status" aria-live="polite"
             title="Los cambios se guardan solos"><span class="pt-autoguardado__punto" aria-hidden="true"></span><span data-rol="estado-texto">Cargando…</span></span>
     {% endif %}
@@ -63,7 +65,9 @@
     {% elif config.soloAgregar %}
       <span><span class="pt-origen pt-origen--sistema">⚙️ Calculado</span> se rehace solo ·
         <span class="pt-origen pt-origen--manual">✋ Manual</span> se agrega aquí y se respeta tal cual.</span>
-      <span>Use <strong>➕ Agregar fila</strong> para las personas que el cálculo no cubre, por ejemplo quien ingresa en el mes del presupuesto. Las filas manuales se guardan solas; los cambios sobre las filas calculadas no se guardan.</span>
+      <span>Use <strong>➕ Agregar fila</strong> para las personas que el cálculo no cubre, por ejemplo quien ingresa en el mes del presupuesto.
+        Una fila calculada que se edite pasa a <strong>manual</strong> y ya no se recalcula; una que se elimine no vuelve al recalcular.
+        Para que una fila manual vuelva a calcularse, márquela y use <strong>⚙️ Restablecer cálculo</strong>. Todo se guarda solo.</span>
       <span class="pt-ayuda-excel">Se edita como en Excel: flechas para moverse, <kbd>Shift</kbd>+flechas para seleccionar, <kbd>Ctrl</kbd>+<kbd>C</kbd>/<kbd>V</kbd> y <kbd>Supr</kbd> para borrar.</span>
     {% elif config.derivado %}
       <span><span class="pt-origen pt-origen--sistema">⚙️ Calculado</span> Se calcula solo, no se edita.</span>

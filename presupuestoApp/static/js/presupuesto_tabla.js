@@ -499,8 +499,17 @@
                                  TablaPresupuesto.firma(d) === TablaPresupuesto.firma(f));
         if (s) { Object.assign(f, s); usados.add(String(s.id)); }
       });
-      data.forEach(d => { if (!usados.has(String(d.id))) resultado.push(Object.assign({}, d)); });
-      this.filas = resultado;
+      const nuevasDelServidor = data.filter(d => !usados.has(String(d.id)));
+      if (nuevasDelServidor.length) {
+        // El servidor volvió a calcular filas (ids nuevos): se toma su orden para
+        // que no queden todas al final; las filas que siguen siendo las mismas
+        // conservan su objeto (selección, filtros…).
+        const porIdLocal = new Map(resultado.filter(f => f.id).map(f => [String(f.id), f]));
+        const sinIdLocal = resultado.filter(f => !f.id);
+        this.filas = data.map(d => porIdLocal.get(String(d.id)) || Object.assign({}, d)).concat(sinIdLocal);
+      } else {
+        this.filas = resultado;
+      }
       this.pintar();
     }
 
