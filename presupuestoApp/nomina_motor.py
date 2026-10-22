@@ -1297,6 +1297,10 @@ def gen_bonificaciones_foco(ctx, c):
     aplica la base general) se le descuenta el 25 % del resultado de ENERO
     (DESCUENTO_FOCO_COMISIONAN). Julio va completo.
 
+    Mínimo: si el enero de quien comisiona (ya con el descuento) queda por
+    debajo de la base general (+ IPC, proporcional a sus días), se le paga la
+    base.
+
     Cargos elegidos en el tablero ("valor del informe"): para esas personas no
     se usa nada de lo anterior. Cada mes se toma su valor del informe (concepto
     E17 del Excel del año base) × (1 + incremento IPC).
@@ -1330,22 +1334,30 @@ def gen_bonificaciones_foco(ctx, c):
     comisionan = {f.cedula for f in ctx.filas('comisiones') if f.cedula}
     por_promedio = [f for f in filas_comisiones if f.cedula and f.cedula not in sin_comision]
 
+    # Base general (+ IPC), proporcional a los días trabajados de la persona
+    base = base_bonificacion_foco(ctx, comisionan, ingresos) * (1 + p.pct('incremento_ipc'))
+
+    def base_de(cedula):
+        ingreso = ingresos.get(cedula)
+        dias = dias_360(ingreso) if ingreso and ingreso.year >= ctx.anio else 360
+        return base / 360 * dias
+
     # 1) Quienes comisionan: enero con las comisiones reales (sin incremento)
     #    y julio con la mitad del promedio presupuestado de enero a junio;
-    #    a enero se le descuenta el 25 % (DESCUENTO_FOCO_COMISIONAN)
+    #    a enero se le descuenta el 25 % (DESCUENTO_FOCO_COMISIONAN) y, si
+    #    así queda por debajo de la base general, se le paga la base.
     cuota = cuotas_mensuales(por_promedio, lambda f: f.cedula)
     queda = 1 - DESCUENTO_FOCO_COMISIONAN
     vistos = set()
     for fila in por_promedio:
         promedio = promedio_anual_comisiones(reales.get(fila.cedula, {}), ctx.meses_reales())
         datos = dict.fromkeys(MESES, 0)
-        datos['enero'] = promedio * cuota[id(fila)]['enero'] * queda
+        datos['enero'] = max(promedio * queda, base_de(fila.cedula)) * cuota[id(fila)]['enero']
         datos['julio'] = promedio_primer_semestre(fila) / 2
         vistos.add(fila.cedula)
         yield dict(identidad(fila, concepto='BONIFICACIÓN FOCO'), clave=clave_persona(fila), **datos)
 
     # 2) Quienes no comisionan (y los de la lista): solo enero, base proporcional a los días
-    base = base_bonificacion_foco(ctx, comisionan, ingresos) * (1 + p.pct('incremento_ipc'))
     fijos = [f for f in ctx.filas('sueldos')
              if f.cedula not in vistos and f.cedula not in del_informe
              # quien está en la lista la recibe aunque su cargo sea comercial
@@ -1353,10 +1365,8 @@ def gen_bonificaciones_foco(ctx, c):
                   or (f.cargo or '').strip().upper() not in CARGOS_SIN_BONIFICACION_FOCO)]
     cuota = cuotas_mensuales(fijos, lambda f: f.cedula)
     for fila in fijos:
-        ingreso = ingresos.get(fila.cedula)
-        dias = dias_360(ingreso) if ingreso and ingreso.year >= ctx.anio else 360
         datos = dict.fromkeys(MESES, 0)
-        datos['enero'] = base / 360 * dias * cuota[id(fila)]['enero']
+        datos['enero'] = base_de(fila.cedula) * cuota[id(fila)]['enero']
         yield dict(identidad(fila, concepto='BONIFICACIÓN FOCO'), clave=clave_persona(fila), **datos)
 
 # Años cumplidos en la empresa → salarios mínimos de auxilio de antigüedad

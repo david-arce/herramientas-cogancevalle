@@ -4050,6 +4050,17 @@ class FocoDescuentoComisionanTests(TestCase):
                                            **comunes, **{m: 600000 for m in MESES_N[:8]})
         ConceptosNomina.objects.create(concepto="E17", cedula=3, nombre="P3", enero=200000, **comunes)
         FocoSinComision.objects.create(cedula="2", nombre="P2")          # en la lista: base general
+        # P4 comisiona poco: 200.000 al mes (ene-ago)
+        ConceptosNomina.objects.create(concepto="001", cedula=4, nombre="P4", concepto_f=2000000,
+                                       **comunes, **{m: 2000000 for m in MESES_N[:8]})
+        ConceptosNomina.objects.create(concepto="389", cedula=4, nombre="P4",
+                                       **comunes, **{m: 200000 for m in MESES_N[:8]})
+        # P5 ingresó el 1 de julio del año base (180 días) y comisiona 100.000 en julio y agosto
+        nuevo = dict(comunes, fecha_ingreso=datetime.date(comunes["anio"], 7, 1))
+        ConceptosNomina.objects.create(concepto="001", cedula=5, nombre="P5", concepto_f=2000000,
+                                       **nuevo, **{m: 2000000 for m in MESES_N[6:8]})
+        ConceptosNomina.objects.create(concepto="389", cedula=5, nombre="P5",
+                                       **nuevo, **{m: 100000 for m in MESES_N[6:8]})
         nomina_motor.recargar_bases()
 
     def foco(self, cedula):
@@ -4066,3 +4077,15 @@ class FocoDescuentoComisionanTests(TestCase):
 
     def test_quien_no_comisiona_sin_descuento(self):
         self.assertEqual(self.foco("3"), (220000, 0))
+
+    def test_si_queda_por_debajo_de_la_base_recibe_la_base(self):
+        # 200.000 − 25 % = 150.000 < base 220.000 → 220.000 · julio sin cambio (200.000 / 2)
+        self.assertEqual(self.foco("4"), (220000, 100000))
+
+    def test_la_base_minima_es_proporcional_a_los_dias(self):
+        # promedio anual (200.000 + 4 × 100.000) / 12 = 50.000 − 25 % = 37.500
+        # base de quien trabajó 180 días: 220.000 / 360 × 180 = 110.000 → 110.000
+        self.assertEqual(self.foco("5")[0], 110000)
+
+    def test_si_queda_por_encima_se_deja_el_calculo(self):
+        self.assertEqual(self.foco("1")[0], 450000)                         # 450.000 > 220.000
