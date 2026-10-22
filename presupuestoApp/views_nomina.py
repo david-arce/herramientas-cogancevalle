@@ -428,7 +428,7 @@ def _json(request):
 
 def _mensaje_distribucion(r, accion):
     return (f"{accion} para {r['personas']} persona(s) · {r['filas']} filas repartidas "
-            '· todos los conceptos recalculados ✅')
+            '· valores repartidos tal cual, sin recalcular ✅')
 
 
 @login_required
@@ -469,6 +469,63 @@ def nomina_distribucion_quitar(request):
 
 @login_required
 @require_POST
+def nomina_distribucion_activar(request):
+    """Activa o desactiva la distribución de esas personas sin borrarla."""
+    cuerpo = _json(request)
+    if cuerpo is None:
+        return _error('JSON inválido')
+    activa = bool(cuerpo.get('activa'))
+    try:
+        r = nomina.activar_distribucion(cuerpo.get('cedulas') or [], activa, request.user.get_username())
+    except ValueError as exc:
+        return _error(str(exc))
+    if not r['personas']:
+        msg = f"La distribución ya estaba {'activa' if activa else 'desactivada'}"
+    elif activa:
+        msg = _mensaje_distribucion(r, 'Distribución activada')
+    else:
+        msg = (f"Distribución desactivada para {r['personas']} persona(s): vuelven a su centro/área "
+               'de origen (el reparto queda guardado) · valores sin recalcular ✅')
+    return JsonResponse({'status': 'ok', 'msg': msg, 'resultado': r,
+                         'distribuciones': nomina.listar_distribuciones()})
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  ARL por cargo (seguridad social de asistencia técnica)
+# ══════════════════════════════════════════════════════════════════════
+
+@login_required
+@require_GET
+def nomina_arl_cargos(request):
+    return JsonResponse({'data': nomina.arl_cargos_asistencia()})
+
+
+@login_required
+@require_POST
+def nomina_arl_cargo_guardar(request):
+    """Elige la ARL de un cargo ({cargo, porcentaje}); porcentaje null = automática."""
+    cuerpo = _json(request)
+    if cuerpo is None:
+        return _error('JSON inválido')
+    crudo = cuerpo.get('porcentaje')
+    porcentaje = None if crudo in (None, '') else nomina.numero(crudo, None)
+    if crudo not in (None, '') and porcentaje is None:
+        return _error('Porcentaje inválido')
+    try:
+        filas, recalculados = nomina.guardar_arl_cargo(cuerpo.get('cargo'), porcentaje,
+                                                      request.user.get_username())
+    except ValueError as exc:
+        return _error(str(exc))
+    cargo = nomina.texto(cuerpo.get('cargo')).upper()
+    eleccion = (f'{porcentaje:g} %'.replace('.', ',') if porcentaje is not None
+                else 'automática (la más frecuente del cargo)')
+    return _respuesta_cambio('seguridad_social',
+                             f'ARL de {cargo}: {eleccion} · seguridad social recalculada ({filas} filas) ✅',
+                             recalculados, cargos=nomina.arl_cargos_asistencia())
+
+
+@login_required
+@require_POST
 def nomina_recalcular_todo(request):
     nomina.recalcular_todo()
     return JsonResponse({'status': 'ok', 'msg': 'Todo el presupuesto de nómina fue recalculado ✅'})
@@ -497,7 +554,8 @@ def nomina_tabla(request, tipo):
                      'inicio': reverse('presupuestoNomina'),
                      'distribuciones': reverse('nomina_distribucion'),
                      'distribuir': reverse('nomina_distribucion_aplicar'),
-                     'quitarDistribucion': reverse('nomina_distribucion_quitar')},
+                     'quitarDistribucion': reverse('nomina_distribucion_quitar'),
+                     'activarDistribucion': reverse('nomina_distribucion_activar')},
             'parametros': [], 'depende': [], 'afecta': [],
         }
         return render(request, 'presupuesto_nomina/tabla_concepto.html',
@@ -532,7 +590,11 @@ def nomina_tabla(request, tipo):
                                         if s == c.slug or s in nomina.afectados_por(c.slug))}
             for d in nomina.afectados_por(c.slug)
         ],
-        'urls': _urls(c.slug, c.derivado, c.permite_manual),
+        'urls': {**_urls(c.slug, c.derivado, c.permite_manual),
+                 **({'arlCargos': reverse('nomina_arl_cargos'), 'guardarArlCargo': reverse('nomina_arl_cargo_guardar')}
+                    if c.slug == 'seguridad_social' else {})},
+        # seguridad social: elegir la ARL de cada cargo de asistencia técnica
+        'conArlCargo': c.slug == 'seguridad_social',
         # al agregar una persona: conceptos (que no dependen de este) donde crearla en cero
         'crearEnDetalle': ([{'slug': s, 'etiqueta': nomina.CONCEPTOS[s].etiqueta}
                             for s in nomina.conceptos_para_crear(c.slug)] if c.crea_en_otros else []),
@@ -599,7 +661,7 @@ def nomina_guardar(request, tipo):
     if resumen.get('calculadas_editadas'):
         mensaje += f" · {resumen['calculadas_editadas']} fila(s) calculada(s) pasaron a manual"
     if resumen.get('meses_cero'):
-        mensaje += f" · {resumen['meses_cero']} mes(es) que estaban en 0 se dejaron en 0"
+        mensaje += f" · {resumen['meses_cero']} mes(es) se dejaron en 0 (la fila sigue calculada)"
     aviso = ' · '.join(avisos)
     if resumen.get('personas_corregidas'):
         aviso = (f"Cédula / nombre actualizado en todos los conceptos para "

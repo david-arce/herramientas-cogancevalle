@@ -68,6 +68,8 @@
       <span>Use <strong>➕ Agregar fila</strong> para las personas que el cálculo no cubre, por ejemplo quien ingresa en el mes del presupuesto.
         Una fila calculada que se edite pasa a <strong>manual</strong> y ya no se recalcula; una que se elimine no vuelve al recalcular.
         Para que una fila manual vuelva a calcularse, márquela y use <strong>⚙️ Restablecer cálculo</strong>. Todo se guarda solo.</span>
+      {% if config.baseEditable %}<span>Al cambiar la <strong>{{ config.baseEditable.etiqueta|lower }}</strong> se recalculan solo las filas calculadas; las manuales se respetan.</span>{% endif %}
+      {% if config.afecta %}<span>Al guardarse se actualiza también: <strong>{{ config.afecta|join:", " }}</strong>.</span>{% endif %}
       <span class="pt-ayuda-excel">Se edita como en Excel: flechas para moverse, <kbd>Shift</kbd>+flechas para seleccionar, <kbd>Ctrl</kbd>+<kbd>C</kbd>/<kbd>V</kbd> y <kbd>Supr</kbd> para borrar.</span>
     {% elif config.derivado %}
       <span><span class="pt-origen pt-origen--sistema">⚙️ Calculado</span> Se calcula solo, no se edita.</span>
@@ -87,6 +89,9 @@
   {% if config.conDistribucion %}
     {% include "presupuesto_nomina/_panel_distribucion.html" %}
   {% endif %}
+  {% if config.conArlCargo %}
+    {% include "presupuesto_nomina/_panel_arl_cargo.html" %}
+  {% endif %}
   {% if not config.soloLectura and config.afectaDetalle %}
     {% include "presupuesto_nomina/_dialogo_actualiza.html" %}
   {% endif %}
@@ -100,4 +105,5 @@
 {% block scripts %}
   <script src="{% static_v 'js/presupuesto_nomina.js' %}"></script>
   {% if config.conDistribucion %}<script src="{% static_v 'js/presupuesto_distribucion.js' %}"></script>{% endif %}
+  {% if config.conArlCargo %}<script src="{% static_v 'js/presupuesto_arl_cargo.js' %}"></script>{% endif %}
 {% endblock %}

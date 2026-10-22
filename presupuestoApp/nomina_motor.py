@@ -24,7 +24,7 @@ from django.db.models import Avg, Count, Q, Sum
 
 from . import nomina_conceptos as origen
 from .models import ParametrosPresupuestos
-from .models_nomina import (MESES, ConceptosNomina, CorreccionPersonaNomina, DistribucionNomina,
+from .models_nomina import (MESES, ArlCargoNomina, ConceptosNomina, CorreccionPersonaNomina, DistribucionNomina,
                             FilaEliminadaNomina, FocoCargoInforme, FocoSinComision, PresupuestoNomina)
 
 MESES = list(MESES)
@@ -178,6 +178,7 @@ _LISTA = [
 
     # ── Conceptos derivados: el ORDEN importa (topológico) ─────────────
     Concepto('auxilio_transporte', 'Auxilio de transporte', G_TRANSPORTE, derivado=True,
+             permite_manual=True,              # casos especiales: se edita o se agrega a mano
              titulo_base='Base', parametros=('auxilio_transporte', 'salario_minimo'),
              base_editable='base_auxilio_transporte',
              depende=('sueldos', 'comisiones', 'horas_extra', 'medios_transporte', 'aprendiz')),
@@ -518,6 +519,11 @@ def f_retroactivo(fila, c, p):
       sobre lo que ya se le pagó.
     - Los demás: enero y febrero con su salario actual y desde marzo el
       incremento con retroactivo.
+
+    El retroactivo de marzo es solo por los meses de enero y febrero que se
+    pagan: si enero (o febrero) está fijo en 0 —p. ej. la persona ingresa en
+    febrero— marzo lleva un mes de retroactivo (nuevo × 2 − pagado) y no dos
+    (nuevo × 3 − 2 × pagado). Si ninguno de los dos se paga, marzo es el nuevo.
     """
     base = fila.base or 0
     if c.con_minimo and p.salario_minimo and 0 < base <= p.salario_minimo:
@@ -528,7 +534,9 @@ def f_retroactivo(fila, c, p):
         pagado = max(base, p.minimo_incrementado)     # enero y febrero nunca por debajo del mínimo nuevo
     meses = dict.fromkeys(MESES, nuevo)
     meses['enero'] = meses['febrero'] = pagado
-    meses['marzo'] = nuevo + 2 * (nuevo - pagado)
+    ceros = meses_en_cero(fila)
+    meses_retroactivo = sum(1 for mes in ('enero', 'febrero') if mes not in ceros)
+    meses['marzo'] = nuevo + meses_retroactivo * (nuevo - pagado)
     return meses
 
 
@@ -717,9 +725,15 @@ def filas_de_conceptos(c, ctx):
 #  Distribución por persona (se define una vez, en la vista consolidada)
 # ══════════════════════════════════════════════════════════════════════
 
-def repartos(cedulas=None):
-    """{cedula: [(centro, area, porcentaje), ...]}"""
+def repartos(cedulas=None, incluir_inactivas=False):
+    """{cedula: [(centro, area, porcentaje), ...]}
+
+    Solo las distribuciones activas: una desactivada no reparte nada (la
+    persona queda en su centro/área de origen) pero se conserva guardada.
+    """
     qs = DistribucionNomina.objects.all()
+    if not incluir_inactivas:
+        qs = qs.filter(activa=True)
     if cedulas is not None:
         qs = qs.filter(cedula__in=list(cedulas))
     salida = defaultdict(list)
@@ -728,15 +742,36 @@ def repartos(cedulas=None):
     return dict(salida)
 
 
-def distribuir_filas(c, filas, reparto_por_cedula, p, usuario='', ctx=None):
+def repartir_entero(total, partes):
+    """Reparte `total` (pesos) según `partes` (fracciones) sin perder ni sumar
+    un peso: la diferencia del redondeo se le pone a la parte más grande."""
+    if not partes:
+        return []
+    suma = sum(partes) or 1
+    valores = [int(round(total * parte / suma)) for parte in partes]
+    valores[max(range(len(partes)), key=lambda i: partes[i])] += int(round(total)) - sum(valores)
+    return valores
+
+
+def _repartir_meses(entero, partes):
+    """[{mes: valor}] por destino, con los totales de cada mes exactos."""
+    por_mes = {mes: repartir_entero(entero[mes], partes) for mes in MESES}
+    return [{mes: por_mes[mes][i] for mes in MESES} for i in range(len(partes))]
+
+
+def distribuir_filas(c, filas, reparto_por_cedula, p, usuario='', ctx=None, recalcular=True):
     """Reparte las filas de las personas de `reparto_por_cedula`.
 
     Las filas que salieron de un mismo registro (misma `clave`) se tratan como
     un todo: se juntan y se vuelven a repartir. Un reparto vacío devuelve la
     fila completa a su centro/área de origen.
       - filas calculadas → cada copia guarda su porcentaje en `factor` y sigue
-                            recalculándose sola.
+                            recalculándose sola cuando se recalcule.
       - filas manuales   → se reparten sus valores y siguen siendo manuales.
+
+    recalcular=False ("Aplicar distribución"): no se aplica ninguna fórmula;
+    los valores que la fila ya tiene se reparten tal cual (sin perder un peso).
+    recalcular=True (al cargar desde Conceptos): las calculadas se calculan.
     """
     if not reparto_por_cedula:
         return filas
@@ -753,13 +788,13 @@ def distribuir_filas(c, filas, reparto_por_cedula, p, usuario='', ctx=None):
         ref = miembros[0]
         centro0 = ref.centro_origen or ref.centro
         area0 = ref.area_origen or ref.area
-        destinos = reparto_por_cedula[ref.cedula] or [(centro0, area0, 100.0)]
+        destinos = [(centro, area, (porcentaje or 0) / 100)
+                    for centro, area, porcentaje in (reparto_por_cedula[ref.cedula] or [(centro0, area0, 100.0)])
+                    if (porcentaje or 0) > 0]
         sistema = all(m.origen == SISTEMA for m in miembros)
         entero = {mes: sum(getattr(m, mes) or 0 for m in miembros) for mes in MESES}
-        for centro, area, porcentaje in destinos:
-            parte = (porcentaje or 0) / 100
-            if parte <= 0:
-                continue
+        repartidos = _repartir_meses(entero, [parte for *_, parte in destinos])
+        for (centro, area, parte), meses in zip(destinos, repartidos):
             nueva = PresupuestoNomina(
                 tipo=ref.tipo, origen=SISTEMA if sistema else MANUAL, clave=clave,
                 cedula=ref.cedula, nombre=ref.nombre, cargo=ref.cargo, concepto=ref.concepto,
@@ -770,12 +805,86 @@ def distribuir_filas(c, filas, reparto_por_cedula, p, usuario='', ctx=None):
                 codcosto=ctx.codcosto(area) or (ref.codcosto if _clave_area(area) == _clave_area(ref.area) else ''),
                 actualizado_por=usuario or ref.actualizado_por,
             )
-            if sistema:
+            if sistema and recalcular:
                 aplicar_formula(nueva, c, p)
             else:
-                fijar_meses(nueva, {mes: entero[mes] * parte for mes in MESES})
+                fijar_meses(nueva, meses)
             salida.append(nueva)
     return salida
+
+
+# Seguridad social se consolida por centro/área (no por persona): no se puede
+# repartir por persona sin recalcularla, así que la distribución no la toca.
+NO_SE_REPARTEN = {'seguridad_social'}
+
+
+def _origen_de_personas(cedulas):
+    """{cédula: (centro, área)} de origen, según sus filas de los conceptos base
+    (primero sueldos). Los calculados no guardan su origen."""
+    orden = {c.slug: i for i, c in enumerate(BASE)}
+    origen_ = {}
+    filas = PresupuestoNomina.objects.filter(tipo__in=[c.slug for c in BASE], cedula__in=cedulas)
+    for f in sorted(filas, key=lambda f: (orden.get(f.tipo, 99), f.pk)):
+        origen_.setdefault(f.cedula, (f.centro_origen or f.centro, f.area_origen or f.area))
+    return origen_
+
+
+def repartir_derivado(c, filas, reparto_por_cedula, origen_por_cedula, ctx, usuario=''):
+    """Reparte las filas de un concepto calculado SIN recalcularlo.
+
+    Por persona y concepto se suman sus filas y ese total se reparte según la
+    distribución (o vuelve al centro/área de origen si no tiene). Si alguna de
+    las filas era manual, las repartidas son manuales (así siguen bloqueando a
+    la calculada en cada destino). Cada fila queda con la clave que le daría el
+    cálculo (cédula|centro|área).
+    """
+    grupos = defaultdict(list)
+    for fila in filas:
+        grupos[(fila.cedula, texto(fila.concepto))].append(fila)
+    nuevas = []
+    for (cedula, _), miembros in grupos.items():
+        ref = miembros[0]
+        centro0, area0 = origen_por_cedula.get(cedula, (ref.centro, ref.area))
+        destinos = [(centro, area, (porcentaje or 0) / 100)
+                    for centro, area, porcentaje in (reparto_por_cedula.get(cedula) or [(centro0, area0, 100.0)])
+                    if (porcentaje or 0) > 0]
+        manual = any(m.origen == MANUAL for m in miembros)
+        entero = {mes: sum(getattr(m, mes) or 0 for m in miembros) for mes in MESES}
+        repartidos = _repartir_meses(entero, [parte for *_, parte in destinos])
+        for (centro, area, parte), meses in zip(destinos, repartidos):
+            nueva = PresupuestoNomina(
+                tipo=c.slug, origen=MANUAL if manual else SISTEMA,
+                cedula=cedula, nombre=ref.nombre, cargo=ref.cargo, concepto=ref.concepto,
+                centro=centro, area=area, centro_origen=centro0, area_origen=area0,
+                base=ref.base or 0, historico=dict(ref.historico or {}), factor=parte,
+                excluir_de=list(ref.excluir_de or []),
+                cuenta=ctx.cuenta(area) or (ref.cuenta if _clave_area(area) == _clave_area(ref.area) else ''),
+                codcosto=ctx.codcosto(area) or (ref.codcosto if _clave_area(area) == _clave_area(ref.area) else ''),
+                actualizado_por=usuario or ref.actualizado_por,
+            )
+            nueva.clave = clave_persona(nueva)
+            fijar_meses(nueva, meses)
+            nuevas.append(nueva)
+    return nuevas
+
+
+def _seguir_eliminadas(c, cedulas, con_filas, reparto_por_cedula, origen_por_cedula, usuario=''):
+    """Concepto con filas que se pueden eliminar (auxilio de transporte,
+    bonificaciones foco): si a la persona se le eliminó la fila y no le queda
+    ninguna, también queda eliminada en sus nuevos destinos; así no reaparece
+    al recalcular."""
+    for cedula in cedulas:
+        if cedula in con_filas:
+            continue
+        previa = FilaEliminadaNomina.objects.filter(tipo=c.slug, llave__startswith=f'{cedula}|').first()
+        if previa is None:
+            continue
+        centro0, area0 = origen_por_cedula.get(cedula, ('', ''))
+        for centro, area, porcentaje in (reparto_por_cedula.get(cedula) or [(centro0, area0, 100.0)]):
+            if (porcentaje or 0) > 0 and area:
+                FilaEliminadaNomina.objects.get_or_create(
+                    tipo=c.slug, llave=f'{cedula}|{centro}|{area}'[:400],
+                    defaults={'nombre': previa.nombre, 'eliminado_por': usuario or previa.eliminado_por})
 
 
 def _normalizar_reparto(reparto):
@@ -795,23 +904,42 @@ def _normalizar_reparto(reparto):
 
 
 def aplicar_distribucion(cedulas, usuario=''):
-    """Vuelve a repartir todas las filas base de esas personas y recalcula los derivados."""
+    """Reparte las filas de esas personas en TODOS sus conceptos SIN recalcular nada.
+
+    Se toman los valores que cada fila ya tiene (calculada o manual) y se
+    reparten según la distribución (o vuelven a su centro/área de origen si no
+    tiene o está desactivada). No se aplica ninguna fórmula ni se regenera
+    ningún concepto: las demás personas no cambian, lo ajustado a mano se
+    conserva y lo eliminado sigue eliminado. Seguridad social (consolidada por
+    centro/área) queda como estaba hasta el próximo "Recalcular todo".
+    """
     cedulas = sorted({cedula_normalizada(c) for c in cedulas} - {''})
     ctx = Contexto()
     actual = repartos(cedulas)
     por_cedula = {c: actual.get(c, []) for c in cedulas}
     filas_nuevas = 0
     with bloqueo():
+        origen_por_cedula = _origen_de_personas(cedulas)
         for c in BASE:
             filas = list(PresupuestoNomina.objects.filter(tipo=c.slug, cedula__in=cedulas).order_by('id'))
             if not filas:
                 continue
-            nuevas = distribuir_filas(c, filas, por_cedula, ctx.p, usuario, ctx=ctx)
+            nuevas = distribuir_filas(c, filas, por_cedula, ctx.p, usuario, ctx=ctx, recalcular=False)
             PresupuestoNomina.objects.filter(pk__in=[f.pk for f in filas]).delete()
             PresupuestoNomina.objects.bulk_create(nuevas, batch_size=1000)
             filas_nuevas += len(nuevas)
         for c in DERIVADOS:
-            regenerar(ctx, c)
+            if c.slug in NO_SE_REPARTEN:
+                continue
+            filas = list(PresupuestoNomina.objects.filter(tipo=c.slug, cedula__in=cedulas).order_by('id'))
+            if c.permite_manual:
+                _seguir_eliminadas(c, cedulas, {f.cedula for f in filas}, por_cedula, origen_por_cedula, usuario)
+            if not filas:
+                continue
+            nuevas = repartir_derivado(c, filas, por_cedula, origen_por_cedula, ctx, usuario)
+            PresupuestoNomina.objects.filter(pk__in=[f.pk for f in filas]).delete()
+            PresupuestoNomina.objects.bulk_create(nuevas, batch_size=1000)
+            filas_nuevas += len(nuevas)
     return {'personas': len(cedulas), 'filas': filas_nuevas, 'descartadas': 0}
 
 
@@ -839,13 +967,39 @@ def quitar_distribucion(cedulas, usuario=''):
         return aplicar_distribucion(cedulas, usuario)
 
 
+def activar_distribucion(cedulas, activa, usuario=''):
+    """Activa o desactiva la distribución guardada de esas personas SIN borrarla.
+
+    Desactivada: sus filas vuelven a su centro/área de origen. Activada: se
+    reparten otra vez con los porcentajes guardados. En ambos casos se
+    reparten los valores que ya tienen, sin recalcular (ver aplicar_distribucion).
+    """
+    cedulas = sorted({cedula_normalizada(c) for c in cedulas} - {''})
+    if not cedulas:
+        raise ValueError('Seleccione al menos una persona')
+    activa = bool(activa)
+    with transaction.atomic():
+        qs = DistribucionNomina.objects.filter(cedula__in=cedulas)
+        con_reparto = sorted(set(qs.values_list('cedula', flat=True)))
+        if not con_reparto:
+            raise ValueError('Esas personas no tienen una distribución guardada')
+        cambian = sorted(set(qs.exclude(activa=activa).values_list('cedula', flat=True)))
+        if not cambian:
+            return {'personas': 0, 'filas': 0, 'descartadas': 0}
+        DistribucionNomina.objects.filter(cedula__in=cambian).update(activa=activa, actualizado_por=usuario)
+        return aplicar_distribucion(cambian, usuario)
+
+
 def listar_distribuciones():
+    """Todas las distribuciones guardadas, activas y desactivadas."""
     nombres = dict(PresupuestoNomina.objects.filter(tipo__in=[c.slug for c in BASE])
                    .exclude(cedula='').values_list('cedula', 'nombre'))
+    activas = set(DistribucionNomina.objects.filter(activa=True).values_list('cedula', flat=True))
     salida = []
-    for cedula, destinos in repartos().items():
+    for cedula, destinos in repartos(incluir_inactivas=True).items():
         salida.append({
             'cedula': cedula, 'nombre': nombres.get(cedula, ''),
+            'activa': cedula in activas,
             'reparto': [{'centro': c, 'area': a, 'porcentaje': p} for c, a, p in destinos],
         })
     return sorted(salida, key=lambda d: d['nombre'] or d['cedula'])
@@ -1266,6 +1420,102 @@ def porcentajes_arl_persona(ctx):
     return {ced: c.most_common(1)[0][0] / 100.0 for ced, c in conteo.items() if ced}
 
 
+def porcentajes_arl_cargo(anio):
+    """{cargo normalizado: % ARL (fracción)} según el NOMBRECAR del Excel del año base.
+
+    Respaldo para quien no tiene ARLPORC propio (persona nueva o sin dato): el
+    ARLPORC que más se repite entre las personas con ese cargo (ignorando vacíos
+    y ceros), sin redondear. Si dos valores empatan se toma el mayor (el riesgo
+    más alto).
+    """
+    conteo = defaultdict(Counter)
+    for cargo, valor in (ConceptosNomina.objects.filter(anio=anio, arlporc__isnull=False, arlporc__gt=0)
+                         .exclude(nombrecar='').values_list('nombrecar', 'arlporc')):
+        clave = _sin_tildes(cargo)
+        if clave:
+            conteo[clave][valor] += 1
+    return {cargo: max(c.items(), key=lambda par: (par[1], par[0]))[0] / 100.0
+            for cargo, c in conteo.items()}
+
+
+def arl_elegidas():
+    """{cargo normalizado: % ARL (fracción)} elegido en la pantalla de seguridad social."""
+    return {_sin_tildes(cargo): pct / 100.0 for cargo, pct in ArlCargoNomina.objects.values_list('cargo', 'porcentaje')
+            if pct and pct > 0}
+
+
+# Conceptos cuyo valor entra en la seguridad social (ver gen_seguridad_social)
+FUENTES_SEGURIDAD = ('sueldos', 'medios_transporte', 'comisiones', 'horas_extra', 'aprendiz')
+
+
+def arl_cargos_asistencia(ctx=None):
+    """Cargos de las personas de asistencia técnica (propia y convenio), con las
+    ARL que ese cargo tiene en el Excel del año base, para elegir con cuál se
+    calcula. Cada cargo trae:
+      cargo, personas, sin_arl (personas sin ARL propia: a ellas aplica la
+      elección), opciones [{porcentaje, personas}], automatica, elegida.
+    """
+    ctx = ctx or Contexto()
+    arl_persona = porcentajes_arl_persona(ctx)
+    automaticas = porcentajes_arl_cargo(ctx.anio)
+    elegidas = {_sin_tildes(c): p for c, p in ArlCargoNomina.objects.values_list('cargo', 'porcentaje')}
+
+    cargos = {}
+    for fila in PresupuestoNomina.objects.filter(tipo__in=FUENTES_SEGURIDAD).exclude(cedula='') \
+            .values('cedula', 'cargo', 'area'):
+        if _sin_tildes(fila['area']) not in AREAS_POR_PERSONA:
+            continue
+        clave = _sin_tildes(fila['cargo'])
+        if not clave:
+            continue
+        datos = cargos.setdefault(clave, {'cargo': clave, 'personas': set(), 'sin_arl': set()})
+        datos['personas'].add(fila['cedula'])
+        if not arl_persona.get(fila['cedula']):
+            datos['sin_arl'].add(fila['cedula'])
+
+    # ARL de cada cargo en el Excel: cuántas personas distintas la tienen
+    opciones = defaultdict(lambda: defaultdict(set))
+    for cargo, cedula, valor in (ConceptosNomina.objects.filter(anio=ctx.anio, arlporc__isnull=False, arlporc__gt=0)
+                                 .exclude(nombrecar='').values_list('nombrecar', 'cedula', 'arlporc')):
+        clave = _sin_tildes(cargo)
+        if clave in cargos:
+            opciones[clave][valor].add(cedula)
+
+    salida = []
+    for clave, datos in sorted(cargos.items()):
+        auto = automaticas.get(clave)
+        salida.append({
+            'cargo': clave,
+            'personas': len(datos['personas']),
+            'sin_arl': len(datos['sin_arl']),
+            'opciones': [{'porcentaje': valor, 'personas': len(ceds)}
+                         for valor, ceds in sorted(opciones[clave].items(), key=lambda par: (-len(par[1]), par[0]))],
+            'automatica': round(auto * 100, 6) if auto else None,
+            'elegida': elegidas.get(clave),
+        })
+    return salida
+
+
+def guardar_arl_cargo(cargo, porcentaje, usuario=''):
+    """Elige (o quita, con porcentaje None) la ARL de un cargo y recalcula seguridad social."""
+    clave = _sin_tildes(cargo)
+    if not clave:
+        raise ValueError('Falta el cargo')
+    if porcentaje is None:
+        ArlCargoNomina.objects.filter(cargo=clave).delete()
+    else:
+        porcentaje = float(porcentaje)
+        if not 0 < porcentaje < 100:
+            raise ValueError('El porcentaje de ARL debe estar entre 0 y 100')
+        ArlCargoNomina.objects.update_or_create(cargo=clave, defaults={'porcentaje': porcentaje,
+                                                                      'actualizado_por': usuario})
+    ctx = Contexto()
+    with bloqueo():
+        filas = regenerar(ctx, obtener('seguridad_social'))
+        recalculados = propagar('seguridad_social', ctx)
+    return filas, recalculados
+
+
 def porcentajes_arl(anio):
     """{(centro, área): %} y {área: %}: promedio de ARLPORC redondeado a 4 decimales.
 
@@ -1303,6 +1553,8 @@ def gen_seguridad_social(ctx, c):
     p = ctx.p
     tope = p.minimo_incrementado * 10
     arl_persona = porcentajes_arl_persona(ctx)
+    arl_cargo = porcentajes_arl_cargo(ctx.anio)
+    arl_elegida = arl_elegidas()
     arl_centro, arl_area = porcentajes_arl(ctx.anio)
     agrupadas = {_sin_tildes(a) for grupo in AREAS_AGRUPADAS for a in grupo}
     generales = defaultdict(lambda: dict.fromkeys(MESES, 0))
@@ -1314,7 +1566,9 @@ def gen_seguridad_social(ctx, c):
     #    informe, el promedio del área en todos los centros.
     #  · áreas que se consolidan sin centro (aftosa): un solo promedio del área.
     #  · filas por persona (asistencia técnica): el ARLPORC de la persona tal
-    #    cual viene del informe; si no tiene, el promedio de su centro.
+    #    cual viene del informe; si no tiene, la ARL elegida para su cargo en
+    #    esta pantalla; si no se eligió, la más frecuente de su cargo
+    #    (NOMBRECAR); si tampoco hay, el promedio de su centro.
     #  Sin ningún dato se usa 0,93 %.
     arl_valor = defaultdict(lambda: dict.fromkeys(MESES, 0))
 
@@ -1323,7 +1577,9 @@ def gen_seguridad_social(ctx, c):
         del_area = arl_area.get(area)
         del_centro = del_area if area in agrupadas else (arl_centro.get((fila.centro, fila.area)) or del_area)
         if llave[2]:                                   # fila por persona
-            return arl_persona.get(fila.cedula) or del_centro or ARL_POR_DEFECTO
+            cargo = _sin_tildes(fila.cargo)
+            return (arl_persona.get(fila.cedula) or arl_elegida.get(cargo) or arl_cargo.get(cargo)
+                    or del_centro or ARL_POR_DEFECTO)
         return del_centro or ARL_POR_DEFECTO
 
     def sumar(destino, fila, meses=None):
@@ -1434,7 +1690,7 @@ def regenerar(ctx, c):
     siempre. Para que una persona no entre en alguno de ellos se usa
     `excluir_de` en la fila de origen.
 
-    Los conceptos con `permite_manual` (bonificaciones foco) conservan las
+    Los conceptos con `permite_manual` (bonificaciones foco, auxilio de transporte) conservan las
     filas que se agregaron a mano; esas no se calculan y bloquean la fila
     calculada de la misma persona.
     """
@@ -2135,7 +2391,16 @@ def guardar(slug, filas_json, usuario='', con_editados=False):
                 if not c.derivado:
                     # Los meses que la fila manual tenía en 0 se quedan en 0
                     # (si todos estaban en 0 se calcula todo el año).
-                    ceros = [m for m in MESES if not entrantes[m]] if era_manual else []
+                    if era_manual:
+                        ceros = [m for m in MESES if not entrantes[m]]
+                    else:
+                        # Fila calculada: se conservan los meses que ya estaban
+                        # fijos en 0 y los que el usuario acaba de poner en 0 en
+                        # este mismo envío (borró enero y enseguida pulsó
+                        # "Restablecer cálculo", antes de que se guardara).
+                        fijos = meses_en_cero(fila)
+                        ceros = [m for m in MESES if not entrantes[m]
+                                 and (m in fijos or (antes is not None and antes[m]))]
                     _fijar_meses_cero(fila, ceros if len(ceros) < len(MESES) else [])
                     if ceros and len(ceros) < len(MESES):
                         resumen['meses_cero'] += len(ceros)
@@ -2152,7 +2417,20 @@ def guardar(slug, filas_json, usuario='', con_editados=False):
 
             if not c.derivado and fila.origen == SISTEMA:
                 calculado = calcular(fila, c, p)
-                editados = {m for m in MESES if abs(entrantes[m] - calculado[m]) > TOLERANCIA}
+                # Solo cuenta como editado un mes que el usuario tocó: los demás
+                # traen el valor guardado, que puede cambiar al recalcular (p. ej.
+                # marzo al liberar o fijar enero en 0).
+                editados = {m for m in MESES if tocado(m) and abs(entrantes[m] - calculado[m]) > TOLERANCIA}
+                if (editados and not forzar and c.formula == 'retroactivo'
+                        and all(not entrantes[m] for m in editados)):
+                    # Sueldos / transporte: poner meses en 0 (p. ej. borrar enero
+                    # porque la persona ingresa en febrero) NO vuelve manual la
+                    # fila: esos meses quedan fijos en 0 y se recalcula el resto,
+                    # así el retroactivo de marzo se ajusta a los meses pagados.
+                    _fijar_meses_cero(fila, meses_en_cero(fila) | editados)
+                    resumen['meses_cero'] += len(editados)
+                    calculado = calcular(fila, c, p)
+                    editados = set()
                 if editados and not forzar:
                     # Editar un mes de una fila calculada la vuelve MANUAL (en todos
                     # los conceptos, también en los de histórico como auxilio TBC y

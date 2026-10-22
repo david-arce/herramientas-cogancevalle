@@ -1,0 +1,30 @@
+{% comment %}
+ARL por cargo — solo en Seguridad social.
+Asistencia técnica (propia y convenio) se calcula por persona y un cargo puede
+tener varias ARL en el Excel: aquí se elige cuál usar. La lógica está en
+static/js/presupuesto_arl_cargo.js; el cálculo en nomina_motor.gen_seguridad_social.
+{% endcomment %}
+<details class="pt-seccion" id="panelArlCargo" data-recordar="nomina-arl-cargo" open>
+  <summary class="pt-seccion__titulo">
+    <span>
+      <strong>ARL por cargo · Asistencia técnica</strong>
+      <small>Propia y convenio: elija con qué ARL se calcula cada cargo</small>
+    </span>
+    <span class="pt-seccion__toggle" aria-hidden="true"></span>
+  </summary>
+  <div class="pt-seccion__cuerpo">
+    <p class="nd-ayuda">
+      Si la persona trae su propia ARL en el Excel, <strong>esa manda</strong>. La ARL elegida aquí se usa para
+      quienes no la traen; en <em>Automática</em> se toma la que más se repite en el cargo.
+      Al cambiarla se recalcula la seguridad social.
+    </p>
+    <div class="ac-envoltura">
+      <table class="ac-tabla">
+        <thead>
+          <tr><th>Cargo</th><th class="ac-num">Personas</th><th class="ac-num" title="Personas sin ARL propia en el Excel: a ellas aplica la ARL elegida">Sin ARL propia</th><th>ARL con que se calcula</th></tr>
+        </thead>
+        <tbody id="acCargos"><tr><td colspan="4" class="nd-vacio">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</details>

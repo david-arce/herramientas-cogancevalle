@@ -470,6 +470,32 @@ tr.pt-destello { animation: pt-destello .6s ease-in-out 3; }
 .nd-acciones { text-align: right; white-space: nowrap; }
 .nd-acciones .pt-btn { padding: 3px 10px; font-size: 12px; }
 
+/* Activar / desactivar una distribución sin borrarla */
+.nd-encabezado { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.nd-encabezado .nd-titulo { margin: 0; }
+.nd-masivo { display: flex; gap: 6px; }
+.nd-contador--inactivas { background: #fdecef; color: #842029; }
+.nd-chip--inactiva { background: #eceff3; color: var(--pt-texto-suave); }
+.nd-estado { width: 1%; white-space: nowrap; }
+.nd-switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; font-size: 12px; }
+.nd-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.nd-switch__pista {
+  position: relative; width: 34px; height: 18px; border-radius: 9px; flex: none;
+  background: var(--pt-borde-fuerte); transition: background .15s;
+}
+.nd-switch__pista::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+  border-radius: 50%; background: #fff; box-shadow: var(--pt-sombra); transition: transform .15s;
+}
+.nd-switch input:checked + .nd-switch__pista { background: var(--pt-verde); }
+.nd-switch input:checked + .nd-switch__pista::after { transform: translateX(16px); }
+.nd-switch input:focus-visible + .nd-switch__pista { outline: 2px solid var(--pt-azul); outline-offset: 2px; }
+.nd-switch input:disabled + .nd-switch__pista { opacity: .5; cursor: progress; }
+.nd-switch__texto { min-width: 74px; color: var(--pt-texto-suave); }
+.nd-switch input:checked ~ .nd-switch__texto { color: #0f5132; font-weight: 600; }
+.nd-vigentes tr.nd-inactiva td:not(.nd-estado):not(.nd-acciones) { opacity: .55; }
+.nd-vigentes tr.nd-inactiva .nd-reparto { text-decoration: line-through; background: transparent; }
+
 /* ==========================================================================
    Diálogo "qué se actualiza con esta fila"
    ========================================================================== */
@@ -567,3 +593,26 @@ table.pt-tabla tbody tr.pt-fila--activa td.pt-col-total { background: #cddff8; }
 .da-subtitulo { margin: 0; font-size: 14px; }
 .da-nota--arriba { margin: 2px 0 0; }
 .da-crear__cabecera .da-atajos { flex: 0 0 auto; white-space: nowrap; }
+
+/* ==========================================================================
+   Panel ARL por cargo (seguridad social · asistencia técnica)
+   ========================================================================== */
+.ac-envoltura { max-height: 320px; overflow: auto; margin-top: 8px; }
+.ac-tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ac-tabla th {
+  position: sticky; top: 0; background: var(--pt-fondo); text-align: left;
+  font-size: 11px; text-transform: uppercase; color: var(--pt-texto-suave);
+  padding: 6px 8px; border-bottom: 1px solid var(--pt-borde);
+}
+.ac-tabla td { padding: 6px 8px; border-bottom: 1px solid #eef1f4; vertical-align: middle; }
+.ac-tabla .ac-num { text-align: right; width: 1%; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ac-tabla select {
+  min-width: 260px; max-width: 100%; height: 30px; padding: 2px 8px; font: inherit; font-size: 13px;
+  border: 1px solid var(--pt-borde-fuerte); border-radius: var(--pt-radio); background: #fff;
+}
+.ac-tabla select:disabled { opacity: .6; cursor: progress; }
+.ac-tabla tr.ac-elegida select { border-color: var(--pt-azul); background: #f2f8ff; font-weight: 600; }
+.ac-varias {
+  display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 10px;
+  background: #fff4d6; color: #7a5600; font-size: 11px; font-weight: 600;
+}
