@@ -4089,3 +4089,13 @@ class FocoDescuentoComisionanTests(TestCase):
 
     def test_si_queda_por_encima_se_deja_el_calculo(self):
         self.assertEqual(self.foco("1")[0], 450000)                         # 450.000 > 220.000
+
+    def test_cargo_nuevo_que_no_esta_en_el_informe_no_toma_la_base(self):
+        # persona agregada a mano en el presupuesto (no está en el Excel): sin comisiones
+        # reales su enero es 0 y NO sube a la base; julio sale de lo presupuestado
+        for tipo, valor in (("sueldos", 2000000), ("comisiones", 400000)):
+            linea_nomina(tipo=tipo, cedula="9", nombre="VACANTE ASESOR", cargo="CAJERO", origen="manual",
+                         centro="ALMACEN TULUA", area="VENTAS", **{m: valor for m in MESES_N}).save()
+        nomina_motor.recalcular_todo()
+        self.assertEqual(self.foco("9"), (0, 200000))
+        self.assertEqual(self.foco("4")[0], 220000)                         # los del informe sí

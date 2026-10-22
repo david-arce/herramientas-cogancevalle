@@ -1219,6 +1219,14 @@ def fechas_ingreso(anio):
     return {**corregidas, **propias}
 
 
+def personas_en_informe(ctx):
+    """Cédulas (ya corregidas) que están en el informe: el Excel de Conceptos
+    del año base. Quien no está es un cargo nuevo (agregado en el presupuesto)."""
+    correcciones = ctx.correcciones()
+    return {cedula_corregida(ced, correcciones)
+            for ced in ConceptosNomina.objects.filter(anio=ctx.anio).values_list('cedula', flat=True).distinct()} - {''}
+
+
 def valores_foco_informe(ctx):
     """{cédula: {mes: valor}} de la bonificación foco del informe (concepto E17, año base)."""
     salida = defaultdict(lambda: dict.fromkeys(MESES, 0.0))
@@ -1299,7 +1307,8 @@ def gen_bonificaciones_foco(ctx, c):
 
     Mínimo: si el enero de quien comisiona (ya con el descuento) queda por
     debajo de la base general (+ IPC, proporcional a sus días), se le paga la
-    base.
+    base. No aplica a cargos nuevos: personas cuya cédula no está en el
+    informe (Excel de Conceptos del año base); a ellas se les deja el cálculo.
 
     Cargos elegidos en el tablero ("valor del informe"): para esas personas no
     se usa nada de lo anterior. Cada mes se toma su valor del informe (concepto
@@ -1345,14 +1354,19 @@ def gen_bonificaciones_foco(ctx, c):
     # 1) Quienes comisionan: enero con las comisiones reales (sin incremento)
     #    y julio con la mitad del promedio presupuestado de enero a junio;
     #    a enero se le descuenta el 25 % (DESCUENTO_FOCO_COMISIONAN) y, si
-    #    así queda por debajo de la base general, se le paga la base.
+    #    así queda por debajo de la base general, se le paga la base. El
+    #    mínimo NO aplica a cargos nuevos (personas que no están en el informe).
     cuota = cuotas_mensuales(por_promedio, lambda f: f.cedula)
     queda = 1 - DESCUENTO_FOCO_COMISIONAN
+    en_informe = personas_en_informe(ctx)
     vistos = set()
     for fila in por_promedio:
         promedio = promedio_anual_comisiones(reales.get(fila.cedula, {}), ctx.meses_reales())
         datos = dict.fromkeys(MESES, 0)
-        datos['enero'] = max(promedio * queda, base_de(fila.cedula)) * cuota[id(fila)]['enero']
+        enero = promedio * queda
+        if fila.cedula in en_informe:
+            enero = max(enero, base_de(fila.cedula))
+        datos['enero'] = enero * cuota[id(fila)]['enero']
         datos['julio'] = promedio_primer_semestre(fila) / 2
         vistos.add(fila.cedula)
         yield dict(identidad(fila, concepto='BONIFICACIÓN FOCO'), clave=clave_persona(fila), **datos)
