@@ -689,7 +689,7 @@ class EstaticosVersionadosTests(TestCase):
 # ═══════════════════════════════════════════════════════════════════════
 #  Nómina en vertical
 # ═══════════════════════════════════════════════════════════════════════
-from .models_nomina import ArlCargoNomina, CorreccionPersonaNomina, DistribucionNomina, FilaEliminadaNomina, FocoCargoInforme  # noqa: E402
+from .models_nomina import ArlCargoNomina, CorreccionPersonaNomina, DistribucionNomina, FilaEliminadaNomina, FocoCargoInforme, FocoSinComision  # noqa: E402
 from .models_nomina import (  # noqa: E402
     ConceptosNomina, ConfiguracionNomina, PresupuestoNomina, PresupuestoNominaMes,
 )
@@ -4026,3 +4026,43 @@ class ArlElegidaPorCargoTests(TestCase):
         self.assertIn('id="panelArlCargo"', html)
         self.assertIn(reverse("nomina_arl_cargos"), html)
         self.assertNotIn('id="panelArlCargo"', self.client.get(reverse("nomina_tabla", args=["prima"])).content.decode())
+
+
+class FocoDescuentoComisionanTests(TestCase):
+    """Bonificación foco de quien comisiona y NO está en la lista "sin comisión":
+    se le descuenta el 25 % solo en enero (julio va completo). A los de la lista
+    (base general) y a quienes no comisionan no se les descuenta."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1423500, incremento_ipc=10,
+                                              incremento_comisiones=0)
+        config = origen_nomina.ConfiguracionNomina.actual()
+        config.meses_reales = 8
+        config.save()
+        comunes = dict(anio=timezone.localdate().year, archivo="prueba", nombre_cen="ALMACEN TULUA",
+                       nomcosto="VENTAS", nombrecar="CAJERO", fecha_ingreso=datetime.date(2015, 1, 1))
+        for ced in (1, 2, 3):
+            ConceptosNomina.objects.create(concepto="001", cedula=ced, nombre=f"P{ced}", concepto_f=2000000,
+                                           **comunes, **{m: 2000000 for m in MESES_N[:8]})
+        for ced in (1, 2):                                   # comisionan 600.000 al mes (ene-ago)
+            ConceptosNomina.objects.create(concepto="389", cedula=ced, nombre=f"P{ced}",
+                                           **comunes, **{m: 600000 for m in MESES_N[:8]})
+        ConceptosNomina.objects.create(concepto="E17", cedula=3, nombre="P3", enero=200000, **comunes)
+        FocoSinComision.objects.create(cedula="2", nombre="P2")          # en la lista: base general
+        nomina_motor.recargar_bases()
+
+    def foco(self, cedula):
+        f = PresupuestoNomina.objects.get(tipo="bonificaciones_foco", cedula=cedula)
+        return f.enero, f.julio
+
+    def test_quien_comisiona_tiene_25_de_descuento_solo_en_enero(self):
+        # enero: promedio anual de comisiones reales 600.000 − 25 % → 450.000
+        # julio: mitad del promedio presupuestado ene-jun (600.000) = 300.000, sin descuento
+        self.assertEqual(self.foco("1"), (450000, 300000))
+
+    def test_lista_sin_comision_sin_descuento(self):
+        self.assertEqual(self.foco("2"), (220000, 0))                      # base 200.000 + 10 % IPC
+
+    def test_quien_no_comisiona_sin_descuento(self):
+        self.assertEqual(self.foco("3"), (220000, 0))

@@ -1265,6 +1265,9 @@ def base_bonificacion_foco(ctx, comisionan, ingresos):
     return float(candidatos.most_common(1)[0][0]) if candidatos else float(BONIFICACION_FOCO_FIJA)
 
 MESES_SEMESTRE_1 = MESES[:6]       # enero a junio
+# Bonificación foco de quien comisiona (no está en la lista "sin comisión"):
+# en enero se paga el resultado menos este porcentaje (julio va completo).
+DESCUENTO_FOCO_COMISIONAN = 0.25
 
 def promedio_primer_semestre(fila):
     """Promedio mensual de enero a junio de una fila de comisiones presupuestadas.
@@ -1289,6 +1292,10 @@ def gen_bonificaciones_foco(ctx, c):
     - Solo quien comisiona y NO está en la lista "sin comisión": la mitad del
       promedio de sus comisiones PRESUPUESTADAS de enero a junio.
     - Quien no comisiona o está en la lista: no recibe pago en julio.
+
+    Descuento: a quien comisiona y NO está en la lista "sin comisión" (no se le
+    aplica la base general) se le descuenta el 25 % del resultado de ENERO
+    (DESCUENTO_FOCO_COMISIONAN). Julio va completo.
 
     Cargos elegidos en el tablero ("valor del informe"): para esas personas no
     se usa nada de lo anterior. Cada mes se toma su valor del informe (concepto
@@ -1324,13 +1331,15 @@ def gen_bonificaciones_foco(ctx, c):
     por_promedio = [f for f in filas_comisiones if f.cedula and f.cedula not in sin_comision]
 
     # 1) Quienes comisionan: enero con las comisiones reales (sin incremento)
-    #    y julio con la mitad del promedio presupuestado de enero a junio
+    #    y julio con la mitad del promedio presupuestado de enero a junio;
+    #    a enero se le descuenta el 25 % (DESCUENTO_FOCO_COMISIONAN)
     cuota = cuotas_mensuales(por_promedio, lambda f: f.cedula)
+    queda = 1 - DESCUENTO_FOCO_COMISIONAN
     vistos = set()
     for fila in por_promedio:
         promedio = promedio_anual_comisiones(reales.get(fila.cedula, {}), ctx.meses_reales())
         datos = dict.fromkeys(MESES, 0)
-        datos['enero'] = promedio * cuota[id(fila)]['enero']
+        datos['enero'] = promedio * cuota[id(fila)]['enero'] * queda
         datos['julio'] = promedio_primer_semestre(fila) / 2
         vistos.add(fila.cedula)
         yield dict(identidad(fila, concepto='BONIFICACIÓN FOCO'), clave=clave_persona(fila), **datos)
