@@ -671,8 +671,8 @@
 
       const btnEducacion = document.getElementById('btnCalcularEducacion');
       btnEducacion.addEventListener('click', () => {
-        if (!confirm(`Se volverá a calcular SOLO el auxilio de educación con los datos de ${btnEducacion.dataset.anio}. ` +
-                     'Las filas manuales y las eliminadas se respetan; el resto de la nómina no cambia. ¿Continuar?')) return;
+        if (!confirm(`Se volverá a calcular el auxilio de educación con los datos de ${btnEducacion.dataset.anio} ` +
+                     'y, como todo cambio, se recalcula el resto de la nómina. Las filas manuales y las eliminadas se respetan. ¿Continuar?')) return;
         PT.conSpinner(btnEducacion, async () => {
           try {
             const r = await PT.pedir(btnEducacion.dataset.url, { method: 'POST' });

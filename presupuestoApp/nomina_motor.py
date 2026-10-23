@@ -1246,9 +1246,8 @@ def guardar_foco_cargos_informe(cargos, usuario=''):
         FocoCargoInforme.objects.exclude(cargo__in=cargos).delete()
         for cargo in cargos:
             FocoCargoInforme.objects.update_or_create(cargo=cargo, defaults={'actualizado_por': usuario})
-        ctx = Contexto()
         with bloqueo():
-            regenerar(ctx, obtener('bonificaciones_foco'))
+            propagar()                                  # cualquier cambio recalcula todo
     return len(cargos)
 
 
@@ -1542,10 +1541,9 @@ def guardar_arl_cargo(cargo, porcentaje, usuario=''):
             raise ValueError('El porcentaje de ARL debe estar entre 0 y 100')
         ArlCargoNomina.objects.update_or_create(cargo=clave, defaults={'porcentaje': porcentaje,
                                                                       'actualizado_por': usuario})
-    ctx = Contexto()
     with bloqueo():
-        filas = regenerar(ctx, obtener('seguridad_social'))
-        recalculados = propagar('seguridad_social', ctx)
+        recalculados = propagar('seguridad_social')     # cualquier cambio recalcula todo
+        filas = PresupuestoNomina.objects.filter(tipo='seguridad_social').count()
     return filas, recalculados
 
 
@@ -1760,14 +1758,16 @@ def regenerar(ctx, c):
     return len(nuevas) + len(manuales)
 
 
-def propagar(slug, ctx=None):
-    """Recalcula en cascada todo lo que depende de `slug`."""
-    ctx = ctx or Contexto()
-    hechos = []
-    for dependiente in afectados_por(slug):
-        regenerar(ctx, CONCEPTOS[dependiente])
-        hechos.append(dependiente)
-    return hechos
+def propagar(slug=None, ctx=None):
+    """Después de CUALQUIER cambio (en el concepto que sea) se recalcula todo:
+    las fórmulas de los conceptos base y todos los calculados, igual que el
+    botón "Recalcular todo". Lo manual se respeta como siempre.
+
+    Se usa un contexto nuevo para leer lo recién guardado. Devuelve los
+    conceptos calculados que se rehicieron (sin `slug`), para el mensaje.
+    """
+    _recalcular_todo_sin_bloqueo()
+    return [c.slug for c in DERIVADOS if c.slug != slug]
 
 
 def _ventana_desactualizada(c, ctx):
@@ -1782,23 +1782,29 @@ def _ventana_desactualizada(c, ctx):
 
 def recalcular_todo():
     """Tras cambiar parámetros: fórmulas de los conceptos base + todos los derivados."""
-    ctx = Contexto()
     with bloqueo():
-        for c in BASE:
-            if _ventana_desactualizada(c, ctx):
-                # Cambiaron los meses con datos reales (o la fecha de corte) desde
-                # la última carga: el histórico guardado ya no sirve, se vuelve a
-                # leer de Conceptos (las filas manuales se conservan).
-                _reemplazar_base(c, ctx)
-                continue
-            automaticas = [f for f in ctx.filas(c.slug) if f.origen == SISTEMA]
-            for fila in automaticas:
-                aplicar_formula(fila, c, ctx.p)
-            PresupuestoNomina.objects.bulk_update(automaticas, MESES + ['total'], batch_size=1000)
-        for c in DERIVADOS:
-            regenerar(ctx, c)
-        asignar_cuentas(ctx)
+        _recalcular_todo_sin_bloqueo()
     return [c.slug for c in _LISTA]
+
+
+def _recalcular_todo_sin_bloqueo():
+    """Cuerpo de recalcular_todo (quien lo llama ya tiene el bloqueo)."""
+    ctx = Contexto()
+    for c in BASE:
+        if _ventana_desactualizada(c, ctx):
+            # Cambiaron los meses con datos reales (o la fecha de corte) desde
+            # la última carga: el histórico guardado ya no sirve, se vuelve a
+            # leer de Conceptos (las filas manuales se conservan).
+            _reemplazar_base(c, ctx)
+            continue
+        automaticas = [f for f in ctx.filas(c.slug) if f.origen == SISTEMA]
+        for fila in automaticas:
+            aplicar_formula(fila, c, ctx.p)
+        PresupuestoNomina.objects.bulk_update(automaticas, MESES + ['total'], batch_size=1000)
+    for c in DERIVADOS:
+        regenerar(ctx, c)
+    asignar_cuentas(ctx)
+    return ctx
 
 def _viene_de_conceptos(fila):
     """True si la fila salió de cargar Conceptos (clave 'cédula#n').
@@ -1950,9 +1956,8 @@ def guardar_foco_sin_comision(cedulas, usuario=''):
         for cedula in cedulas:
             FocoSinComision.objects.update_or_create(
                 cedula=cedula, defaults={'nombre': nombres.get(cedula, ''), 'actualizado_por': usuario})
-        ctx = Contexto()
         with bloqueo():
-            regenerar(ctx, obtener('bonificaciones_foco'))
+            propagar()                                  # cualquier cambio recalcula todo
     return len(cedulas)
 
 
@@ -2109,8 +2114,7 @@ def corregir_persona(cedula_actual, cedula_nueva='', nombre_nuevo='', usuario=''
         _guardar_correccion(vieja, nueva, nombre_nuevo, usuario)
         ctx.olvidar_todo()
         if recalcular:
-            for c in DERIVADOS:
-                regenerar(ctx, c)
+            propagar()                                  # cualquier cambio recalcula todo
     return len(cambiadas)
 
 
@@ -2523,11 +2527,8 @@ def guardar(slug, filas_json, usuario='', con_editados=False):
                                                                 usuario, ctx, avisos)
         if corregidas:
             resumen['personas_corregidas'] = corregidas
-            for d in DERIVADOS:
-                regenerar(ctx, d)
-            recalculados = [d.slug for d in DERIVADOS]
-        else:
-            recalculados = propagar(slug, ctx)
+        # Cualquier cambio, en el concepto que sea, recalcula todo
+        recalculados = propagar(slug)
 
     resumen.update(creadas=len(crear), actualizadas=len(actualizar), eliminadas=len(eliminar))
     salida = dict(resumen)

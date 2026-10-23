@@ -618,7 +618,8 @@ def nomina_datos(request, tipo):
 
 def _respuesta_cambio(tipo, mensaje, recalculados, **extra):
     if recalculados:
-        mensaje += ' · Actualizado también: ' + ', '.join(_nombres(recalculados))
+        # cualquier cambio recalcula todo (nomina_motor.propagar)
+        mensaje += ' · Todo el presupuesto de nómina recalculado'
     return JsonResponse({
         'status': 'ok', 'msg': mensaje,
         'recalculados': _nombres(recalculados),

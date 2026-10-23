@@ -3177,7 +3177,7 @@ class InteresesCesantiasPersonaEnVariasFilasTests(TestCase):
 
 
 class CalcularSoloAuxilioEducacionTests(TestCase):
-    """Botón del tablero: calcula solo el auxilio de educación (datos del año anterior)."""
+    """Botón del tablero: calcula el auxilio de educación (datos del año anterior) y, como todo cambio, recalcula lo demás."""
 
     def setUp(self):
         self.client.force_login(User.objects.create_user("admin"))
@@ -3198,8 +3198,9 @@ class CalcularSoloAuxilioEducacionTests(TestCase):
         self.assertEqual(r.json()["status"], "ok", r.content)
         self.assertTrue(PresupuestoNomina.objects.filter(tipo="auxilio_educacion", cedula="10").exists())
         sueldo.refresh_from_db()
-        self.assertEqual(sueldo.enero, 1)                              # lo demás no se tocó
-        self.assertFalse(PresupuestoNomina.objects.filter(tipo="cesantias").exists())
+        self.assertEqual(sueldo.enero, 1)                              # lo manual se respeta
+        # como todo cambio, recalcula el resto de la nómina
+        self.assertTrue(PresupuestoNomina.objects.filter(tipo="cesantias", cedula="10").exists())
 
     def test_sin_datos_del_anio_anterior_deshabilitado(self):
         ConceptosNomina.objects.filter(anio=self.anio - 1).delete()
@@ -4099,3 +4100,48 @@ class FocoDescuentoComisionanTests(TestCase):
         nomina_motor.recalcular_todo()
         self.assertEqual(self.foco("9"), (0, 200000))
         self.assertEqual(self.foco("4")[0], 220000)                         # los del informe sí
+
+
+class CualquierCambioRecalculaTodoTests(TestCase):
+    """Cualquier cambio, en el concepto que sea, recalcula todo el presupuesto de nómina."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1423500, incremento_salarial=10,
+                                              incremento_ipc=10, auxilio_transporte=10, cesantias=8.33,
+                                              prima=8.33)
+        comunes = dict(anio=timezone.localdate().year, archivo="x", nombre_cen="ALMACEN TULUA",
+                       nomcosto="VENTAS", nombrecar="CAJERO", cuenta="520506")
+        for ced in (1, 2):
+            ConceptosNomina.objects.create(concepto="001", cedula=ced, nombre=f"P{ced}", concepto_f=2000000,
+                                           **comunes, **{m: 2000000 for m in MESES_N[:8]})
+        nomina_motor.recargar_bases()
+        self.client.force_login(User.objects.create_user("admin"))
+
+    def editar_foco(self):
+        filas = self.client.get(reverse("nomina_datos", args=["bonificaciones_foco"])).json()["data"]
+        next(f for f in filas if f["cedula"] == "1").update(enero=5, _editados=["enero"])
+        r = self.client.post(reverse("nomina_guardar", args=["bonificaciones_foco"]),
+                             json.dumps({"filas": filas, "con_editados": True}), content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        return r.json()
+
+    def test_un_cambio_en_un_concepto_sin_dependientes_recalcula_los_demas(self):
+        # Se "desactualizan" a propósito cesantías y seguridad social (como si un parámetro
+        # hubiera cambiado sin recalcular). Editar bonificación foco, de la que no depende
+        # nada, antes no las tocaba; ahora las recalcula.
+        PresupuestoNomina.objects.filter(tipo__in=["cesantias", "seguridad_social"]).update(enero=1)
+        r = self.editar_foco()
+        self.assertFalse(PresupuestoNomina.objects.filter(tipo="cesantias", enero=1).exists())
+        self.assertFalse(PresupuestoNomina.objects.filter(tipo="seguridad_social", enero=1).exists())
+        self.assertIn("Todo el presupuesto de nómina recalculado", r["msg"])
+
+    def test_tambien_recalcula_las_formulas_de_los_conceptos_base(self):
+        PresupuestoNomina.objects.filter(tipo="sueldos", cedula="2").update(abril=1)   # calculada, desactualizada
+        self.editar_foco()
+        self.assertEqual(PresupuestoNomina.objects.get(tipo="sueldos", cedula="2").abril, 2200000)
+
+    def test_lo_manual_se_respeta(self):
+        self.editar_foco()
+        f = PresupuestoNomina.objects.get(tipo="bonificaciones_foco", cedula="1")
+        self.assertEqual((f.origen, f.enero), ("manual", 5))
