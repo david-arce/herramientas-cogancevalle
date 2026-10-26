@@ -991,7 +991,7 @@ def quitar_cuenta5_sede(request, sede):
     if not config:
         return JsonResponse({"success": False, "msg": "Área no configurada"}, status=404)
     if not _es_aprobador(request):
-        return JsonResponse({"success": False, "msg": "Solo el aprobador puede quitar de Cuenta 5"}, status=403)
+        return JsonResponse({"success": False, "msg": "Solo el aprobador puede eliminar de presupuesto"}, status=403)
     if request.method != "POST":
         return JsonResponse({"success": False, "msg": "Método no permitido"}, status=405)
 
@@ -999,8 +999,8 @@ def quitar_cuenta5_sede(request, sede):
         eliminados, _ = Cuenta5Presupuestado.objects.filter(origen_area=sede).delete()
         info.update(eliminados=eliminados)
 
-    msg = (f"{config['label']}: se quitaron {eliminados} registros de Cuenta 5 ✅" if eliminados
-           else f"{config['label']} no tenía nada subido en Cuenta 5")
+    msg = (f"{config['label']}: se eliminaron {eliminados} registros del presupuesto (Cuenta 5) ✅" if eliminados
+           else f"{config['label']} no tenía nada subido al presupuesto")
     return JsonResponse({"success": True, "msg": msg, "eliminados": eliminados,
                          "estado": estado_cuenta5(sede)})
 
@@ -1180,3 +1180,28 @@ def subir_cuenta5_nomina(request):
         "reemplazados": reemplazados, "sin_cuenta": len(sin_cuenta),
         "estado": estado_cuenta5_nomina(),
     })
+
+
+@login_required
+def quitar_cuenta5_nomina(request):
+    """"Eliminar de presupuesto": borra de Cuenta 5 presupuestado lo que subió la nómina.
+
+    Solo los registros con origen_area = "nomina" (lo que subió el botón
+    "Subir presupuesto" de la tarjeta); lo cargado por Excel y lo de las demás
+    áreas no se toca. El presupuesto de nómina sigue intacto y se puede volver
+    a subir.
+    """
+    if not _es_aprobador(request):
+        return JsonResponse({"success": False, "msg": "Solo el aprobador puede eliminar de presupuesto"},
+                            status=403)
+    if request.method != "POST":
+        return JsonResponse({"success": False, "msg": "Método no permitido"}, status=405)
+
+    with log_carga("quitar_cuenta5_nomina", request) as info, transaction.atomic():
+        eliminados, _ = Cuenta5Presupuestado.objects.filter(origen_area=ORIGEN_NOMINA).delete()
+        info.update(eliminados=eliminados)
+
+    msg = (f"Nómina: se eliminaron {eliminados} registros del presupuesto (Cuenta 5) ✅" if eliminados
+           else "La nómina no tenía nada subido al presupuesto")
+    return JsonResponse({"success": True, "msg": msg, "eliminados": eliminados,
+                         "estado": estado_cuenta5_nomina()})

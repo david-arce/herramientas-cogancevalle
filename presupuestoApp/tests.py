@@ -1982,7 +1982,8 @@ class QuitarCuenta5YRevisionTests(TestCase):
         self.assertEqual(r.context["cuenta5"]["estado"], "pendiente")
         self.assertContains(r, 'id="estadoCuenta5"')
         self.assertContains(r, "Subir presupuesto")
-        self.assertContains(r, "Quitar de Cuenta 5")
+        self.assertContains(r, "Eliminar de presupuesto")
+        self.assertNotContains(r, "Quitar de Cuenta 5")
         self.assertContains(r, reverse("quitar_cuenta5_sede", args=[AREA]))
 
 
@@ -4254,3 +4255,61 @@ class CuentasPorConceptoYCodcostoTests(TestCase):
                      cuenta="", codcosto="", origen="manual").save()
         nomina_motor.asignar_cuentas()
         self.assertEqual(cuenta("sueldos", "9"), "999999")
+
+
+class EliminarNominaDePresupuestoTests(TestCase):
+    """Tarjeta de nómina: "Eliminar de presupuesto" borra de Cuenta 5 lo que
+    subió "Subir presupuesto", sin tocar lo de Excel ni lo de otras áreas."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.aprobador = User.objects.create_user("NICOLAS")
+
+    def setUp(self):
+        self.client.force_login(self.aprobador)
+        confirmar_nomina(True)
+        linea_nomina().save()
+        self.client.post(reverse("subir_cuenta5_nomina"))
+        Cuenta5Presupuestado.objects.create(mcncuenta="510506", mcnvaldebi=1, mcnfecha=1)              # Excel
+        Cuenta5Presupuestado.objects.create(mcncuenta="510506", mcnvaldebi=1, mcnfecha=1, origen_area=AREA)
+
+    def eliminar(self):
+        return self.client.post(reverse("quitar_cuenta5_nomina"))
+
+    def test_elimina_solo_lo_de_nomina(self):
+        self.assertEqual(Cuenta5Presupuestado.objects.filter(origen_area="nomina").count(), 12)
+        r = self.eliminar().json()
+        self.assertTrue(r["success"], r)
+        self.assertEqual(r["eliminados"], 12)
+        self.assertIn("se eliminaron 12 registros", r["msg"])
+        self.assertEqual(r["estado"]["estado"], "pendiente")
+        self.assertFalse(Cuenta5Presupuestado.objects.filter(origen_area="nomina").exists())
+        self.assertEqual(Cuenta5Presupuestado.objects.filter(origen_area__isnull=True).count(), 1)
+        self.assertEqual(Cuenta5Presupuestado.objects.filter(origen_area=AREA).count(), 1)
+        self.assertEqual(PresupuestoNomina.objects.count(), 1)                 # la nómina sigue intacta
+
+    def test_sin_nada_subido(self):
+        self.eliminar()
+        self.assertIn("no tenía nada subido", self.eliminar().json()["msg"])
+
+    def test_permisos_y_metodo(self):
+        self.assertEqual(self.client.get(reverse("quitar_cuenta5_nomina")).status_code, 405)
+        self.client.force_login(User.objects.create_user("OTRO"))
+        self.assertEqual(self.eliminar().status_code, 403)
+        self.assertEqual(Cuenta5Presupuestado.objects.filter(origen_area="nomina").count(), 12)
+
+    def test_boton_solo_en_la_tarjeta_de_nomina_y_con_confirmacion(self):
+        r = self.client.get(reverse("dashboardPresupuesto"))
+        html = r.content.decode()
+        self.assertEqual(html.count('class="c5-btn c5-btn--eliminar"'), 1)
+        self.assertEqual(html.count(">Eliminar de presupuesto<"), 1)
+        self.assertIn(reverse("quitar_cuenta5_nomina"), html)
+        self.assertIn('data-registros="12"', html)
+        self.assertIn("¿Eliminar de presupuesto?", html)                       # mensaje de confirmación
+        tarjetas = {t["clave"]: t for t in r.context["tarjetas"]}
+        self.assertNotIn("url_quitar", tarjetas[AREA])
+
+    def test_sin_nada_subido_el_boton_esta_deshabilitado(self):
+        self.eliminar()
+        html = self.client.get(reverse("dashboardPresupuesto")).content.decode()
+        self.assertIn('data-registros="0"\n                    disabled title="No hay nada subido al presupuesto"', html)
