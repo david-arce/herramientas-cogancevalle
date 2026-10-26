@@ -4145,3 +4145,112 @@ class CualquierCambioRecalculaTodoTests(TestCase):
         self.editar_foco()
         f = PresupuestoNomina.objects.get(tipo="bonificaciones_foco", cedula="1")
         self.assertEqual((f.origen, f.enero), ("manual", 5))
+
+
+class CuentasPorConceptoYCodcostoTests(TestCase):
+    """La cuenta depende del concepto + CODCOSTO (+ cargo para aprendices de
+    reforma), no del área. Sin regla, se conserva la cuenta del área."""
+
+    R = "APRENDIZ DEL SENA REFORMA"
+    # (concepto en el aplicativo, codcosto, cargo, cuenta esperada) — tal como lo pidió el usuario
+    ESPERADO = [
+        ("SALARIO BASICO", "020201", "", "54050301"), ("SALARIO BASICO", "020301", "", "54050301"),
+        ("SALARIO BASICO", "0101", "", "510503"), ("SALARIO BASICO", "020401", "", "510503"),
+        ("APORTE A.R.L", "020201", "", "540525"), ("APORTE A.R.L", "0101", "", "510525"),
+        ("APORTE A.R.L", "020401", "", "510525"), ("APORTE A.R.L", "020301", "", "510525"),
+        ("APORTE CAJAS DE COMPENSACIÓN", "020201", "", "540526"), ("APORTE CAJAS DE COMPENSACIÓN", "020301", "", "540526"),
+        ("APORTE CAJAS DE COMPENSACIÓN", "0101", "", "510526"), ("APORTE CAJAS DE COMPENSACIÓN", "020401", "", "510526"),
+        ("APORTE I.C.B.F", "0101", "", "510527"),
+        ("APORTE PENSIÓN", "020201", "", "540524"), ("APORTE PENSIÓN", "020301", "", "540524"),
+        ("APORTE PENSIÓN", "0101", "", "510524"), ("APORTE PENSIÓN", "020401", "", "510524"),
+        ("APORTE SALUD", "020201", "", "540523"), ("APORTE SALUD", "0101", "", "510523"),
+        ("APORTE SENA", "0101", "", "510528"),
+        ("AUXILIO DE ANTIGÜEDAD 30 AÑOS", "020201", "", "540522"),
+        ("AUXILIO DE ANTIGÜEDAD 20 AÑOS", "020201", "", "540522"),
+        ("AUXILIO DE EDUCACIÓN", "020201", "", "540522"), ("AUXILIO DE EDUCACIÓN", "020301", "", "540522"),
+        ("AUXILIO DE EDUCACIÓN", "0101", "", "510522"),
+        ("AUXILIO DE MOVILIZACIÓN", "020201", "", "54059502"), ("AUXILIO DE MOVILIZACIÓN", "020301", "", "54059502"),
+        ("AUXILIO DE MOVILIZACIÓN", "0101", "", "51059502"),
+        ("AUXILIO DE MOVILIZACIÓN BOLSA DE CONSUMIBLES", "020201", "", "54059502"),
+        ("AUXILIO DE MOVILIZACIÓN BOLSA DE CONSUMIBLES", "020301", "", "54059502"),
+        ("AUXILIO DE MOVILIZACIÓN TBC Y KIT DE BRUCELA", "020301", "", "54059502"),
+        ("AUXILIO DE TRANSPORTE", "020201", "", "54050901"), ("AUXILIO DE TRANSPORTE", "020301", "", "54050901"),
+        ("AUXILIO DE TRANSPORTE", "020201", R, "54050902"),
+        ("AUXILIO DE TRANSPORTE", "020401", "", "510509"), ("AUXILIO DE TRANSPORTE", "0101", "", "510509"),
+        ("BONIFICACIÓN", "0101", "", "510519"), ("BONIFICACIÓN FOCO", "0101", "", "510519"),
+        ("BONIFICACIÓN", "020201", "", "540519"), ("BONIFICACIÓN FOCO", "020301", "", "540519"),
+        ("BONOS CANASTA KYROVET", "0101", "", "510519"), ("BONOS CANASTA KYROVET", "020201", "", "54059505"),
+        ("BONOS CANASTA KYROVET", "020301", "", "54059505"),
+        ("CESANTÍAS", "0101", "", "510510"), ("CESANTÍAS", "020401", "", "510510"),
+        ("CESANTÍAS", "020201", "", "54051001"), ("CESANTÍAS", "020301", "", "54051001"),
+        ("CESANTÍAS", "020201", R, "54051002"),
+        ("COMISIONES", "020201", "", "540506"), ("COMISIONES", "020301", "", "540506"),
+        ("HORAS EXTRA", "0101", "", "510505"), ("HORAS EXTRA", "020201", "", "54050501"),
+        ("HORAS EXTRA", "020201", R, "54050502"),
+        ("INTERESES CESANTÍAS", "0101", "", "510511"), ("INTERESES CESANTÍAS", "020401", "", "510511"),
+        ("INTERESES CESANTÍAS", "020201", "", "54051101"), ("INTERESES CESANTÍAS", "020301", "", "54051101"),
+        ("INTERESES CESANTÍAS", "020201", R, "54051102"),
+        ("MEDIOS DE TRANSPORTE", "0101", "", "51059501"), ("MEDIOS DE TRANSPORTE", "020201", "", "54059501"),
+        ("MEDIOS DE TRANSPORTE", "020301", "", "54059501"),
+        ("PRIMA LEGAL", "0101", "", "510512"), ("PRIMA LEGAL", "020401", "", "510512"),
+        ("PRIMA LEGAL", "020201", "", "54051201"), ("PRIMA LEGAL", "020301", "", "54051201"),
+        ("PRIMA LEGAL", "020201", R, "54051202"),
+        ("SALARIO APRENDIZ", "020201", "", "54050302"), ("SALARIO APRENDIZ REFORMA", "020201", "", "54050302"),
+        ("VACACIONES", "0101", "", "510516"), ("VACACIONES", "020401", "", "510516"),
+        ("VACACIONES", "020201", "", "54051601"), ("VACACIONES", "020301", "", "54051601"),
+        ("VACACIONES", "020201", R, "54051602"),
+    ]
+
+    def test_cada_regla_pedida(self):
+        for concepto, codcosto, cargo, cuenta in self.ESPERADO:
+            with self.subTest(concepto=concepto, codcosto=codcosto, cargo=cargo):
+                self.assertEqual(nomina_motor.cuenta_por_regla(concepto, codcosto, cargo), cuenta)
+
+    def test_nombres_del_informe_como_alias(self):
+        for concepto, cuenta in (("APORTE PATRONAL AFP", "540524"), ("PROVISION CESANTIAS", "54051001"),
+                                 ("HORA EXTRA NOCTURNA 75%", "54050501"), ("BONOS CANASTA", "54059505"),
+                                 ("BONIFICACION MERA LIBERALIDAD", "540519")):
+            self.assertEqual(nomina_motor.cuenta_por_regla(concepto, "020201"), cuenta, concepto)
+
+    def test_tildes_mayusculas_y_ceros_a_la_izquierda(self):
+        self.assertEqual(nomina_motor.cuenta_por_regla("cesantias", "20201"), "54051001")
+        self.assertEqual(nomina_motor.cuenta_por_regla("Salario  Básico", "101"), "510503")
+
+    def test_sin_regla_queda_vacio(self):
+        self.assertEqual(nomina_motor.cuenta_por_regla("APORTE SENA", "020201"), "")    # SENA solo 0101
+        self.assertEqual(nomina_motor.cuenta_por_regla("OTRO CONCEPTO", "0101"), "")
+
+    def test_de_punta_a_punta(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1423500, incremento_salarial=10,
+                                              cesantias=8.33, prima=8.33, auxilio_transporte=10)
+        anio = timezone.localdate().year
+        comunes = dict(anio=anio, archivo="x", nombre_cen="ALMACEN TULUA", nomcosto="VENTAS GASTOS DE PERSONAL",
+                       codcosto="020201", cuenta="999999")             # la cuenta del área ya no manda
+        ConceptosNomina.objects.create(concepto="001", nombre_con="SALARIO BASICO", cedula=1, nombre="P1",
+                                       nombrecar="ASESOR", concepto_f=2000000, **comunes,
+                                       **{m: 2000000 for m in MESES_N[:8]})
+        ConceptosNomina.objects.create(concepto="006", nombre_con="SALARIO APRENDIZ REFORMA", cedula=2,
+                                       nombre="P2", nombrecar="APRENDIZ DEL SENA REFORMA", concepto_f=1423500,
+                                       **comunes, **{m: 1423500 for m in MESES_N[:8]})
+        ConceptosNomina.objects.create(concepto="001", nombre_con="SALARIO BASICO", cedula=3, nombre="P3",
+                                       nombrecar="CONTADOR", concepto_f=2000000, anio=anio, archivo="x",
+                                       nombre_cen="ALMACEN TULUA", nomcosto="CONTABILIDAD", codcosto="0101",
+                                       cuenta="888888", **{m: 2000000 for m in MESES_N[:8]})
+        nomina_motor.recargar_bases()
+
+        def cuenta(tipo, cedula, **extra):
+            return PresupuestoNomina.objects.get(tipo=tipo, cedula=cedula, **extra).cuenta
+        self.assertEqual(cuenta("sueldos", "1"), "54050301")
+        self.assertEqual(cuenta("cesantias", "1"), "54051001")
+        self.assertEqual(cuenta("cesantias", "2"), "54051002")                  # aprendiz de reforma
+        self.assertEqual(cuenta("aprendiz", "2"), "54050302")
+        self.assertEqual(cuenta("sueldos", "3"), "510503")
+        self.assertEqual(cuenta("prima", "3"), "510512")
+        self.assertEqual(PresupuestoNomina.objects.get(tipo="seguridad_social", concepto="APORTE PENSIÓN",
+                                                       area="VENTAS GASTOS DE PERSONAL").cuenta, "540524")
+        # sin regla: conserva la cuenta del área (APORTE SENA solo tiene regla para 0101)
+        linea_nomina(tipo="sueldos", concepto="OTRO", cedula="9", area="VENTAS GASTOS DE PERSONAL",
+                     cuenta="", codcosto="", origen="manual").save()
+        nomina_motor.asignar_cuentas()
+        self.assertEqual(cuenta("sueldos", "9"), "999999")

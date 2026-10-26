@@ -401,16 +401,151 @@ def cuenta_para(mapa, area):
     return mapa.get(_clave_area(area), '') if texto(area) else ''
 
 
+# ──────────────────────────────────────────────────────────────────────
+#  Cuenta por concepto + CODCOSTO (+ cargo)
+#
+#  La cuenta NO se amarra al área: depende del concepto y del CODCOSTO de la
+#  fila (y, para los aprendices de reforma, del cargo). Cada regla lista los
+#  nombres del concepto en el aplicativo y, como alias, su nombre en el
+#  informe. Los casos se revisan en orden: primero los que piden cargo.
+#  Si ninguna regla aplica, la fila conserva la cuenta de su área (NOMCOSTO).
+# ──────────────────────────────────────────────────────────────────────
+APRENDIZ_REFORMA = 'APRENDIZ DEL SENA REFORMA'
+
+# (nombres del concepto, [(CODCOSTOs, cargo o None, cuenta), ...])
+REGLAS_CUENTA = [
+    (('SALARIO BASICO',),
+     [(('020201', '020301'), None, '54050301'),
+      (('0101', '020401'), None, '510503')]),
+    (('APORTE A.R.L', 'APORTE PATRONAL ARL'),
+     [(('020201',), None, '540525'),
+      (('0101', '020401', '020301'), None, '510525')]),
+    (('APORTE CAJAS DE COMPENSACIÓN', 'APORTE PATRONAL CCF'),
+     [(('020201', '020301'), None, '540526'),
+      (('0101', '020401'), None, '510526')]),
+    (('APORTE I.C.B.F', 'APORTE PATRONAL ICBF'),
+     [(('0101',), None, '510527')]),
+    (('APORTE PENSIÓN', 'APORTE PATRONAL AFP'),
+     [(('020201', '020301'), None, '540524'),
+      (('0101', '020401'), None, '510524')]),
+    (('APORTE SALUD', 'APORTE PATRONAL EPS'),
+     [(('020201',), None, '540523'),
+      (('0101',), None, '510523')]),
+    (('APORTE SENA', 'APORTE PATRONAL SENA'),
+     [(('0101',), None, '510528')]),
+    # "AUXILIO DE ANTIGÜEDAD 20/25/30 AÑOS" en el aplicativo (ver PREFIJOS_CUENTA)
+    (('AUXILIO DE ANTIGÜEDAD',),
+     [(('020201',), None, '540522')]),
+    (('AUXILIO DE EDUCACIÓN',),
+     [(('020201', '020301'), None, '540522'),
+      (('0101',), None, '510522')]),
+    (('AUXILIO DE MOVILIZACIÓN',),
+     [(('020201', '020301'), None, '54059502'),
+      (('0101',), None, '51059502')]),
+    (('AUXILIO DE MOVILIZACIÓN BOLSA DE CONSUMIBLES',),
+     [(('020201', '020301'), None, '54059502')]),
+    (('AUXILIO DE MOVILIZACIÓN TBC Y KIT DE BRUCELA',),
+     [(('020301',), None, '54059502')]),
+    (('AUXILIO DE TRANSPORTE',),
+     [(('020201',), APRENDIZ_REFORMA, '54050902'),
+      (('020201', '020301'), None, '54050901'),
+      (('020401', '0101'), None, '510509')]),
+    (('BONIFICACIÓN', 'BONIFICACIÓN FOCO', 'BONIFICACION MERA LIBERALIDAD'),
+     [(('0101',), None, '510519'),
+      (('020201', '020301'), None, '540519')]),
+    (('BONOS CANASTA KYROVET', 'BONOS CANASTA'),
+     [(('0101',), None, '510519'),
+      (('020201', '020301'), None, '54059505')]),
+    (('CESANTÍAS', 'PROVISION CESANTIAS'),
+     [(('020201',), APRENDIZ_REFORMA, '54051002'),
+      (('0101', '020401'), None, '510510'),
+      (('020201', '020301'), None, '54051001')]),
+    (('COMISIONES',),
+     [(('020201', '020301'), None, '540506')]),
+    (('HORAS EXTRA', 'HORA EXTRA DIURNA 25%', 'HORA EXTRA NOCTURNA 75%',
+      'HORA DOMINICAL DIURNA O FESTIVA 115%'),
+     [(('020201',), APRENDIZ_REFORMA, '54050502'),
+      (('0101',), None, '510505'),
+      (('020201',), None, '54050501')]),
+    (('INTERESES CESANTÍAS', 'PROVISION INTERESES DE CESANTIAS'),
+     [(('020201',), APRENDIZ_REFORMA, '54051102'),
+      (('0101', '020401'), None, '510511'),
+      (('020201', '020301'), None, '54051101')]),
+    (('MEDIOS DE TRANSPORTE',),
+     [(('0101',), None, '51059501'),
+      (('020201', '020301'), None, '54059501')]),
+    (('PRIMA LEGAL', 'PROVISION PRIMA DE SERVICIOS'),
+     [(('020201',), APRENDIZ_REFORMA, '54051202'),
+      (('0101', '020401'), None, '510512'),
+      (('020201', '020301'), None, '54051201')]),
+    (('SALARIO APRENDIZ',),
+     [(('020201',), None, '54050302')]),
+    (('SALARIO APRENDIZ REFORMA',),
+     [(('020201',), None, '54050302')]),
+    (('VACACIONES', 'PROVISION VACACIONES'),
+     [(('020201',), APRENDIZ_REFORMA, '54051602'),
+      (('0101', '020401'), None, '510516'),
+      (('020201', '020301'), None, '54051601')]),
+]
+# Conceptos que en el aplicativo llevan algo más al final del nombre
+PREFIJOS_CUENTA = ('AUXILIO DE ANTIGÜEDAD',)
+
+
+def _codcosto_clave(codcosto):
+    """'020201' y '20201' son el mismo CODCOSTO (el Excel a veces quita los ceros)."""
+    return texto(codcosto).lstrip('0')
+
+
+def _indice_reglas_cuenta():
+    exactos, prefijos = {}, []
+    for nombres, casos in REGLAS_CUENTA:
+        casos_ = [({_codcosto_clave(c) for c in codcostos}, _sin_tildes(cargo) if cargo else None, cuenta)
+                  for codcostos, cargo, cuenta in casos]
+        for nombre in nombres:
+            if nombre in PREFIJOS_CUENTA:
+                prefijos.append((_sin_tildes(nombre), casos_))
+            else:
+                exactos[_sin_tildes(nombre)] = casos_
+    return exactos, prefijos
+
+
+_REGLAS = []          # [(exactos, prefijos)] — se arma en el primer uso
+
+
+def cuenta_por_regla(concepto, codcosto, cargo=''):
+    """Cuenta según REGLAS_CUENTA, o '' si ninguna aplica."""
+    if not _REGLAS:
+        _REGLAS.append(_indice_reglas_cuenta())
+    exactos, prefijos = _REGLAS[0]
+    nombre = _sin_tildes(concepto)
+    casos = exactos.get(nombre)
+    if casos is None:
+        casos = next((c for prefijo, c in prefijos if nombre.startswith(prefijo)), None)
+    if not casos:
+        return ''
+    cod, cargo_ = _codcosto_clave(codcosto), _sin_tildes(cargo)
+    for codcostos, cargo_pedido, cuenta in casos:
+        if cod in codcostos and (cargo_pedido is None or cargo_ == cargo_pedido):
+            return cuenta
+    return ''
+
+
 def asignar_cuentas(ctx=None, solo_vacias=False):
-    """Pone a cada fila guardada la cuenta y el CODCOSTO de su área (NOMCOSTO).
-    Las áreas que no están en ConceptosNomina conservan lo que tenían."""
+    """Pone a cada fila guardada su CODCOSTO (el de su área, NOMCOSTO) y su cuenta.
+
+    La cuenta sale de REGLAS_CUENTA (concepto + CODCOSTO + cargo); si ninguna
+    regla aplica, la de su área como antes. Las áreas que no están en
+    ConceptosNomina conservan lo que tenían."""
     ctx = ctx or Contexto()
-    qs = PresupuestoNomina.objects.exclude(area='')
+    qs = PresupuestoNomina.objects.all()
     if solo_vacias:
         qs = qs.filter(Q(cuenta='') | Q(codcosto=''))
     cambiadas = []
-    for fila in qs.only('id', 'area', 'cuenta', 'codcosto'):
-        cuenta, codcosto = ctx.cuenta(fila.area), ctx.codcosto(fila.area)
+    for fila in qs.only('id', 'area', 'cuenta', 'codcosto', 'concepto', 'cargo'):
+        con_area = bool(texto(fila.area))
+        codcosto = (ctx.codcosto(fila.area) if con_area else '') or fila.codcosto
+        cuenta = (cuenta_por_regla(fila.concepto, codcosto, fila.cargo)
+                  or (ctx.cuenta(fila.area) if con_area else ''))
         cambio = False
         if cuenta and cuenta != fila.cuenta:
             fila.cuenta, cambio = cuenta, True
@@ -940,6 +1075,8 @@ def aplicar_distribucion(cedulas, usuario=''):
             PresupuestoNomina.objects.filter(pk__in=[f.pk for f in filas]).delete()
             PresupuestoNomina.objects.bulk_create(nuevas, batch_size=1000)
             filas_nuevas += len(nuevas)
+        # no se recalcula nada, pero cada destino lleva su CODCOSTO y su cuenta
+        asignar_cuentas(ctx)
     return {'personas': len(cedulas), 'filas': filas_nuevas, 'descartadas': 0}
 
 
