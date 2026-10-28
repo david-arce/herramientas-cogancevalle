@@ -55,24 +55,16 @@ La lógica está en static/js/presupuesto_distribucion.js.
       <h4 class="nd-titulo"><span class="nd-paso">3</span> Aplicar</h4>
       <button type="button" class="pt-btn pt-btn--primario" id="ndAplicar" disabled>Aplicar distribución</button>
       <button type="button" class="pt-btn" id="ndQuitar" disabled>Quitar distribución</button>
-      <p class="nd-ayuda">Al aplicar se reparten los valores que ya tienen todas las filas de la persona (sueldo, prestaciones, auxilios…) <strong>sin recalcular nada</strong>: lo ajustado a mano se conserva y lo eliminado sigue eliminado. Seguridad social se actualiza con <em>Recalcular todo</em>.</p>
+      <p class="nd-ayuda">Al aplicar se reparten todas las filas de la persona y se recalculan prestaciones y seguridad social. Los ajustes manuales de conceptos calculados de esas personas se descartan.</p>
     </section>
   </div>
 
   <div class="pt-seccion__cuerpo">
-    <div class="nd-encabezado">
-      <h4 class="nd-titulo">Distribuciones vigentes <span class="nd-contador" id="ndContador">0</span>
-        <span class="nd-contador nd-contador--inactivas" id="ndContadorInactivas" hidden></span></h4>
-      <div class="nd-masivo">
-        <button type="button" class="pt-btn pt-btn--chico" id="ndActivarTodas" disabled>Activar todas</button>
-        <button type="button" class="pt-btn pt-btn--chico" id="ndDesactivarTodas" disabled>Desactivar todas</button>
-      </div>
-    </div>
-    <p class="nd-ayuda">Desactivar no borra el reparto: la persona vuelve a su centro y área de origen y, al activarla, se reparte otra vez con los mismos porcentajes.</p>
+    <h4 class="nd-titulo">Distribuciones vigentes <span class="nd-contador" id="ndContador">0</span></h4>
     <div class="nd-vigentes-envoltura">
       <table class="nd-vigentes">
-        <thead><tr><th>Estado</th><th>Persona</th><th>Cédula</th><th>Reparto</th><th></th></tr></thead>
-        <tbody id="ndVigentes"><tr><td colspan="5" class="nd-vacio">Cargando…</td></tr></tbody>
+        <thead><tr><th>Persona</th><th>Cédula</th><th>Reparto</th><th></th></tr></thead>
+        <tbody id="ndVigentes"><tr><td colspan="4" class="nd-vacio">Cargando…</td></tr></tbody>
       </table>
     </div>
   </div>

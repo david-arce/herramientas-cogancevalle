@@ -689,7 +689,7 @@ class EstaticosVersionadosTests(TestCase):
 # ═══════════════════════════════════════════════════════════════════════
 #  Nómina en vertical
 # ═══════════════════════════════════════════════════════════════════════
-from .models_nomina import ArlCargoNomina, CorreccionPersonaNomina, DistribucionNomina, FilaEliminadaNomina, FocoCargoInforme, FocoSinComision  # noqa: E402
+from .models_nomina import CorreccionPersonaNomina, FilaEliminadaNomina, FocoCargoInforme  # noqa: E402
 from .models_nomina import (  # noqa: E402
     ConceptosNomina, ConfiguracionNomina, PresupuestoNomina, PresupuestoNominaMes,
 )
@@ -1982,8 +1982,7 @@ class QuitarCuenta5YRevisionTests(TestCase):
         self.assertEqual(r.context["cuenta5"]["estado"], "pendiente")
         self.assertContains(r, 'id="estadoCuenta5"')
         self.assertContains(r, "Subir presupuesto")
-        self.assertContains(r, "Eliminar de presupuesto")
-        self.assertNotContains(r, "Quitar de Cuenta 5")
+        self.assertContains(r, "Quitar de Cuenta 5")
         self.assertContains(r, reverse("quitar_cuenta5_sede", args=[AREA]))
 
 
@@ -2533,27 +2532,6 @@ class SueldoMinimoProyectadoTests(TestCase):
         self.assertAlmostEqual(meses["abril"], 2140000)
         self.assertAlmostEqual(meses["marzo"], 2140000 + 2 * 140000)
 
-    def test_sin_enero_el_retroactivo_es_de_un_solo_mes(self):
-        # ingresa en febrero: enero fijo en 0 → marzo = nuevo × 2 − pagado (no × 3)
-        fila = linea_nomina(base=2000000, historico={nomina_motor.MESES_CERO: ["enero"]})
-        meses = nomina_motor.calcular(fila, self.c, self.p)
-        self.assertEqual(meses["enero"], 0)
-        self.assertEqual(meses["febrero"], 2000000)
-        self.assertEqual(meses["marzo"], 2140000 + 140000)
-        self.assertEqual(meses["abril"], 2140000)
-
-    def test_sin_enero_cerca_del_minimo(self):
-        fila = linea_nomina(base=1500000, historico={nomina_motor.MESES_CERO: ["enero"]})
-        meses = nomina_motor.f_retroactivo(fila, self.c, self.p)
-        nuevo = 1500000 * 1.07
-        self.assertAlmostEqual(meses["marzo"], nuevo + (nuevo - self.minimo_proy))
-
-    def test_sin_enero_ni_febrero_no_hay_retroactivo(self):
-        fila = linea_nomina(base=2000000, historico={nomina_motor.MESES_CERO: ["enero", "febrero"]})
-        meses = nomina_motor.calcular(fila, self.c, self.p)
-        self.assertEqual((meses["enero"], meses["febrero"]), (0, 0))
-        self.assertEqual(meses["marzo"], 2140000)
-
 
 class NominaCorreccionPersonaTests(TestCase):
     """Cédula / nombre corregidos en un concepto base llegan a TODOS los conceptos
@@ -2932,16 +2910,6 @@ class RestablecerConMesesEnCeroTests(TestCase):
         f.refresh_from_db()
         self.assertEqual((f.enero, f.marzo, f.abril), (0, 0, 2200000))
 
-    def test_ingresa_en_febrero_retroactivo_de_un_mes(self):
-        f = self.manual({m: 1000 for m in MESES_N[1:]})                 # enero en 0
-        self.restablecer(f)
-        self.assertEqual((f.enero, f.febrero), (0, 2000000))
-        self.assertEqual(f.marzo, 2200000 + 200000)                     # nuevo × 2 − pagado
-        self.assertEqual(f.abril, 2200000)
-        nomina_motor.recalcular_todo()                                  # se respeta al recalcular
-        f.refresh_from_db()
-        self.assertEqual(f.marzo, 2400000)
-
     def test_solo_la_base_calcula_todo_el_anio(self):
         f = self.manual({})
         self.restablecer(f)
@@ -3178,7 +3146,7 @@ class InteresesCesantiasPersonaEnVariasFilasTests(TestCase):
 
 
 class CalcularSoloAuxilioEducacionTests(TestCase):
-    """Botón del tablero: calcula el auxilio de educación (datos del año anterior) y, como todo cambio, recalcula lo demás."""
+    """Botón del tablero: calcula solo el auxilio de educación (datos del año anterior)."""
 
     def setUp(self):
         self.client.force_login(User.objects.create_user("admin"))
@@ -3199,9 +3167,8 @@ class CalcularSoloAuxilioEducacionTests(TestCase):
         self.assertEqual(r.json()["status"], "ok", r.content)
         self.assertTrue(PresupuestoNomina.objects.filter(tipo="auxilio_educacion", cedula="10").exists())
         sueldo.refresh_from_db()
-        self.assertEqual(sueldo.enero, 1)                              # lo manual se respeta
-        # como todo cambio, recalcula el resto de la nómina
-        self.assertTrue(PresupuestoNomina.objects.filter(tipo="cesantias", cedula="10").exists())
+        self.assertEqual(sueldo.enero, 1)                              # lo demás no se tocó
+        self.assertFalse(PresupuestoNomina.objects.filter(tipo="cesantias").exists())
 
     def test_sin_datos_del_anio_anterior_deshabilitado(self):
         ConceptosNomina.objects.filter(anio=self.anio - 1).delete()
@@ -3529,6 +3496,17 @@ class SeguridadSocialArlTests(TestCase):
         nomina_motor.recalcular_todo()
         self.assertEqual(self.arl(area=area).mayo, round((2344599 * 2 + 2118822) * 0.0104))
 
+    def test_aftosa_sin_filas_en_el_informe_usa_1_04(self):
+        area = "PROYECTO AFTOSA GASTOS DE PERSONAL"
+        linea_nomina(cedula="6", centro="ALMACEN CALI", area=area, origen="manual",
+                     **{m: 2344599 for m in MESES_N}).save()
+        # otra área que tampoco está en el informe: sigue con el % por defecto
+        linea_nomina(cedula="9", centro="OTRO", area="PROYECTO OTRO", origen="manual",
+                     **{m: 1000000 for m in MESES_N}).save()
+        nomina_motor.recalcular_todo()
+        self.assertEqual(self.arl(area=area).mayo, round(2344599 * 0.0104))
+        self.assertEqual(self.arl(area="PROYECTO OTRO").mayo, round(1000000 * nomina_motor.ARL_POR_DEFECTO))
+
     def test_centro_sin_filas_del_area_usa_el_promedio_del_area(self):
         linea_nomina(cedula="8", centro="ALMACEN CALI", area="VENTAS", origen="manual",
                      **{m: 1000000 for m in MESES_N}).save()
@@ -3583,733 +3561,57 @@ class SeguridadSocialAltosPorDevengadoTests(TestCase):
         self.assertEqual(pension.enero, round((17275463 + 1724817 + 3000000) * 0.12))
 
 
-class DistribucionActivarDesactivarTests(TestCase):
-    """Una distribución se puede desactivar sin borrarla: la persona vuelve a su
-    centro/área de origen y, al activarla, se reparte otra vez igual."""
-
-    def setUp(self):
-        anio = timezone.localdate().year
-        comunes = dict(anio=anio, archivo="prueba", nombre_cen="ALMACEN TULUA", nomcosto="VENTAS",
-                       nombrecar="ASESOR", cuenta="520506")
-        for cedula, nombre in [(111, "ANA PEREZ"), (222, "LUIS PEREZ")]:
-            ConceptosNomina.objects.create(concepto="001", cedula=cedula, nombre=nombre,
-                                           concepto_f=3000000, **comunes,
-                                           **{m: 3000000 for m in MESES_N[:8]})
-        nomina_motor.recargar_bases()
-        self.reparto = [{"centro": "ALMACEN BUGA", "area": "VENTAS", "porcentaje": 60},
-                        {"centro": "ALMACEN CALI", "area": "VENTAS", "porcentaje": 40}]
-        nomina_motor.guardar_distribucion(["111", "222"], self.reparto)
-        self.client.force_login(User.objects.create_user("admin"))
-
-    def centros(self, cedula, tipo="sueldos"):
-        return sorted(PresupuestoNomina.objects.filter(tipo=tipo, cedula=cedula)
-                      .values_list("centro", flat=True))
-
-    def total(self, cedula, tipo="sueldos"):
-        return sum(f.total for f in PresupuestoNomina.objects.filter(tipo=tipo, cedula=cedula))
-
-    def activar(self, cedulas, activa):
-        r = self.client.post(reverse("nomina_distribucion_activar"),
-                             json.dumps({"cedulas": cedulas, "activa": activa}),
-                             content_type="application/json")
-        self.assertEqual(r.status_code, 200, r.content)
-        return r.json()
-
-    def test_desactivar_vuelve_al_origen_sin_borrar(self):
-        total = self.total("111")
-        self.assertEqual(self.centros("111"), ["ALMACEN BUGA", "ALMACEN CALI"])
-        r = self.activar(["111"], False)
-        self.assertIn("desactivada", r["msg"])
-        self.assertEqual(self.centros("111"), ["ALMACEN TULUA"])
-        self.assertEqual(self.centros("111", "cesantias"), ["ALMACEN TULUA"])   # derivados recalculados
-        self.assertEqual(self.total("111"), total)
-        self.assertEqual(DistribucionNomina.objects.filter(cedula="111").count(), 2)  # no se borra
-        self.assertEqual(self.centros("222"), ["ALMACEN BUGA", "ALMACEN CALI"])  # los demás no cambian
-        lista = {d["cedula"]: d for d in r["distribuciones"]}
-        self.assertFalse(lista["111"]["activa"])
-        self.assertTrue(lista["222"]["activa"])
-        self.assertEqual(len(lista["111"]["reparto"]), 2)
-
-    def test_activar_de_nuevo_reparte_igual(self):
-        antes = sorted(PresupuestoNomina.objects.filter(tipo="sueldos", cedula="111")
-                       .values_list("centro", "enero", "marzo", "diciembre"))
-        self.activar(["111"], False)
-        self.activar(["111"], True)
-        despues = sorted(PresupuestoNomina.objects.filter(tipo="sueldos", cedula="111")
-                         .values_list("centro", "enero", "marzo", "diciembre"))
-        self.assertEqual(antes, despues)
-
-    def test_desactivada_se_respeta_al_recargar_desde_conceptos(self):
-        self.activar(["111"], False)
-        nomina_motor.recargar_bases()
-        self.assertEqual(self.centros("111"), ["ALMACEN TULUA"])
-        self.assertEqual(self.centros("222"), ["ALMACEN BUGA", "ALMACEN CALI"])
-
-    def test_desactivar_todas_y_mensaje_si_ya_estaba(self):
-        self.activar(["111", "222"], False)
-        self.assertFalse(DistribucionNomina.objects.filter(activa=True).exists())
-        r = self.activar(["111"], False)
-        self.assertIn("ya estaba desactivada", r["msg"])
-
-    def test_aplicar_de_nuevo_la_deja_activa(self):
-        self.activar(["111"], False)
-        nomina_motor.guardar_distribucion(["111"], self.reparto)
-        self.assertTrue(all(DistribucionNomina.objects.filter(cedula="111").values_list("activa", flat=True)))
-        self.assertEqual(self.centros("111"), ["ALMACEN BUGA", "ALMACEN CALI"])
-
-    def test_sin_distribucion_guardada_es_error(self):
-        r = self.client.post(reverse("nomina_distribucion_activar"),
-                             json.dumps({"cedulas": ["999"], "activa": False}),
-                             content_type="application/json")
-        self.assertEqual(r.status_code, 400)
-
-    def test_panel_tiene_el_interruptor(self):
-        html = self.client.get(reverse("nomina_tabla", args=["todos"])).content.decode()
-        self.assertIn('id="ndDesactivarTodas"', html)
-        self.assertIn(reverse("nomina_distribucion_activar"), html)
-
-
-class SueldosBorrarEneroTests(TestCase):
-    """Sueldos: borrar enero (la persona ingresa en febrero) deja la fila
-    calculada con enero fijo en 0 y marzo con UN mes de retroactivo; el
-    "Restablecer cálculo" ya no vuelve a generar enero."""
-
-    BASE = 3771852
-
-    def setUp(self):
-        from .models import ParametrosPresupuestos
-        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1423500, incremento_salarial=9)
-        ConceptosNomina.objects.create(anio=timezone.localdate().year, archivo="x", nombre_cen="ALMACEN TULUA",
-                                       nomcosto="VENTAS", nombrecar="ASESOR", cuenta="520506", concepto="001",
-                                       cedula=111, nombre="ANA", concepto_f=self.BASE,
-                                       **{m: self.BASE for m in MESES_N[:8]})
-        nomina_motor.recargar_bases()
-        self.client.force_login(User.objects.create_user("admin"))
-        self.nuevo = round(self.BASE * 1.09)                               # 4.111.319
-
-    def enviar(self, **cambios):
-        filas = self.client.get(reverse("nomina_datos", args=["sueldos"])).json()["data"]
-        filas[0].update(cambios)
-        r = self.client.post(reverse("nomina_guardar", args=["sueldos"]),
-                             json.dumps({"con_editados": True, "filas": filas}), content_type="application/json")
-        self.assertEqual(r.status_code, 200, r.content)
-        return PresupuestoNomina.objects.get(tipo="sueldos", cedula="111")
-
-    def assertUnMesDeRetroactivo(self, f):
-        self.assertEqual((f.origen, f.enero, f.febrero, f.abril), ("sistema", 0, self.BASE, self.nuevo))
-        self.assertAlmostEqual(f.marzo, 2 * self.BASE * 1.09 - self.BASE, delta=2)   # nuevo × 2 − pagado
-        self.assertEqual(nomina_motor.meses_en_cero(f), {"enero"})
-
-    def test_borrar_enero_recalcula_marzo_sin_volverse_manual(self):
-        self.assertUnMesDeRetroactivo(self.enviar(enero=0, _editados=["enero"]))
-
-    def test_borrar_y_restablecer_en_el_mismo_envio(self):
-        self.assertUnMesDeRetroactivo(self.enviar(enero=0, _editados=["enero"], _recalcular=True))
-
-    def test_restablecer_despues_no_regenera_enero(self):
-        self.enviar(enero=0, _editados=["enero"])
-        self.assertUnMesDeRetroactivo(self.enviar(_recalcular=True))
-        nomina_motor.recalcular_todo()
-        self.assertUnMesDeRetroactivo(PresupuestoNomina.objects.get(tipo="sueldos", cedula="111"))
-
-    def test_fila_que_ya_era_manual_con_enero_en_cero(self):
-        PresupuestoNomina.objects.filter(tipo="sueldos").update(origen="manual")
-        f = PresupuestoNomina.objects.get(tipo="sueldos"); f.enero = 0; f.save()
-        self.assertUnMesDeRetroactivo(self.enviar(_recalcular=True))
-
-    def test_escribir_otro_valor_sigue_volviendo_manual(self):
-        f = self.enviar(enero=123, _editados=["enero"])
-        self.assertEqual((f.origen, f.enero), ("manual", 123))
-
-    def test_volver_a_escribir_enero_lo_libera(self):
-        self.enviar(enero=0, _editados=["enero"])
-        f = self.enviar(enero=self.BASE, _editados=["enero"])
-        self.assertEqual((f.origen, f.enero), ("sistema", self.BASE))
-        self.assertAlmostEqual(f.marzo, self.nuevo + 2 * (self.nuevo - self.BASE), delta=2)
-        self.assertFalse(nomina_motor.meses_en_cero(f))
-
-
-class AuxilioTransporteManualTests(TestCase):
-    """El auxilio de transporte se puede ajustar a mano: editar una fila calculada
-    (pasa a manual), agregar una persona, eliminar una fila o restablecer el
-    cálculo. Lo manual se respeta al recalcular y llega a cesantías y prima."""
-
-    AUXILIO = 220000                     # base 200.000 + 10 %
-
-    def setUp(self):
-        from .models import ParametrosPresupuestos
-        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1423500, incremento_salarial=10,
-                                              auxilio_transporte=10, cesantias=8.33, prima=8.33)
-        comunes = dict(anio=timezone.localdate().year, archivo="prueba", nombre_cen="ALMACEN TULUA",
-                       nomcosto="VENTAS", nombrecar="CAJERO", cuenta="520506")
-        for ced in (1, 2):
-            ConceptosNomina.objects.create(concepto="001", cedula=ced, nombre=f"P{ced}", concepto_f=1500000,
-                                           **comunes, **{m: 1500000 for m in MESES_N[:8]})
-        nomina_motor.recargar_bases()
-        self.client.force_login(User.objects.create_user("admin"))
-
-    def datos(self):
-        return self.client.get(reverse("nomina_datos", args=["auxilio_transporte"])).json()["data"]
-
-    def enviar(self, filas):
-        r = self.client.post(reverse("nomina_guardar", args=["auxilio_transporte"]),
-                             json.dumps({"filas": filas, "con_editados": True}), content_type="application/json")
-        self.assertEqual(r.status_code, 200, r.content)
-        return r.json()
-
-    def auxilio(self):
-        return sorted(PresupuestoNomina.objects.filter(tipo="auxilio_transporte")
-                      .values_list("cedula", "origen", "enero"))
-
-    def cesantias_enero(self, cedula):
-        return PresupuestoNomina.objects.get(tipo="cesantias", cedula=cedula).enero
-
-    def test_pantalla_editable(self):
-        html = self.client.get(reverse("nomina_tabla", args=["auxilio_transporte"])).content.decode()
-        self.assertIn(reverse("nomina_guardar", args=["auxilio_transporte"]), html)
-        self.assertIn('data-rol="agregar"', html)
-        self.assertIn('data-rol="recalcular"', html)
-        self.assertIn('id="baseEditable"', html)                         # la base sigue editable
-
-    def test_editar_pasa_a_manual_se_respeta_y_llega_a_cesantias(self):
-        antes = self.cesantias_enero("1")
-        filas = self.datos()
-        next(f for f in filas if f["cedula"] == "1").update(enero=123456, _editados=["enero"])
-        self.enviar(filas)
-        self.assertAlmostEqual(self.cesantias_enero("1") - antes, (123456 - self.AUXILIO) * 0.0833, delta=2)
-        nomina_motor.recalcular_todo()
-        self.client.post(reverse("nomina_base_editable", args=["auxilio_transporte"]),
-                         json.dumps({"valor": 300000}), content_type="application/json")
-        self.assertEqual(self.auxilio(), [("1", "manual", 123456), ("2", "sistema", 330000)])
-
-    def test_agregar_persona_a_mano(self):
-        nueva = {"id": None, "_uid": "u1", "origen": "manual", "cedula": "9", "nombre": "NUEVA",
-                 "centro": "ALMACEN TULUA", "area": "VENTAS", "concepto": "AUXILIO DE TRANSPORTE",
-                 **{m: 0 for m in MESES_N}, "junio": 250000, "base": 0, "factor": 1}
-        self.enviar(self.datos() + [nueva])
-        nomina_motor.recalcular_todo()
-        self.assertIn(("9", "manual", 0), self.auxilio())
-        self.assertEqual(PresupuestoNomina.objects.get(tipo="auxilio_transporte", cedula="9").junio, 250000)
-
-    def test_eliminar_una_calculada_no_vuelve(self):
-        self.enviar([f for f in self.datos() if f["cedula"] != "1"])
-        nomina_motor.recalcular_todo()
-        self.assertEqual([c for c, *_ in self.auxilio()], ["2"])
-
-    def test_restablecer_calculo(self):
-        filas = self.datos()
-        next(f for f in filas if f["cedula"] == "1").update(enero=1, _editados=["enero"])
-        self.enviar(filas)
-        filas = self.datos()
-        next(f for f in filas if f["cedula"] == "1")["_recalcular"] = True
-        self.enviar(filas)
-        self.assertEqual(self.auxilio(), [("1", "sistema", self.AUXILIO), ("2", "sistema", self.AUXILIO)])
-
-    def test_sin_cambios_no_toca_nada(self):
-        antes = self.auxilio()
-        self.enviar(self.datos())
-        self.assertEqual(self.auxilio(), antes)
-
-
-class SeguridadSocialArlPorCargoTests(TestCase):
-    """Filas por persona: si la persona no tiene ARLPORC se busca el de su cargo
-    (NOMBRECAR); si el cargo tampoco tiene, el promedio del centro."""
-
-    AREA = "ASISTENCIA TECNICA PROPIA"
-
-    def setUp(self):
-        from .models import ParametrosPresupuestos
-        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1000000, incremento_salarial=0)
-        self.anio = timezone.localdate().year
-        # el cargo TECNICO DE CAMPO tiene 2,436 % dos veces y 4,35 % una vez → 2,436 %
-        for ced, arl in ((1, 2.436), (2, 2.436), (3, 4.35)):
-            self.persona(ced, "TECNICO DE CAMPO", arl)
-        self.persona(4, "TECNICO DE CAMPO", None)                 # sin ARL propia
-        self.persona(5, "TECNICO DE CAMPO", 0)                    # 0 = sin dato
-        self.persona(6, "CARGO SIN ARL", None)
-        nomina_motor.recargar_bases()
-
-    def persona(self, cedula, cargo, arl):
-        ConceptosNomina.objects.create(anio=self.anio, archivo="prueba", cedula=cedula, nombre=f"P{cedula}",
-                                       nombre_cen="ALMACEN TULUA", nomcosto=self.AREA, nombrecar=cargo,
-                                       arlporc=arl, concepto="001", concepto_f=2000000,
-                                       **{m: 2000000 for m in MESES_N[:8]})
-
-    def arl(self, cedula):
-        return PresupuestoNomina.objects.get(tipo="seguridad_social", concepto="APORTE A.R.L", cedula=cedula).enero
-
-    def test_con_arl_propia_no_cambia(self):
-        self.assertEqual(self.arl("3"), round(2000000 * 0.0435))
-
-    def test_sin_arl_propia_usa_la_del_cargo(self):
-        self.assertEqual(self.arl("4"), round(2000000 * 0.02436))
-        self.assertEqual(self.arl("5"), round(2000000 * 0.02436))
-
-    def test_cargo_escrito_distinto_en_una_fila_manual(self):
-        linea_nomina(cedula="7", nombre="NUEVO", cargo="Técnico  de campo", centro="ALMACEN TULUA",
-                     area=self.AREA, origen="manual", **{m: 1000000 for m in MESES_N}).save()
-        nomina_motor.recalcular_todo()
-        self.assertEqual(self.arl("7"), round(1000000 * 0.02436))
-
-    def test_cargo_sin_arl_usa_el_promedio_del_centro(self):
-        promedio = round((2.436 + 2.436 + 4.35 + 0) / 4 / 100, 4)   # ARLPORC no vacíos del centro/área
-        self.assertEqual(self.arl("6"), round(2000000 * promedio))
-
-
-class DistribucionSinRecalcularTests(TestCase):
-    """Aplicar una distribución solo reparte los valores que ya existen: no se
-    recalcula nada, no aparecen filas fantasma, lo manual se respeta y lo
-    eliminado sigue eliminado (también después de "Recalcular todo")."""
-
-    DESTINOS = [("ALMACEN TULUA", "VENTAS GASTOS DE PERSONAL", 18), ("ALMACEN BUGA", "VENTAS GASTOS DE PERSONAL", 18),
-                ("ALMACEN CARTAGO", "VENTAS GASTOS DE PERSONAL", 18), ("ALMACEN CALI", "VENTAS GASTOS DE PERSONAL", 18),
-                ("ALMACEN TULUA", "ADMINISTRACION DE PERSONAL", 18),
-                ("ALMACEN TULUA", "ASISTENCIA TECNICA CONVENIO", 5), ("ALMACEN TULUA", "ASISTENCIA TECNICA PROPIA", 5)]
-
-    def setUp(self):
-        from .models import ParametrosPresupuestos
-        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1423500, incremento_salarial=9,
-                                              auxilio_transporte=10, cesantias=8.33, prima=8.33, vacaciones=4.17,
-                                              intereses_cesantias=12, incremento_ipc=5, incremento_comisiones=5)
-        comunes = dict(anio=timezone.localdate().year, archivo="x", nombre_cen="ALMACEN TULUA",
-                       nomcosto="VENTAS GASTOS DE PERSONAL", nombrecar="ASESOR", cuenta="520506")
-        for ced in (1, 2):
-            ConceptosNomina.objects.create(concepto="001", cedula=ced, nombre=f"P{ced}", concepto_f=1800000,
-                                           **comunes, **{m: 1800000 for m in MESES_N[:8]})
-        ConceptosNomina.objects.create(concepto="389", cedula=1, nombre="P1", **comunes,
-                                       **{m: (300000 if i in (2, 5) else 0) for i, m in enumerate(MESES_N[:8])})
-        ConceptosNomina.objects.create(concepto="011", cedula=1, nombre="P1", concepto_f=100000, **comunes,
-                                       **{m: 100000 for m in MESES_N[:8]})
-        nomina_motor.recargar_bases()
-
-    def distribuir(self):
-        nomina_motor.guardar_distribucion(["1"], [{"centro": c, "area": a, "porcentaje": p}
-                                                  for c, a, p in self.DESTINOS])
-
-    def totales(self, cedula=None):
-        qs = PresupuestoNomina.objects.all() if cedula is None else PresupuestoNomina.objects.filter(cedula=cedula)
-        salida = {}
-        for f in qs:
-            meses = salida.setdefault(f.tipo, dict.fromkeys(MESES_N, 0))
-            for m in MESES_N:
-                meses[m] += getattr(f, m)
-        return salida
-
-    def filas(self, tipo, cedula="1"):
-        return sorted(PresupuestoNomina.objects.filter(tipo=tipo, cedula=cedula)
-                      .values_list("centro", "area", "origen", "total"))
-
-    def test_los_totales_de_cada_mes_no_cambian_ni_un_peso(self):
-        antes = self.totales()
-        self.distribuir()
-        self.assertEqual(self.totales(), antes)
-
-    def test_las_demas_personas_no_se_tocan(self):
-        antes = {(f.pk, f.tipo, f.total) for f in PresupuestoNomina.objects.filter(cedula="2")}
-        seguridad = sorted(PresupuestoNomina.objects.filter(tipo="seguridad_social").values_list("pk", "total"))
-        self.distribuir()
-        self.assertEqual({(f.pk, f.tipo, f.total) for f in PresupuestoNomina.objects.filter(cedula="2")}, antes)
-        self.assertEqual(sorted(PresupuestoNomina.objects.filter(tipo="seguridad_social")
-                                .values_list("pk", "total")), seguridad)
-
-    def test_reparte_todos_los_conceptos_de_la_persona(self):
-        self.distribuir()
-        for tipo in ("sueldos", "comisiones", "medios_transporte", "cesantias", "prima", "auxilio_transporte"):
-            self.assertEqual(len(self.filas(tipo)), 7, tipo)
-        cali = PresupuestoNomina.objects.get(tipo="cesantias", cedula="1", centro="ALMACEN CALI")
-        self.assertEqual(cali.clave, "1|ALMACEN CALI|VENTAS GASTOS DE PERSONAL")
-
-    def test_auxilio_eliminado_no_reaparece(self):
-        aux = PresupuestoNomina.objects.get(tipo="auxilio_transporte", cedula="1")
-        FilaEliminadaNomina.objects.create(tipo="auxilio_transporte", llave=aux.clave, nombre="P1")
-        aux.delete()
-        self.distribuir()
-        self.assertEqual(self.filas("auxilio_transporte"), [])
-        nomina_motor.recalcular_todo()
-        self.assertEqual(self.filas("auxilio_transporte"), [])
-
-    def test_foco_manual_se_reparte_como_manual_sin_duplicados(self):
-        PresupuestoNomina.objects.filter(tipo="bonificaciones_foco", cedula="1").update(
-            origen="manual", **{m: (700000 if m == "enero" else 0) for m in MESES_N}, total=700000)
-        self.distribuir()
-        filas = self.filas("bonificaciones_foco")
-        self.assertEqual(len(filas), 7)
-        self.assertEqual({o for *_, o, _ in filas}, {"manual"})
-        self.assertEqual(sum(t for *_, t in filas), 700000)
-        nomina_motor.recalcular_todo()                                  # sigue sin duplicarse
-        self.assertEqual(self.filas("bonificaciones_foco"), filas)
-
-    def test_quitar_la_distribucion_vuelve_al_origen_sin_recalcular(self):
-        antes = self.totales()
-        PresupuestoNomina.objects.filter(tipo="prima", cedula="1").update(enero=12345)   # valor "raro" a propósito
-        con_raro = self.totales("1")["prima"]["enero"]
-        self.distribuir()
-        nomina_motor.quitar_distribucion(["1"])
-        for tipo in ("sueldos", "cesantias", "prima", "auxilio_transporte"):
-            self.assertEqual({(c, a) for c, a, *_ in self.filas(tipo)},
-                             {("ALMACEN TULUA", "VENTAS GASTOS DE PERSONAL")}, tipo)
-        self.assertEqual(self.totales("1")["prima"]["enero"], con_raro)              # no se recalculó
-        self.assertEqual(self.totales()["sueldos"], antes["sueldos"])
-
-
-class ArlElegidaPorCargoTests(TestCase):
-    """Asistencia técnica: se elige con qué ARL se calcula cada cargo. La ARL
-    propia de la persona (Excel) manda; la elegida reemplaza a la automática
-    (la más frecuente del cargo) para quien no trae ARL."""
-
-    AREA = "ASISTENCIA TECNICA CONVENIO"
-
-    def setUp(self):
-        from .models import ParametrosPresupuestos
-        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1000000, incremento_salarial=0)
-        self.anio = timezone.localdate().year
-        # TECNICO DE CAMPO: 2,436 % (2 personas) y 4,35 % (1 persona) → automática 2,436 %
-        for ced, arl in ((1, 2.436), (2, 2.436), (3, 4.35)):
-            self.persona(ced, "TECNICO DE CAMPO", arl)
-        self.persona(4, "Técnico de campo", None)                 # sin ARL propia
-        self.persona(5, "VENDEDOR", 0.522, area="VENTAS")          # no es de asistencia técnica
-        nomina_motor.recargar_bases()
-        self.client.force_login(User.objects.create_user("admin"))
-
-    def persona(self, cedula, cargo, arl, area=None):
-        ConceptosNomina.objects.create(anio=self.anio, archivo="prueba", cedula=cedula, nombre=f"P{cedula}",
-                                       nombre_cen="ALMACEN TULUA", nomcosto=area or self.AREA, nombrecar=cargo,
-                                       arlporc=arl, concepto="001", concepto_f=2000000,
-                                       **{m: 2000000 for m in MESES_N[:8]})
-
-    def arl(self, cedula):
-        return PresupuestoNomina.objects.get(tipo="seguridad_social", concepto="APORTE A.R.L", cedula=cedula).enero
-
-    def elegir(self, porcentaje, cargo="TECNICO DE CAMPO"):
-        r = self.client.post(reverse("nomina_arl_cargo_guardar"),
-                             json.dumps({"cargo": cargo, "porcentaje": porcentaje}), content_type="application/json")
-        self.assertEqual(r.status_code, 200, r.content)
-        return r.json()
-
-    def test_lista_los_cargos_de_asistencia_con_sus_arl(self):
-        data = self.client.get(reverse("nomina_arl_cargos")).json()["data"]
-        self.assertEqual([c["cargo"] for c in data], ["TECNICO DE CAMPO"])            # VENDEDOR no
-        cargo = data[0]
-        self.assertEqual((cargo["personas"], cargo["sin_arl"]), (4, 1))
-        self.assertEqual(cargo["opciones"], [{"porcentaje": 2.436, "personas": 2},
-                                             {"porcentaje": 4.35, "personas": 1}])
-        self.assertAlmostEqual(cargo["automatica"], 2.436)
-        self.assertIsNone(cargo["elegida"])
-
-    def test_sin_eleccion_usa_la_automatica(self):
-        self.assertEqual(self.arl("4"), round(2000000 * 0.02436))
-
-    def test_la_elegida_se_usa_para_quien_no_trae_arl(self):
-        r = self.elegir(4.35)
-        self.assertIn("4,35 %", r["msg"])
-        self.assertEqual(self.arl("4"), round(2000000 * 0.0435))
-        self.assertEqual(r["cargos"][0]["elegida"], 4.35)
-        nomina_motor.recalcular_todo()                                  # se respeta al recalcular
-        self.assertEqual(self.arl("4"), round(2000000 * 0.0435))
-
-    def test_la_arl_propia_del_excel_manda(self):
-        self.elegir(4.35)
-        self.assertEqual(self.arl("1"), round(2000000 * 0.02436))
-
-    def test_volver_a_automatica(self):
-        self.elegir(4.35)
-        self.elegir(None)
-        self.assertFalse(ArlCargoNomina.objects.exists())
-        self.assertEqual(self.arl("4"), round(2000000 * 0.02436))
-
-    def test_valor_invalido(self):
-        r = self.client.post(reverse("nomina_arl_cargo_guardar"),
-                             json.dumps({"cargo": "TECNICO DE CAMPO", "porcentaje": 150}),
-                             content_type="application/json")
-        self.assertEqual(r.status_code, 400)
-
-    def test_panel_solo_en_seguridad_social(self):
-        html = self.client.get(reverse("nomina_tabla", args=["seguridad_social"])).content.decode()
-        self.assertIn('id="panelArlCargo"', html)
-        self.assertIn(reverse("nomina_arl_cargos"), html)
-        self.assertNotIn('id="panelArlCargo"', self.client.get(reverse("nomina_tabla", args=["prima"])).content.decode())
-
-
-class FocoDescuentoComisionanTests(TestCase):
-    """Bonificación foco de quien comisiona y NO está en la lista "sin comisión":
-    se le descuenta el 25 % solo en enero (julio va completo). A los de la lista
-    (base general) y a quienes no comisionan no se les descuenta."""
-
-    def setUp(self):
-        from .models import ParametrosPresupuestos
-        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1423500, incremento_ipc=10,
-                                              incremento_comisiones=0)
-        config = origen_nomina.ConfiguracionNomina.actual()
-        config.meses_reales = 8
-        config.save()
-        comunes = dict(anio=timezone.localdate().year, archivo="prueba", nombre_cen="ALMACEN TULUA",
-                       nomcosto="VENTAS", nombrecar="CAJERO", fecha_ingreso=datetime.date(2015, 1, 1))
-        for ced in (1, 2, 3):
-            ConceptosNomina.objects.create(concepto="001", cedula=ced, nombre=f"P{ced}", concepto_f=2000000,
-                                           **comunes, **{m: 2000000 for m in MESES_N[:8]})
-        for ced in (1, 2):                                   # comisionan 600.000 al mes (ene-ago)
-            ConceptosNomina.objects.create(concepto="389", cedula=ced, nombre=f"P{ced}",
-                                           **comunes, **{m: 600000 for m in MESES_N[:8]})
-        ConceptosNomina.objects.create(concepto="E17", cedula=3, nombre="P3", enero=200000, **comunes)
-        FocoSinComision.objects.create(cedula="2", nombre="P2")          # en la lista: base general
-        # P4 comisiona poco: 200.000 al mes (ene-ago)
-        ConceptosNomina.objects.create(concepto="001", cedula=4, nombre="P4", concepto_f=2000000,
-                                       **comunes, **{m: 2000000 for m in MESES_N[:8]})
-        ConceptosNomina.objects.create(concepto="389", cedula=4, nombre="P4",
-                                       **comunes, **{m: 200000 for m in MESES_N[:8]})
-        # P5 ingresó el 1 de julio del año base (180 días) y comisiona 100.000 en julio y agosto
-        nuevo = dict(comunes, fecha_ingreso=datetime.date(comunes["anio"], 7, 1))
-        ConceptosNomina.objects.create(concepto="001", cedula=5, nombre="P5", concepto_f=2000000,
-                                       **nuevo, **{m: 2000000 for m in MESES_N[6:8]})
-        ConceptosNomina.objects.create(concepto="389", cedula=5, nombre="P5",
-                                       **nuevo, **{m: 100000 for m in MESES_N[6:8]})
-        nomina_motor.recargar_bases()
-
-    def foco(self, cedula):
-        f = PresupuestoNomina.objects.get(tipo="bonificaciones_foco", cedula=cedula)
-        return f.enero, f.julio
-
-    def test_quien_comisiona_tiene_25_de_descuento_solo_en_enero(self):
-        # enero: promedio anual de comisiones reales 600.000 − 25 % → 450.000
-        # julio: mitad del promedio presupuestado ene-jun (600.000) = 300.000, sin descuento
-        self.assertEqual(self.foco("1"), (450000, 300000))
-
-    def test_lista_sin_comision_sin_descuento(self):
-        self.assertEqual(self.foco("2"), (220000, 0))                      # base 200.000 + 10 % IPC
-
-    def test_quien_no_comisiona_sin_descuento(self):
-        self.assertEqual(self.foco("3"), (220000, 0))
-
-    def test_si_queda_por_debajo_de_la_base_recibe_la_base(self):
-        # 200.000 − 25 % = 150.000 < base 220.000 → 220.000 · julio sin cambio (200.000 / 2)
-        self.assertEqual(self.foco("4"), (220000, 100000))
-
-    def test_la_base_minima_es_proporcional_a_los_dias(self):
-        # promedio anual (200.000 + 4 × 100.000) / 12 = 50.000 − 25 % = 37.500
-        # base de quien trabajó 180 días: 220.000 / 360 × 180 = 110.000 → 110.000
-        self.assertEqual(self.foco("5")[0], 110000)
-
-    def test_si_queda_por_encima_se_deja_el_calculo(self):
-        self.assertEqual(self.foco("1")[0], 450000)                         # 450.000 > 220.000
-
-    def test_cargo_nuevo_que_no_esta_en_el_informe_no_toma_la_base(self):
-        # persona agregada a mano en el presupuesto (no está en el Excel): sin comisiones
-        # reales su enero es 0 y NO sube a la base; julio sale de lo presupuestado
-        for tipo, valor in (("sueldos", 2000000), ("comisiones", 400000)):
-            linea_nomina(tipo=tipo, cedula="9", nombre="VACANTE ASESOR", cargo="CAJERO", origen="manual",
-                         centro="ALMACEN TULUA", area="VENTAS", **{m: valor for m in MESES_N}).save()
-        nomina_motor.recalcular_todo()
-        self.assertEqual(self.foco("9"), (0, 200000))
-        self.assertEqual(self.foco("4")[0], 220000)                         # los del informe sí
-
-
-class CualquierCambioRecalculaTodoTests(TestCase):
-    """Cualquier cambio, en el concepto que sea, recalcula todo el presupuesto de nómina."""
-
-    def setUp(self):
-        from .models import ParametrosPresupuestos
-        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1423500, incremento_salarial=10,
-                                              incremento_ipc=10, auxilio_transporte=10, cesantias=8.33,
-                                              prima=8.33)
-        comunes = dict(anio=timezone.localdate().year, archivo="x", nombre_cen="ALMACEN TULUA",
-                       nomcosto="VENTAS", nombrecar="CAJERO", cuenta="520506")
-        for ced in (1, 2):
-            ConceptosNomina.objects.create(concepto="001", cedula=ced, nombre=f"P{ced}", concepto_f=2000000,
-                                           **comunes, **{m: 2000000 for m in MESES_N[:8]})
-        nomina_motor.recargar_bases()
-        self.client.force_login(User.objects.create_user("admin"))
-
-    def editar_foco(self):
-        filas = self.client.get(reverse("nomina_datos", args=["bonificaciones_foco"])).json()["data"]
-        next(f for f in filas if f["cedula"] == "1").update(enero=5, _editados=["enero"])
-        r = self.client.post(reverse("nomina_guardar", args=["bonificaciones_foco"]),
-                             json.dumps({"filas": filas, "con_editados": True}), content_type="application/json")
-        self.assertEqual(r.status_code, 200, r.content)
-        return r.json()
-
-    def test_un_cambio_en_un_concepto_sin_dependientes_recalcula_los_demas(self):
-        # Se "desactualizan" a propósito cesantías y seguridad social (como si un parámetro
-        # hubiera cambiado sin recalcular). Editar bonificación foco, de la que no depende
-        # nada, antes no las tocaba; ahora las recalcula.
-        PresupuestoNomina.objects.filter(tipo__in=["cesantias", "seguridad_social"]).update(enero=1)
-        r = self.editar_foco()
-        self.assertFalse(PresupuestoNomina.objects.filter(tipo="cesantias", enero=1).exists())
-        self.assertFalse(PresupuestoNomina.objects.filter(tipo="seguridad_social", enero=1).exists())
-        self.assertIn("Todo el presupuesto de nómina recalculado", r["msg"])
-
-    def test_tambien_recalcula_las_formulas_de_los_conceptos_base(self):
-        PresupuestoNomina.objects.filter(tipo="sueldos", cedula="2").update(abril=1)   # calculada, desactualizada
-        self.editar_foco()
-        self.assertEqual(PresupuestoNomina.objects.get(tipo="sueldos", cedula="2").abril, 2200000)
-
-    def test_lo_manual_se_respeta(self):
-        self.editar_foco()
-        f = PresupuestoNomina.objects.get(tipo="bonificaciones_foco", cedula="1")
-        self.assertEqual((f.origen, f.enero), ("manual", 5))
-
-
-class CuentasPorConceptoYCodcostoTests(TestCase):
-    """La cuenta depende del concepto + CODCOSTO (+ cargo para aprendices de
-    reforma), no del área. Sin regla, se conserva la cuenta del área."""
-
-    R = "APRENDIZ DEL SENA REFORMA"
-    # (concepto en el aplicativo, codcosto, cargo, cuenta esperada) — tal como lo pidió el usuario
-    ESPERADO = [
-        ("SALARIO BASICO", "020201", "", "54050301"), ("SALARIO BASICO", "020301", "", "54050301"),
-        ("SALARIO BASICO", "0101", "", "510503"), ("SALARIO BASICO", "020401", "", "510503"),
-        ("APORTE A.R.L", "020201", "", "540525"), ("APORTE A.R.L", "0101", "", "510525"),
-        ("APORTE A.R.L", "020401", "", "510525"), ("APORTE A.R.L", "020301", "", "510525"),
-        ("APORTE CAJAS DE COMPENSACIÓN", "020201", "", "540526"), ("APORTE CAJAS DE COMPENSACIÓN", "020301", "", "540526"),
-        ("APORTE CAJAS DE COMPENSACIÓN", "0101", "", "510526"), ("APORTE CAJAS DE COMPENSACIÓN", "020401", "", "510526"),
-        ("APORTE I.C.B.F", "0101", "", "510527"),
-        ("APORTE PENSIÓN", "020201", "", "540524"), ("APORTE PENSIÓN", "020301", "", "540524"),
-        ("APORTE PENSIÓN", "0101", "", "510524"), ("APORTE PENSIÓN", "020401", "", "510524"),
-        ("APORTE SALUD", "020201", "", "540523"), ("APORTE SALUD", "0101", "", "510523"),
-        ("APORTE SENA", "0101", "", "510528"),
-        ("AUXILIO DE ANTIGÜEDAD 30 AÑOS", "020201", "", "540522"),
-        ("AUXILIO DE ANTIGÜEDAD 20 AÑOS", "020201", "", "540522"),
-        ("AUXILIO DE EDUCACIÓN", "020201", "", "540522"), ("AUXILIO DE EDUCACIÓN", "020301", "", "540522"),
-        ("AUXILIO DE EDUCACIÓN", "0101", "", "510522"),
-        ("AUXILIO DE MOVILIZACIÓN", "020201", "", "54059502"), ("AUXILIO DE MOVILIZACIÓN", "020301", "", "54059502"),
-        ("AUXILIO DE MOVILIZACIÓN", "0101", "", "51059502"),
-        ("AUXILIO DE MOVILIZACIÓN BOLSA DE CONSUMIBLES", "020201", "", "54059502"),
-        ("AUXILIO DE MOVILIZACIÓN BOLSA DE CONSUMIBLES", "020301", "", "54059502"),
-        ("AUXILIO DE MOVILIZACIÓN TBC Y KIT DE BRUCELA", "020301", "", "54059502"),
-        ("AUXILIO DE TRANSPORTE", "020201", "", "54050901"), ("AUXILIO DE TRANSPORTE", "020301", "", "54050901"),
-        ("AUXILIO DE TRANSPORTE", "020201", R, "54050902"),
-        ("AUXILIO DE TRANSPORTE", "020401", "", "510509"), ("AUXILIO DE TRANSPORTE", "0101", "", "510509"),
-        ("BONIFICACIÓN", "0101", "", "510519"), ("BONIFICACIÓN FOCO", "0101", "", "510519"),
-        ("BONIFICACIÓN", "020201", "", "540519"), ("BONIFICACIÓN FOCO", "020301", "", "540519"),
-        ("BONOS CANASTA KYROVET", "0101", "", "510519"), ("BONOS CANASTA KYROVET", "020201", "", "54059505"),
-        ("BONOS CANASTA KYROVET", "020301", "", "54059505"),
-        ("CESANTÍAS", "0101", "", "510510"), ("CESANTÍAS", "020401", "", "510510"),
-        ("CESANTÍAS", "020201", "", "54051001"), ("CESANTÍAS", "020301", "", "54051001"),
-        ("CESANTÍAS", "020201", R, "54051002"),
-        ("COMISIONES", "020201", "", "540506"), ("COMISIONES", "020301", "", "540506"),
-        ("HORAS EXTRA", "0101", "", "510505"), ("HORAS EXTRA", "020201", "", "54050501"),
-        ("HORAS EXTRA", "020201", R, "54050502"),
-        ("INTERESES CESANTÍAS", "0101", "", "510511"), ("INTERESES CESANTÍAS", "020401", "", "510511"),
-        ("INTERESES CESANTÍAS", "020201", "", "54051101"), ("INTERESES CESANTÍAS", "020301", "", "54051101"),
-        ("INTERESES CESANTÍAS", "020201", R, "54051102"),
-        ("MEDIOS DE TRANSPORTE", "0101", "", "51059501"), ("MEDIOS DE TRANSPORTE", "020201", "", "54059501"),
-        ("MEDIOS DE TRANSPORTE", "020301", "", "54059501"),
-        ("PRIMA LEGAL", "0101", "", "510512"), ("PRIMA LEGAL", "020401", "", "510512"),
-        ("PRIMA LEGAL", "020201", "", "54051201"), ("PRIMA LEGAL", "020301", "", "54051201"),
-        ("PRIMA LEGAL", "020201", R, "54051202"),
-        ("SALARIO APRENDIZ", "020201", "", "54050302"), ("SALARIO APRENDIZ REFORMA", "020201", "", "54050302"),
-        ("VACACIONES", "0101", "", "510516"), ("VACACIONES", "020401", "", "510516"),
-        ("VACACIONES", "020201", "", "54051601"), ("VACACIONES", "020301", "", "54051601"),
-        ("VACACIONES", "020201", R, "54051602"),
+class ImportarVentasComercialDosFormatosTests(TestCase):
+    """El informe de ventas se acepta con los encabezados originales (MCNZONA,
+    LINNOMBRE, VGRNOMBRE...) y con los del formato alterno (zona, linea_nom,
+    cliente_grp_nom, ven_cc, sku...). Ambos guardan lo mismo."""
+
+    FILAS = [
+        # año, mes, zona, cedula vendedor, sku, línea, grupo cliente, subtotal, costo
+        (2025, 7, "001", "66728632", "2542", "MEDICAMENTOS VETERINARIOS BOVINOS", "CLIENTE", "13.700,00", "11.178,00"),
+        (2025, 7, "002", "94392534", "798", "HERRAMIENTAS", "PRODUCCION", "44.579,83", "37.746,00"),
+        (2025, 7, "002", "1107526548", "6194", "INSTRUMENTAL", "CLIENTE", "5.630,25", "4.781,00"),
+        (2025, 7, "001", "1116235756", "100", "HERRAMIENTAS", "CLIENTE", "999.999,00", "1,00"),   # cédula excluida
+        (2025, 7, "001", "66728632", "S12", "HERRAMIENTAS", "CLIENTE", "888.888,00", "1,00"),      # producto S
+        (2025, 8, "001", "1116279685", "797", "HERRAMIENTAS", "CLIENTE", "-20.798,00", "-18.671,00"),
     ]
 
-    def test_cada_regla_pedida(self):
-        for concepto, codcosto, cargo, cuenta in self.ESPERADO:
-            with self.subTest(concepto=concepto, codcosto=codcosto, cargo=cargo):
-                self.assertEqual(nomina_motor.cuenta_por_regla(concepto, codcosto, cargo), cuenta)
+    def excel(self, columnas):
+        df = pd.DataFrame([dict(zip(columnas, f)) for f in self.FILAS])
+        df["extra_que_no_se_usa"] = "x"
+        salida = io.BytesIO()
+        df.to_excel(salida, index=False)
+        salida.seek(0)
+        salida.name = "ventas.xlsx"
+        return salida
 
-    def test_nombres_del_informe_como_alias(self):
-        for concepto, cuenta in (("APORTE PATRONAL AFP", "540524"), ("PROVISION CESANTIAS", "54051001"),
-                                 ("HORA EXTRA NOCTURNA 75%", "54050501"), ("BONOS CANASTA", "54059505"),
-                                 ("BONIFICACION MERA LIBERALIDAD", "540519")):
-            self.assertEqual(nomina_motor.cuenta_por_regla(concepto, "020201"), cuenta, concepto)
+    def subir(self, columnas):
+        r = self.client.post(reverse("importar_bd_ventas_comercial"), {"file": self.excel(columnas)})
+        return r, list(views.BdVentasComercial.objects.filter(lapso__lt=202600).order_by(
+            "lapso", "centro_de_operacion", "nombre_linea_n1", "nombre_clase_cliente").values(
+            "lapso", "centro_de_operacion", "nombre_centro_de_operacion", "nombre_linea_n1",
+            "nombre_clase_cliente", "valor_neto", "valor_costo"))
 
-    def test_tildes_mayusculas_y_ceros_a_la_izquierda(self):
-        self.assertEqual(nomina_motor.cuenta_por_regla("cesantias", "20201"), "54051001")
-        self.assertEqual(nomina_motor.cuenta_por_regla("Salario  Básico", "101"), "510503")
+    ORIGINAL = ["YYYY", "MM", "MCNZONA", "VENCEDULA", "MCNPRODUCT", "LINNOMBRE", "VGRNOMBRE", "SUBTOTAL", "COSTO_VTA"]
+    ALTERNO = ["yyyy", "mm", "zona", "ven_cc", "sku", "linea_nom", "cliente_grp_nom", "subtotal", "costo_vta"]
 
-    def test_sin_regla_queda_vacio(self):
-        self.assertEqual(nomina_motor.cuenta_por_regla("APORTE SENA", "020201"), "")    # SENA solo 0101
-        self.assertEqual(nomina_motor.cuenta_por_regla("OTRO CONCEPTO", "0101"), "")
+    def test_formato_alterno_se_importa(self):
+        r, filas = self.subir(self.ALTERNO)
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(len(filas), 4)
+        buga = [f for f in filas if f["centro_de_operacion"] == 2 and f["nombre_linea_n1"] == "HERRAMIENTAS"][0]
+        self.assertEqual(buga["nombre_centro_de_operacion"], "ALMACEN BUGA")
+        self.assertEqual(buga["nombre_clase_cliente"], "PRODUCTOR")
+        self.assertAlmostEqual(buga["valor_neto"], 44579.83)
+        self.assertAlmostEqual(buga["valor_costo"], 37746.0)
+        self.assertIn("1 eliminada(s) por cédula excluida", r.json()["mensaje"])
 
-    def test_de_punta_a_punta(self):
-        from .models import ParametrosPresupuestos
-        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1423500, incremento_salarial=10,
-                                              cesantias=8.33, prima=8.33, auxilio_transporte=10)
-        anio = timezone.localdate().year
-        comunes = dict(anio=anio, archivo="x", nombre_cen="ALMACEN TULUA", nomcosto="VENTAS GASTOS DE PERSONAL",
-                       codcosto="020201", cuenta="999999")             # la cuenta del área ya no manda
-        ConceptosNomina.objects.create(concepto="001", nombre_con="SALARIO BASICO", cedula=1, nombre="P1",
-                                       nombrecar="ASESOR", concepto_f=2000000, **comunes,
-                                       **{m: 2000000 for m in MESES_N[:8]})
-        ConceptosNomina.objects.create(concepto="006", nombre_con="SALARIO APRENDIZ REFORMA", cedula=2,
-                                       nombre="P2", nombrecar="APRENDIZ DEL SENA REFORMA", concepto_f=1423500,
-                                       **comunes, **{m: 1423500 for m in MESES_N[:8]})
-        ConceptosNomina.objects.create(concepto="001", nombre_con="SALARIO BASICO", cedula=3, nombre="P3",
-                                       nombrecar="CONTADOR", concepto_f=2000000, anio=anio, archivo="x",
-                                       nombre_cen="ALMACEN TULUA", nomcosto="CONTABILIDAD", codcosto="0101",
-                                       cuenta="888888", **{m: 2000000 for m in MESES_N[:8]})
-        nomina_motor.recargar_bases()
+    def test_ambos_formatos_guardan_lo_mismo(self):
+        _, original = self.subir(self.ORIGINAL)
+        _, alterno = self.subir(self.ALTERNO)
+        self.assertEqual(original, alterno)
 
-        def cuenta(tipo, cedula, **extra):
-            return PresupuestoNomina.objects.get(tipo=tipo, cedula=cedula, **extra).cuenta
-        self.assertEqual(cuenta("sueldos", "1"), "54050301")
-        self.assertEqual(cuenta("cesantias", "1"), "54051001")
-        self.assertEqual(cuenta("cesantias", "2"), "54051002")                  # aprendiz de reforma
-        self.assertEqual(cuenta("aprendiz", "2"), "54050302")
-        self.assertEqual(cuenta("sueldos", "3"), "510503")
-        self.assertEqual(cuenta("prima", "3"), "510512")
-        self.assertEqual(PresupuestoNomina.objects.get(tipo="seguridad_social", concepto="APORTE PENSIÓN",
-                                                       area="VENTAS GASTOS DE PERSONAL").cuenta, "540524")
-        # sin regla: conserva la cuenta del área (APORTE SENA solo tiene regla para 0101)
-        linea_nomina(tipo="sueldos", concepto="OTRO", cedula="9", area="VENTAS GASTOS DE PERSONAL",
-                     cuenta="", codcosto="", origen="manual").save()
-        nomina_motor.asignar_cuentas()
-        self.assertEqual(cuenta("sueldos", "9"), "999999")
-
-
-class EliminarNominaDePresupuestoTests(TestCase):
-    """Tarjeta de nómina: "Eliminar de presupuesto" borra de Cuenta 5 lo que
-    subió "Subir presupuesto", sin tocar lo de Excel ni lo de otras áreas."""
-
-    @classmethod
-    def setUpTestData(cls):
-        cls.aprobador = User.objects.create_user("NICOLAS")
-
-    def setUp(self):
-        self.client.force_login(self.aprobador)
-        confirmar_nomina(True)
-        linea_nomina().save()
-        self.client.post(reverse("subir_cuenta5_nomina"))
-        Cuenta5Presupuestado.objects.create(mcncuenta="510506", mcnvaldebi=1, mcnfecha=1)              # Excel
-        Cuenta5Presupuestado.objects.create(mcncuenta="510506", mcnvaldebi=1, mcnfecha=1, origen_area=AREA)
-
-    def eliminar(self):
-        return self.client.post(reverse("quitar_cuenta5_nomina"))
-
-    def test_elimina_solo_lo_de_nomina(self):
-        self.assertEqual(Cuenta5Presupuestado.objects.filter(origen_area="nomina").count(), 12)
-        r = self.eliminar().json()
-        self.assertTrue(r["success"], r)
-        self.assertEqual(r["eliminados"], 12)
-        self.assertIn("se eliminaron 12 registros", r["msg"])
-        self.assertEqual(r["estado"]["estado"], "pendiente")
-        self.assertFalse(Cuenta5Presupuestado.objects.filter(origen_area="nomina").exists())
-        self.assertEqual(Cuenta5Presupuestado.objects.filter(origen_area__isnull=True).count(), 1)
-        self.assertEqual(Cuenta5Presupuestado.objects.filter(origen_area=AREA).count(), 1)
-        self.assertEqual(PresupuestoNomina.objects.count(), 1)                 # la nómina sigue intacta
-
-    def test_sin_nada_subido(self):
-        self.eliminar()
-        self.assertIn("no tenía nada subido", self.eliminar().json()["msg"])
-
-    def test_permisos_y_metodo(self):
-        self.assertEqual(self.client.get(reverse("quitar_cuenta5_nomina")).status_code, 405)
-        self.client.force_login(User.objects.create_user("OTRO"))
-        self.assertEqual(self.eliminar().status_code, 403)
-        self.assertEqual(Cuenta5Presupuestado.objects.filter(origen_area="nomina").count(), 12)
-
-    def test_boton_solo_en_la_tarjeta_de_nomina_y_con_confirmacion(self):
-        r = self.client.get(reverse("dashboardPresupuesto"))
-        html = r.content.decode()
-        self.assertEqual(html.count('class="c5-btn c5-btn--eliminar"'), 1)
-        self.assertEqual(html.count(">Eliminar de presupuesto<"), 1)
-        self.assertIn(reverse("quitar_cuenta5_nomina"), html)
-        self.assertIn('data-registros="12"', html)
-        self.assertIn("¿Eliminar de presupuesto?", html)                       # mensaje de confirmación
-        tarjetas = {t["clave"]: t for t in r.context["tarjetas"]}
-        self.assertNotIn("url_quitar", tarjetas[AREA])
-
-    def test_sin_nada_subido_el_boton_esta_deshabilitado(self):
-        self.eliminar()
-        html = self.client.get(reverse("dashboardPresupuesto")).content.decode()
-        self.assertIn('data-registros="0"\n                    disabled title="No hay nada subido al presupuesto"', html)
+    def test_falta_columna_avisa_ambos_nombres(self):
+        r, _ = self.subir([c for c in self.ALTERNO if c != "linea_nom"] + ["otra"])
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("LINNOMBRE (o linea_nom)", r.json()["mensaje"])

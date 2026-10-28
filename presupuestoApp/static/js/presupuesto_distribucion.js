@@ -68,10 +68,8 @@
       const sel = cedulasSeleccionadas();
       chips.innerHTML = sel.size
         ? [...sel].map(([ced, nom]) => {
-            const d = distribuciones.find(x => x.cedula === ced);
-            const clase = !d ? '' : d.activa ? ' nd-chip--con' : ' nd-chip--inactiva';
-            const titulo = !d ? '' : d.activa ? 'Ya tiene distribución' : 'Tiene una distribución desactivada';
-            return `<span class="nd-chip${clase}" title="${titulo}">
+            const conReparto = distribuciones.some(d => d.cedula === ced);
+            return `<span class="nd-chip${conReparto ? ' nd-chip--con' : ''}" title="${conReparto ? 'Ya tiene distribución' : ''}">
                       ${escapar(nom || 'Sin nombre')} <small>${escapar(ced)}</small>
                       <button type="button" data-quitar="${escapar(ced)}" aria-label="Quitar">×</button></span>`;
           }).join('')
@@ -173,30 +171,11 @@
     };
 
     // ------------------------------------------------------------ vigentes
-    const btnActivarTodas = $('#ndActivarTodas');
-    const btnDesactivarTodas = $('#ndDesactivarTodas');
-    const esActiva = (d) => d.activa !== false;
-
     const pintarVigentes = () => {
-      const inactivas = distribuciones.filter(d => !esActiva(d)).length;
-      const contadorInactivas = $('#ndContadorInactivas');
       $('#ndContador').textContent = distribuciones.length;
-      $('#ndContador').title = `${distribuciones.length - inactivas} activa(s)`;
-      contadorInactivas.hidden = !inactivas;
-      contadorInactivas.textContent = `${inactivas} desactivada(s)`;
-      btnActivarTodas.disabled = !inactivas;
-      btnDesactivarTodas.disabled = !(distribuciones.length - inactivas);
       $('#ndVigentes').innerHTML = distribuciones.length
         ? distribuciones.map(d => `
-            <tr class="${esActiva(d) ? '' : 'nd-inactiva'}">
-              <td class="nd-estado">
-                <label class="nd-switch" title="${esActiva(d) ? 'Desactivar (vuelve a su centro/área de origen; el reparto queda guardado)' : 'Activar (se reparte otra vez con estos porcentajes)'}">
-                  <input type="checkbox" data-activar="${escapar(d.cedula)}" ${esActiva(d) ? 'checked' : ''}
-                         aria-label="Distribución de ${escapar(d.nombre || d.cedula)} activa">
-                  <span class="nd-switch__pista" aria-hidden="true"></span>
-                  <span class="nd-switch__texto">${esActiva(d) ? 'Activa' : 'Desactivada'}</span>
-                </label>
-              </td>
+            <tr>
               <td>${escapar(d.nombre || '—')}</td>
               <td class="nd-suave">${escapar(d.cedula)}</td>
               <td>${d.reparto.map(r => `<span class="nd-reparto"><b>${pct(r.porcentaje)}</b> ${escapar(r.centro || 'Sin centro')} · ${escapar(r.area)}</span>`).join('')}</td>
@@ -205,7 +184,7 @@
                 <button type="button" class="pt-btn pt-btn--suave-peligro" data-quitar-dist="${escapar(d.cedula)}">Quitar</button>
               </td>
             </tr>`).join('')
-        : '<tr><td colspan="5" class="nd-vacio">No hay distribuciones. Cada persona queda en su centro y área de origen.</td></tr>';
+        : '<tr><td colspan="4" class="nd-vacio">No hay distribuciones. Cada persona queda en su centro y área de origen.</td></tr>';
     };
 
     const cargarVigentes = async () => {
@@ -227,54 +206,24 @@
         panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
       if (quitar) enviar(urls.quitarDistribucion, { cedulas: [quitar.dataset.quitarDist] }, quitar,
-        '¿Quitar la distribución de esta persona? Se borra el reparto y sus filas vuelven a su centro y área de origen.\n' +
-        '(Para conservar el reparto use el interruptor de "Estado").');
+        '¿Quitar la distribución de esta persona? Sus filas vuelven a su centro y área de origen.');
     });
-
-    // Interruptor: activa o desactiva el reparto SIN borrarlo
-    $('#ndVigentes').addEventListener('change', async (e) => {
-      const interruptor = e.target.closest('[data-activar]');
-      if (!interruptor) return;
-      const activa = interruptor.checked;
-      interruptor.disabled = true;
-      const ok = await enviar(urls.activarDistribucion,
-        { cedulas: [interruptor.dataset.activar], activa }, interruptor.closest('.nd-switch'), null,
-        { seleccionar: false });
-      if (!ok) pintarVigentes();      // cancelado o con error: el interruptor vuelve a como estaba
-    });
-
-    const cambiarTodas = (activa) => {
-      const cedulas = distribuciones.filter(d => esActiva(d) !== activa).map(d => d.cedula);
-      if (!cedulas.length) return;
-      enviar(urls.activarDistribucion, { cedulas, activa }, activa ? btnActivarTodas : btnDesactivarTodas,
-        activa
-          ? `¿Activar la distribución de ${cedulas.length} persona(s)? Se reparten otra vez con sus porcentajes guardados.`
-          : `¿Desactivar la distribución de ${cedulas.length} persona(s)? Vuelven a su centro y área de origen; los repartos quedan guardados para activarlos después.`,
-        { seleccionar: false });
-    };
-    btnActivarTodas.addEventListener('click', () => cambiarTodas(true));
-    btnDesactivarTodas.addEventListener('click', () => cambiarTodas(false));
 
     // ------------------------------------------------------------ servidor
-    // Devuelve true si el servidor aplicó el cambio.
-    async function enviar(url, datos, boton, pregunta, { seleccionar = true } = {}) {
-      if (tabla.sinGuardar && !confirm('Hay cambios sin guardar en la tabla. ¿Continuar?')) return false;
-      if (pregunta && !confirm(pregunta)) return false;
-      let ok = false;
+    async function enviar(url, datos, boton, pregunta) {
+      if (tabla.sinGuardar && !confirm('Hay cambios sin guardar en la tabla. ¿Continuar?')) return;
+      if (pregunta && !confirm(pregunta)) return;
       await PT.conSpinner(boton, async () => {
         try {
           const r = await PT.enviarJSON(url, datos);
-          ok = true;
           distribuciones = r.distribuciones || distribuciones;
           await tabla.cargar();
           refrescarPersonas();
-          if (seleccionar) datos.cedulas.forEach(c => seleccionarPersona(c));
+          datos.cedulas.forEach(c => seleccionarPersona(c));
           pintarVigentes();
-          pintarSeleccion();
           PT.toast(r.msg, 'success', 8000);
         } catch (e) { PT.toast('❌ ' + e.message, 'error', 8000); }
       });
-      return ok;
     }
 
     btnAplicar.addEventListener('click', () => {

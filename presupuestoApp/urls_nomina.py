@@ -31,9 +31,6 @@ urlpatterns = [
     path('nomina/distribucion/', v.nomina_distribucion, name='nomina_distribucion'),
     path('nomina/distribucion/aplicar/', v.nomina_distribucion_aplicar, name='nomina_distribucion_aplicar'),
     path('nomina/distribucion/quitar/', v.nomina_distribucion_quitar, name='nomina_distribucion_quitar'),
-    path('nomina/distribucion/activar/', v.nomina_distribucion_activar, name='nomina_distribucion_activar'),
-    path('nomina/arl-cargos/', v.nomina_arl_cargos, name='nomina_arl_cargos'),
-    path('nomina/arl-cargos/guardar/', v.nomina_arl_cargo_guardar, name='nomina_arl_cargo_guardar'),
 
     # <tipo> = sueldos, comisiones, cesantias, ... o "todos" (vista consolidada)
     path('nomina/<slug:tipo>/', v.nomina_tabla, name='nomina_tabla'),

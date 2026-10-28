@@ -155,12 +155,9 @@ def _participacion_mensual(anio=None):
     % de las ventas anuales de cada (línea, centro, segmento) que cae en
     cada mes. Usa el año pedido; si no tiene datos, cae al último año
     disponible que sea anterior (antes solo probaba anio - 1).
-
-    El % va con TODOS sus decimales (suma 100 en cada grupo). Antes se
-    redondeaba a entero y la diferencia se le cargaba a diciembre
-    (views.ajustar_porcentaje): por eso, aun sin crecimientos, los meses del
-    año siguiente no coincidían con los del año actual.
     """
+    from .views import ajustar_porcentaje
+
     columnas_vacias = CAMPOS_DETALLE + [
         'year', 'mes', 'suma', 'total_anual', 'porcentaje_participacion']
 
@@ -179,35 +176,29 @@ def _participacion_mensual(anio=None):
     totales = (agr.groupby(CAMPOS_DETALLE + ['year'])['suma'].sum()
                   .reset_index().rename(columns={'suma': 'total_anual'}))
     agr = agr.merge(totales, on=CAMPOS_DETALLE + ['year'], how='left')
-    proporcion = (agr['suma'] / agr['total_anual']).where(agr['total_anual'] != 0, 0)
-    agr['porcentaje_participacion'] = (proporcion * 100).replace([np.inf, -np.inf], 0).fillna(0)
-    return agr.reset_index(drop=True)
+    agr['porcentaje_participacion'] = (
+        agr['suma'] / agr['total_anual'] * 100).fillna(0).round().astype(int)
+    return agr.groupby(CAMPOS_DETALLE + ['year'], group_keys=False).apply(ajustar_porcentaje)
 
 def _proyeccion_mensual_detalle():
     """
     Proyección del año siguiente repartida por mes, al máximo detalle.
     Cualquier nivel más grueso se obtiene sumando este resultado — que es
     exactamente lo que hacían los cuatro `actualizar_presupuesto_*`.
-
-    Cada mes = ventas del año × (1 + crecimiento) × % exacto del mes. No se
-    redondea aquí: `construir_ventas` redondea a pesos después de agrupar,
-    igual que el año actual, así que sin crecimiento los meses coinciden.
     """
     part = _participacion_mensual()
     comercial = calcular_comercial()
     if part.empty or comercial.empty:
         return pd.DataFrame(columns=CAMPOS_DETALLE + ['mes', 'valor_proyectado_mes'])
 
-    comercial = comercial.copy()
-    # Proyección sin redondear (proyeccion_ventas ya viene redondeada a pesos)
-    comercial['proyeccion_exacta'] = comercial['ventas'] * (1 + comercial['crecimiento_ventas'] / 100)
     proy = (comercial.groupby(['linea', 'nombre_centro_de_operacion', 'nombre_clase_cliente'])
-            ['proyeccion_exacta'].sum().reset_index()
-            .rename(columns={'linea': 'nombre_linea_n1', 'proyeccion_exacta': 'proyeccion_ventas'}))
+            ['proyeccion_ventas'].sum().reset_index()
+            .rename(columns={'linea': 'nombre_linea_n1'}))
 
     df = part.merge(proy, on=CAMPOS_DETALLE, how='left')
     df['proyeccion_ventas'] = df['proyeccion_ventas'].fillna(0)
-    df['valor_proyectado_mes'] = df['porcentaje_participacion'] / 100 * df['proyeccion_ventas']
+    df['valor_proyectado_mes'] = (
+        df['porcentaje_participacion'] / 100 * df['proyeccion_ventas']).round()
     return df
 
 def construir_ventas(nivel):

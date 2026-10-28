@@ -57,7 +57,7 @@
         <span class="c5-detalle" id="c5Detalle"></span>
         <button type="button" id="subirC5Btn" class="btn-principal">☁️ Subir presupuesto</button>
         <button type="button" id="quitarC5Btn" class="btn-peligro"
-                title="Elimina de Cuenta 5 presupuestado lo que se subió de {{ sede_label }}">🗑️ Eliminar de presupuesto</button>
+                title="Elimina de Cuenta 5 presupuestado lo que se subió de {{ sede_label }}">🗑️ Quitar de Cuenta 5</button>
     </div>
     {% include "presupuesto_general/_grilla_toolbar.html" %}
     <div class="toolbar-group">
@@ -128,13 +128,13 @@
 
 <div id="modalQuitarC5" class="modal">
     <div class="modal-content">
-        <div class="modal-header">⚠️ Eliminar de presupuesto</div>
+        <div class="modal-header">⚠️ Quitar de Cuenta 5</div>
         <p>Se eliminarán de Cuenta 5 presupuestado los <b id="registrosQuitarC5"></b> registros que se subieron de
            {{ sede_label }}. Lo cargado por Excel y lo de otras áreas no se toca, y la versión aprobada sigue
            intacta: puedes volver a subirla cuando quieras.</p>
         <div class="modal-footer">
             <button class="btn-cancel" data-modal="modalQuitarC5">Cancelar</button>
-            <button class="btn-confirm" id="confirmQuitarC5Btn">Eliminar</button>
+            <button class="btn-confirm" id="confirmQuitarC5Btn">Quitar</button>
         </div>
     </div>
 </div>

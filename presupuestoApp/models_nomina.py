@@ -257,16 +257,11 @@ class DistribucionNomina(models.Model):
     horas extra, ...) y, por cascada, a los derivados (prestaciones, seguridad
     social, ...). También se vuelve a aplicar cada vez que se cargan los
     conceptos desde el Excel, así no hay que repetirla.
-
-    `activa` permite desactivar el reparto sin borrarlo: mientras está
-    desactivado las filas de la persona vuelven a su centro/área de origen, y
-    al activarlo de nuevo se reparten otra vez con los mismos porcentajes.
     """
     cedula = models.CharField(max_length=20, db_index=True)
     centro = models.CharField(max_length=150, blank=True, default='')
     area = models.CharField(max_length=150)
     porcentaje = models.FloatField()
-    activa = models.BooleanField(default=True)
     actualizado = models.DateTimeField(auto_now=True)
     actualizado_por = models.CharField(max_length=150, blank=True, default='')
 
@@ -279,28 +274,6 @@ class DistribucionNomina(models.Model):
 
     def __str__(self):
         return f'{self.cedula} → {self.centro} / {self.area}: {self.porcentaje}%'
-
-
-class ArlCargoNomina(models.Model):
-    """ARL elegida para un cargo en seguridad social de asistencia técnica
-    (propia y convenio), donde se calcula por persona.
-
-    Un mismo cargo puede venir con varios ARLPORC en el Excel: aquí se elige
-    cuál usar. Se aplica a quien NO trae ARL propia en el Excel (la de la
-    persona manda). `cargo` se guarda normalizado (sin tildes, en mayúsculas).
-    `porcentaje` va como en el Excel (2.436 = 2,436 %).
-    """
-    cargo = models.CharField(max_length=150, unique=True)
-    porcentaje = models.FloatField()
-    actualizado = models.DateTimeField(auto_now=True)
-    actualizado_por = models.CharField(max_length=150, blank=True, default='')
-
-    class Meta:
-        db_table = 'arl_cargo_nomina'
-        ordering = ['cargo']
-
-    def __str__(self):
-        return f'{self.cargo}: {self.porcentaje}%'
 
 
 class FocoSinComision(models.Model):

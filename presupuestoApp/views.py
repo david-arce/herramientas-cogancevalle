@@ -80,8 +80,6 @@ def dashboard_home(request):
         "clave": "nomina", "titulo": "Nómina", "color": "#00838f", "icono": "payments",
         "url_ver": reverse("presupuestoNomina"),
         "url_subir": reverse("subir_cuenta5_nomina"),
-        # "Eliminar de presupuesto": borra lo que subió "Subir presupuesto"
-        "url_quitar": reverse("quitar_cuenta5_nomina"),
         "cuenta5": estado_cuenta5_nomina(),
     })
     return render(request, 'presupuesto_consolidado/dashboard_presupuestos.html', {
@@ -117,6 +115,33 @@ COLUMNAS_REQUERIDAS = [
     'YYYY', 'MM', 'MCNZONA', 'LINNOMBRE', 'VGRNOMBRE', 'SUBTOTAL', 'COSTO_VTA',
     'VENCEDULA', 'MCNPRODUCT',
 ]
+
+# El mismo informe también sale con otros nombres de columna (yyyy, mm, zona,
+# linea_nom, cliente_grp_nom, ven_cc, sku, ...). Nombre de ese formato ->
+# nombre que usa el sistema. Solo se aplica si el archivo NO trae ya la
+# columna original, así un archivo del formato original nunca se altera.
+ALIAS_COLUMNAS_VENTAS = {
+    'ZONA': 'MCNZONA',                 # código de zona/centro (001, 002...)
+    'LINEA_NOM': 'LINNOMBRE',
+    'CLIENTE_GRP_NOM': 'VGRNOMBRE',    # CLIENTE, PRODUCCION, DISTRIBUIDOR...
+    'VEN_CC': 'VENCEDULA',
+    'SKU': 'MCNPRODUCT',
+    'LINEA': 'PROLINEA',
+    'CLIENTE_GRP': 'VINGRUPO',
+}
+
+
+def _normalizar_columnas_ventas(df):
+    """Pasa los encabezados a mayúsculas y traduce los del formato alterno."""
+    df.columns = [str(c).strip().upper() for c in df.columns]
+    renombrar = {alias: original for alias, original in ALIAS_COLUMNAS_VENTAS.items()
+                 if alias in df.columns and original not in df.columns}
+    return df.rename(columns=renombrar)
+
+
+def _nombre_columna_para_mensaje(columna):
+    alias = [a for a, original in ALIAS_COLUMNAS_VENTAS.items() if original == columna]
+    return f"{columna} (o {alias[0].lower()})" if alias else columna
 
 # --------------------------------------------------------------------
 # Reglas de depuración: filas que se descartan ANTES de calcular nada.
@@ -273,10 +298,12 @@ def importar_bd_ventas_comercial(request):
     except Exception as e:
         return JsonResponse({'status': 'error', 'mensaje': f'No se pudo leer el archivo: {e}'}, status=400)
 
-    # Normalizar encabezados (por si vienen con espacios o en minúsculas)
-    df.columns = [str(c).strip().upper() for c in df.columns]
+    # Normalizar encabezados (espacios, minúsculas) y aceptar los dos
+    # formatos del informe: el original (MCNZONA, LINNOMBRE, VGRNOMBRE...)
+    # y el alterno (zona, linea_nom, cliente_grp_nom, ven_cc, sku...).
+    df = _normalizar_columnas_ventas(df)
 
-    faltantes = [c for c in COLUMNAS_REQUERIDAS if c not in df.columns]
+    faltantes = [_nombre_columna_para_mensaje(c) for c in COLUMNAS_REQUERIDAS if c not in df.columns]
     if faltantes:
         return JsonResponse({
             'status': 'error',
@@ -2031,7 +2058,7 @@ from .views_presupuesto_areas import (  # noqa: F401
     borrar_presupuesto_sede, presupuesto_consolidado, obtener_presupuesto_consolidado,
     guardar_presupuesto_consolidado, guardar_version_sede, aprobar_version_sede,
     subir_cuenta5_sede, quitar_cuenta5_sede, estado_cuenta5, ajustes_plazos_edicion,
-    subir_cuenta5_nomina, quitar_cuenta5_nomina, estado_cuenta5_nomina,
+    subir_cuenta5_nomina, estado_cuenta5_nomina,
 )
 
 # ---------------------------------------------------------------------------
