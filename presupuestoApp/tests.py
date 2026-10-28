@@ -3671,3 +3671,30 @@ class ImportarVentasComercialSegundoPlanoTests(TransactionTestCase):
         self.assertEqual(views.BdVentasComercial.objects.filter(lapso=202507).count(), 3)
         self.assertEqual(self.client.get(reverse("estado_importar_bd_ventas_comercial",
                                                  args=["0" * 32])).status_code, 404)
+
+
+class DistribucionAnioSiguienteTests(TestCase):
+    """El año siguiente se reparte con el % EXACTO de cada mes del año actual:
+    con crecimiento positivo ningún mes queda por debajo del mismo mes actual."""
+
+    def setUp(self):
+        from .models import PresupuestoComercial
+        anio = timezone.localdate().year
+        ventas = [5327, 5297, 5439, 5576, 6042, 5620, 5545, 5123, 4957, 4918, 5191, 5182]
+        for a in (anio - 1, anio):
+            for mes, v in enumerate(ventas, 1):
+                views.BdVentasComercial.objects.create(
+                    lapso=a * 100 + mes, centro_de_operacion=1, nombre_centro_de_operacion="ALMACEN TULUA",
+                    nombre_linea_n1="HERRAMIENTAS", nombre_clase_cliente="CLIENTES",
+                    valor_neto=v * 1_000_000, valor_costo=v * 800_000)
+        PresupuestoComercial.objects.create(linea="HERRAMIENTAS", year=anio, crecimiento_ventas=10,
+                                            nombre_centro_de_operacion="ALMACEN TULUA",
+                                            nombre_clase_cliente="CLIENTES")
+        self.anio, self.ventas = anio, ventas
+
+    def test_cada_mes_crece_lo_mismo(self):
+        from . import calculo
+        filas = calculo.construir_ventas("general")
+        siguiente = {f["mes"]: f["total"] for f in filas if f["year"] == self.anio + 1}
+        for mes, v in enumerate(self.ventas, 1):
+            self.assertAlmostEqual(siguiente[mes], v * 1_000_000 * 1.10, delta=1, msg=f"mes {mes}")

@@ -156,8 +156,6 @@ def _participacion_mensual(anio=None):
     cada mes. Usa el año pedido; si no tiene datos, cae al último año
     disponible que sea anterior (antes solo probaba anio - 1).
     """
-    from .views import ajustar_porcentaje
-
     columnas_vacias = CAMPOS_DETALLE + [
         'year', 'mes', 'suma', 'total_anual', 'porcentaje_participacion']
 
@@ -176,9 +174,14 @@ def _participacion_mensual(anio=None):
     totales = (agr.groupby(CAMPOS_DETALLE + ['year'])['suma'].sum()
                   .reset_index().rename(columns={'suma': 'total_anual'}))
     agr = agr.merge(totales, on=CAMPOS_DETALLE + ['year'], how='left')
+    # Porcentaje EXACTO (con decimales). Antes se redondeaba a entero por cada
+    # línea+centro+segmento y la diferencia se cargaba a diciembre: un mes con
+    # 8,6 % quedaba en 9 % (+4,7 %) y otro con 8,4 % en 8 % (−4,8 %), así que
+    # el año siguiente salía por debajo del actual en meses con crecimiento
+    # positivo y diciembre absorbía el resto.
     agr['porcentaje_participacion'] = (
-        agr['suma'] / agr['total_anual'] * 100).fillna(0).round().astype(int)
-    return agr.groupby(CAMPOS_DETALLE + ['year'], group_keys=False).apply(ajustar_porcentaje)
+        agr['suma'] / agr['total_anual'] * 100).replace([np.inf, -np.inf], np.nan).fillna(0)
+    return agr
 
 def _proyeccion_mensual_detalle():
     """
