@@ -139,6 +139,35 @@ def _normalizar_columnas_ventas(df):
     return df.rename(columns=renombrar)
 
 
+def _columnas_utiles_ventas():
+    """Encabezados (en mayúsculas) que usa la importación, en los dos formatos."""
+    return set(COLUMNAS_REQUERIDAS) | set(ALIAS_COLUMNAS_VENTAS)
+
+
+def _leer_excel_ventas(archivo, al_avanzar=None):
+    """Lee del Excel de ventas solo las columnas que se usan, por partes.
+
+    El informe trae ~55 columnas y puede tener 350.000 filas o más; con
+    pd.read_excel eso usa varios GB de memoria y tarda minutos. El lector
+    por partes (lector_excel) mantiene la memoria baja.
+    """
+    from .lector_excel import leer_columnas_xlsx
+    utiles = _columnas_utiles_ventas()
+    return leer_columnas_xlsx(archivo, lambda c: str(c).strip().upper() in utiles, al_avanzar=al_avanzar)
+
+
+def _parsear_numeros_co(serie):
+    """Versión vectorizada de _parsear_numero_co para una columna completa."""
+    if pd.api.types.is_numeric_dtype(serie):
+        return pd.to_numeric(serie, errors='coerce').fillna(0.0).astype(float)
+    texto = serie.astype(str).str.strip()
+    es_numero = serie.apply(lambda v: isinstance(v, (int, float)) and not pd.isna(v))
+    convertido = pd.to_numeric(texto.str.replace('.', '', regex=False).str.replace(',', '.', regex=False),
+                               errors='coerce')
+    directo = pd.to_numeric(serie.where(es_numero), errors='coerce')
+    return directo.where(es_numero, convertido).fillna(0.0).astype(float)
+
+
 def _nombre_columna_para_mensaje(columna):
     alias = [a for a, original in ALIAS_COLUMNAS_VENTAS.items() if original == columna]
     return f"{columna} (o {alias[0].lower()})" if alias else columna
@@ -277,27 +306,12 @@ def _replicar_meses_faltantes(anio):
         BdVentasComercial.objects.bulk_create(nuevos, batch_size=1000)
     return resumen
 
-# importar ventas comercial
-@csrf_exempt
-def importar_bd_ventas_comercial(request):
+def _importar_ventas_desde_df(df):
+    """Depura, consolida y guarda el DataFrame del informe de ventas.
+
+    Devuelve (respuesta, código HTTP). La usan la petición directa y el
+    proceso en segundo plano.
     """
-    Recibe el Excel de ventas detalladas, lo depura/transforma según
-    las reglas de negocio, lo consolida por año+mes+centro+línea+segmento
-    y reemplaza en `BdVentasComercial` los meses (lapsos) que vengan en
-    el archivo (para poder re-subir un Excel corregido sin duplicar).
-    """
-    if request.method != 'POST':
-        return JsonResponse({'status': 'error', 'mensaje': 'Método no permitido'}, status=405)
-
-    archivo = request.FILES.get('file')
-    if not archivo:
-        return JsonResponse({'status': 'error', 'mensaje': 'No se recibió ningún archivo'}, status=400)
-
-    try:
-        df = pd.read_excel(archivo)
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'mensaje': f'No se pudo leer el archivo: {e}'}, status=400)
-
     # Normalizar encabezados (espacios, minúsculas) y aceptar los dos
     # formatos del informe: el original (MCNZONA, LINNOMBRE, VGRNOMBRE...)
     # y el alterno (zona, linea_nom, cliente_grp_nom, ven_cc, sku...).
@@ -305,14 +319,14 @@ def importar_bd_ventas_comercial(request):
 
     faltantes = [_nombre_columna_para_mensaje(c) for c in COLUMNAS_REQUERIDAS if c not in df.columns]
     if faltantes:
-        return JsonResponse({
+        return {
             'status': 'error',
             'mensaje': f'Faltan columnas en el Excel: {", ".join(faltantes)}',
-        }, status=400)
+        }, 400
 
     filas_leidas = len(df)
     if filas_leidas == 0:
-        return JsonResponse({'status': 'error', 'mensaje': 'El archivo no tiene filas'}, status=400)
+        return {'status': 'error', 'mensaje': 'El archivo no tiene filas'}, 400
 
     # --------------------------------------------------------------
     # 0) Depurar ANTES de calcular nada: quitar la cédula excluida y
@@ -321,14 +335,14 @@ def importar_bd_ventas_comercial(request):
     df, resumen_depuracion = _depurar_dataframe(df)
 
     if len(df) == 0:
-        return JsonResponse({
+        return {
             'status': 'error',
             'mensaje': (
                 f'Después de depurar (cédula excluida: {resumen_depuracion["eliminados_por_cedula"]}, '
                 f'productos "S" excluidos: {resumen_depuracion["eliminados_por_producto_s"]}) '
                 'no quedó ninguna fila para procesar.'
             ),
-        }, status=400)
+        }, 400
 
     # --------------------------------------------------------------
     # 1) lapso = año*100 + mes (junta YYYY y MM del Excel, igual
@@ -349,14 +363,14 @@ def importar_bd_ventas_comercial(request):
     df = df[~mascara_incompletos]
 
     if len(df) == 0:
-        return JsonResponse({
+        return {
             'status': 'error',
             'mensaje': (
                 f'Todas las filas quedaron fuera: el archivo solo trae meses '
                 f'incompletos ({lapsos_descartados}). Solo se importan meses '
                 f'cerrados (hasta {lapso_corte - 1 if lapso_corte % 100 > 1 else (lapso_corte // 100 - 1) * 100 + 12}).'
             ),
-        }, status=400)
+        }, 400
     # --------------------------------------------------------------
     # 2) centro_de_operacion = MCNZONA
     # 3) nombre_centro_de_operacion = mapeo fijo 1-4
@@ -377,8 +391,8 @@ def importar_bd_ventas_comercial(request):
     # --------------------------------------------------------------
     # 6) valor_neto = SUBTOTAL   7) valor_costo = COSTO_VTA
     # --------------------------------------------------------------
-    df['valor_neto'] = df['SUBTOTAL'].apply(_parsear_numero_co)
-    df['valor_costo'] = df['COSTO_VTA'].apply(_parsear_numero_co)
+    df['valor_neto'] = _parsear_numeros_co(df['SUBTOTAL'])
+    df['valor_costo'] = _parsear_numeros_co(df['COSTO_VTA'])
 
     # Filas cuyo código de centro no está en el mapeo 1-4: se importan
     # igual (para no perder ventas), pero se informan al usuario.
@@ -451,7 +465,7 @@ def importar_bd_ventas_comercial(request):
         detalle = ", ".join(f"{l}: {n}" for l, n in sorted(resumen_replica.items()))
         mensaje += f" 🔁 Meses completados con datos del año anterior → {detalle}."
 
-    return JsonResponse({
+    return {
         'status': 'ok',
         'mensaje': mensaje,
         'filas_leidas': filas_leidas,
@@ -461,7 +475,141 @@ def importar_bd_ventas_comercial(request):
         'centros_sin_mapear': centros_sin_mapear,
         'meses_replicados': resumen_replica,
         'lapsos_descartados': lapsos_descartados,
-    })
+    }, 200
+
+
+# --------------------------------------------------------------------
+# Importación en segundo plano. El informe puede tener cientos de miles
+# de filas: procesarlo dentro de la petición supera el tiempo que el
+# servidor espera (502). La petición solo guarda el archivo y responde;
+# el navegador consulta el estado hasta que termina. El estado se guarda
+# en un archivo JSON en la carpeta temporal para que cualquier worker de
+# gunicorn lo pueda leer.
+# --------------------------------------------------------------------
+import os as _os
+import shutil as _shutil
+import tempfile as _tempfile
+import threading as _threading
+import uuid as _uuid
+from django.conf import settings as _settings
+
+
+def _carpeta_importaciones():
+    carpeta = _os.path.join(_tempfile.gettempdir(), 'importaciones_ventas_comercial')
+    _os.makedirs(carpeta, exist_ok=True)
+    return carpeta
+
+
+def _ruta_estado(trabajo):
+    if not re.fullmatch(r'[0-9a-f]{32}', trabajo or ''):
+        return None
+    return _os.path.join(_carpeta_importaciones(), f'{trabajo}.json')
+
+
+def _guardar_estado(trabajo, datos):
+    ruta = _ruta_estado(trabajo)
+    temporal = ruta + '.tmp'
+    with open(temporal, 'w', encoding='utf-8') as fh:
+        json.dump(datos, fh, ensure_ascii=False, default=str)
+    _os.replace(temporal, ruta)              # escritura atómica
+
+
+def _limpiar_importaciones_viejas(horas=24):
+    limite = timezone.now().timestamp() - horas * 3600
+    carpeta = _carpeta_importaciones()
+    for nombre in _os.listdir(carpeta):
+        ruta = _os.path.join(carpeta, nombre)
+        try:
+            if _os.path.getmtime(ruta) < limite:
+                _os.remove(ruta)
+        except OSError:
+            pass
+
+
+def _leer_e_importar_ventas(archivo, al_avanzar=None):
+    try:
+        df = _leer_excel_ventas(archivo, al_avanzar=al_avanzar)
+    except Exception as e:
+        return {'status': 'error', 'mensaje': f'No se pudo leer el archivo: {e}'}, 400
+    return _importar_ventas_desde_df(df)
+
+
+def _procesar_importacion(trabajo, ruta_archivo):
+    from django.db import connection as _conexion
+    inicio = timezone.now()
+
+    def avance(n):
+        _guardar_estado(trabajo, {'status': 'procesando', 'filas': n,
+                                  'mensaje': f'Leyendo el archivo… {n:,} filas'.replace(',', '.')})
+    try:
+        with open(ruta_archivo, 'rb') as fh:
+            respuesta, codigo = _leer_e_importar_ventas(fh, al_avanzar=avance)
+        respuesta['codigo'] = codigo
+        respuesta['segundos'] = round((timezone.now() - inicio).total_seconds())
+        _guardar_estado(trabajo, respuesta)
+    except Exception as e:                                         # noqa: BLE001
+        _guardar_estado(trabajo, {'status': 'error', 'codigo': 500,
+                                  'mensaje': f'Error al procesar el archivo: {e}'})
+    finally:
+        try:
+            _os.remove(ruta_archivo)
+        except OSError:
+            pass
+        _conexion.close()
+
+
+# importar ventas comercial
+@csrf_exempt
+def importar_bd_ventas_comercial(request):
+    """
+    Recibe el Excel de ventas detalladas, lo depura/transforma según
+    las reglas de negocio, lo consolida por año+mes+centro+línea+segmento
+    y reemplaza en `BdVentasComercial` los meses (lapsos) que vengan en
+    el archivo (para poder re-subir un Excel corregido sin duplicar).
+
+    Por defecto el archivo se procesa en segundo plano: responde
+    {'status': 'procesando', 'url_estado': ...} y el navegador consulta
+    esa URL. Con IMPORTAR_VENTAS_EN_SEGUNDO_PLANO = False (pruebas) se
+    procesa y responde en la misma petición.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'mensaje': 'Método no permitido'}, status=405)
+
+    archivo = request.FILES.get('file')
+    if not archivo:
+        return JsonResponse({'status': 'error', 'mensaje': 'No se recibió ningún archivo'}, status=400)
+
+    if not getattr(_settings, 'IMPORTAR_VENTAS_EN_SEGUNDO_PLANO', True):
+        respuesta, codigo = _leer_e_importar_ventas(archivo)
+        return JsonResponse(respuesta, status=codigo)
+
+    _limpiar_importaciones_viejas()
+    trabajo = _uuid.uuid4().hex
+    ruta_archivo = _os.path.join(_carpeta_importaciones(), f'{trabajo}.excel')
+    with open(ruta_archivo, 'wb') as destino:
+        for parte in archivo.chunks():
+            destino.write(parte)
+    _guardar_estado(trabajo, {'status': 'procesando', 'filas': 0, 'mensaje': 'Leyendo el archivo…'})
+    _threading.Thread(target=_procesar_importacion, args=(trabajo, ruta_archivo),
+                      name=f'importar-ventas-{trabajo[:8]}', daemon=True).start()
+    return JsonResponse({
+        'status': 'procesando',
+        'trabajo': trabajo,
+        'url_estado': reverse('estado_importar_bd_ventas_comercial', args=[trabajo]),
+    }, status=202)
+
+
+def estado_importar_bd_ventas_comercial(request, trabajo):
+    """Estado de una importación en segundo plano."""
+    ruta = _ruta_estado(trabajo)
+    if not ruta or not _os.path.exists(ruta):
+        return JsonResponse({'status': 'error', 'mensaje': (
+            'No se encontró la importación (el servidor pudo reiniciarse). Vuelva a subir el archivo.')},
+            status=404)
+    with open(ruta, encoding='utf-8') as fh:
+        datos = json.load(fh)
+    return JsonResponse(datos, status=200)
+
 
 def vista_importar_bd_ventas_comercial(request):
     return render(request, 'presupuesto_comercial/importar_ventas_comercial.html')

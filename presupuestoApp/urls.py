@@ -87,6 +87,8 @@ urlpatterns = [
     path('exportar-crecimiento-ventas/', views.exportar_crecimiento_ventas, name='exportar_crecimiento_ventas'),
     
     path('importar-bd-ventas-comercial/', views.importar_bd_ventas_comercial, name='importar_bd_ventas_comercial'),
+    path('importar-bd-ventas-comercial/estado/<str:trabajo>/', views.estado_importar_bd_ventas_comercial,
+         name='estado_importar_bd_ventas_comercial'),
     path('vista-importar-ventas/', views.vista_importar_bd_ventas_comercial, name='vistaImportarVentas'),
     
     path('obtener-comparativo-anual/', views.obtener_comparativo_anual, name='obtener_comparativo_anual'),

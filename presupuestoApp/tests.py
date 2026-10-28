@@ -15,7 +15,7 @@ from unittest import mock
 from urllib.parse import unquote
 
 from django.db.models import Sum
-from django.test import TestCase, TransactionTestCase
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -3561,6 +3561,7 @@ class SeguridadSocialAltosPorDevengadoTests(TestCase):
         self.assertEqual(pension.enero, round((17275463 + 1724817 + 3000000) * 0.12))
 
 
+@override_settings(IMPORTAR_VENTAS_EN_SEGUNDO_PLANO=False)
 class ImportarVentasComercialDosFormatosTests(TestCase):
     """El informe de ventas se acepta con los encabezados originales (MCNZONA,
     LINNOMBRE, VGRNOMBRE...) y con los del formato alterno (zona, linea_nom,
@@ -3615,3 +3616,58 @@ class ImportarVentasComercialDosFormatosTests(TestCase):
         r, _ = self.subir([c for c in self.ALTERNO if c != "linea_nom"] + ["otra"])
         self.assertEqual(r.status_code, 400)
         self.assertIn("LINNOMBRE (o linea_nom)", r.json()["mensaje"])
+
+
+class LectorExcelPorPartesTests(TestCase):
+    """lector_excel lee solo las columnas pedidas, con textos compartidos y en línea."""
+
+    def test_lee_columnas_pedidas_igual_que_pandas(self):
+        from .lector_excel import leer_columnas_xlsx
+        df = pd.DataFrame({"yyyy": [2025, 2025, None], "zona": ["001", "002", None],
+                           "subtotal": ["13.700,00", 5630.25, None], "otra": ["a", "b", None],
+                           "sku": ["S4", 798, None]})
+        b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0)
+        leido = leer_columnas_xlsx(b, lambda c: c != "otra")
+        self.assertEqual(list(leido.columns), ["yyyy", "zona", "subtotal", "sku"])
+        self.assertEqual(len(leido), 2)                       # la fila vacía no cuenta
+        self.assertEqual(leido.iloc[0].tolist(), [2025, "001", "13.700,00", "S4"])
+        self.assertEqual(leido.iloc[1].tolist(), [2025, "002", 5630.25, 798])
+
+    def test_texto_en_linea_y_avance(self):
+        try:
+            import xlsxwriter
+        except ImportError:
+            self.skipTest("xlsxwriter no está instalado")
+        from .lector_excel import leer_columnas_xlsx
+        b = io.BytesIO()
+        wb = xlsxwriter.Workbook(b, {"constant_memory": True, "in_memory": False})
+        ws = wb.add_worksheet()
+        ws.write_row(0, 0, ["YYYY", "LINNOMBRE"])
+        for i in range(1, 6):
+            ws.write_row(i, 0, [2025, f"LINEA {i}"])
+        wb.close(); b.seek(0)
+        avances = []
+        leido = leer_columnas_xlsx(b, lambda c: True, al_avanzar=avances.append, cada=2)
+        self.assertEqual(leido["LINNOMBRE"].tolist(), [f"LINEA {i}" for i in range(1, 6)])
+        self.assertEqual(avances, [2, 4])
+
+
+class ImportarVentasComercialSegundoPlanoTests(TransactionTestCase):
+    """Por defecto el archivo se procesa en segundo plano y se consulta el estado."""
+
+    def test_procesa_y_reporta_estado(self):
+        import threading, time
+        prueba = ImportarVentasComercialDosFormatosTests()
+        archivo = prueba.excel(ImportarVentasComercialDosFormatosTests.ALTERNO)
+        r = self.client.post(reverse("importar_bd_ventas_comercial"), {"file": archivo})
+        self.assertEqual(r.status_code, 202, r.content)
+        url = r.json()["url_estado"]
+        for hilo in threading.enumerate():
+            if hilo.name.startswith("importar-ventas-"):
+                hilo.join(60)
+        estado = self.client.get(url).json()
+        self.assertEqual(estado["status"], "ok", estado)
+        self.assertEqual(estado["registros_consolidados"], 4)
+        self.assertEqual(views.BdVentasComercial.objects.filter(lapso=202507).count(), 3)
+        self.assertEqual(self.client.get(reverse("estado_importar_bd_ventas_comercial",
+                                                 args=["0" * 32])).status_code, 404)

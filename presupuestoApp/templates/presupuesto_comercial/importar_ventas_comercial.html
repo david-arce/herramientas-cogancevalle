@@ -56,19 +56,45 @@ document.addEventListener('DOMContentLoaded', function () {
         const formData = new FormData();
         formData.append('file', file);
 
+        const leerJSON = async (res) => {
+            const texto = await res.text();
+            try { return JSON.parse(texto); } catch (err) {
+                return { status: 'error', mensaje: res.status === 502 || res.status === 504
+                    ? `El servidor no respondió a tiempo (${res.status}).` : texto.slice(0, 300) };
+            }
+        };
+        const esperar = (ms) => new Promise(r => setTimeout(r, ms));
+
         resultado.innerHTML = '';
+        mostrarResultado(`⏳ Subiendo el archivo (${(file.size / 1048576).toFixed(1)} MB)…`, true);
         PresupuestoUtils.withSpinner(btn, async () => {
             const res = await fetch("{% url 'importar_bd_ventas_comercial' %}", {
                 method: 'POST',
                 headers: { 'X-CSRFToken': "{{ csrf_token }}" },
                 body: formData,
             });
-            const texto = await res.text();
-            let data;
-            try { data = JSON.parse(texto); } catch (err) { data = { mensaje: texto }; }
-            if (!res.ok || data.status === 'error') {
+            let data = await leerJSON(res);
+            if (!res.ok && res.status !== 202 || data.status === 'error') {
                 throw new Error(data.mensaje || 'Error al importar el archivo');
             }
+            // Archivos grandes: el servidor lo procesa en segundo plano y aquí se consulta el avance
+            const inicio = Date.now();
+            const urlEstado = data.url_estado;
+            let fallos = 0;
+            while (data.status === 'procesando') {
+                const seg = Math.round((Date.now() - inicio) / 1000);
+                mostrarResultado(`⏳ ${data.mensaje || 'Procesando…'} (${seg} s)`, true);
+                await esperar(2000);
+                const r = await fetch(urlEstado, { cache: 'no-store' });
+                if (r.status === 502 || r.status === 503 || r.status === 504) {
+                    if (++fallos > 10) throw new Error('El servidor no responde. Revise más tarde si los datos se cargaron.');
+                    continue;
+                }
+                fallos = 0;
+                data = await leerJSON(r);
+                if (!r.ok && data.status !== 'procesando') throw new Error(data.mensaje || 'Error al importar el archivo');
+            }
+            if (data.status === 'error') throw new Error(data.mensaje || 'Error al importar el archivo');
             mostrarResultado(data.mensaje, true);
         }).catch(err => {
             mostrarResultado('❌ ' + err.message, false);
