@@ -803,13 +803,30 @@ class Cuenta5NominaTests(TestCase):
         self.assertEqual((enero.mcncuenta, enero.mcnccosto, enero.zonnombre, enero.mcnvincula, enero.vinnombre),
                          ("510506", "020202", "ALMACEN TULUA", "1001", "ANA PEREZ"))
         self.assertEqual((enero.mcnvaldebi, enero.mcnvalcred), (1000.0, 0.0))
-        # Solo esos campos: lo demás queda vacío.
+        # Solo esos campos (+ la zona del almacén, para las pestañas por sede): lo demás queda vacío.
         self.assertEqual(set(qs.values_list("responsable", flat=True)), {"nomina"})
-        for campo in ("mcnzona", "ctanombre", "mcndetalle", "comentario"):
+        self.assertEqual(enero.mcnzona, "001")
+        for campo in ("ctanombre", "mcndetalle", "comentario"):
             self.assertIsNone(getattr(enero, campo), campo)
         marzo = qs.get(mcnfecha=vpa._serial_excel(datetime.date(ANIO, 3, 1)))
         self.assertEqual((marzo.mcnvaldebi, marzo.mcnvalcred), (0.0, 300.0))
         self.assertEqual(views.excel_serial_to_date(enero.mcnfecha), f"{ANIO}-01-01")
+
+    def test_zona_por_almacen_y_se_ve_en_la_pestana_de_la_sede(self):
+        linea_nomina(centro="ALMACEN BUGA", cuenta="51050601").save()
+        linea_nomina(cedula="3", centro="", cuenta="51050602").save()          # aftosa agrupado: sin centro
+        # el informe de nómina manda: ALMACEN CALI con CENTRO_TRA 004
+        ConceptosNomina.objects.create(anio=ANIO, archivo="x", nombre_cen="ALMACEN CALI", centro_tra="004")
+        linea_nomina(cedula="4", centro="ALMACEN CALI", cuenta="51050603").save()
+        r = self.subir().json()
+        self.assertEqual(r["sin_zona"], 1)
+        self.assertIn("solo se ven en Total Base", r["msg"])
+        zonas = dict(Cuenta5Presupuestado.objects.values_list("zonnombre", "mcnzona").distinct())
+        self.assertEqual(zonas, {"ALMACEN BUGA": "002", "ALMACEN CALI": "004", None: None})
+        buga = views.calcular_presupuestado("buga")["data"]
+        total_buga = sum(sum(f["meses"].values()) for f in buga.values())
+        self.assertEqual(total_buga, sum(1000 * i for i in range(1, 13)))
+        self.assertEqual(sum(f["meses"].get("Enero", 0) for f in buga.values()), 1000)
 
     def test_sin_codcosto_queda_vacio(self):
         linea_nomina(codcosto="").save()

@@ -1078,6 +1078,43 @@ def ajustes_plazos_edicion(request):
 # había subido (origen_area = "nomina").
 ORIGEN_NOMINA = "nomina"
 RESPONSABLE_NOMINA = "nomina"
+# Zona (mcnzona) de cada almacén cuando el informe de nómina no la trae.
+# Las pestañas por sede de Presupuestado general filtran por mcnzona; sin
+# ella la nómina solo aparecía en "Total Base".
+ZONA_POR_ALMACEN = {"TULUA": "001", "BUGA": "002", "CARTAGO": "003", "CALI": "004"}
+
+
+def _sin_tildes_mayus(texto):
+    import unicodedata
+    texto = unicodedata.normalize("NFKD", str(texto or "")).encode("ascii", "ignore").decode()
+    return " ".join(texto.upper().split())
+
+
+def zonas_de_centros_nomina():
+    """{centro (normalizado): mcnzona} para los centros de la nómina.
+
+    Primero la del informe de nómina (CENTRO_TRA más frecuente de cada
+    NOMBRE_CEN); si no está, por el nombre del almacén (TULUA -> 001...).
+    """
+    from collections import Counter, defaultdict
+    from .models_nomina import ConceptosNomina
+    conteo = defaultdict(Counter)
+    for nombre, codigo in (ConceptosNomina.objects.exclude(centro_tra="")
+                           .values_list("nombre_cen", "centro_tra")):
+        conteo[_sin_tildes_mayus(nombre)][str(codigo).strip()] += 1
+    return {nombre: c.most_common(1)[0][0] for nombre, c in conteo.items() if nombre}
+
+
+def zona_de_centro_nomina(centro, del_informe):
+    nombre = _sin_tildes_mayus(centro)
+    if not nombre:
+        return None
+    if del_informe.get(nombre):
+        return del_informe[nombre]
+    for almacen, zona in ZONA_POR_ALMACEN.items():
+        if almacen in nombre.split():
+            return zona
+    return None
 
 
 def estado_cuenta5_nomina():
@@ -1138,8 +1175,9 @@ def subir_cuenta5_nomina(request):
         }, status=400)
 
     ahora = timezone.now()
+    del_informe = zonas_de_centros_nomina()
     with log_carga("cuenta5_nomina", request) as info, transaction.atomic():
-        registros, sin_cuenta = [], set()
+        registros, sin_cuenta, sin_zona = [], set(), set()
         for r in PresupuestoNominaMes.objects.exclude(valor=0).order_by("linea", "fecha").values(
             "linea", "cuenta", "codcosto", "centro", "cedula", "nombre", "fecha", "valor"
         ):
@@ -1147,9 +1185,13 @@ def subir_cuenta5_nomina(request):
                 sin_cuenta.add(r["linea"])
                 continue
             valor = r["valor"]
+            zona = zona_de_centro_nomina(r["centro"], del_informe)
+            if zona is None:
+                sin_zona.add(r["linea"])
             registros.append(Cuenta5Presupuestado(
                 mcncuenta=r["cuenta"].strip(),
                 mcnccosto=(r["codcosto"] or "").strip() or None,
+                mcnzona=zona,
                 zonnombre=r["centro"] or None,
                 mcnvincula=r["cedula"] or None,
                 vinnombre=r["nombre"] or None,
@@ -1168,15 +1210,18 @@ def subir_cuenta5_nomina(request):
             }, status=400)
         reemplazados, _ = Cuenta5Presupuestado.objects.filter(origen_area=ORIGEN_NOMINA).delete()
         Cuenta5Presupuestado.objects.bulk_create(registros, batch_size=1000)
-        info.update(reemplazados=reemplazados, registros=len(registros))
+        info.update(reemplazados=reemplazados, registros=len(registros), sin_zona=len(sin_zona))
 
     msg = f"Nómina: {len(registros)} registros subidos a Cuenta 5 ✅"
     if reemplazados:
         msg += f" (reemplazó {reemplazados} anteriores)"
     if sin_cuenta:
         msg += f" · {len(sin_cuenta)} fila(s) sin cuenta contable no se subieron"
+    if sin_zona:
+        msg += (f" · {len(sin_zona)} fila(s) sin centro (almacén) conocido: se suben pero solo "
+                f"se ven en Total Base")
     return JsonResponse({
         "success": True, "msg": msg, "registros": len(registros),
-        "reemplazados": reemplazados, "sin_cuenta": len(sin_cuenta),
+        "reemplazados": reemplazados, "sin_cuenta": len(sin_cuenta), "sin_zona": len(sin_zona),
         "estado": estado_cuenta5_nomina(),
     })
