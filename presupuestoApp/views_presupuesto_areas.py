@@ -1225,3 +1225,27 @@ def subir_cuenta5_nomina(request):
         "reemplazados": reemplazados, "sin_cuenta": len(sin_cuenta), "sin_zona": len(sin_zona),
         "estado": estado_cuenta5_nomina(),
     })
+
+
+@login_required
+def quitar_cuenta5_nomina(request):
+    """Elimina de Cuenta 5 presupuestado lo que se subió de nómina.
+
+    Solo borra los registros con origen_area = "nomina"; lo cargado por Excel y
+    lo de las áreas no se toca. El presupuesto de nómina sigue intacto, así que
+    se puede volver a subir cuando se quiera.
+    """
+    if not _es_aprobador(request):
+        return JsonResponse({"success": False, "msg": "Solo el aprobador puede eliminar del presupuesto"},
+                            status=403)
+    if request.method != "POST":
+        return JsonResponse({"success": False, "msg": "Método no permitido"}, status=405)
+
+    with log_carga("quitar_cuenta5_nomina", request) as info, transaction.atomic():
+        eliminados, _ = Cuenta5Presupuestado.objects.filter(origen_area=ORIGEN_NOMINA).delete()
+        info.update(eliminados=eliminados)
+
+    msg = (f"Nómina: se eliminaron {eliminados} registros del presupuesto ✅" if eliminados
+           else "Nómina no tenía nada subido al presupuesto")
+    return JsonResponse({"success": True, "msg": msg, "eliminados": eliminados,
+                         "estado": estado_cuenta5_nomina()})

@@ -856,6 +856,48 @@ class Cuenta5NominaTests(TestCase):
         self.assertEqual(Cuenta5Presupuestado.objects.filter(origen_area=AREA).count(), 12)
         self.assertEqual(vpa.estado_cuenta5(AREA)["estado"], "subido")
 
+    def quitar(self):
+        return self.client.post(reverse("quitar_cuenta5_nomina"))
+
+    def test_eliminar_de_presupuesto_solo_quita_lo_de_nomina(self):
+        Cuenta5Presupuestado.objects.create(mcncuenta="510506", mcnvaldebi=1, mcnfecha=1)   # cargado por Excel
+        Cuenta5Presupuestado.objects.create(mcncuenta="510506", mcnvaldebi=1, mcnfecha=1,
+                                            origen_area=AREA)                            # de un área
+        linea_nomina().save()
+        self.subir()
+        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "subido")
+
+        r = self.quitar()
+        self.assertEqual(r.status_code, 200, r.content)
+        datos = r.json()
+        self.assertTrue(datos["success"])
+        self.assertEqual(datos["eliminados"], 12)
+        self.assertEqual(datos["estado"]["estado"], "pendiente")
+        self.assertEqual(datos["estado"]["registros_subidos"], 0)
+        self.assertFalse(Cuenta5Presupuestado.objects.filter(origen_area="nomina").exists())
+        self.assertEqual(Cuenta5Presupuestado.objects.count(), 2)
+        # El presupuesto de nómina sigue ahí: se puede volver a subir.
+        self.assertTrue(self.subir().json()["success"])
+
+    def test_eliminar_de_presupuesto_sin_nada_subido(self):
+        datos = self.quitar().json()
+        self.assertTrue(datos["success"])
+        self.assertEqual(datos["eliminados"], 0)
+
+    def test_eliminar_de_presupuesto_permisos_y_metodo(self):
+        self.client.force_login(User.objects.create_user("OTRO"))
+        self.assertEqual(self.quitar().status_code, 403)
+        self.client.force_login(self.aprobador)
+        self.assertEqual(self.client.get(reverse("quitar_cuenta5_nomina")).status_code, 405)
+
+    def test_tarjeta_de_nomina_tiene_boton_eliminar(self):
+        self.client.force_login(User.objects.create_user("admin"))
+        r = self.client.get(reverse("dashboardPresupuesto"))
+        self.assertContains(r, "Eliminar de presupuesto")
+        # Solo la tarjeta de nómina lo tiene.
+        self.assertContains(r, f'data-url="{reverse("quitar_cuenta5_nomina")}"', count=1)
+        self.assertContains(r, 'class="c5-btn c5-btn--peligro"', count=1)
+
 
 class MigracionNominaVerticalTests(TransactionTestCase):
     antes = [("presupuestoApp", "0033_plazo_edicion_area")]
@@ -1999,7 +2041,8 @@ class QuitarCuenta5YRevisionTests(TestCase):
         self.assertEqual(r.context["cuenta5"]["estado"], "pendiente")
         self.assertContains(r, 'id="estadoCuenta5"')
         self.assertContains(r, "Subir presupuesto")
-        self.assertContains(r, "Quitar de Cuenta 5")
+        self.assertContains(r, "Eliminar de presupuesto")
+        self.assertNotContains(r, "Quitar de Cuenta 5")
         self.assertContains(r, reverse("quitar_cuenta5_sede", args=[AREA]))
 
 
