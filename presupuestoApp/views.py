@@ -612,7 +612,167 @@ def estado_importar_bd_ventas_comercial(request, trabajo):
 
 
 def vista_importar_bd_ventas_comercial(request):
-    return render(request, 'presupuesto_comercial/importar_ventas_comercial.html')
+    anio = timezone.now().year
+    return render(request, 'presupuesto_comercial/importar_ventas_comercial.html', {
+        'anios_reemplazo': [anio - 1, anio, anio + 1],
+        'anio_actual': anio,
+    })
+
+
+# --------------------------------------------------------------------
+# Reemplazar un año completo con un resumen ZONA / SEGMENTO / LINEA x mes
+# --------------------------------------------------------------------
+MESES_RESUMEN = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO',
+                 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
+CAMPOS_REEMPLAZO = {'valor_neto': 'valor neto', 'valor_costo': 'valor costo'}
+
+
+def _encabezado_resumen(texto):
+    texto = unicodedata.normalize('NFKD', str(texto or '')).encode('ascii', 'ignore').decode()
+    texto = ' '.join(texto.upper().split())
+    return 'SEPTIEMBRE' if texto == 'SETIEMBRE' else texto
+
+
+def _numero_resumen(serie):
+    """Valores del resumen: ' 13.221.110 ', ' -   ' (= 0), '(1.500)' (= -1500) o números."""
+    def limpiar(v):
+        if isinstance(v, str):
+            t = v.strip().replace('$', '').replace(' ', '')
+            if t in ('', '-'):
+                return 0
+            if t.startswith('(') and t.endswith(')'):
+                t = '-' + t[1:-1]
+            return t
+        return v
+    return _parsear_numeros_co(serie.map(limpiar).astype(object))
+
+
+def _leer_resumen_anual(archivo):
+    """DataFrame (centro, nombre_centro, segmento, linea, mes 1..12) y avisos."""
+    from .lector_excel import leer_columnas_xlsx
+    df = leer_columnas_xlsx(archivo, lambda c: True)
+    df.columns = [_encabezado_resumen(c) for c in df.columns]
+    faltantes = [c for c in ['ZONA', 'SEGMENTO', 'LINEA'] + MESES_RESUMEN if c not in df.columns]
+    if faltantes:
+        raise ValueError(f'Faltan columnas en el Excel: {", ".join(faltantes)}')
+
+    avisos = []
+    datos = pd.DataFrame({
+        'centro_de_operacion': pd.to_numeric(df['ZONA'], errors='coerce'),
+        'nombre_clase_cliente': df['SEGMENTO'].apply(_convertir_clase_cliente),
+        'nombre_linea_n1': df['LINEA'].map(lambda v: str(v).strip() if v is not None and not pd.isna(v) else ''),
+    })
+    for n, mes in enumerate(MESES_RESUMEN, 1):
+        datos[n] = _numero_resumen(df[mes])
+
+    # Filas sin zona, segmento o línea (títulos, totales al final): se ignoran
+    validas = datos['centro_de_operacion'].notna() & datos['nombre_linea_n1'].ne('') & \
+        datos['nombre_clase_cliente'].notna()
+    if (~validas).sum():
+        avisos.append(f'{int((~validas).sum())} fila(s) sin zona, segmento o línea se ignoraron')
+    if 'TOTAL' in df.columns:
+        diferencia = (datos[list(range(1, 13))].sum(axis=1) - _numero_resumen(df['TOTAL'])).abs()
+        descuadres = int((diferencia[validas] > 1).sum())
+        if descuadres:
+            avisos.append(f'{descuadres} fila(s) donde la suma de los meses no da la columna TOTAL '
+                          f'(se usaron los meses)')
+    datos = datos[validas].copy()
+    datos['centro_de_operacion'] = datos['centro_de_operacion'].astype(int)
+    datos['nombre_centro_de_operacion'] = datos['centro_de_operacion'].apply(_nombre_centro_operacion)
+    claves = ['centro_de_operacion', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'nombre_linea_n1']
+    datos = datos.groupby(claves, dropna=False)[list(range(1, 13))].sum().reset_index()
+    sin_mapear = sorted(datos.loc[datos['nombre_centro_de_operacion'].isna(), 'centro_de_operacion'].unique().tolist())
+    if sin_mapear:
+        avisos.append(f'zona(s) sin nombre de almacén: {sin_mapear} (revisar NOMBRES_CENTRO_OPERACION)')
+    return datos, avisos
+
+
+def reemplazar_anio_ventas(datos, anio, campo):
+    """Reemplaza `campo` (valor_neto o valor_costo) de todo el año `anio`.
+
+    Se borran todos los registros del año y se vuelven a crear uno por
+    (mes, zona, segmento, línea): el campo elegido sale del archivo y el
+    otro campo se conserva con lo que tenía antes esa misma combinación,
+    para que subir el resumen de ventas no borre los costos (ni al revés).
+    """
+    otro = 'valor_costo' if campo == 'valor_neto' else 'valor_neto'
+    lapsos = [anio * 100 + m for m in range(1, 13)]
+    clave = lambda r: (r['lapso'], r['centro_de_operacion'], r['nombre_clase_cliente'], r['nombre_linea_n1'])  # noqa: E731
+
+    registros = {}
+    for r in datos.to_dict('records'):
+        for mes in range(1, 13):
+            fila = {'lapso': anio * 100 + mes, 'centro_de_operacion': r['centro_de_operacion'],
+                    'nombre_centro_de_operacion': r['nombre_centro_de_operacion'],
+                    'nombre_clase_cliente': r['nombre_clase_cliente'], 'nombre_linea_n1': r['nombre_linea_n1']}
+            fila[campo], fila[otro] = float(r[mes]), 0.0
+            registros[clave(fila)] = fila
+
+    with transaction.atomic():
+        anteriores = (BdVentasComercial.objects.filter(lapso__in=lapsos)
+                      .values('lapso', 'centro_de_operacion', 'nombre_centro_de_operacion',
+                              'nombre_clase_cliente', 'nombre_linea_n1')
+                      .annotate(campo_antes=Sum(campo), otro_antes=Sum(otro)))
+        total_antes = 0.0
+        for a in anteriores:
+            total_antes += a['campo_antes'] or 0
+            fila = registros.get(clave(a))
+            if fila is None:      # combinación que no viene en el archivo: queda en 0 en el campo elegido
+                fila = registros[clave(a)] = {
+                    'lapso': a['lapso'], 'centro_de_operacion': a['centro_de_operacion'],
+                    'nombre_centro_de_operacion': a['nombre_centro_de_operacion'],
+                    'nombre_clase_cliente': a['nombre_clase_cliente'], 'nombre_linea_n1': a['nombre_linea_n1'],
+                    campo: 0.0, otro: 0.0}
+            fila[otro] += a['otro_antes'] or 0
+        borrados, _ = BdVentasComercial.objects.filter(lapso__in=lapsos).delete()
+        nuevos = [BdVentasComercial(**f) for f in registros.values() if f[campo] or f[otro]]
+        BdVentasComercial.objects.bulk_create(nuevos, batch_size=1000)
+
+    return {
+        'borrados': borrados,
+        'creados': len(nuevos),
+        'total_antes': round(total_antes),
+        'total_nuevo': round(sum(f[campo] for f in registros.values())),
+    }
+
+
+@require_POST
+def importar_resumen_anual_ventas(request):
+    """Sube el resumen ZONA / SEGMENTO / LINEA / ENERO..DICIEMBRE y reemplaza el año elegido."""
+    archivo = request.FILES.get('file')
+    if not archivo:
+        return JsonResponse({'status': 'error', 'mensaje': 'No se recibió ningún archivo'}, status=400)
+    campo = request.POST.get('campo', '')
+    if campo not in CAMPOS_REEMPLAZO:
+        return JsonResponse({'status': 'error', 'mensaje': 'Elija si el archivo es valor neto o valor costo'},
+                            status=400)
+    try:
+        anio = int(request.POST.get('anio', ''))
+    except ValueError:
+        anio = 0
+    if not 2000 <= anio <= 2100:
+        return JsonResponse({'status': 'error', 'mensaje': 'Elija el año a reemplazar'}, status=400)
+
+    try:
+        datos, avisos = _leer_resumen_anual(archivo)
+    except Exception as e:                                         # noqa: BLE001
+        return JsonResponse({'status': 'error', 'mensaje': f'No se pudo leer el archivo: {e}'}, status=400)
+    if datos.empty:
+        return JsonResponse({'status': 'error', 'mensaje': 'El archivo no tiene filas con zona, segmento y línea'},
+                            status=400)
+
+    with log_carga('ventas_resumen_anual', request, anio=anio, campo=campo) as info:
+        r = reemplazar_anio_ventas(datos, anio, campo)
+        info.update(combinaciones=len(datos), **r)
+    fmt = lambda v: f'{v:,.0f}'.replace(',', '.')  # noqa: E731
+    mensaje = (f"✅ {CAMPOS_REEMPLAZO[campo].capitalize()} de {anio} reemplazado: "
+               f"{len(datos)} combinaciones zona/segmento/línea del archivo. "
+               f"Total {CAMPOS_REEMPLAZO[campo]} del año: antes ${fmt(r['total_antes'])}, "
+               f"ahora ${fmt(r['total_nuevo'])}. "
+               f"Se borraron {r['borrados']} registros y se crearon {r['creados']}.")
+    if avisos:
+        mensaje += ' ⚠️ ' + '; '.join(avisos) + '.'
+    return JsonResponse({'status': 'ok', 'mensaje': mensaje, **r, 'anio': anio, 'campo': campo})
 
 
 def obtener_ventas_agrupadas(campo_valor, campos_agrupacion, anio=None, anio_desde=None):

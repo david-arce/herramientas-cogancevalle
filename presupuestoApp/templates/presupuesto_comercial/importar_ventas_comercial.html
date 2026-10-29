@@ -25,6 +25,34 @@
 
     <div id="resultadoImportacion" style="margin-top:16px;"></div>
 </div>
+
+<div class="bloque-vista" style="margin-top:24px;">
+    <h2>🗓️ Reemplazar un año completo (resumen por zona, segmento y línea)</h2>
+    <p>
+        Excel con columnas <code>ZONA</code>, <code>SEGMENTO</code>, <code>LINEA</code>,
+        <code>ENERO</code> … <code>DICIEMBRE</code> (y <code>TOTAL</code>, que solo se usa para
+        avisar si no cuadra). Se borra <strong>todo</strong> el año elegido y se reemplaza con el archivo:
+        el valor elegido sale del archivo y el otro valor (neto o costo) se conserva con lo que tenía.
+    </p>
+    <div class="btn-group" style="gap:12px;align-items:center;flex-wrap:wrap;">
+        <label>Año a reemplazar
+            <select id="resumenAnio">
+                {% for a in anios_reemplazo %}
+                <option value="{{ a }}" {% if a == anio_actual %}selected{% endif %}>{{ a }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Los valores del archivo son
+            <select id="resumenCampo">
+                <option value="valor_neto" selected>Valor neto (ventas)</option>
+                <option value="valor_costo">Valor costo</option>
+            </select>
+        </label>
+        <input type="file" id="excelResumenUpload" accept=".xlsx,.xls" style="display:none;">
+        <button type="button" id="uploadResumenBtn" class="pt-btn">📤 Seleccionar y reemplazar</button>
+    </div>
+    <div id="resultadoResumen" style="margin-top:16px;"></div>
+</div>
 {% endblock %}
 
 {% block js %}
@@ -98,6 +126,49 @@ document.addEventListener('DOMContentLoaded', function () {
             mostrarResultado(data.mensaje, true);
         }).catch(err => {
             mostrarResultado('❌ ' + err.message, false);
+        }).finally(() => { e.target.value = ''; });
+    });
+
+    // ---- Reemplazar un año completo con el resumen ----
+    const resultadoResumen = document.getElementById('resultadoResumen');
+    const pintarResumen = (html, exito) => {
+        const color = exito ? { bg: '#e9f7ef', borde: '#b7e4c7' } : { bg: '#fdecea', borde: '#f5c2c0' };
+        resultadoResumen.innerHTML =
+            `<div style="background:${color.bg};border:1px solid ${color.borde};border-radius:8px;padding:12px;">${html}</div>`;
+    };
+    document.getElementById('uploadResumenBtn').addEventListener('click', () => {
+        document.getElementById('excelResumenUpload').click();
+    });
+    document.getElementById('excelResumenUpload').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const anio = document.getElementById('resumenAnio').value;
+        const selCampo = document.getElementById('resumenCampo');
+        const campoTexto = selCampo.options[selCampo.selectedIndex].text;
+        if (!confirm(`Se borrarán TODOS los registros de ${anio} y el ${campoTexto.toLowerCase()} ` +
+                     `quedará igual al archivo "${file.name}". ¿Continuar?`)) {
+            e.target.value = '';
+            return;
+        }
+        const btn = document.getElementById('uploadResumenBtn');
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('anio', anio);
+        formData.append('campo', selCampo.value);
+        pintarResumen('⏳ Procesando…', true);
+        PresupuestoUtils.withSpinner(btn, async () => {
+            const res = await fetch("{% url 'importar_resumen_anual_ventas' %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': "{{ csrf_token }}" },
+                body: formData,
+            });
+            const texto = await res.text();
+            let data;
+            try { data = JSON.parse(texto); } catch (err) { data = { status: 'error', mensaje: texto.slice(0, 300) }; }
+            if (!res.ok || data.status === 'error') throw new Error(data.mensaje || 'Error al importar el archivo');
+            pintarResumen(data.mensaje, true);
+        }).catch(err => {
+            pintarResumen('❌ ' + err.message, false);
         }).finally(() => { e.target.value = ''; });
     });
 });

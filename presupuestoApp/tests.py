@@ -3698,3 +3698,89 @@ class DistribucionAnioSiguienteTests(TestCase):
         siguiente = {f["mes"]: f["total"] for f in filas if f["year"] == self.anio + 1}
         for mes, v in enumerate(self.ventas, 1):
             self.assertAlmostEqual(siguiente[mes], v * 1_000_000 * 1.10, delta=1, msg=f"mes {mes}")
+
+
+class ReemplazarAnioVentasTests(TestCase):
+    """Resumen ZONA / SEGMENTO / LINEA x mes: reemplaza el valor elegido de todo el año."""
+
+    MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO",
+             "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"]
+
+    def setUp(self):
+        B = views.BdVentasComercial.objects
+        comun = dict(centro_de_operacion=1, nombre_centro_de_operacion="ALMACEN TULUA")
+        # 2026: una combinación que viene en el archivo y otra que no
+        B.create(lapso=202601, nombre_clase_cliente="ASOCIADO", nombre_linea_n1="AGRICOLA",
+                 valor_neto=1, valor_costo=500, **comun)
+        B.create(lapso=202601, nombre_clase_cliente="ASOCIADO", nombre_linea_n1="AGRICOLA",
+                 valor_neto=2, valor_costo=300, **comun)              # sin consolidar: se suma
+        B.create(lapso=202603, nombre_clase_cliente="CLIENTES", nombre_linea_n1="FLETES",
+                 valor_neto=999, valor_costo=777, **comun)
+        # otro año: no se toca
+        B.create(lapso=202501, nombre_clase_cliente="ASOCIADO", nombre_linea_n1="AGRICOLA",
+                 valor_neto=111, valor_costo=222, **comun)
+
+    def excel(self):
+        filas = [
+            ["001", "ASOCIADO", "AGRICOLA", " 13.221.110 ", " 9.859.867 ", " -   "] + [" 1.000 "] * 9 + [" 23.089.977 "],
+            ["001", "ASOCIADO", "BIOLOGICO MASCOTAS", 154950, 171800, 117000] + [0] * 9 + [443750],
+            ["002", "CLIENTE", "HERRAMIENTAS", "(1.500)"] + [" -   "] * 11 + [" 5 "],      # TOTAL no cuadra
+            [None, None, "TOTAL", 1, 1, 1] + [1] * 9 + [12],                                  # fila de total
+        ]
+        df = pd.DataFrame(filas, columns=["ZONA", "SEGMENTO", "LINEA"] + self.MESES + ["TOTAL"])
+        b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); b.name = "resumen.xlsx"
+        return b
+
+    def subir(self, campo="valor_neto", anio=2026):
+        return self.client.post(reverse("importar_resumen_anual_ventas"),
+                                {"file": self.excel(), "campo": campo, "anio": anio})
+
+    def valor(self, lapso, linea, campo, clase=None):
+        qs = views.BdVentasComercial.objects.filter(lapso=lapso, nombre_linea_n1=linea)
+        if clase:
+            qs = qs.filter(nombre_clase_cliente=clase)
+        return qs.aggregate(t=Sum(campo))["t"]
+
+    def test_reemplaza_neto_y_conserva_costo(self):
+        r = self.subir()
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(self.valor(202601, "AGRICOLA", "valor_neto"), 13221110)
+        self.assertEqual(self.valor(202601, "AGRICOLA", "valor_costo"), 800)       # se conserva (500 + 300)
+        self.assertEqual(views.BdVentasComercial.objects.filter(lapso=202601, nombre_linea_n1="AGRICOLA").count(), 1)
+        self.assertEqual(self.valor(202603, "AGRICOLA", "valor_neto"), None)        # '-' = 0 y sin costo: no se crea
+        self.assertEqual(self.valor(202612, "AGRICOLA", "valor_neto"), 1000)
+        self.assertEqual(self.valor(202602, "BIOLOGICO MASCOTAS", "valor_neto"), 171800)
+        self.assertEqual(self.valor(202601, "HERRAMIENTAS", "valor_neto", "CLIENTES"), -1500)
+        self.assertEqual(views.BdVentasComercial.objects.get(lapso=202601, nombre_linea_n1="HERRAMIENTAS")
+                         .nombre_centro_de_operacion, "ALMACEN BUGA")
+        # combinación que no venía: neto en 0, costo intacto
+        self.assertEqual(self.valor(202603, "FLETES", "valor_neto"), 0)
+        self.assertEqual(self.valor(202603, "FLETES", "valor_costo"), 777)
+        # otro año intacto y la fila TOTAL ignorada
+        self.assertEqual(self.valor(202501, "AGRICOLA", "valor_neto"), 111)
+        self.assertFalse(views.BdVentasComercial.objects.filter(nombre_linea_n1="TOTAL").exists())
+        mensaje = r.json()["mensaje"]
+        self.assertIn("1 fila(s) sin zona", mensaje)
+        self.assertIn("1 fila(s) donde la suma de los meses no da la columna TOTAL", mensaje)
+
+    def test_reemplaza_costo_y_conserva_neto(self):
+        self.subir(campo="valor_costo")
+        self.assertEqual(self.valor(202601, "AGRICOLA", "valor_costo"), 13221110)
+        self.assertEqual(self.valor(202601, "AGRICOLA", "valor_neto"), 3)
+        self.assertEqual(self.valor(202603, "FLETES", "valor_neto"), 999)
+        self.assertEqual(self.valor(202603, "FLETES", "valor_costo"), 0)
+
+    def test_valida_campo_anio_y_columnas(self):
+        self.assertEqual(self.subir(campo="otro").status_code, 400)
+        self.assertEqual(self.subir(anio="x").status_code, 400)
+        df = pd.DataFrame({"ZONA": ["001"], "LINEA": ["X"]})
+        b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); b.name = "x.xlsx"
+        r = self.client.post(reverse("importar_resumen_anual_ventas"), {"file": b, "campo": "valor_neto", "anio": 2026})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("SEGMENTO", r.json()["mensaje"])
+        self.assertEqual(self.valor(202601, "AGRICOLA", "valor_neto"), 3)           # no se tocó nada
+
+    def test_pantalla_muestra_selector_de_anio(self):
+        r = self.client.get(reverse("vistaImportarVentas"))
+        self.assertContains(r, 'id="resumenAnio"')
+        self.assertContains(r, f'value="{timezone.now().year}" selected')
