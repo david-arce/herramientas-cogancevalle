@@ -151,6 +151,8 @@
             <button class="btn btn-primary" onclick="expandirTodo()">➕ Expandir Todo</button>
             <button class="btn btn-primary" onclick="colapsarTodo()">➖ Colapsar Todo</button>
             <button class="btn btn-export" onclick="exportarExcel()">📥 Exportar a Excel</button>
+            <button class="btn btn-secundario" onclick="restablecerColumnas()"
+                    title="Vuelve al ancho original de todas las columnas">↔ Restablecer columnas</button>
         </div>
         <div class="inflacion-bar" id="inflacionBar">
             <div class="ib-left">
@@ -1388,19 +1390,26 @@
             return `../obtener-tabla-dinamica-flexible/?${p}`;
         }
 
+        // Cada carga lleva un número: si llegan dos respuestas, solo se pinta la
+        // más reciente (así una carga vieja no deja la tabla expandida tras filtrar).
+        let _cargaActual = 0;
+
+        /** colapsar = true: la tabla se muestra solo con las cuentas (se usa al filtrar). */
         function cargarDatos(colapsar = false) {
+            const carga = ++_cargaActual;
             document.getElementById('loading').style.display = 'block';
             fetch(construirURLConFiltros())
                 .then(r => r.json())
                 .then(data => {
+                    if (carga !== _cargaActual) return;
                     document.getElementById('loading').style.display = 'none';
                     if (data.error) { alert('Error: ' + data.error); return; }
                     datosGlobales = data.data;
                     procesarYMostrarDatos(datosGlobales, colapsar);
-                    if (busquedaGeneral) expandirTodo();   // que se vean los detalles encontrados
                     calcularEstadisticas(datosGlobales);
                 })
                 .catch(e => {
+                    if (carga !== _cargaActual) return;
                     document.getElementById('loading').style.display = 'none';
                     alert('Error al cargar los datos: ' + e.message);
                 });
@@ -1499,7 +1508,7 @@
                 trCuenta.innerHTML = `
                     ${generarCeldaSeleccion({ nivel:'cuenta', cuenta, vinculo:'', detalle:'' })}
                     <td class="mcncuenta-cell">${mcncuentaCuenta}</td>
-                    <td class="label-cell">
+                    <td class="label-cell" title="${_escAttr(cuenta)}">
                         <span class="toggle-btn" onclick="toggleNivel('${cuentaId}')">−</span>
                         ${cuenta}
                     </td>
@@ -1529,7 +1538,7 @@
                     trVinculo.innerHTML = `
                         ${generarCeldaSeleccion({ nivel:'vinculo', cuenta, vinculo, detalle:'' })}
                         <td class="mcncuenta-cell">${mcncuentaVinculo}</td>
-                        <td class="label-cell">
+                        <td class="label-cell" title="${_escAttr(vinculo)}">
                             <span class="toggle-btn" onclick="toggleNivel('${vinculoId}')">−</span>
                             ${vinculo}
                         </td>
@@ -1554,7 +1563,7 @@
                         trDetalle.innerHTML = `
                             ${generarCeldaSeleccion({ nivel:'detalle', cuenta, vinculo, detalle })}
                             <td class="mcncuenta-cell">${mcncuenta}</td>
-                            <td class="label-cell">${detalle}</td>
+                            <td class="label-cell" title="${_escAttr(detalle)}">${detalle}</td>
                             ${generarCeldasNumericas(detalleData, { nivel:'detalle', cuenta, vinculo, detalle })}
                             <td class="action-cell">
                                 <button class="btn-row-view" title="Ver y gestionar registros"
@@ -2175,7 +2184,7 @@
             busquedaGeneral = q;
             limpiarSeleccionInflacion();          // la selección era sobre otras filas
             await _actualizarTodosFiltros();      // las listas de filtros se ajustan a la búsqueda
-            cargarDatos(!q);                      // sin búsqueda vuelve a verse colapsado
+            cargarDatos(true);                    // al filtrar, la tabla inicia colapsada
         }
 
         function _initBusquedaGeneral() {
@@ -2197,9 +2206,138 @@
             });
         }
 
+        /* ══════════════════════════════════════════════════════════════════════
+           COLUMNAS REDIMENSIONABLES — arrastra el borde derecho del encabezado.
+           Doble clic en el borde: ajusta la columna a su contenido.
+           Los anchos se recuerdan en este navegador.
+        ══════════════════════════════════════════════════════════════════════ */
+        const ANCHOS_KEY = 'tablaDinamica.anchosColumnas';
+        const ANCHO_MIN = 40;
+
+        function _cols() { return [...document.querySelectorAll('#tablaDinamica colgroup col')]; }
+
+        function _guardarAnchos() {
+            try { localStorage.setItem(ANCHOS_KEY, JSON.stringify(_cols().map(c => parseInt(c.style.width, 10) || 0))); }
+            catch (e) { /* sin almacenamiento: los anchos solo duran esta visita */ }
+        }
+
+        function _leerAnchos() {
+            try {
+                const a = JSON.parse(localStorage.getItem(ANCHOS_KEY) || 'null');
+                return Array.isArray(a) && a.length === _cols().length && a.every(n => n > 0) ? a : null;
+            } catch (e) { return null; }
+        }
+
+        /** Pasa la tabla a anchos fijos (los que tiene ahora en pantalla, o los dados). */
+        function _fijarAnchos(anchos) {
+            const tabla = document.getElementById('tablaDinamica');
+            const ths = [...tabla.querySelectorAll('thead th')];
+            const medidas = anchos || ths.map(th => th.getBoundingClientRect().width);
+            // Acciones: nunca más angosta que sus botones
+            const ultima = ths.length - 1;
+            medidas[ultima] = Math.max(medidas[ultima], _anchoContenido(ultima));
+            // la columna de selección conserva su ancho; las demás tienen un mínimo
+            _cols().forEach((col, i) => col.style.width = Math.max(i === 0 ? 1 : ANCHO_MIN, Math.round(medidas[i])) + 'px');
+            tabla.classList.add('redimensionada');
+            _ajustarAnchoTabla();
+        }
+
+        function _ajustarAnchoTabla() {
+            const total = _cols().reduce((s, c) => s + (parseInt(c.style.width, 10) || 0), 0);
+            document.getElementById('tablaDinamica').style.width = total + 'px';
+        }
+
+        function restablecerColumnas() {
+            const tabla = document.getElementById('tablaDinamica');
+            tabla.classList.remove('redimensionada');
+            tabla.style.width = '';
+            _cols().forEach(c => c.style.width = '');
+            try { localStorage.removeItem(ANCHOS_KEY); } catch (e) {}
+        }
+
+        /** Ancho que necesita el contenido de la columna i (encabezado y filas visibles). */
+        function _anchoContenido(i) {
+            const tabla = document.getElementById('tablaDinamica');
+            let max = ANCHO_MIN;
+            const medir = el => {
+                // se mide el contenido sin el recorte de la columna
+                const r = document.createRange(); r.selectNodeContents(el);
+                const estilo = getComputedStyle(el);
+                const relleno = parseFloat(estilo.paddingLeft) + parseFloat(estilo.paddingRight);
+                max = Math.max(max, Math.ceil(r.getBoundingClientRect().width + relleno + 4));
+            };
+            const th = tabla.querySelectorAll('thead th')[i];
+            if (th) medir(th.querySelector('.th-texto') || th);
+            tabla.querySelectorAll('#tablaBody tr:not(.hidden)').forEach(tr => {
+                const td = tr.children[i];
+                if (td && td.colSpan === 1) medir(td);
+            });
+            return max;
+        }
+
+        function _initColumnasRedimensionables() {
+            const tabla = document.getElementById('tablaDinamica');
+            const ths = [...tabla.querySelectorAll('thead th')];
+
+            const colgroup = document.createElement('colgroup');
+            ths.forEach(() => colgroup.appendChild(document.createElement('col')));
+            tabla.insertBefore(colgroup, tabla.firstChild);
+
+            ths.forEach((th, i) => {
+                if (i === 0) return;   // la columna de selección no se redimensiona
+                // el texto va en su propio span para poder recortarlo con "…"
+                const texto = document.createElement('span');
+                texto.className = 'th-texto';
+                while (th.firstChild) texto.appendChild(th.firstChild);
+                th.appendChild(texto);
+
+                const asa = document.createElement('span');
+                asa.className = 'col-resizer';
+                asa.title = 'Arrastra para cambiar el ancho · doble clic para ajustar al contenido';
+                th.appendChild(asa);
+
+                asa.addEventListener('pointerdown', e => {
+                    e.preventDefault();
+                    if (!tabla.classList.contains('redimensionada')) _fijarAnchos();
+                    const col = _cols()[i];
+                    const inicioX = e.clientX;
+                    const inicioAncho = parseInt(col.style.width, 10);
+                    asa.setPointerCapture(e.pointerId);
+                    asa.classList.add('activo');
+                    document.body.classList.add('redimensionando');
+                    const minimo = i === ths.length - 1 ? _anchoContenido(i) : ANCHO_MIN;
+                    const mover = ev => {
+                        col.style.width = Math.max(minimo, inicioAncho + ev.clientX - inicioX) + 'px';
+                        _ajustarAnchoTabla();
+                    };
+                    const soltar = () => {
+                        asa.removeEventListener('pointermove', mover);
+                        asa.classList.remove('activo');
+                        document.body.classList.remove('redimensionando');
+                        _guardarAnchos();
+                    };
+                    asa.addEventListener('pointermove', mover);
+                    asa.addEventListener('pointerup', soltar, { once: true });
+                    asa.addEventListener('pointercancel', soltar, { once: true });
+                });
+
+                asa.addEventListener('dblclick', e => {
+                    e.preventDefault();
+                    if (!tabla.classList.contains('redimensionada')) _fijarAnchos();
+                    _cols()[i].style.width = _anchoContenido(i) + 'px';
+                    _ajustarAnchoTabla();
+                    _guardarAnchos();
+                });
+            });
+
+            const guardados = _leerAnchos();
+            if (guardados) _fijarAnchos(guardados);
+        }
+
         /* Init */
         window.addEventListener('load', () => {
             _initBusquedaGeneral();
+            _initColumnasRedimensionables();
             cargarValoresFiltros();
         });
     </script>

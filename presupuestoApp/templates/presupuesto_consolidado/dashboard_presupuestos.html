@@ -31,6 +31,16 @@
                 <span class="material-icons" aria-hidden="true">cloud_upload</span>
                 <span class="c5-btn-texto">{% if t.cuenta5.estado == 'subido' or t.cuenta5.estado == 'desactualizado' %}Volver a subir presupuesto{% else %}Subir presupuesto{% endif %}</span>
             </button>
+            {% if t.url_quitar %}
+            <button type="button" class="c5-btn c5-btn--peligro"
+                    data-url="{{ t.url_quitar }}"
+                    data-titulo="{{ t.titulo }}"
+                    data-registros="{{ t.cuenta5.registros_subidos|default:0 }}"
+                    {% if not t.cuenta5.registros_subidos %}disabled title="No hay nada subido para eliminar"{% endif %}>
+                <span class="material-icons" aria-hidden="true">delete</span>
+                <span class="c5-btn-texto">Eliminar de presupuesto</span>
+            </button>
+            {% endif %}
         </div>
     </article>
     {% endfor %}
@@ -53,6 +63,9 @@
                      sin_datos: "remove_circle_outline", sin_confirmar: "hourglass_empty" };
     const SIN_BOTON = ["sin_aprobar", "sin_datos", "sin_confirmar"];
     const dialogo = document.getElementById("dlgCuenta5");
+    const titulo = document.getElementById("dlgCuenta5Titulo");
+    const texto = document.getElementById("dlgCuenta5Texto");
+    const confirmar = document.getElementById("dlgCuenta5Confirmar");
     const aviso = document.getElementById("c5Aviso");
     let botonActual = null;
     let temporizadorAviso = null;
@@ -62,12 +75,19 @@
         return input ? input.value : "";
     }
 
-    function mostrarAviso(texto, error = false) {
-        aviso.textContent = texto;
+    function mostrarAviso(msg, error = false) {
+        aviso.textContent = msg;
         aviso.classList.toggle("error", error);
         aviso.classList.add("visible");
         clearTimeout(temporizadorAviso);
         temporizadorAviso = setTimeout(() => aviso.classList.remove("visible"), 6000);
+    }
+
+    // Habilita cada botón según el estado guardado en sus data-*.
+    function habilitar(boton) {
+        boton.disabled = boton.classList.contains("c5-btn--peligro")
+            ? !Number(boton.dataset.registros)
+            : SIN_BOTON.includes(boton.dataset.estado);
     }
 
     function pintarEstado(tarjeta, e) {
@@ -76,33 +96,55 @@
         badge.querySelector(".material-icons").textContent = ICONOS[e.estado] || "info";
         badge.querySelector(".c5-texto").textContent = e.texto;
         tarjeta.querySelector(".c5-detalle").textContent = e.detalle;
-        const boton = tarjeta.querySelector(".c5-btn");
-        boton.dataset.estado = e.estado;
-        boton.dataset.descripcion = e.descripcion || "";
-        boton.disabled = SIN_BOTON.includes(e.estado);
-        boton.querySelector(".c5-btn-texto").textContent =
+        const subir = tarjeta.querySelector(".c5-btn:not(.c5-btn--peligro)");
+        subir.dataset.estado = e.estado;
+        subir.dataset.descripcion = e.descripcion || "";
+        subir.querySelector(".c5-btn-texto").textContent =
             (e.estado === "subido" || e.estado === "desactualizado") ? "Volver a subir presupuesto" : "Subir presupuesto";
+        habilitar(subir);
+        subir.title = SIN_BOTON.includes(e.estado) ? e.texto : "";
+        const eliminar = tarjeta.querySelector(".c5-btn--peligro");
+        if (eliminar) {
+            eliminar.dataset.registros = e.registros_subidos || 0;
+            habilitar(eliminar);
+            eliminar.title = eliminar.disabled ? "No hay nada subido para eliminar" : "";
+        }
     }
 
     document.querySelectorAll(".c5-btn").forEach(boton => {
         boton.addEventListener("click", () => {
             botonActual = boton;
-            const ya = boton.dataset.estado === "subido" || boton.dataset.estado === "desactualizado";
-            document.getElementById("dlgCuenta5Texto").textContent =
-                `Se subirá ${boton.dataset.descripcion} a Cuenta 5 presupuestado.` +
-                (ya ? " Reemplazará los registros que ya se habían subido." : "");
+            if (boton.classList.contains("c5-btn--peligro")) {
+                const n = Number(boton.dataset.registros || 0).toLocaleString("es-CO");
+                titulo.textContent = "⚠️ Eliminar de presupuesto";
+                texto.textContent =
+                    `¿Eliminar los ${n} registros que se subieron de ${boton.dataset.titulo} a Cuenta 5 presupuestado? ` +
+                    "Lo cargado por Excel y lo de otras áreas no se toca, y el presupuesto de " +
+                    `${boton.dataset.titulo.toLowerCase()} sigue intacto: puedes volver a subirlo cuando quieras.`;
+                confirmar.textContent = "Eliminar";
+                confirmar.classList.add("c5-confirmar--peligro");
+            } else {
+                const ya = boton.dataset.estado === "subido" || boton.dataset.estado === "desactualizado";
+                titulo.textContent = "Subir presupuesto";
+                texto.textContent =
+                    `Se subirá ${boton.dataset.descripcion} a Cuenta 5 presupuestado.` +
+                    (ya ? " Reemplazará los registros que ya se habían subido." : "");
+                confirmar.textContent = "Subir";
+                confirmar.classList.remove("c5-confirmar--peligro");
+            }
             dialogo.showModal();
         });
     });
 
     document.getElementById("dlgCuenta5Cancelar").addEventListener("click", () => dialogo.close());
 
-    document.getElementById("dlgCuenta5Confirmar").addEventListener("click", async () => {
+    confirmar.addEventListener("click", async () => {
         dialogo.close();
         const boton = botonActual;
         if (!boton) return;
+        const eliminando = boton.classList.contains("c5-btn--peligro");
         const tarjeta = boton.closest(".area-card");
-        boton.disabled = true;
+        tarjeta.querySelectorAll(".c5-btn").forEach(b => { b.disabled = true; });
         boton.classList.add("cargando");
         try {
             const resp = await fetch(boton.dataset.url, {
@@ -112,12 +154,14 @@
             });
             const datos = await resp.json();
             if (datos.estado) pintarEstado(tarjeta, datos.estado);
-            mostrarAviso(datos.msg || (resp.ok ? "Listo" : "No se pudo subir"), !datos.success);
+            mostrarAviso(datos.msg || (resp.ok ? "Listo" : (eliminando ? "No se pudo eliminar" : "No se pudo subir")),
+                         !datos.success);
         } catch (e) {
-            mostrarAviso("Error de conexión al subir el presupuesto", true);
+            mostrarAviso(eliminando ? "Error de conexión al eliminar del presupuesto"
+                                    : "Error de conexión al subir el presupuesto", true);
         } finally {
             boton.classList.remove("cargando");
-            boton.disabled = SIN_BOTON.includes(boton.dataset.estado);
+            tarjeta.querySelectorAll(".c5-btn").forEach(habilitar);
         }
     });
 })();

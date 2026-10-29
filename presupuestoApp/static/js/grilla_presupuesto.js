@@ -51,7 +51,7 @@ const COL_FIN = COLUMNS.length - 1;
 // (mismo mapa que CODIGO_COSTO_POR_CENTRO en models_presupuesto.py).
 const OPCIONES_NOMBRE_CENTRO = {
     "ALMACEN TULUA":    { codigoCosto: "020202", centro: "001" },
-    "ALMACEN BUGA":     { codigoCosto: "020200", centro: "002" },
+    "ALMACEN BUGA":     { codigoCosto: "020202", centro: "002" },
     "ALMACEN CARTAGO":  { codigoCosto: "020202", centro: "003" },
     "ALMACEN CALI":     { codigoCosto: "020202", centro: "004" },
     "ADMINISTRACIÓN":   { codigoCosto: "0102",   centro: "001" },

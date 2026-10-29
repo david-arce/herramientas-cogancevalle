@@ -80,6 +80,7 @@ def dashboard_home(request):
         "clave": "nomina", "titulo": "Nómina", "color": "#00838f", "icono": "payments",
         "url_ver": reverse("presupuestoNomina"),
         "url_subir": reverse("subir_cuenta5_nomina"),
+        "url_quitar": reverse("quitar_cuenta5_nomina"),
         "cuenta5": estado_cuenta5_nomina(),
     })
     return render(request, 'presupuesto_consolidado/dashboard_presupuestos.html', {
@@ -2366,7 +2367,7 @@ from .views_presupuesto_areas import (  # noqa: F401
     borrar_presupuesto_sede, presupuesto_consolidado, obtener_presupuesto_consolidado,
     guardar_presupuesto_consolidado, guardar_version_sede, aprobar_version_sede,
     subir_cuenta5_sede, quitar_cuenta5_sede, estado_cuenta5, ajustes_plazos_edicion,
-    subir_cuenta5_nomina, estado_cuenta5_nomina,
+    subir_cuenta5_nomina, quitar_cuenta5_nomina, estado_cuenta5_nomina,
 )
 
 # ---------------------------------------------------------------------------

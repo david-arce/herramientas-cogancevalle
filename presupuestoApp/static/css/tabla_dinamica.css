@@ -956,3 +956,25 @@ tr.fila-cubierta > td { background: #fefce8 !important; opacity: .72; }
 tr.fila-cubierta .sel-cell input { opacity: .45; }
 .col-dif-pos { color: #15803d; font-weight: 700; }
 .col-dif-neg { color: #dc2626; font-weight: 700; }
+
+/* ── Columnas redimensionables ───────────────────────────────────────── */
+.col-resizer {
+    position: absolute; top: 0; right: 0; width: 8px; height: 100%;
+    cursor: col-resize; z-index: 2; touch-action: none;
+}
+.col-resizer::after {
+    content: ""; position: absolute; top: 20%; bottom: 20%; right: 0; width: 2px;
+    border-radius: 1px; background: rgba(255, 255, 255, .35); transition: background .15s;
+}
+.col-resizer:hover::after, .col-resizer.activo::after { top: 0; bottom: 0; background: #fff; }
+body.redimensionando, body.redimensionando * { cursor: col-resize !important; user-select: none !important; }
+
+/* Con anchos fijos (después de arrastrar), el contenido que no cabe se recorta con "…" */
+table.pivot-table.redimensionada { table-layout: fixed; }
+table.pivot-table.redimensionada th,
+table.pivot-table.redimensionada td { min-width: 0 !important; width: auto !important; overflow: hidden; text-overflow: ellipsis; }
+table.pivot-table.redimensionada .th-texto { display: block; overflow: hidden; text-overflow: ellipsis; }
+table.pivot-table.redimensionada .cell-input { min-width: 0; }
+
+.btn-secundario { background: #fff; color: #4472C4; border: 1px solid #4472C4; }
+.btn-secundario:hover { background: #eef2fb; }

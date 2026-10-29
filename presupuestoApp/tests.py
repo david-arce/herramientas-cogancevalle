@@ -466,6 +466,61 @@ class CargarPlantillaTests(TestCase):
         self.assertEqual(PresupuestoArea.objects.count(), 12)
 
 
+class MigracionCodigoCostoBugaTests(TransactionTestCase):
+    """0050 cambia 020200 -> 020202 en Buga, sin tocar nada más."""
+
+    antes = [("presupuestoApp", "0049_arl_cargo_nomina")]
+    despues = [("presupuestoApp", "0050_codigo_costo_buga_020202")]
+
+    def migrar(self, destino):
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate(destino)
+        return executor.loader.project_state(destino).apps
+
+    def tearDown(self):
+        self.migrar(MigrationExecutor(connection).loader.graph.leaf_nodes())
+
+    def test_solo_cambia_el_codigo_de_buga(self):
+        apps = self.migrar(self.antes)
+        PA = apps.get_model("presupuestoApp", "PresupuestoArea")
+        C5 = apps.get_model("presupuestoApp", "Cuenta5Presupuestado")
+        base = dict(area=AREA, linea=1, fecha=datetime.date(ANIO, 1, 1), valor=1234, mcncuenta=513525,
+                    ctanombre="ACUEDUCTO", mcndetalle="d", responsable="R", mcnzona="002")
+        for etapa in ("auxiliar", "proyectado", "aprobado", "preaprobado"):
+            PA.objects.create(etapa=etapa, version=None if etapa == "auxiliar" else 1,
+                              zonnombre="ALMACEN BUGA", mcnccosto="020200", **base)
+        PA.objects.create(etapa="aprobado", version=1, zonnombre=" almacen buga ", mcnccosto="020200", **base)
+        PA.objects.create(etapa="aprobado", version=1, zonnombre="ALMACEN BUGA", mcnccosto="0102", **base)
+        PA.objects.create(etapa="aprobado", version=1, zonnombre="ALMACEN TULUA", mcnccosto="020200", **base)
+        c5 = dict(mcncuenta="513525", mcnfecha=46023, mcnvaldebi=500, zonnombre="ALMACEN BUGA", mcnccosto="020200")
+        C5.objects.create(origen_area=AREA, origen_version=3, **c5)
+        C5.objects.create(**c5)                                  # cargado por Excel
+        C5.objects.create(origen_area="nomina", **c5)            # subido desde nómina
+        antes = {r["id"]: r for r in PA.objects.values()}
+
+        apps = self.migrar(self.despues)
+        PA = apps.get_model("presupuestoApp", "PresupuestoArea")
+        C5 = apps.get_model("presupuestoApp", "Cuenta5Presupuestado")
+        codigo = {(r.etapa, r.zonnombre, antes[r.id]["mcnccosto"]): r.mcnccosto for r in PA.objects.all()}
+        self.assertEqual(codigo, {
+            ("auxiliar", "ALMACEN BUGA", "020200"): "020202",
+            ("proyectado", "ALMACEN BUGA", "020200"): "020202",
+            ("aprobado", "ALMACEN BUGA", "020200"): "020202",
+            ("preaprobado", "ALMACEN BUGA", "020200"): "020200",   # copia de auditoría: intocable
+            ("aprobado", " almacen buga ", "020200"): "020202",
+            ("aprobado", "ALMACEN BUGA", "0102"): "0102",           # otro código: no se toca
+            ("aprobado", "ALMACEN TULUA", "020200"): "020200",      # otro centro: no se toca
+        })
+        # Ningún otro campo cambió.
+        for r in PA.objects.values():
+            self.assertEqual({k: v for k, v in r.items() if k != "mcnccosto"},
+                             {k: v for k, v in antes[r["id"]].items() if k != "mcnccosto"})
+        self.assertEqual(dict(C5.objects.values_list("origen_area", "mcnccosto")),
+                         {AREA: "020202", None: "020200", "nomina": "020200"})
+        self.assertEqual(C5.objects.get(origen_area=AREA).origen_version, 3)
+
+
 class MigracionVerticalTests(TransactionTestCase):
     """0030 convierte las filas horizontales en verticales sin perder datos, y se revierte."""
 
@@ -803,13 +858,30 @@ class Cuenta5NominaTests(TestCase):
         self.assertEqual((enero.mcncuenta, enero.mcnccosto, enero.zonnombre, enero.mcnvincula, enero.vinnombre),
                          ("510506", "020202", "ALMACEN TULUA", "1001", "ANA PEREZ"))
         self.assertEqual((enero.mcnvaldebi, enero.mcnvalcred), (1000.0, 0.0))
-        # Solo esos campos: lo demás queda vacío.
+        # Solo esos campos (+ la zona del almacén, para las pestañas por sede): lo demás queda vacío.
         self.assertEqual(set(qs.values_list("responsable", flat=True)), {"nomina"})
-        for campo in ("mcnzona", "ctanombre", "mcndetalle", "comentario"):
+        self.assertEqual(enero.mcnzona, "001")
+        for campo in ("ctanombre", "mcndetalle", "comentario"):
             self.assertIsNone(getattr(enero, campo), campo)
         marzo = qs.get(mcnfecha=vpa._serial_excel(datetime.date(ANIO, 3, 1)))
         self.assertEqual((marzo.mcnvaldebi, marzo.mcnvalcred), (0.0, 300.0))
         self.assertEqual(views.excel_serial_to_date(enero.mcnfecha), f"{ANIO}-01-01")
+
+    def test_zona_por_almacen_y_se_ve_en_la_pestana_de_la_sede(self):
+        linea_nomina(centro="ALMACEN BUGA", cuenta="51050601").save()
+        linea_nomina(cedula="3", centro="", cuenta="51050602").save()          # aftosa agrupado: sin centro
+        # el informe de nómina manda: ALMACEN CALI con CENTRO_TRA 004
+        ConceptosNomina.objects.create(anio=ANIO, archivo="x", nombre_cen="ALMACEN CALI", centro_tra="004")
+        linea_nomina(cedula="4", centro="ALMACEN CALI", cuenta="51050603").save()
+        r = self.subir().json()
+        self.assertEqual(r["sin_zona"], 1)
+        self.assertIn("solo se ven en Total Base", r["msg"])
+        zonas = dict(Cuenta5Presupuestado.objects.values_list("zonnombre", "mcnzona").distinct())
+        self.assertEqual(zonas, {"ALMACEN BUGA": "002", "ALMACEN CALI": "004", None: None})
+        buga = views.calcular_presupuestado("buga")["data"]
+        total_buga = sum(sum(f["meses"].values()) for f in buga.values())
+        self.assertEqual(total_buga, sum(1000 * i for i in range(1, 13)))
+        self.assertEqual(sum(f["meses"].get("Enero", 0) for f in buga.values()), 1000)
 
     def test_sin_codcosto_queda_vacio(self):
         linea_nomina(codcosto="").save()
@@ -838,6 +910,48 @@ class Cuenta5NominaTests(TestCase):
         self.assertEqual(Cuenta5Presupuestado.objects.filter(origen_area="nomina").count(), 12)
         self.assertEqual(Cuenta5Presupuestado.objects.filter(origen_area=AREA).count(), 12)
         self.assertEqual(vpa.estado_cuenta5(AREA)["estado"], "subido")
+
+    def quitar(self):
+        return self.client.post(reverse("quitar_cuenta5_nomina"))
+
+    def test_eliminar_de_presupuesto_solo_quita_lo_de_nomina(self):
+        Cuenta5Presupuestado.objects.create(mcncuenta="510506", mcnvaldebi=1, mcnfecha=1)   # cargado por Excel
+        Cuenta5Presupuestado.objects.create(mcncuenta="510506", mcnvaldebi=1, mcnfecha=1,
+                                            origen_area=AREA)                            # de un área
+        linea_nomina().save()
+        self.subir()
+        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "subido")
+
+        r = self.quitar()
+        self.assertEqual(r.status_code, 200, r.content)
+        datos = r.json()
+        self.assertTrue(datos["success"])
+        self.assertEqual(datos["eliminados"], 12)
+        self.assertEqual(datos["estado"]["estado"], "pendiente")
+        self.assertEqual(datos["estado"]["registros_subidos"], 0)
+        self.assertFalse(Cuenta5Presupuestado.objects.filter(origen_area="nomina").exists())
+        self.assertEqual(Cuenta5Presupuestado.objects.count(), 2)
+        # El presupuesto de nómina sigue ahí: se puede volver a subir.
+        self.assertTrue(self.subir().json()["success"])
+
+    def test_eliminar_de_presupuesto_sin_nada_subido(self):
+        datos = self.quitar().json()
+        self.assertTrue(datos["success"])
+        self.assertEqual(datos["eliminados"], 0)
+
+    def test_eliminar_de_presupuesto_permisos_y_metodo(self):
+        self.client.force_login(User.objects.create_user("OTRO"))
+        self.assertEqual(self.quitar().status_code, 403)
+        self.client.force_login(self.aprobador)
+        self.assertEqual(self.client.get(reverse("quitar_cuenta5_nomina")).status_code, 405)
+
+    def test_tarjeta_de_nomina_tiene_boton_eliminar(self):
+        self.client.force_login(User.objects.create_user("admin"))
+        r = self.client.get(reverse("dashboardPresupuesto"))
+        self.assertContains(r, "Eliminar de presupuesto")
+        # Solo la tarjeta de nómina lo tiene.
+        self.assertContains(r, f'data-url="{reverse("quitar_cuenta5_nomina")}"', count=1)
+        self.assertContains(r, 'class="c5-btn c5-btn--peligro"', count=1)
 
 
 class MigracionNominaVerticalTests(TransactionTestCase):
@@ -1828,14 +1942,14 @@ class CodigoCostoPorCentroTests(TestCase):
         # (cuenta 540531 o plantilla con un código viejo).
         self.aprobar_tal_cual([
             fila("tulua", 100, mcncuenta="540531", mcnccosto="020201"),
-            fila("buga", 100, zonnombre="ALMACEN BUGA", mcnccosto="020202"),
+            fila("buga", 100, zonnombre="ALMACEN BUGA", mcnccosto="020200"),   # código viejo de Buga
             fila("otro centro", 100, zonnombre="CENTRO NUEVO", mcnccosto="9999"),
         ])
         r = self.client.post(reverse("subir_cuenta5_sede", args=[AREA]))
         self.assertEqual(r.status_code, 200, r.content)
         qs = Cuenta5Presupuestado.objects.filter(origen_area=AREA)
         self.assertEqual(set(qs.filter(mcndetalle="tulua").values_list("mcnccosto", flat=True)), {"020202"})
-        self.assertEqual(set(qs.filter(mcndetalle="buga").values_list("mcnccosto", flat=True)), {"020200"})
+        self.assertEqual(set(qs.filter(mcndetalle="buga").values_list("mcnccosto", flat=True)), {"020202"})
         # Centro desconocido: se conserva el código guardado.
         self.assertEqual(set(qs.filter(mcndetalle="otro centro").values_list("mcnccosto", flat=True)), {"9999"})
 
@@ -1982,7 +2096,8 @@ class QuitarCuenta5YRevisionTests(TestCase):
         self.assertEqual(r.context["cuenta5"]["estado"], "pendiente")
         self.assertContains(r, 'id="estadoCuenta5"')
         self.assertContains(r, "Subir presupuesto")
-        self.assertContains(r, "Quitar de Cuenta 5")
+        self.assertContains(r, "Eliminar de presupuesto")
+        self.assertNotContains(r, "Quitar de Cuenta 5")
         self.assertContains(r, reverse("quitar_cuenta5_sede", args=[AREA]))
 
 
