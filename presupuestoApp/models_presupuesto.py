@@ -67,7 +67,7 @@ CAMPOS_NUMERICOS = ["mcncuenta", "sede_distribucion", *MESES, "total"]
 # (hay un test que lo verifica).
 CODIGO_COSTO_POR_CENTRO = {
     "ALMACEN TULUA": "020202",
-    "ALMACEN BUGA": "020200",
+    "ALMACEN BUGA": "020202",
     "ALMACEN CARTAGO": "020202",
     "ALMACEN CALI": "020202",
     "ADMINISTRACIÓN": "0102",

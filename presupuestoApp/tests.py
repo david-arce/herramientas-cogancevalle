@@ -466,6 +466,61 @@ class CargarPlantillaTests(TestCase):
         self.assertEqual(PresupuestoArea.objects.count(), 12)
 
 
+class MigracionCodigoCostoBugaTests(TransactionTestCase):
+    """0050 cambia 020200 -> 020202 en Buga, sin tocar nada más."""
+
+    antes = [("presupuestoApp", "0049_arl_cargo_nomina")]
+    despues = [("presupuestoApp", "0050_codigo_costo_buga_020202")]
+
+    def migrar(self, destino):
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate(destino)
+        return executor.loader.project_state(destino).apps
+
+    def tearDown(self):
+        self.migrar(MigrationExecutor(connection).loader.graph.leaf_nodes())
+
+    def test_solo_cambia_el_codigo_de_buga(self):
+        apps = self.migrar(self.antes)
+        PA = apps.get_model("presupuestoApp", "PresupuestoArea")
+        C5 = apps.get_model("presupuestoApp", "Cuenta5Presupuestado")
+        base = dict(area=AREA, linea=1, fecha=datetime.date(ANIO, 1, 1), valor=1234, mcncuenta=513525,
+                    ctanombre="ACUEDUCTO", mcndetalle="d", responsable="R", mcnzona="002")
+        for etapa in ("auxiliar", "proyectado", "aprobado", "preaprobado"):
+            PA.objects.create(etapa=etapa, version=None if etapa == "auxiliar" else 1,
+                              zonnombre="ALMACEN BUGA", mcnccosto="020200", **base)
+        PA.objects.create(etapa="aprobado", version=1, zonnombre=" almacen buga ", mcnccosto="020200", **base)
+        PA.objects.create(etapa="aprobado", version=1, zonnombre="ALMACEN BUGA", mcnccosto="0102", **base)
+        PA.objects.create(etapa="aprobado", version=1, zonnombre="ALMACEN TULUA", mcnccosto="020200", **base)
+        c5 = dict(mcncuenta="513525", mcnfecha=46023, mcnvaldebi=500, zonnombre="ALMACEN BUGA", mcnccosto="020200")
+        C5.objects.create(origen_area=AREA, origen_version=3, **c5)
+        C5.objects.create(**c5)                                  # cargado por Excel
+        C5.objects.create(origen_area="nomina", **c5)            # subido desde nómina
+        antes = {r["id"]: r for r in PA.objects.values()}
+
+        apps = self.migrar(self.despues)
+        PA = apps.get_model("presupuestoApp", "PresupuestoArea")
+        C5 = apps.get_model("presupuestoApp", "Cuenta5Presupuestado")
+        codigo = {(r.etapa, r.zonnombre, antes[r.id]["mcnccosto"]): r.mcnccosto for r in PA.objects.all()}
+        self.assertEqual(codigo, {
+            ("auxiliar", "ALMACEN BUGA", "020200"): "020202",
+            ("proyectado", "ALMACEN BUGA", "020200"): "020202",
+            ("aprobado", "ALMACEN BUGA", "020200"): "020202",
+            ("preaprobado", "ALMACEN BUGA", "020200"): "020200",   # copia de auditoría: intocable
+            ("aprobado", " almacen buga ", "020200"): "020202",
+            ("aprobado", "ALMACEN BUGA", "0102"): "0102",           # otro código: no se toca
+            ("aprobado", "ALMACEN TULUA", "020200"): "020200",      # otro centro: no se toca
+        })
+        # Ningún otro campo cambió.
+        for r in PA.objects.values():
+            self.assertEqual({k: v for k, v in r.items() if k != "mcnccosto"},
+                             {k: v for k, v in antes[r["id"]].items() if k != "mcnccosto"})
+        self.assertEqual(dict(C5.objects.values_list("origen_area", "mcnccosto")),
+                         {AREA: "020202", None: "020200", "nomina": "020200"})
+        self.assertEqual(C5.objects.get(origen_area=AREA).origen_version, 3)
+
+
 class MigracionVerticalTests(TransactionTestCase):
     """0030 convierte las filas horizontales en verticales sin perder datos, y se revierte."""
 
@@ -1887,14 +1942,14 @@ class CodigoCostoPorCentroTests(TestCase):
         # (cuenta 540531 o plantilla con un código viejo).
         self.aprobar_tal_cual([
             fila("tulua", 100, mcncuenta="540531", mcnccosto="020201"),
-            fila("buga", 100, zonnombre="ALMACEN BUGA", mcnccosto="020202"),
+            fila("buga", 100, zonnombre="ALMACEN BUGA", mcnccosto="020200"),   # código viejo de Buga
             fila("otro centro", 100, zonnombre="CENTRO NUEVO", mcnccosto="9999"),
         ])
         r = self.client.post(reverse("subir_cuenta5_sede", args=[AREA]))
         self.assertEqual(r.status_code, 200, r.content)
         qs = Cuenta5Presupuestado.objects.filter(origen_area=AREA)
         self.assertEqual(set(qs.filter(mcndetalle="tulua").values_list("mcnccosto", flat=True)), {"020202"})
-        self.assertEqual(set(qs.filter(mcndetalle="buga").values_list("mcnccosto", flat=True)), {"020200"})
+        self.assertEqual(set(qs.filter(mcndetalle="buga").values_list("mcnccosto", flat=True)), {"020202"})
         # Centro desconocido: se conserva el código guardado.
         self.assertEqual(set(qs.filter(mcndetalle="otro centro").values_list("mcnccosto", flat=True)), {"9999"})
 
