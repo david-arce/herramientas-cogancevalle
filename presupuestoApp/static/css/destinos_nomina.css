@@ -1,0 +1,27 @@
+/* Ajustes → Destinos de nómina (templates/ajustes/destinos_nomina.html).
+   Usa además las clases pl-* de plazos_edicion.css. */
+.dn-wrap { max-width: 1100px; }
+.dn-resumen { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 8px;
+              margin-bottom: 14px; font-weight: 600; font-size: .92rem; }
+.dn-resumen .material-icons { font-size: 20px; }
+.dn-resumen--falta { background: #fff4e5; color: #8a4b00; border: 1px solid #fcd9a8; }
+.dn-resumen--ok { background: #e9f9ee; color: #155724; border: 1px solid #b7ecc5; }
+.dn-vacio { display: flex; align-items: center; gap: 8px; color: #155724; }
+.dn-check { display: inline-flex; align-items: center; gap: 6px; font-size: .88rem; color: #374151;
+            padding-bottom: 8px; cursor: pointer; }
+.dn-masivo { margin-left: auto; }
+.dn-masivo-fila { display: flex; gap: 8px; }
+.dn-masivo select { max-width: 320px; }
+.dn-col-check { width: 34px; }
+.dn-nombre { font-weight: 600; color: #111827; }
+.dn-destino { width: 100%; min-width: 220px; }
+.dn-fila.dn-falta { background: #fffaf2; }
+.dn-fila.dn-falta .dn-destino { border-color: #f0b35b; }
+.pl-btn:disabled { opacity: .5; cursor: not-allowed; }
+.dn-sin-resultados { color: #6b7280; text-align: center; padding: 18px; margin: 0; }
+.dn-cambios { align-self: center; color: #8a4b00; font-size: .85rem; font-weight: 600; }
+@media (max-width: 720px) {
+  .dn-masivo { margin-left: 0; width: 100%; }
+  .dn-table th:nth-child(3), .dn-table td:nth-child(3),
+  .dn-table th:nth-child(4), .dn-table td:nth-child(4) { display: none; }
+}

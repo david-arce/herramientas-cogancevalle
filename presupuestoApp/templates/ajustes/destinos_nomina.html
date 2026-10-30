@@ -1,0 +1,177 @@
+{% extends 'presupuesto_consolidado/base_dashboard.html' %}
+{% load estaticos %}
+{% block css %}
+<link rel="stylesheet" href="{% static_v 'css/plazos_edicion.css' %}">
+<link rel="stylesheet" href="{% static_v 'css/destinos_nomina.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="pl-wrap dn-wrap">
+  <h1 class="pl-title"><span class="material-icons" aria-hidden="true">call_split</span> Destinos de nómina</h1>
+  <p class="pl-sub">
+    Las personas de nómina con centro de costo <b>{{ codcosto }}</b> necesitan un <b>destino</b> antes de subir
+    el presupuesto de nómina a Cuenta 5. Al subir, su costo va con ese destino y el consolidado lo ubica en la
+    fila que corresponde. Mientras falte el destino de alguna persona, <b>la subida de nómina queda bloqueada</b>.
+  </p>
+
+  {% if guardado %}<div class="pl-aviso pl-ok" role="status">Destinos guardados ✅</div>{% endif %}
+  {% if errores %}
+  <div class="pl-aviso pl-error" role="alert">
+    No se guardó nada: {% for e in errores %}{{ e }}{% if not forloop.last %} · {% endif %}{% endfor %}
+  </div>
+  {% endif %}
+
+  {% if not personas %}
+  <div class="pl-card dn-vacio">
+    <span class="material-icons" aria-hidden="true">check_circle</span>
+    No hay personas con centro de costo {{ codcosto }} en el presupuesto de nómina. No hace falta asignar destinos.
+  </div>
+  {% else %}
+  <div class="dn-resumen {% if sin_destino %}dn-resumen--falta{% else %}dn-resumen--ok{% endif %}" id="dnResumen" role="status">
+    <span class="material-icons" aria-hidden="true">{% if sin_destino %}error_outline{% else %}check_circle{% endif %}</span>
+    <span id="dnResumenTexto">{% if sin_destino %}{{ sin_destino }} de {{ personas|length }} persona{{ personas|length|pluralize }} sin destino{% else %}Las {{ personas|length }} persona{{ personas|length|pluralize }} tienen destino{% endif %}</span>
+  </div>
+
+  <form method="post" id="formDestinos">
+    {% csrf_token %}
+    <div class="pl-card pl-todas">
+      <div>
+        <label for="dnBuscar">Buscar</label>
+        <input type="search" id="dnBuscar" class="pl-input" placeholder="Nombre, cédula, cargo…" autocomplete="off">
+      </div>
+      <label class="dn-check"><input type="checkbox" id="dnSoloFaltan"> Solo sin destino</label>
+      <div class="dn-masivo">
+        <label for="dnDestinoMasivo">Destino para las seleccionadas</label>
+        <div class="dn-masivo-fila">
+          <select id="dnDestinoMasivo" class="pl-input">
+            <option value="">— Elegir —</option>
+            {% for codigo, nombre in opciones %}<option value="{{ codigo }}">{{ codigo }}{% if nombre %} · {{ nombre }}{% endif %}</option>{% endfor %}
+          </select>
+          <button type="button" class="pl-btn" id="dnAplicar" disabled>
+            <span class="material-icons" aria-hidden="true">done_all</span> Aplicar (<span id="dnSeleccionadas">0</span>)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="pl-card">
+      <table class="pl-table dn-table">
+        <thead>
+          <tr>
+            <th class="dn-col-check"><input type="checkbox" id="dnTodas" aria-label="Seleccionar todas las visibles"></th>
+            <th>Persona</th><th>Cargo</th><th>Centro / área</th><th>Destino</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in personas %}
+          <tr class="dn-fila{% if not p.destino %} dn-falta{% endif %}"
+              data-buscar="{{ p.nombre|lower }} {{ p.cedula }} {{ p.cargo|lower }} {{ p.centro|lower }} {{ p.area|lower }}">
+            <td class="dn-col-check"><input type="checkbox" class="dn-sel" aria-label="Seleccionar {{ p.nombre }}"></td>
+            <td><div class="dn-nombre">{{ p.nombre|default:"(sin nombre)" }}</div>
+                <div class="pl-auto">{% if p.cedula %}CC {{ p.cedula }}{% else %}Sin cédula{% endif %}</div></td>
+            <td>{{ p.cargo|default:"—" }}</td>
+            <td>{{ p.centro|default:"—" }}<div class="pl-auto">{{ p.area }}</div></td>
+            <td>
+              <select name="destino::{{ p.persona }}" class="pl-input dn-destino" aria-label="Destino de {{ p.nombre }}">
+                <option value="">— Sin destino —</option>
+                {% if p.destino and p.destino not in nombres_destino %}
+                <option value="{{ p.destino }}" selected>{{ p.destino }} (ya no está en la lista)</option>
+                {% endif %}
+                {% for codigo, nombre in opciones %}
+                <option value="{{ codigo }}"{% if codigo == p.destino %} selected{% endif %}>{{ codigo }}{% if nombre %} · {{ nombre }}{% endif %}</option>
+                {% endfor %}
+              </select>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="dn-sin-resultados" id="dnSinResultados" hidden>Ninguna persona coincide con la búsqueda.</p>
+      <div class="pl-acciones">
+        <span class="dn-cambios" id="dnCambios" hidden>Hay cambios sin guardar</span>
+        <button type="submit" class="pl-btn pl-btn-primary">
+          <span class="material-icons" aria-hidden="true">save</span> Guardar destinos
+        </button>
+      </div>
+    </div>
+  </form>
+  {% endif %}
+</div>
+
+<script>
+(() => {
+  const form = document.getElementById("formDestinos");
+  if (!form) return;
+  const filas = [...document.querySelectorAll(".dn-fila")];
+  const buscar = document.getElementById("dnBuscar");
+  const soloFaltan = document.getElementById("dnSoloFaltan");
+  const todas = document.getElementById("dnTodas");
+  const aplicar = document.getElementById("dnAplicar");
+  const masivo = document.getElementById("dnDestinoMasivo");
+  const total = filas.length;
+  let cambios = false;
+
+  const visibles = () => filas.filter(f => !f.hidden);
+
+  function resumen() {
+    const faltan = filas.filter(f => !f.querySelector(".dn-destino").value).length;
+    const caja = document.getElementById("dnResumen");
+    caja.className = "dn-resumen " + (faltan ? "dn-resumen--falta" : "dn-resumen--ok");
+    caja.querySelector(".material-icons").textContent = faltan ? "error_outline" : "check_circle";
+    document.getElementById("dnResumenTexto").textContent = faltan
+      ? `${faltan} de ${total} persona${total === 1 ? "" : "s"} sin destino`
+      : `Las ${total} persona${total === 1 ? "" : "s"} tienen destino`;
+    filas.forEach(f => f.classList.toggle("dn-falta", !f.querySelector(".dn-destino").value));
+  }
+
+  function filtrar() {
+    const q = buscar.value.trim().toLowerCase();
+    filas.forEach(f => {
+      const sinDestino = !f.querySelector(".dn-destino").value;
+      f.hidden = (q && !f.dataset.buscar.includes(q)) || (soloFaltan.checked && !sinDestino);
+    });
+    document.getElementById("dnSinResultados").hidden = visibles().length > 0;
+    contarSeleccion();
+  }
+
+  function contarSeleccion() {
+    const sel = visibles().filter(f => f.querySelector(".dn-sel").checked);
+    document.getElementById("dnSeleccionadas").textContent = sel.length;
+    aplicar.disabled = !sel.length || !masivo.value;
+    const vis = visibles();
+    todas.checked = vis.length > 0 && sel.length === vis.length;
+    todas.indeterminate = sel.length > 0 && sel.length < vis.length;
+  }
+
+  function marcarCambio() {
+    cambios = true;
+    document.getElementById("dnCambios").hidden = false;
+    resumen();
+  }
+
+  buscar.addEventListener("input", filtrar);
+  soloFaltan.addEventListener("change", filtrar);
+  masivo.addEventListener("change", contarSeleccion);
+  todas.addEventListener("change", () => {
+    visibles().forEach(f => { f.querySelector(".dn-sel").checked = todas.checked; });
+    contarSeleccion();
+  });
+  form.addEventListener("change", e => {
+    if (e.target.classList.contains("dn-sel")) contarSeleccion();
+    if (e.target.classList.contains("dn-destino")) marcarCambio();
+  });
+  aplicar.addEventListener("click", () => {
+    visibles().forEach(f => {
+      if (f.querySelector(".dn-sel").checked) {
+        f.querySelector(".dn-destino").value = masivo.value;
+        f.querySelector(".dn-sel").checked = false;
+      }
+    });
+    marcarCambio();
+    filtrar();
+  });
+  form.addEventListener("submit", () => { cambios = false; });
+  window.addEventListener("beforeunload", e => { if (cambios) { e.preventDefault(); e.returnValue = ""; } });
+})();
+</script>
+{% endblock %}
