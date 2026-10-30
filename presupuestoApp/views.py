@@ -1670,6 +1670,39 @@ def aux_presupuesto_comercial_costos():
     year_actual = timezone.now().year
     return _pronostico_por_linea_centro_segmento('valor_costo', anio_inicio=year_actual - 1)
 
+def _guardar_crecimientos(nuevos, year_actual):
+    """Guarda {(linea, centro, clase): crecimiento %} del año actual.
+
+    La usan la edición en pantalla y la subida del Excel, así las dos guardan
+    igual: si la combinación no tiene fila se crea, y si la tabla quedó con la
+    misma combinación repetida (filas viejas), se actualizan TODAS las copias
+    (antes la subida del Excel cambiaba solo una y la pantalla podía leer otra).
+    Devuelve cuántas combinaciones cambiaron de verdad.
+    """
+    clave = lambda linea, centro, clase: (str(linea or ""), str(centro or ""), str(clase or ""))  # noqa: E731
+    with transaction.atomic():
+        existentes = defaultdict(list)
+        for p in PresupuestoComercial.objects.select_for_update().filter(year=year_actual):
+            existentes[clave(p.linea, p.nombre_centro_de_operacion, p.nombre_clase_cliente)].append(p)
+        actualizar, crear, cambios = [], [], 0
+        for (linea, centro, clase), valor in nuevos.items():
+            filas = existentes.get((linea, centro, clase))
+            if not filas:
+                crear.append(PresupuestoComercial(
+                    linea=linea, year=year_actual, nombre_centro_de_operacion=centro,
+                    nombre_clase_cliente=clase, crecimiento_ventas=valor))
+                cambios += 1
+                continue
+            distintas = [p for p in filas if p.crecimiento_ventas != valor]
+            for p in distintas:
+                p.crecimiento_ventas = valor
+            actualizar.extend(distintas)
+            cambios += bool(distintas)
+        PresupuestoComercial.objects.bulk_update(actualizar, ["crecimiento_ventas"], batch_size=500)
+        PresupuestoComercial.objects.bulk_create(crear, batch_size=500)
+    return cambios
+
+
 @csrf_exempt
 def guardar_presupuesto_comercial(request):
     """Guarda el % de crecimiento de ventas de las filas recibidas (solo año actual).
@@ -1699,25 +1732,7 @@ def guardar_presupuesto_comercial(request):
             nuevos[clave(row["linea"], row.get("nombre_centro_de_operacion"),
                           row.get("nombre_clase_cliente"))] = float(row.get("crecimiento_ventas") or 0)
 
-        with transaction.atomic():
-            existentes = {
-                clave(p.linea, p.nombre_centro_de_operacion, p.nombre_clase_cliente): p
-                for p in PresupuestoComercial.objects.select_for_update().filter(year=year_actual)
-            }
-            actualizar, crear = [], []
-            for (linea, centro, clase), valor in nuevos.items():
-                obj = existentes.get((linea, centro, clase))
-                if obj is None:
-                    crear.append(PresupuestoComercial(
-                        linea=linea, year=year_actual, nombre_centro_de_operacion=centro,
-                        nombre_clase_cliente=clase, crecimiento_ventas=valor))
-                elif obj.crecimiento_ventas != valor:
-                    obj.crecimiento_ventas = valor
-                    actualizar.append(obj)
-            PresupuestoComercial.objects.bulk_update(actualizar, ["crecimiento_ventas"], batch_size=500)
-            PresupuestoComercial.objects.bulk_create(crear, batch_size=500)
-
-        cambios = len(actualizar) + len(crear)
+        cambios = _guardar_crecimientos(nuevos, year_actual)
         return JsonResponse({"status": "ok", "mensaje": "Crecimientos guardados ✅",
                              "recibidas": len(nuevos), "cambios": cambios})
     except DatabaseError:
@@ -2230,100 +2245,58 @@ def importar_crecimiento_ventas(request):
         return JsonResponse({'error': 'La columna "año" debe contener solo números enteros'}, status=400)
 
     try:
-        df['crecimiento ventas proyectado'] = df['crecimiento ventas proyectado'].astype(float)
+        # celda vacía = sin crecimiento (0), no NaN
+        df['crecimiento ventas proyectado'] = df['crecimiento ventas proyectado'].astype(float).fillna(0)
     except ValueError:
         return JsonResponse({'error': 'La columna "crecimiento ventas proyectado" debe ser numérica'}, status=400)
 
-    actualizados = 0
-    no_encontrados = []
+    # Se guarda igual que la edición en pantalla (solo el año actual, que es el
+    # editable): si la combinación no tenía fila se crea (antes se descartaba
+    # como "no encontrada") y si estaba repetida se actualizan todas las copias.
+    # Lo demás (proyección, márgenes) se calcula al vuelo en calcular_comercial.
+    year_actual = timezone.now().year
+    otro_anio = int((df['año'] != year_actual).sum())
+    df = df[df['año'] == year_actual]
+    nuevos = {}
+    for _, row in df.iterrows():
+        nuevos[(row['linea'], row['centro de operación'], row['clase cliente'])] = \
+            float(row['crecimiento ventas proyectado'])
+    cambios = _guardar_crecimientos(nuevos, year_actual)
 
-    with transaction.atomic():
-        for _, row in df.iterrows():
-            obj = PresupuestoComercial.objects.filter(
-                linea=row['linea'],
-                year=row['año'],
-                nombre_centro_de_operacion=row['centro de operación'],
-                nombre_clase_cliente=row['clase cliente']
-            ).first()
-
-            if obj:
-                crecimiento = row['crecimiento ventas proyectado']
-                obj.crecimiento_ventas = crecimiento
-
-                # 🔹 Calcular proyección de ventas
-                proyeccion_ventas = obj.ventas + (obj.ventas * (crecimiento / 100))
-                obj.proyeccion_ventas = round(proyeccion_ventas)
-
-                # 🔹 Calcular utilidad proyectada
-                utilidad_valor = obj.proyeccion_ventas - obj.proyeccion_costos
-                obj.utilidad_valor = round(utilidad_valor)
-
-                # 🔹 Calcular utilidad porcentual
-                obj.utilidad_porcentual = (
-                    (utilidad_valor / obj.proyeccion_ventas) * 100 if obj.proyeccion_ventas != 0 else 0
-                )
-
-                # 🔹 Calcular variaciones proyectadas
-                obj.variacion_proyectada_valor = obj.utilidad_valor - obj.utilidad_valor_actual
-                obj.variacion_proyectada_porcentual = (
-                    obj.utilidad_porcentual - obj.utilidad_porcentual_actual
-                )
-
-                obj.save(update_fields=[
-                    'crecimiento_ventas',
-                    'proyeccion_ventas',
-                    'utilidad_valor',
-                    'utilidad_porcentual',
-                    'variacion_proyectada_valor',
-                    'variacion_proyectada_porcentual'
-                ])
-                actualizados += 1
-            else:
-                no_encontrados.append({
-                    'linea': row['linea'],
-                    'año': row['año'],
-                    'centro': row['centro de operación'],
-                    'clase': row['clase cliente']
-                })
-
-    mensaje = f"✅ {actualizados} registros actualizados correctamente."
-    if no_encontrados:
-        mensaje += f" ⚠️ {len(no_encontrados)} filas no se encontraron en la base de datos."
+    mensaje = (f"{len(nuevos)} combinaciones de {year_actual} leídas del archivo; "
+               f"{cambios} con crecimiento nuevo o distinto.")
+    if otro_anio:
+        mensaje += f" ⚠️ {otro_anio} fila(s) de otro año se ignoraron (solo se edita {year_actual})."
 
     return JsonResponse({'mensaje': mensaje})
 
 def exportar_crecimiento_ventas(request):
+    """Excel base para cargar crecimientos: las MISMAS filas que muestra la
+    pantalla de proyección (línea+centro+segmento con datos en el año actual),
+    una por combinación, con el crecimiento guardado (0 si no tiene).
+
+    Antes se listaba la tabla presupuesto_comercial tal cual: traía filas de
+    versiones anteriores (líneas que ya no están en el año actual) y
+    combinaciones repetidas.
+    """
     year_actual = timezone.now().year
-
-    # 🔹 Consultar datos del año actual con el nuevo campo incluido
-    qs = PresupuestoComercial.objects.filter(year=year_actual).values(
-        'linea',
-        'year',
-        'nombre_centro_de_operacion',
-        'nombre_clase_cliente',
-        'crecimiento_ventas',
-    )
-
-    if not qs.exists():
+    df = calculo.calcular_comercial()
+    if df.empty:
         return HttpResponse("No hay datos para exportar", status=400)
 
-    # 🔹 Convertir a DataFrame
-    df = pd.DataFrame(qs)
+    df = (df[['linea', 'year', 'nombre_centro_de_operacion', 'nombre_clase_cliente', 'crecimiento_ventas']]
+          .sort_values(['linea', 'nombre_centro_de_operacion', 'nombre_clase_cliente'])
+          .rename(columns={
+              'year': 'año',
+              'nombre_centro_de_operacion': 'centro de operación',
+              'nombre_clase_cliente': 'clase cliente',
+              'crecimiento_ventas': 'crecimiento ventas proyectado',
+          }))
+    df['año'] = df['año'].astype(int)
 
-    # Renombrar columnas para el Excel final
-    df.rename(columns={
-        'year': 'año',
-        'nombre_centro_de_operacion': 'centro de operación',
-        'nombre_clase_cliente': 'clase cliente',
-        'crecimiento_ventas': 'crecimiento ventas proyectado',
-    }, inplace=True)
-
-    # 🔹 Crear archivo Excel
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="crecimiento_ventas_{year_actual}.xlsx"'
-
     df.to_excel(response, index=False)
-
     return response
 
 def obtener_presupuesto_comercial(request):

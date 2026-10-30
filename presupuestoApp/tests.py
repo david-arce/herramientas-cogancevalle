@@ -2368,6 +2368,72 @@ class ProyeccionSoloLineasDelAnioActualTests(TestCase):
         self.assertEqual(tulua["variacion_porcentual_ventas"], 100.0)     # sigue comparando con el año anterior
 
 
+class ExportarImportarCrecimientosTests(TestCase):
+    """"Exportar base Año Actual" sale de lo que muestra la pantalla (sin filas
+    viejas ni repetidas) y "Subir Excel" guarda igual que la edición."""
+
+    def setUp(self):
+        from .models import PresupuestoComercial
+        self.PC = PresupuestoComercial
+        self.client.force_login(User.objects.create_user("admin"))
+        self.anio = anio = timezone.now().year
+        B = views.BdVentasComercial.objects
+        def venta(a, linea, seg, neto):
+            B.create(lapso=a * 100 + 1, centro_de_operacion=1, nombre_centro_de_operacion="ALMACEN TULUA",
+                     nombre_linea_n1=linea, nombre_clase_cliente=seg, valor_neto=neto, valor_costo=neto / 2)
+        venta(anio - 1, "ABONOS PARA PASTOS", "CLIENTE", 500)          # solo el año anterior
+        venta(anio, "HERRAMIENTAS", "CLIENTE", 1000)
+        venta(anio, "HERRAMIENTAS", "PRODUCCION", 400)
+        comun = dict(year=anio, nombre_centro_de_operacion="ALMACEN TULUA")
+        # Filas de versiones anteriores: línea que ya no está y una combinación repetida
+        self.PC.objects.create(linea="ABONOS PARA PASTOS", nombre_clase_cliente="CLIENTE", crecimiento_ventas=3, **comun)
+        self.PC.objects.create(linea="HERRAMIENTAS", nombre_clase_cliente="CLIENTE", crecimiento_ventas=5, **comun)
+        self.PC.objects.create(linea="HERRAMIENTAS", nombre_clase_cliente="CLIENTE", crecimiento_ventas=5, **comun)
+
+    def exportar(self):
+        r = self.client.get(reverse("exportar_crecimiento_ventas"))
+        self.assertEqual(r.status_code, 200)
+        return pd.read_excel(io.BytesIO(r.content))
+
+    def subir(self, df):
+        b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); b.name = "crec.xlsx"
+        return self.client.post(reverse("importar_crecimiento_ventas"), {"file": b})
+
+    def test_exporta_lo_de_la_pantalla_sin_repetidos(self):
+        df = self.exportar()
+        self.assertEqual(list(df.columns), ["linea", "año", "centro de operación", "clase cliente",
+                                            "crecimiento ventas proyectado"])
+        filas = [tuple(x) for x in df.itertuples(index=False)]
+        self.assertEqual(filas, [
+            ("HERRAMIENTAS", self.anio, "ALMACEN TULUA", "CLIENTE", 5.0),
+            ("HERRAMIENTAS", self.anio, "ALMACEN TULUA", "PRODUCCION", 0.0),
+        ])
+
+    def test_subir_crea_las_que_faltan_y_actualiza_todas_las_copias(self):
+        df = self.exportar()
+        df["crecimiento ventas proyectado"] = [8, 12]
+        df.loc[len(df)] = ["HERRAMIENTAS", self.anio - 1, "ALMACEN TULUA", "CLIENTE", 99]   # otro año
+        r = self.subir(df)
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertIn("1 fila(s) de otro año se ignoraron", r.json()["mensaje"])
+        copias = self.PC.objects.filter(linea="HERRAMIENTAS", nombre_clase_cliente="CLIENTE", year=self.anio)
+        self.assertEqual(sorted(copias.values_list("crecimiento_ventas", flat=True)), [8, 8])
+        self.assertEqual(self.PC.objects.get(nombre_clase_cliente="PRODUCCION").crecimiento_ventas, 12)  # se creó
+        # La pantalla muestra lo subido
+        pantalla = {f["nombre_clase_cliente"]: f["crecimiento_ventas"]
+                    for f in self.client.get(reverse("obtener_presupuesto_comercial")).json()}
+        self.assertEqual(pantalla, {"CLIENTE": 8, "PRODUCCION": 12})
+        # Volver a subir lo mismo no cambia nada
+        self.assertIn("0 con crecimiento nuevo", self.subir(df).json()["mensaje"])
+
+    def test_celda_vacia_es_cero(self):
+        df = self.exportar()
+        df["crecimiento ventas proyectado"] = [None, 4]
+        self.subir(df)
+        self.assertEqual(set(self.PC.objects.filter(linea="HERRAMIENTAS", nombre_clase_cliente="CLIENTE")
+                             .values_list("crecimiento_ventas", flat=True)), {0})
+
+
 class PresupuestoComercialGuardadoTests(TestCase):
     """Autoguardado del presupuesto comercial: rápido, solo lo que cambió, seguro de repetir."""
 
