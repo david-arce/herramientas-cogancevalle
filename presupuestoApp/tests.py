@@ -466,6 +466,54 @@ class CargarPlantillaTests(TestCase):
         self.assertEqual(PresupuestoArea.objects.count(), 12)
 
 
+class MigracionSegmentosComoExcelTests(TransactionTestCase):
+    """0051 pasa CLIENTES/PRODUCTOR a CLIENTE/PRODUCCION, sin tocar nada más, y se revierte."""
+
+    antes = [("presupuestoApp", "0050_codigo_costo_buga_020202")]
+    despues = [("presupuestoApp", "0051_segmentos_como_en_excel")]
+
+    def migrar(self, destino):
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate(destino)
+        return executor.loader.project_state(destino).apps
+
+    def tearDown(self):
+        self.migrar(MigrationExecutor(connection).loader.graph.leaf_nodes())
+
+    def test_ida_y_vuelta(self):
+        apps = self.migrar(self.antes)
+        B = apps.get_model("presupuestoApp", "BdVentasComercial")
+        PC = apps.get_model("presupuestoApp", "PresupuestoComercial")
+        SV = apps.get_model("presupuestoApp", "PresupuestoCentroSegmentoVentas")
+        comun = dict(lapso=202601, centro_de_operacion=1, nombre_centro_de_operacion="ALMACEN TULUA",
+                     nombre_linea_n1="HERRAMIENTAS", valor_neto=10, valor_costo=7)
+        for seg in ("CLIENTES", "PRODUCTOR", "ASOCIADO", "GENERAL"):
+            B.objects.create(nombre_clase_cliente=seg, **comun)
+        PC.objects.create(linea="HERRAMIENTAS", year=2027, nombre_centro_de_operacion="ALMACEN TULUA",
+                          nombre_clase_cliente="CLIENTES", crecimiento_ventas=0.05)
+        SV.objects.create(year=2027, mes=1, nombre_centro_operacion="ALMACEN TULUA", segmento="PRODUCTOR")
+        antes = {r["id"]: r for r in B.objects.values()}
+
+        apps = self.migrar(self.despues)
+        B = apps.get_model("presupuestoApp", "BdVentasComercial")
+        self.assertEqual(sorted(B.objects.values_list("nombre_clase_cliente", flat=True)),
+                         ["ASOCIADO", "CLIENTE", "GENERAL", "PRODUCCION"])
+        for r in B.objects.values():           # solo cambió el segmento
+            self.assertEqual({k: v for k, v in r.items() if k != "nombre_clase_cliente"},
+                             {k: v for k, v in antes[r["id"]].items() if k != "nombre_clase_cliente"})
+        PC = apps.get_model("presupuestoApp", "PresupuestoComercial")
+        self.assertEqual(PC.objects.get().nombre_clase_cliente, "CLIENTE")
+        self.assertEqual(PC.objects.get().crecimiento_ventas, 0.05)
+        SV = apps.get_model("presupuestoApp", "PresupuestoCentroSegmentoVentas")
+        self.assertEqual(SV.objects.get().segmento, "PRODUCCION")
+
+        apps = self.migrar(self.antes)
+        B = apps.get_model("presupuestoApp", "BdVentasComercial")
+        self.assertEqual(sorted(B.objects.values_list("nombre_clase_cliente", flat=True)),
+                         ["ASOCIADO", "CLIENTES", "GENERAL", "PRODUCTOR"])
+
+
 class MigracionCodigoCostoBugaTests(TransactionTestCase):
     """0050 cambia 020200 -> 020202 en Buga, sin tocar nada más."""
 
@@ -3717,7 +3765,7 @@ class ImportarVentasComercialDosFormatosTests(TestCase):
         self.assertEqual(len(filas), 4)
         buga = [f for f in filas if f["centro_de_operacion"] == 2 and f["nombre_linea_n1"] == "HERRAMIENTAS"][0]
         self.assertEqual(buga["nombre_centro_de_operacion"], "ALMACEN BUGA")
-        self.assertEqual(buga["nombre_clase_cliente"], "PRODUCTOR")
+        self.assertEqual(buga["nombre_clase_cliente"], "PRODUCCION")      # tal como viene en el Excel
         self.assertAlmostEqual(buga["valor_neto"], 44579.83)
         self.assertAlmostEqual(buga["valor_costo"], 37746.0)
         self.assertIn("1 eliminada(s) por cédula excluida", r.json()["mensaje"])
@@ -3865,7 +3913,7 @@ class ReemplazarAnioVentasTests(TestCase):
         self.assertEqual(self.valor(202603, "AGRICOLA", "valor_neto"), None)        # '-' = 0 y sin costo: no se crea
         self.assertEqual(self.valor(202612, "AGRICOLA", "valor_neto"), 1000)
         self.assertEqual(self.valor(202602, "BIOLOGICO MASCOTAS", "valor_neto"), 171800)
-        self.assertEqual(self.valor(202601, "HERRAMIENTAS", "valor_neto", "CLIENTES"), -1500)
+        self.assertEqual(self.valor(202601, "HERRAMIENTAS", "valor_neto", "CLIENTE"), -1500)   # sin renombrar
         self.assertEqual(views.BdVentasComercial.objects.get(lapso=202601, nombre_linea_n1="HERRAMIENTAS")
                          .nombre_centro_de_operacion, "ALMACEN BUGA")
         # combinación que no venía: neto en 0, costo intacto

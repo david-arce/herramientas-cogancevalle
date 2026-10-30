@@ -242,22 +242,15 @@ def _nombre_centro_operacion(codigo):
     return NOMBRES_CENTRO_OPERACION.get(codigo_int)
 
 
-def _convertir_clase_cliente(valor):
-    """
-    CLIENTE -> CLIENTES, PRODUCCION -> PRODUCTOR (no distingue
-    mayúsculas/minúsculas ni espacios extra). Cualquier otro valor se
-    conserva tal cual (recortado), para no perder datos silenciosamente
-    si el Excel trae una categoría distinta a las dos esperadas.
+def _limpiar_clase_cliente(valor):
+    """Segmento tal como viene en el Excel, solo sin espacios sobrantes.
+
+    Ya no se renombra (antes CLIENTE -> CLIENTES y PRODUCCION -> PRODUCTOR);
+    la migración 0051 pasó los datos guardados a los nombres del Excel.
     """
     if valor is None or (isinstance(valor, float) and pd.isna(valor)):
         return None
-    texto = str(valor).strip()
-    texto_normalizado = texto.upper()
-    if texto_normalizado == 'CLIENTE':
-        return 'CLIENTES'
-    if texto_normalizado == 'PRODUCCION':
-        return 'PRODUCTOR'
-    return texto
+    return str(valor).strip()
 
 def _lapso_actual():
     """Lapso (AAAAMM) del mes en curso. Todo lapso >= a este se considera incompleto."""
@@ -387,7 +380,7 @@ def _importar_ventas_desde_df(df):
     # --------------------------------------------------------------
     # 5) nombre_clase_cliente = VGRNOMBRE, con la conversión pedida
     # --------------------------------------------------------------
-    df['nombre_clase_cliente'] = df['VGRNOMBRE'].apply(_convertir_clase_cliente)
+    df['nombre_clase_cliente'] = df['VGRNOMBRE'].apply(_limpiar_clase_cliente)
 
     # --------------------------------------------------------------
     # 6) valor_neto = SUBTOTAL   7) valor_costo = COSTO_VTA
@@ -660,7 +653,7 @@ def _leer_resumen_anual(archivo):
     avisos = []
     datos = pd.DataFrame({
         'centro_de_operacion': pd.to_numeric(df['ZONA'], errors='coerce'),
-        'nombre_clase_cliente': df['SEGMENTO'].apply(_convertir_clase_cliente),
+        'nombre_clase_cliente': df['SEGMENTO'].apply(_limpiar_clase_cliente),
         'nombre_linea_n1': df['LINEA'].map(lambda v: str(v).strip() if v is not None and not pd.isna(v) else ''),
     })
     for n, mes in enumerate(MESES_RESUMEN, 1):
