@@ -1073,7 +1073,9 @@ def ajustes_plazos_edicion(request):
 #   mcnvincula <- cedula          vinnombre  <- nombre
 #   mcnccosto  <- codcosto
 #   mcndestino <- destino de la persona si su codcosto es 020301
-#                 (Ajustes → Destinos de nómina; sin destino no se sube)
+#                 (Ajustes → Destinos de nómina; sin destino no se sube).
+#                 Si se reparte entre varios destinos, cada registro se
+#                 divide en uno por destino con su porcentaje del valor.
 #   responsable <- "nomina" (fijo)
 #   mcnfecha   <- fecha (serial Excel)
 #   mcnvaldebi <- valor si es >= 0,  mcnvalcred <- -valor si es < 0
@@ -1130,8 +1132,12 @@ def estado_cuenta5_nomina():
         total=Coalesce(Sum(F("mcnvaldebi") - F("mcnvalcred")), 0.0),
     )
     config = ConfiguracionNomina.actual()
-    # Personas de 020301 sin destino (Ajustes → Destinos de nómina): bloquean la subida.
-    faltan_destinos = len(destinos_nomina.faltantes()) if base.exists() else 0
+    # Personas de 020301 sin destino o con reparto que no suma 100 % (Ajustes →
+    # Destinos de nómina): bloquean la subida. Quien se reparte entre N destinos
+    # sube N registros por cada uno suyo: se suman a lo esperado.
+    personas_destino = destinos_nomina.personas_020301() if base.exists() else []
+    faltan_destinos = sum(1 for p in personas_destino if not p["completo"])
+    esperados = nom["n"] + destinos_nomina.registros_extra(personas_destino)
     cambio_destinos = destinos_nomina.ultimo_cambio()
     if not base.exists():
         estado = "sin_datos"
@@ -1141,7 +1147,7 @@ def estado_cuenta5_nomina():
         estado = "sin_destinos"
     elif not sub["n"]:
         estado = "pendiente"
-    elif (sub["n"] == nom["n"] and round(sub["total"]) == nom["total"]
+    elif (sub["n"] == esperados and round(sub["total"]) == nom["total"]
           and (nom["ultimo"] is None or nom["ultimo"] <= sub["subido"])
           and (cambio_destinos is None or cambio_destinos <= sub["subido"])):
         estado = "subido"
@@ -1153,8 +1159,8 @@ def estado_cuenta5_nomina():
         "sin_datos": "Aún no hay presupuesto de nómina",
         "sin_confirmar": "Confírmalo como listo en el presupuesto de nómina",
         "sin_destinos": (f"{faltan_destinos} persona(s) con centro de costo "
-                         f"{destinos_nomina.CODCOSTO_CON_DESTINO} sin destino"),
-        "pendiente": f"{nom['n']} registros listos para subir",
+                         f"{destinos_nomina.CODCOSTO_CON_DESTINO} sin destino o con reparto incompleto"),
+        "pendiente": f"{esperados} registros listos para subir",
         "subido": f"{subido:%d/%m/%Y %H:%M} · {sub['n']} registros" if subido else "",
         "desactualizado": "La nómina o sus destinos cambiaron después de subirla",
     }[estado]
@@ -1194,7 +1200,7 @@ def subir_cuenta5_nomina(request):
         return JsonResponse({
             "success": False,
             "msg": (f"No se subió: {len(faltan)} persona(s) con centro de costo "
-                    f"{destinos_nomina.CODCOSTO_CON_DESTINO} sin destino ({nombres}"
+                    f"{destinos_nomina.CODCOSTO_CON_DESTINO} sin destino o con reparto que no suma 100 % ({nombres}"
                     f"{'…' if len(faltan) > 5 else ''}). Asígnalos en Ajustes → Destinos de nómina ❌"),
             "faltan_destinos": len(faltan),
             "estado": estado_cuenta5_nomina(),
@@ -1215,25 +1221,29 @@ def subir_cuenta5_nomina(request):
             zona = zona_de_centro_nomina(r["centro"], del_informe)
             if zona is None:
                 sin_zona.add(r["linea"])
-            destino = None
+            # 020301: un registro por cada destino de la persona, con su parte del valor
+            # (repartir no pierde pesos: las partes suman exactamente el valor).
+            partes = [(None, valor)]
             if destinos_nomina.requiere_destino(r["codcosto"]):
-                destino = destinos.get(destinos_nomina.clave_persona(r["cedula"], r["nombre"]))
+                reparto = destinos.get(destinos_nomina.clave_persona(r["cedula"], r["nombre"]))
+                partes = destinos_nomina.repartir(valor, reparto)
                 con_destino += 1
-            registros.append(Cuenta5Presupuestado(
-                mcncuenta=r["cuenta"].strip(),
-                mcnccosto=(r["codcosto"] or "").strip() or None,
-                mcnzona=zona,
-                zonnombre=r["centro"] or None,
-                mcnvincula=r["cedula"] or None,
-                vinnombre=r["nombre"] or None,
-                mcndestino=destino,
-                responsable=RESPONSABLE_NOMINA,
-                mcnfecha=_serial_excel(r["fecha"]),
-                mcnvaldebi=float(valor) if valor >= 0 else 0.0,
-                mcnvalcred=0.0 if valor >= 0 else float(-valor),
-                origen_area=ORIGEN_NOMINA,
-                origen_subido=ahora,
-            ))
+            for destino, parte in partes:
+                registros.append(Cuenta5Presupuestado(
+                    mcncuenta=r["cuenta"].strip(),
+                    mcnccosto=(r["codcosto"] or "").strip() or None,
+                    mcnzona=zona,
+                    zonnombre=r["centro"] or None,
+                    mcnvincula=r["cedula"] or None,
+                    vinnombre=r["nombre"] or None,
+                    mcndestino=destino,
+                    responsable=RESPONSABLE_NOMINA,
+                    mcnfecha=_serial_excel(r["fecha"]),
+                    mcnvaldebi=float(parte) if parte >= 0 else 0.0,
+                    mcnvalcred=0.0 if parte >= 0 else float(-parte),
+                    origen_area=ORIGEN_NOMINA,
+                    origen_subido=ahora,
+                ))
         if not registros and not PresupuestoNominaMes.objects.exists():
             info["resultado"] = "sin_datos"
             return JsonResponse({

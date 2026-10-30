@@ -9,9 +9,10 @@
 <div class="pl-wrap dn-wrap">
   <h1 class="pl-title"><span class="material-icons" aria-hidden="true">call_split</span> Destinos de nómina</h1>
   <p class="pl-sub">
-    Las personas de nómina con centro de costo <b>{{ codcosto }}</b> necesitan un <b>destino</b> antes de subir
-    el presupuesto de nómina a Cuenta 5. Al subir, su costo va con ese destino y el consolidado lo ubica en la
-    fila que corresponde. Mientras falte el destino de alguna persona, <b>la subida de nómina queda bloqueada</b>.
+    Las personas de nómina con centro de costo <b>{{ codcosto }}</b> necesitan <b>destino</b> antes de subir
+    el presupuesto de nómina a Cuenta 5. Una persona puede repartirse entre <b>varios destinos</b> con su
+    porcentaje (deben sumar 100 %): al subir, su costo de cada mes se reparte en esa proporción. Mientras a
+    alguien le falte destino o su reparto no sume 100 %, <b>la subida de nómina queda bloqueada</b>.
   </p>
 
   {% if guardado %}<div class="pl-aviso pl-ok" role="status">Destinos guardados ✅</div>{% endif %}
@@ -29,7 +30,7 @@
   {% else %}
   <div class="dn-resumen {% if sin_destino %}dn-resumen--falta{% else %}dn-resumen--ok{% endif %}" id="dnResumen" role="status">
     <span class="material-icons" aria-hidden="true">{% if sin_destino %}error_outline{% else %}check_circle{% endif %}</span>
-    <span id="dnResumenTexto">{% if sin_destino %}{{ sin_destino }} de {{ personas|length }} persona{{ personas|length|pluralize }} sin destino{% else %}Las {{ personas|length }} persona{{ personas|length|pluralize }} tienen destino{% endif %}</span>
+    <span id="dnResumenTexto">{% if sin_destino %}{{ sin_destino }} de {{ personas|length }} persona{{ personas|length|pluralize }} sin destino o con reparto incompleto{% else %}Las {{ personas|length }} persona{{ personas|length|pluralize }} tienen destino{% endif %}</span>
   </div>
 
   <form method="post" id="formDestinos">
@@ -39,9 +40,9 @@
         <label for="dnBuscar">Buscar</label>
         <input type="search" id="dnBuscar" class="pl-input" placeholder="Nombre, cédula, cargo…" autocomplete="off">
       </div>
-      <label class="dn-check"><input type="checkbox" id="dnSoloFaltan"> Solo sin destino</label>
+      <label class="dn-check"><input type="checkbox" id="dnSoloFaltan"> Solo pendientes</label>
       <div class="dn-masivo">
-        <label for="dnDestinoMasivo">Destino para las seleccionadas</label>
+        <label for="dnDestinoMasivo">Un destino (100 %) para las seleccionadas</label>
         <div class="dn-masivo-fila">
           <select id="dnDestinoMasivo" class="pl-input">
             <option value="">— Elegir —</option>
@@ -64,7 +65,7 @@
         </thead>
         <tbody>
           {% for p in personas %}
-          <tr class="dn-fila{% if not p.destino %} dn-falta{% endif %}"
+          <tr class="dn-fila{% if not p.completo %} dn-falta{% endif %}" data-persona="{{ p.persona }}"
               data-buscar="{{ p.nombre|lower }} {{ p.cedula }} {{ p.cargo|lower }} {{ p.centro|lower }} {{ p.area|lower }}">
             <td class="dn-col-check"><input type="checkbox" class="dn-sel" aria-label="Seleccionar {{ p.nombre }}"></td>
             <td><div class="dn-nombre">{{ p.nombre|default:"(sin nombre)" }}</div>
@@ -72,15 +73,33 @@
             <td>{{ p.cargo|default:"—" }}</td>
             <td>{{ p.centro|default:"—" }}<div class="pl-auto">{{ p.area }}</div></td>
             <td>
-              <select name="destino::{{ p.persona }}" class="pl-input dn-destino" aria-label="Destino de {{ p.nombre }}">
-                <option value="">— Sin destino —</option>
-                {% if p.destino and p.destino not in nombres_destino %}
-                <option value="{{ p.destino }}" selected>{{ p.destino }} (ya no está en la lista)</option>
-                {% endif %}
-                {% for codigo, nombre in opciones %}
-                <option value="{{ codigo }}"{% if codigo == p.destino %} selected{% endif %}>{{ codigo }}{% if nombre %} · {{ nombre }}{% endif %}</option>
+              <div class="dn-reparto">
+                {% for f in p.filas %}
+                <div class="dn-linea">
+                  <select name="destino::{{ p.persona }}" class="pl-input dn-destino" aria-label="Destino de {{ p.nombre }}">
+                    <option value="">— Sin destino —</option>
+                    {% if f.destino and f.destino not in nombres_destino %}
+                    <option value="{{ f.destino }}" selected>{{ f.destino }} (ya no está en la lista)</option>
+                    {% endif %}
+                    {% for codigo, nombre in opciones %}
+                    <option value="{{ codigo }}"{% if codigo == f.destino %} selected{% endif %}>{{ codigo }}{% if nombre %} · {{ nombre }}{% endif %}</option>
+                    {% endfor %}
+                  </select>
+                  <span class="dn-pct-caja">
+                    <input type="text" inputmode="decimal" name="porcentaje::{{ p.persona }}" class="pl-input dn-pct"
+                           value="{{ f.porcentaje }}" placeholder="100" aria-label="Porcentaje">
+                    <span class="dn-pct-signo">%</span>
+                  </span>
+                  <button type="button" class="pl-quitar dn-quitar" title="Quitar este destino" aria-label="Quitar este destino">
+                    <span class="material-icons" aria-hidden="true">close</span>
+                  </button>
+                </div>
                 {% endfor %}
-              </select>
+              </div>
+              <div class="dn-pie">
+                <button type="button" class="dn-agregar"><span class="material-icons" aria-hidden="true">add</span> Otro destino</button>
+                <span class="dn-suma"></span>
+              </div>
             </td>
           </tr>
           {% endfor %}
@@ -98,6 +117,22 @@
   {% endif %}
 </div>
 
+<template id="dnLineaTpl">
+  <div class="dn-linea">
+    <select class="pl-input dn-destino" aria-label="Destino">
+      <option value="">— Sin destino —</option>
+      {% for codigo, nombre in opciones %}<option value="{{ codigo }}">{{ codigo }}{% if nombre %} · {{ nombre }}{% endif %}</option>{% endfor %}
+    </select>
+    <span class="dn-pct-caja">
+      <input type="text" inputmode="decimal" class="pl-input dn-pct" placeholder="100" aria-label="Porcentaje">
+      <span class="dn-pct-signo">%</span>
+    </span>
+    <button type="button" class="pl-quitar dn-quitar" title="Quitar este destino" aria-label="Quitar este destino">
+      <span class="material-icons" aria-hidden="true">close</span>
+    </button>
+  </div>
+</template>
+
 <script>
 (() => {
   const form = document.getElementById("formDestinos");
@@ -108,27 +143,55 @@
   const todas = document.getElementById("dnTodas");
   const aplicar = document.getElementById("dnAplicar");
   const masivo = document.getElementById("dnDestinoMasivo");
+  const plantilla = document.getElementById("dnLineaTpl");
   const total = filas.length;
   let cambios = false;
 
+  const numero = t => { const v = parseFloat(String(t || "").replace("%", "").replace(",", ".")); return isNaN(v) ? null : v; };
+  const lineas = fila => [...fila.querySelectorAll(".dn-linea")];
   const visibles = () => filas.filter(f => !f.hidden);
 
+  /** Estado del reparto de una persona: {ok, texto}. Un solo destino sin % cuenta como 100 %. */
+  function evaluar(fila) {
+    const usadas = lineas(fila).filter(l => l.querySelector(".dn-destino").value || l.querySelector(".dn-pct").value.trim());
+    if (!usadas.length) return { ok: false, texto: "Sin destino" };
+    const destinos = usadas.map(l => l.querySelector(".dn-destino").value);
+    if (destinos.some(d => !d)) return { ok: false, texto: "Falta elegir un destino" };
+    if (new Set(destinos).size !== destinos.length) return { ok: false, texto: "Destino repetido" };
+    if (usadas.length === 1 && !usadas[0].querySelector(".dn-pct").value.trim()) return { ok: true, texto: "100 %" };
+    const pcts = usadas.map(l => numero(l.querySelector(".dn-pct").value));
+    if (pcts.some(p => p === null || p <= 0 || p > 100)) return { ok: false, texto: "Porcentaje inválido" };
+    const suma = Math.round(pcts.reduce((a, b) => a + b, 0) * 100) / 100;
+    return Math.abs(suma - 100) <= 0.01 ? { ok: true, texto: "100 %" }
+                                        : { ok: false, texto: `Suma ${suma.toLocaleString("es-CO")} % · faltan ${(Math.round((100 - suma) * 100) / 100).toLocaleString("es-CO")} %` };
+  }
+
+  function pintarFila(fila) {
+    const r = evaluar(fila);
+    const suma = fila.querySelector(".dn-suma");
+    suma.textContent = r.texto;
+    suma.classList.toggle("dn-suma--ok", r.ok);
+    fila.classList.toggle("dn-falta", !r.ok);
+    // Con un solo destino no hace falta quitar la fila: se deja en blanco
+    const ls = lineas(fila);
+    ls.forEach(l => { l.querySelector(".dn-quitar").hidden = ls.length === 1; });
+    return r.ok;
+  }
+
   function resumen() {
-    const faltan = filas.filter(f => !f.querySelector(".dn-destino").value).length;
+    const faltan = filas.filter(f => !pintarFila(f)).length;
     const caja = document.getElementById("dnResumen");
     caja.className = "dn-resumen " + (faltan ? "dn-resumen--falta" : "dn-resumen--ok");
     caja.querySelector(".material-icons").textContent = faltan ? "error_outline" : "check_circle";
     document.getElementById("dnResumenTexto").textContent = faltan
-      ? `${faltan} de ${total} persona${total === 1 ? "" : "s"} sin destino`
+      ? `${faltan} de ${total} persona${total === 1 ? "" : "s"} sin destino o con reparto incompleto`
       : `Las ${total} persona${total === 1 ? "" : "s"} tienen destino`;
-    filas.forEach(f => f.classList.toggle("dn-falta", !f.querySelector(".dn-destino").value));
   }
 
   function filtrar() {
     const q = buscar.value.trim().toLowerCase();
     filas.forEach(f => {
-      const sinDestino = !f.querySelector(".dn-destino").value;
-      f.hidden = (q && !f.dataset.buscar.includes(q)) || (soloFaltan.checked && !sinDestino);
+      f.hidden = (q && !f.dataset.buscar.includes(q)) || (soloFaltan.checked && evaluar(f).ok);
     });
     document.getElementById("dnSinResultados").hidden = visibles().length > 0;
     contarSeleccion();
@@ -149,6 +212,36 @@
     resumen();
   }
 
+  function nuevaLinea(fila, destino = "", pct = "") {
+    const nodo = plantilla.content.firstElementChild.cloneNode(true);
+    const persona = fila.dataset.persona;
+    nodo.querySelector(".dn-destino").name = "destino::" + persona;
+    nodo.querySelector(".dn-pct").name = "porcentaje::" + persona;
+    nodo.querySelector(".dn-destino").value = destino;
+    nodo.querySelector(".dn-pct").value = pct;
+    fila.querySelector(".dn-reparto").appendChild(nodo);
+    return nodo;
+  }
+
+  form.addEventListener("click", e => {
+    const fila = e.target.closest(".dn-fila");
+    if (!fila) return;
+    if (e.target.closest(".dn-agregar")) {
+      // Si la primera no tenía %, se le pone lo que falte para que el reparto se vea claro
+      const ls = lineas(fila);
+      if (ls.length === 1 && !ls[0].querySelector(".dn-pct").value.trim() && ls[0].querySelector(".dn-destino").value) {
+        ls[0].querySelector(".dn-pct").value = "100";
+      }
+      const usado = lineas(fila).reduce((a, l) => a + (numero(l.querySelector(".dn-pct").value) || 0), 0);
+      const resto = Math.max(0, Math.round((100 - usado) * 100) / 100);
+      nuevaLinea(fila, "", resto ? String(resto) : "").querySelector(".dn-destino").focus();
+      marcarCambio();
+    } else if (e.target.closest(".dn-quitar")) {
+      e.target.closest(".dn-linea").remove();
+      marcarCambio();
+    }
+  });
+
   buscar.addEventListener("input", filtrar);
   soloFaltan.addEventListener("change", filtrar);
   masivo.addEventListener("change", contarSeleccion);
@@ -160,18 +253,20 @@
     if (e.target.classList.contains("dn-sel")) contarSeleccion();
     if (e.target.classList.contains("dn-destino")) marcarCambio();
   });
+  form.addEventListener("input", e => { if (e.target.classList.contains("dn-pct")) marcarCambio(); });
   aplicar.addEventListener("click", () => {
     visibles().forEach(f => {
-      if (f.querySelector(".dn-sel").checked) {
-        f.querySelector(".dn-destino").value = masivo.value;
-        f.querySelector(".dn-sel").checked = false;
-      }
+      if (!f.querySelector(".dn-sel").checked) return;
+      lineas(f).forEach(l => l.remove());
+      nuevaLinea(f, masivo.value, "100");
+      f.querySelector(".dn-sel").checked = false;
     });
     marcarCambio();
     filtrar();
   });
   form.addEventListener("submit", () => { cambios = false; });
   window.addEventListener("beforeunload", e => { if (cambios) { e.preventDefault(); e.returnValue = ""; } });
+  resumen();
 })();
 </script>
 {% endblock %}

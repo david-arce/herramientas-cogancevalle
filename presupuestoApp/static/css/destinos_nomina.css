@@ -14,7 +14,7 @@
 .dn-masivo select { max-width: 320px; }
 .dn-col-check { width: 34px; }
 .dn-nombre { font-weight: 600; color: #111827; }
-.dn-destino { width: 100%; min-width: 220px; }
+.dn-destino { width: 100%; }
 .dn-fila.dn-falta { background: #fffaf2; }
 .dn-fila.dn-falta .dn-destino { border-color: #f0b35b; }
 .pl-btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -25,3 +25,19 @@
   .dn-table th:nth-child(3), .dn-table td:nth-child(3),
   .dn-table th:nth-child(4), .dn-table td:nth-child(4) { display: none; }
 }
+
+/* Varios destinos por persona */
+.dn-reparto { display: flex; flex-direction: column; gap: 6px; }
+.dn-linea { display: flex; align-items: center; gap: 6px; }
+.dn-linea .dn-destino { flex: 1; min-width: 200px; }
+.dn-pct-caja { position: relative; display: inline-flex; align-items: center; }
+.dn-pct { width: 74px; text-align: right; padding-right: 22px; }
+.dn-pct-signo { position: absolute; right: 8px; color: #6b7280; font-size: .85rem; pointer-events: none; }
+.dn-quitar[hidden] { visibility: hidden; display: inline-block; }
+.dn-pie { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.dn-agregar { border: none; background: none; color: #2563eb; cursor: pointer; font: inherit; font-size: .82rem;
+              font-weight: 600; display: inline-flex; align-items: center; gap: 2px; padding: 2px 4px; border-radius: 4px; }
+.dn-agregar:hover { background: #eff6ff; }
+.dn-agregar .material-icons { font-size: 16px; }
+.dn-suma { font-size: .8rem; font-weight: 600; color: #8a4b00; }
+.dn-suma--ok { color: #155724; }

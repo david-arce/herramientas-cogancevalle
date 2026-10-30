@@ -359,19 +359,25 @@ class FocoCargoInforme(models.Model):
 
 
 class DestinoNomina(models.Model):
-    """Destino (código AT/VT) de cada persona de nómina con centro de costo 020301.
+    """Destinos (códigos AT/VT) de cada persona de nómina con centro de costo 020301.
 
-    Se asigna en Ajustes → Destinos de nómina y se usa al subir la nómina a
-    Cuenta 5 presupuestado (columna mcndestino). Un destino por persona; la
-    persona se identifica por su cédula (o por su nombre si no tiene cédula).
+    Se asignan en Ajustes → Destinos de nómina y se usan al subir la nómina a
+    Cuenta 5 presupuestado (columna mcndestino). Una persona puede repartirse
+    entre varios destinos: una fila por destino con su porcentaje, que entre
+    todas deben sumar 100. La persona se identifica por su cédula (o por su
+    nombre si no tiene cédula).
     """
-    persona = models.CharField(max_length=200, unique=True)   # cédula, o "SIN CEDULA: NOMBRE"
+    persona = models.CharField(max_length=200, db_index=True)   # cédula, o "SIN CEDULA: NOMBRE"
     destino = models.CharField(max_length=30)
+    porcentaje = models.FloatField(default=100)
     actualizado = models.DateTimeField(auto_now=True)
     actualizado_por = models.CharField(max_length=150, blank=True, default='')
 
     class Meta:
         db_table = 'destino_nomina'
+        constraints = [
+            models.UniqueConstraint(fields=['persona', 'destino'], name='destino_nomina_persona_destino_uniq'),
+        ]
 
     def __str__(self):
-        return f'{self.persona} → {self.destino}'
+        return f'{self.persona} → {self.destino} ({self.porcentaje:g} %)'
