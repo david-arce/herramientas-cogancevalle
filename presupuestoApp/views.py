@@ -4513,7 +4513,7 @@ def generar_presupuesto_ventas(anio_base=None):
 @require_POST
 def generar_presupuesto_ventas_view(request):
     """POST  { "anio_base": 2026 }   (opcional)"""
-    if request.user.username not in ['admin', 'NICOLAS']:
+    if request.user.username not in ['admin', 'NICOLAS', 'AGRAJALE', 'EVALENCIA']:
         return JsonResponse({'success': False, 'error': 'Sin permisos'}, status=403)
     # Queda en el log del servidor (logger presupuestoApp.cargas): INICIO, FIN
     # con la duración, o ERROR con el traceback. Un INICIO sin FIN ni ERROR
