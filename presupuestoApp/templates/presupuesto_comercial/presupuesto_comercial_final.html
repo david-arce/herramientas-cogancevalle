@@ -163,8 +163,11 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const r = await EnvioSeguro.enviar(URL_GENERAR_VENTAS, {}, {
                 maxEsperaMs: 180000,
-                onReintento: ({ espera }) => estadoVentas(
-                    `⏳ Presupuesto de ventas: servidor no disponible, reintento en ${Math.round(espera / 1000)} s`, 'editando'),
+                // Se muestra el motivo real (sin conexión, sesión cerrada, el servidor
+                // cortó la petición por tiempo, base de datos no disponible...).
+                onReintento: ({ error, espera }) => estadoVentas(
+                    `⏳ Presupuesto de ventas: ${error.message} · reintento en ${Math.round(espera / 1000)} s`,
+                    'editando', error.message),
             });
             const omitidas = Object.entries(r.sedes_omitidas || {});
             if (omitidas.length) {

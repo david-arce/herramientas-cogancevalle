@@ -3895,6 +3895,41 @@ class DistribucionAnioSiguienteTests(TestCase):
             self.assertAlmostEqual(siguiente[mes], v * 1_000_000 * 1.10, delta=1, msg=f"mes {mes}")
 
 
+class ProyeccionSinRedondeosIntermediosTests(TestCase):
+    """Con crecimiento 0 el año siguiente es IGUAL al actual, mes a mes, aunque
+    haya centavos (antes salían unos pesos de diferencia en esos meses)."""
+
+    def setUp(self):
+        import random
+        azar = random.Random(7)
+        anio = timezone.localdate().year
+        filas = []
+        centros = {1: "ALMACEN TULUA", 2: "ALMACEN BUGA", 3: "ALMACEN CARTAGO"}
+        for a in (anio - 1, anio):
+            for c, centro in centros.items():
+                for seg in ("CLIENTE", "PRODUCCION", "ASOCIADO"):
+                    for i in range(20):
+                        for mes in range(1, 13):
+                            # enero-septiembre en pesos enteros; octubre-diciembre con centavos
+                            v = azar.randint(1_000, 9_000_000) + (azar.randint(1, 99) / 100 if mes >= 10 else 0)
+                            filas.append(views.BdVentasComercial(
+                                lapso=a * 100 + mes, centro_de_operacion=c, nombre_centro_de_operacion=centro,
+                                nombre_linea_n1=f"LINEA {i}", nombre_clase_cliente=seg,
+                                valor_neto=v, valor_costo=v * 0.8))
+        views.BdVentasComercial.objects.bulk_create(filas)
+        self.anio = anio
+
+    def test_crecimiento_cero_da_el_mismo_valor_cada_mes(self):
+        from . import calculo
+        for nivel in ("general", "centro", "centro_segmento"):
+            filas = calculo.construir_ventas(nivel)
+            dims = [k for k in ("nombre_centro_operacion", "segmento") if k in filas[0]]
+            por_anio = {}
+            for f in filas:
+                por_anio.setdefault(f["year"], {})[tuple(f[d] for d in dims) + (f["mes"],)] = f["total"]
+            self.assertEqual(por_anio[self.anio + 1], por_anio[self.anio], nivel)
+
+
 class ReemplazarAnioVentasTests(TestCase):
     """Resumen ZONA / SEGMENTO / LINEA x mes: reemplaza el valor elegido de todo el año."""
 

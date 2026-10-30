@@ -13,8 +13,8 @@
  *      editando mientras se reintenta, no se envían versiones viejas.
  *   4. Solo borra la copia local cuando el servidor confirma el guardado.
  *   5. Si el servidor RECHAZA los datos a propósito (respuesta JSON 4xx: sin
- *      permisos, plazo cerrado, datos inválidos) no insiste: avisa el error y
- *      conserva la copia.
+ *      permisos, plazo cerrado, datos inválidos, o un 5xx con
+ *      {"reintentar": false}) no insiste: avisa el error y conserva la copia.
  *
  * Es seguro reintentar porque los guardados de la aplicación reemplazan el
  * estado completo dentro de una transacción (todo o nada): repetir el mismo
@@ -91,6 +91,11 @@ async function intentar(url, cuerpoTexto, cabecerasExtra = {}) {
     catch (e) { throw errorTransitorio("Respuesta incompleta del servidor", "servidor"); }
 
     if (resp.status >= 500) {
+        // La app puede marcar un error como definitivo ({"reintentar": false}):
+        // un fallo del cálculo no se arregla reintentando.
+        if (json && json.reintentar === false) {
+            throw errorPermanente(mensajeDe(json, `Error del servidor (HTTP ${resp.status})`), json);
+        }
         throw errorTransitorio(mensajeDe(json, `Error del servidor (HTTP ${resp.status})`), "servidor");
     }
     if (!resp.ok) throw errorPermanente(mensajeDe(json, `HTTP ${resp.status}`), json);

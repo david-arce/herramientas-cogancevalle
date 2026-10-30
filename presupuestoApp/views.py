@@ -4542,12 +4542,26 @@ def generar_presupuesto_ventas_view(request):
     """POST  { "anio_base": 2026 }   (opcional)"""
     if request.user.username not in ['admin', 'NICOLAS']:
         return JsonResponse({'success': False, 'error': 'Sin permisos'}, status=403)
+    # Queda en el log del servidor (logger presupuestoApp.cargas): INICIO, FIN
+    # con la duración, o ERROR con el traceback. Un INICIO sin FIN ni ERROR
+    # indica que el servidor cortó la petición por tiempo (timeout del worker).
     try:
         body = json.loads(request.body or '{}')
         anio = body.get('anio_base')
-        resultado = generar_presupuesto_ventas(int(anio) if anio else None)
+        with log_carga('presupuesto_ventas', request, anio_base=anio) as info:
+            resultado = generar_presupuesto_ventas(int(anio) if anio else None)
+            info.update(registros=resultado['registros'],
+                        sedes=','.join(resultado['sedes_procesadas']),
+                        omitidas=','.join(resultado['sedes_omitidas']))
         return JsonResponse({'success': True, **resultado})
     except (ValueError, json.JSONDecodeError) as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    except DatabaseError as e:
+        # Base de datos no disponible (p. ej. durante un despliegue): el navegador reintenta.
+        return JsonResponse({'success': False, 'reintentar': True,
+                             'error': f'La base de datos no está disponible: {e}'}, status=503)
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        # Error del cálculo: reintentar no lo arregla, así que se avisa de una vez
+        # (antes se veía como "servidor no disponible" y se reintentaba 3 minutos).
+        return JsonResponse({'success': False, 'reintentar': False,
+                             'error': f'Error al generar el presupuesto de ventas: {e}'}, status=500)
