@@ -2336,6 +2336,38 @@ class GuardadoDuranteDespliegueTests(TestCase):
         self.assertIn('usuario: "NICOLAS"', html)
 
 
+class ProyeccionSoloLineasDelAnioActualTests(TestCase):
+    """La proyección solo muestra línea+centro+segmento con datos en el año actual."""
+
+    def setUp(self):
+        self.client.force_login(User.objects.create_user("admin"))
+        anio = timezone.now().year
+        B = views.BdVentasComercial.objects
+        def venta(anio_, linea, centro, seg, neto, costo):
+            B.create(lapso=anio_ * 100 + 1, centro_de_operacion={"ALMACEN TULUA": 1, "ALMACEN BUGA": 2}[centro],
+                     nombre_centro_de_operacion=centro, nombre_linea_n1=linea, nombre_clase_cliente=seg,
+                     valor_neto=neto, valor_costo=costo)
+        venta(anio - 1, "ABONOS PARA PASTOS", "ALMACEN TULUA", "CLIENTE", 500, 300)   # solo el año anterior
+        venta(anio - 1, "HERRAMIENTAS", "ALMACEN TULUA", "CLIENTE", 100, 60)
+        venta(anio, "HERRAMIENTAS", "ALMACEN TULUA", "CLIENTE", 200, 120)
+        venta(anio, "HERRAMIENTAS", "ALMACEN BUGA", "PRODUCCION", 50, 30)
+        venta(anio, "BIOLOGICOS", "ALMACEN BUGA", "GENERAL", 0, 65)                    # solo costo: se muestra
+        self.anio = anio
+
+    def test_solo_combinaciones_con_datos_en_el_anio_actual(self):
+        filas = self.client.get(reverse("obtener_presupuesto_comercial")).json()
+        combos = sorted((f["linea"], f["nombre_centro_de_operacion"], f["nombre_clase_cliente"]) for f in filas)
+        self.assertEqual(combos, [
+            ("BIOLOGICOS", "ALMACEN BUGA", "GENERAL"),
+            ("HERRAMIENTAS", "ALMACEN BUGA", "PRODUCCION"),
+            ("HERRAMIENTAS", "ALMACEN TULUA", "CLIENTE"),
+        ])
+        self.assertTrue(all(f["year"] == self.anio for f in filas))
+        tulua = next(f for f in filas if f["nombre_centro_de_operacion"] == "ALMACEN TULUA")
+        self.assertEqual((tulua["ventas"], tulua["costos"]), (200, 120))
+        self.assertEqual(tulua["variacion_porcentual_ventas"], 100.0)     # sigue comparando con el año anterior
+
+
 class PresupuestoComercialGuardadoTests(TestCase):
     """Autoguardado del presupuesto comercial: rápido, solo lo que cambió, seguro de repetir."""
 

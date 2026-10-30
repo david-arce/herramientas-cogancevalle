@@ -102,7 +102,14 @@ def calcular_comercial():
         return pd.DataFrame()
     df = pd.merge(df_v, df_c, on=CAMPOS_DETALLE + ['year'], suffixes=('_ventas', '_costos'))
     df = df.rename(columns={'suma_ventas': 'ventas', 'suma_costos': 'costos'})
-    df = df[df['year'] == year_actual].reset_index(drop=True)
+    df = df[df['year'] == year_actual]
+    # Solo las combinaciones línea+centro+segmento que tienen datos en el año
+    # actual. El histórico arma todas las combinaciones posibles (todas las
+    # líneas x todos los centros x todos los segmentos de los dos años) y
+    # rellena con 0; sin este filtro salían líneas que solo existieron el año
+    # anterior (o que nunca existieron en ese centro/segmento), todas en $0.
+    # No cambia ninguna proyección: esas filas proyectaban 0.
+    df = df[(df['ventas'] != 0) | (df['costos'] != 0)].reset_index(drop=True)
     if df.empty:
         return df
 
@@ -194,14 +201,21 @@ def _proyeccion_mensual_detalle():
     if part.empty or comercial.empty:
         return pd.DataFrame(columns=CAMPOS_DETALLE + ['mes', 'valor_proyectado_mes'])
 
+    # Sin redondeos intermedios: se usa la proyección exacta (no la columna
+    # proyeccion_ventas, que va redondeada a pesos para mostrarla) y el valor
+    # de cada mes queda con decimales. Se redondea una sola vez, al sumar en la
+    # tabla. Antes se redondeaba por cada línea+centro+segmento y mes, y en los
+    # meses con centavos (los copiados del año anterior) el año siguiente salía
+    # unos pesos distinto del actual aun con crecimiento 0.
+    comercial = comercial.assign(
+        proyeccion_exacta=comercial['ventas'] * (1 + comercial['crecimiento_ventas'] / 100))
     proy = (comercial.groupby(['linea', 'nombre_centro_de_operacion', 'nombre_clase_cliente'])
-            ['proyeccion_ventas'].sum().reset_index()
-            .rename(columns={'linea': 'nombre_linea_n1'}))
+            ['proyeccion_exacta'].sum().reset_index()
+            .rename(columns={'linea': 'nombre_linea_n1', 'proyeccion_exacta': 'proyeccion_ventas'}))
 
     df = part.merge(proy, on=CAMPOS_DETALLE, how='left')
     df['proyeccion_ventas'] = df['proyeccion_ventas'].fillna(0)
-    df['valor_proyectado_mes'] = (
-        df['porcentaje_participacion'] / 100 * df['proyeccion_ventas']).round()
+    df['valor_proyectado_mes'] = df['porcentaje_participacion'] / 100 * df['proyeccion_ventas']
     return df
 
 def construir_ventas(nivel):
