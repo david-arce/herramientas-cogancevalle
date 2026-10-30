@@ -31,6 +31,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
+from . import destinos_nomina
 from .log_cargas import log_carga
 from .models import Cuenta5Presupuestado
 from .models_nomina import ConfiguracionNomina, PresupuestoNominaMes
@@ -842,6 +843,7 @@ ESTADOS_CUENTA5 = {
     "sin_aprobar": "Sin versión aprobada",
     "sin_datos": "Sin datos de nómina",
     "sin_confirmar": "Sin confirmar como listo",
+    "sin_destinos": "Faltan destinos",
     "pendiente": "Pendiente de subir",
     "desactualizado": "Desactualizado",
     "subido": "Subido a Cuenta 5",
@@ -1070,6 +1072,8 @@ def ajustes_plazos_edicion(request):
 #   mcncuenta  <- cuenta          zonnombre  <- centro
 #   mcnvincula <- cedula          vinnombre  <- nombre
 #   mcnccosto  <- codcosto
+#   mcndestino <- destino de la persona si su codcosto es 020301
+#                 (Ajustes → Destinos de nómina; sin destino no se sube)
 #   responsable <- "nomina" (fijo)
 #   mcnfecha   <- fecha (serial Excel)
 #   mcnvaldebi <- valor si es >= 0,  mcnvalcred <- -valor si es < 0
@@ -1126,14 +1130,20 @@ def estado_cuenta5_nomina():
         total=Coalesce(Sum(F("mcnvaldebi") - F("mcnvalcred")), 0.0),
     )
     config = ConfiguracionNomina.actual()
+    # Personas de 020301 sin destino (Ajustes → Destinos de nómina): bloquean la subida.
+    faltan_destinos = len(destinos_nomina.faltantes()) if base.exists() else 0
+    cambio_destinos = destinos_nomina.ultimo_cambio()
     if not base.exists():
         estado = "sin_datos"
     elif not config.listo:
         estado = "sin_confirmar"
+    elif faltan_destinos:
+        estado = "sin_destinos"
     elif not sub["n"]:
         estado = "pendiente"
     elif (sub["n"] == nom["n"] and round(sub["total"]) == nom["total"]
-          and (nom["ultimo"] is None or nom["ultimo"] <= sub["subido"])):
+          and (nom["ultimo"] is None or nom["ultimo"] <= sub["subido"])
+          and (cambio_destinos is None or cambio_destinos <= sub["subido"])):
         estado = "subido"
     else:
         estado = "desactualizado"
@@ -1142,9 +1152,11 @@ def estado_cuenta5_nomina():
     detalle = {
         "sin_datos": "Aún no hay presupuesto de nómina",
         "sin_confirmar": "Confírmalo como listo en el presupuesto de nómina",
+        "sin_destinos": (f"{faltan_destinos} persona(s) con centro de costo "
+                         f"{destinos_nomina.CODCOSTO_CON_DESTINO} sin destino"),
         "pendiente": f"{nom['n']} registros listos para subir",
         "subido": f"{subido:%d/%m/%Y %H:%M} · {sub['n']} registros" if subido else "",
-        "desactualizado": "La nómina cambió después de subirla",
+        "desactualizado": "La nómina o sus destinos cambiaron después de subirla",
     }[estado]
     return {
         "area": ORIGEN_NOMINA,
@@ -1156,6 +1168,7 @@ def estado_cuenta5_nomina():
         "registros_subidos": sub["n"],
         "subido": subido.strftime("%d/%m/%Y %H:%M") if subido else None,
         "descripcion": "el presupuesto de nómina",
+        "faltan_destinos": faltan_destinos,
     }
 
 
@@ -1174,10 +1187,24 @@ def subir_cuenta5_nomina(request):
             "estado": estado_cuenta5_nomina(),
         }, status=400)
 
+    # Antes de subir: las personas de 020301 deben tener destino (Ajustes → Destinos de nómina).
+    faltan = destinos_nomina.faltantes()
+    if faltan:
+        nombres = ", ".join(p["nombre"] or p["persona"] for p in faltan[:5])
+        return JsonResponse({
+            "success": False,
+            "msg": (f"No se subió: {len(faltan)} persona(s) con centro de costo "
+                    f"{destinos_nomina.CODCOSTO_CON_DESTINO} sin destino ({nombres}"
+                    f"{'…' if len(faltan) > 5 else ''}). Asígnalos en Ajustes → Destinos de nómina ❌"),
+            "faltan_destinos": len(faltan),
+            "estado": estado_cuenta5_nomina(),
+        }, status=400)
+
     ahora = timezone.now()
     del_informe = zonas_de_centros_nomina()
+    destinos = destinos_nomina.destinos_asignados()
     with log_carga("cuenta5_nomina", request) as info, transaction.atomic():
-        registros, sin_cuenta, sin_zona = [], set(), set()
+        registros, sin_cuenta, sin_zona, con_destino = [], set(), set(), 0
         for r in PresupuestoNominaMes.objects.exclude(valor=0).order_by("linea", "fecha").values(
             "linea", "cuenta", "codcosto", "centro", "cedula", "nombre", "fecha", "valor"
         ):
@@ -1188,6 +1215,10 @@ def subir_cuenta5_nomina(request):
             zona = zona_de_centro_nomina(r["centro"], del_informe)
             if zona is None:
                 sin_zona.add(r["linea"])
+            destino = None
+            if destinos_nomina.requiere_destino(r["codcosto"]):
+                destino = destinos.get(destinos_nomina.clave_persona(r["cedula"], r["nombre"]))
+                con_destino += 1
             registros.append(Cuenta5Presupuestado(
                 mcncuenta=r["cuenta"].strip(),
                 mcnccosto=(r["codcosto"] or "").strip() or None,
@@ -1195,6 +1226,7 @@ def subir_cuenta5_nomina(request):
                 zonnombre=r["centro"] or None,
                 mcnvincula=r["cedula"] or None,
                 vinnombre=r["nombre"] or None,
+                mcndestino=destino,
                 responsable=RESPONSABLE_NOMINA,
                 mcnfecha=_serial_excel(r["fecha"]),
                 mcnvaldebi=float(valor) if valor >= 0 else 0.0,
@@ -1210,7 +1242,8 @@ def subir_cuenta5_nomina(request):
             }, status=400)
         reemplazados, _ = Cuenta5Presupuestado.objects.filter(origen_area=ORIGEN_NOMINA).delete()
         Cuenta5Presupuestado.objects.bulk_create(registros, batch_size=1000)
-        info.update(reemplazados=reemplazados, registros=len(registros), sin_zona=len(sin_zona))
+        info.update(reemplazados=reemplazados, registros=len(registros), sin_zona=len(sin_zona),
+                    con_destino=con_destino)
 
     msg = f"Nómina: {len(registros)} registros subidos a Cuenta 5 ✅"
     if reemplazados:

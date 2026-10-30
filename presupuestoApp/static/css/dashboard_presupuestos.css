@@ -28,6 +28,13 @@
 .c5-badge--sin_aprobar,
 .c5-badge--sin_datos,
 .c5-badge--sin_confirmar  { color: #555; background: rgba(255, 255, 255, .8); }
+.c5-badge--sin_destinos   { color: #8a4b00; }
+.c5-link { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;
+           color: #fff; font-size: .78rem; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.c5-link[hidden] { display: none; }
+.c5-link .material-icons { font-size: 15px; }
+.c5-link:hover { text-decoration-thickness: 2px; }
+.c5-link:focus-visible { outline: 2px solid #fff; outline-offset: 2px; border-radius: 3px; }
 .c5-detalle { font-size: .78rem; opacity: .95; }
 
 .c5-btn {

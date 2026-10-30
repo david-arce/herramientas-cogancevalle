@@ -5,6 +5,7 @@ from . import views_cuentas_contables as vcc
 from . import views_asignaciones as va
 from . import views_agrupaciones as vag
 from . import views_subtotales as vsub
+from . import destinos_nomina
 
 urlpatterns = [
     *urls_nomina,
@@ -105,6 +106,7 @@ urlpatterns = [
     path('seleccion-cuentas-contables/', views.seleccion_cuentas_contables, name='seleccionCuentasContables'),
     
     # ── Ajustes: orden de cuentas ──
+    path('ajustes/destinos-nomina/', destinos_nomina.ajustes_destinos_nomina, name='ajustes_destinos_nomina'),
     path('ajustes/orden-cuentas/', views.ajustes_orden_cuentas, name='ajustes_orden_cuentas'),
     path('ajustes/orden-cuentas/listar/', views.listar_orden_cuentas, name='listar_orden_cuentas'),
     path('ajustes/orden-cuentas/sincronizar/', views.sincronizar_orden_cuentas, name='sincronizar_orden_cuentas'),

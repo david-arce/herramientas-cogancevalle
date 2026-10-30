@@ -81,6 +81,7 @@ def dashboard_home(request):
         "url_ver": reverse("presupuestoNomina"),
         "url_subir": reverse("subir_cuenta5_nomina"),
         "url_quitar": reverse("quitar_cuenta5_nomina"),
+        "url_destinos": reverse("ajustes_destinos_nomina"),
         "cuenta5": estado_cuenta5_nomina(),
     })
     return render(request, 'presupuesto_consolidado/dashboard_presupuestos.html', {
@@ -4513,7 +4514,7 @@ def generar_presupuesto_ventas(anio_base=None):
 @require_POST
 def generar_presupuesto_ventas_view(request):
     """POST  { "anio_base": 2026 }   (opcional)"""
-    if request.user.username not in ['admin', 'NICOLAS', 'AGRAJALE', 'EVALENCIA']:
+    if request.user.username not in ['admin', 'NICOLAS']:
         return JsonResponse({'success': False, 'error': 'Sin permisos'}, status=403)
     # Queda en el log del servidor (logger presupuestoApp.cargas): INICIO, FIN
     # con la duración, o ERROR con el traceback. Un INICIO sin FIN ni ERROR

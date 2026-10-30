@@ -1002,6 +1002,94 @@ class Cuenta5NominaTests(TestCase):
         self.assertContains(r, 'class="c5-btn c5-btn--peligro"', count=1)
 
 
+class DestinosNominaTests(TestCase):
+    """Personas con centro de costo 020301: destino obligatorio antes de subir la nómina."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.aprobador = User.objects.create_user("NICOLAS")
+
+    def setUp(self):
+        from .models_nomina import DestinoNomina
+        self.DN = DestinoNomina
+        self.client.force_login(self.aprobador)
+        confirmar_nomina(True)
+        linea_nomina(codcosto="020202").save()                                      # no necesita destino
+        linea_nomina(cedula="2002", nombre="LUIS TECNICO", cargo="TECNICO", codcosto="020301").save()
+        linea_nomina(cedula="2002", nombre="LUIS TECNICO", concepto="PRIMA", codcosto="020301").save()
+        linea_nomina(cedula="3003", nombre="EVA ZOOTECNISTA", codcosto="20301").save()   # sin el cero
+
+    def subir(self):
+        return self.client.post(reverse("subir_cuenta5_nomina"))
+
+    def asignar(self, **destinos):
+        datos = {f"destino::{k}": v for k, v in destinos.items()}
+        return self.client.post(reverse("ajustes_destinos_nomina"), datos)
+
+    def test_sin_destino_bloquea_la_subida(self):
+        estado = vpa.estado_cuenta5_nomina()
+        self.assertEqual((estado["estado"], estado["faltan_destinos"]), ("sin_destinos", 2))
+        r = self.subir()
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("2 persona(s) con centro de costo 020301 sin destino", r.json()["msg"])
+        self.assertFalse(Cuenta5Presupuestado.objects.exists())
+        # Con una sola asignada sigue bloqueado
+        self.asignar(**{"2002": "AT-00001", "3003": ""})
+        self.assertEqual(self.subir().status_code, 400)
+
+    def test_con_destinos_sube_y_los_pone_en_mcndestino(self):
+        r = self.asignar(**{"2002": "AT-00001", "3003": "at-00003"})          # minúsculas: se normaliza
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(dict(self.DN.objects.values_list("persona", "destino")),
+                         {"2002": "AT-00001", "3003": "AT-00003"})
+        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "pendiente")
+        r = self.subir()
+        self.assertTrue(r.json()["success"], r.content)
+        qs = Cuenta5Presupuestado.objects.filter(origen_area="nomina")
+        destino = lambda ced: set(qs.filter(mcnvincula=ced).values_list("mcndestino", flat=True))  # noqa: E731
+        self.assertEqual(destino("2002"), {"AT-00001"})
+        self.assertEqual(destino("3003"), {"AT-00003"})
+        self.assertEqual(destino("1001"), {None})                              # 020202: sin destino
+        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "subido")
+        # Cambiar un destino deja lo subido desactualizado
+        self.asignar(**{"2002": "AT-00002", "3003": "AT-00003"})
+        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "desactualizado")
+
+    def test_el_consolidado_los_ubica_por_destino(self):
+        self.asignar(**{"2002": "AT-00001", "3003": "AT-00003"})               # propia -> 6, convenio -> 7
+        self.subir()
+        resultado = views.calcular_movimientos("presupuestado", "total")
+        self.assertTrue(resultado["success"], resultado)
+        filas = {c: sum(r["meses"].values()) for c, r in resultado["data"].items()}
+        total_persona = sum(1000 * i for i in range(1, 13))
+        self.assertEqual(filas.get("6"), 2 * total_persona)                   # LUIS: sueldo + prima
+        self.assertEqual(filas.get("7"), total_persona)                       # EVA
+
+    def test_pantalla_de_ajustes(self):
+        r = self.client.get(reverse("ajustes_destinos_nomina"))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "LUIS TECNICO")
+        self.assertContains(r, "EVA ZOOTECNISTA")
+        self.assertNotContains(r, "ANA PEREZ")                                # no es 020301
+        self.assertContains(r, "2 de 2 personas sin destino")
+        self.assertContains(r, 'value="AT-00001"')
+        # Destino que no está en la lista: no se guarda nada
+        r = self.asignar(**{"2002": "XX-1", "3003": "AT-00003"})
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "no está en la lista")
+        self.assertFalse(self.DN.objects.exists())
+        # Solo el aprobador
+        self.client.force_login(User.objects.create_user("OTRO"))
+        self.assertEqual(self.client.get(reverse("ajustes_destinos_nomina")).status_code, 403)
+
+    def test_tarjeta_muestra_enlace_a_ajustes(self):
+        self.client.force_login(User.objects.create_user("admin"))
+        r = self.client.get(reverse("dashboardPresupuesto"))
+        tarjeta = {t["clave"]: t for t in r.context["tarjetas"]}["nomina"]
+        self.assertEqual(tarjeta["cuenta5"]["texto"], "Faltan destinos")
+        self.assertContains(r, reverse("ajustes_destinos_nomina"))
+
+
 class MigracionNominaVerticalTests(TransactionTestCase):
     antes = [("presupuestoApp", "0033_plazo_edicion_area")]
     despues = [("presupuestoApp", "0034_presupuesto_nomina_vertical")]

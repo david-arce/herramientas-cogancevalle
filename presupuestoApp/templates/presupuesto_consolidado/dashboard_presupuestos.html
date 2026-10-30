@@ -17,17 +17,22 @@
         <div class="c5-panel">
             <div class="c5-estado" aria-live="polite">
                 <span class="c5-badge c5-badge--{{ t.cuenta5.estado }}">
-                    <span class="material-icons" aria-hidden="true">{% if t.cuenta5.estado == 'subido' %}check_circle{% elif t.cuenta5.estado == 'pendiente' %}schedule{% elif t.cuenta5.estado == 'desactualizado' %}sync_problem{% elif t.cuenta5.estado == 'sin_confirmar' %}hourglass_empty{% else %}remove_circle_outline{% endif %}</span>
+                    <span class="material-icons" aria-hidden="true">{% if t.cuenta5.estado == 'subido' %}check_circle{% elif t.cuenta5.estado == 'pendiente' %}schedule{% elif t.cuenta5.estado == 'desactualizado' %}sync_problem{% elif t.cuenta5.estado == 'sin_confirmar' %}hourglass_empty{% elif t.cuenta5.estado == 'sin_destinos' %}error_outline{% else %}remove_circle_outline{% endif %}</span>
                     <span class="c5-texto">{{ t.cuenta5.texto }}</span>
                 </span>
                 <small class="c5-detalle">{{ t.cuenta5.detalle }}</small>
+                {% if t.url_destinos %}
+                <a class="c5-link" href="{{ t.url_destinos }}" {% if t.cuenta5.estado != 'sin_destinos' %}hidden{% endif %}>
+                    <span class="material-icons" aria-hidden="true">call_split</span> Asignar destinos en Ajustes
+                </a>
+                {% endif %}
             </div>
             <button type="button" class="c5-btn"
                     data-url="{{ t.url_subir }}"
                     data-titulo="{{ t.titulo }}"
                     data-descripcion="{{ t.cuenta5.descripcion }}"
                     data-estado="{{ t.cuenta5.estado }}"
-                    {% if t.cuenta5.estado == 'sin_aprobar' or t.cuenta5.estado == 'sin_datos' or t.cuenta5.estado == 'sin_confirmar' %}disabled title="{{ t.cuenta5.texto }}"{% endif %}>
+                    {% if t.cuenta5.estado == 'sin_aprobar' or t.cuenta5.estado == 'sin_datos' or t.cuenta5.estado == 'sin_confirmar' or t.cuenta5.estado == 'sin_destinos' %}disabled title="{{ t.cuenta5.texto }}"{% endif %}>
                 <span class="material-icons" aria-hidden="true">cloud_upload</span>
                 <span class="c5-btn-texto">{% if t.cuenta5.estado == 'subido' or t.cuenta5.estado == 'desactualizado' %}Volver a subir presupuesto{% else %}Subir presupuesto{% endif %}</span>
             </button>
@@ -60,8 +65,9 @@
 (() => {
     const ICONOS = { subido: "check_circle", pendiente: "schedule",
                      desactualizado: "sync_problem", sin_aprobar: "remove_circle_outline",
-                     sin_datos: "remove_circle_outline", sin_confirmar: "hourglass_empty" };
-    const SIN_BOTON = ["sin_aprobar", "sin_datos", "sin_confirmar"];
+                     sin_datos: "remove_circle_outline", sin_confirmar: "hourglass_empty",
+                     sin_destinos: "error_outline" };
+    const SIN_BOTON = ["sin_aprobar", "sin_datos", "sin_confirmar", "sin_destinos"];
     const dialogo = document.getElementById("dlgCuenta5");
     const titulo = document.getElementById("dlgCuenta5Titulo");
     const texto = document.getElementById("dlgCuenta5Texto");
@@ -96,6 +102,8 @@
         badge.querySelector(".material-icons").textContent = ICONOS[e.estado] || "info";
         badge.querySelector(".c5-texto").textContent = e.texto;
         tarjeta.querySelector(".c5-detalle").textContent = e.detalle;
+        const enlace = tarjeta.querySelector(".c5-link");
+        if (enlace) enlace.hidden = e.estado !== "sin_destinos";
         const subir = tarjeta.querySelector(".c5-btn:not(.c5-btn--peligro)");
         subir.dataset.estado = e.estado;
         subir.dataset.descripcion = e.descripcion || "";

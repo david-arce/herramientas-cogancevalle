@@ -159,7 +159,7 @@
         </div>
         {% endwith %}
         {% endwith %}
-        {% with ajustes_active="|ajustes_orden_cuentas|ajustes_cuentas_contables|ajustes_plazos_edicion|ajustes_asignaciones|ajustes_agrupacion_cuentas|ajustes_filas_calculadas|" %}
+        {% with ajustes_active="|ajustes_orden_cuentas|ajustes_cuentas_contables|ajustes_plazos_edicion|ajustes_asignaciones|ajustes_agrupacion_cuentas|ajustes_filas_calculadas|ajustes_destinos_nomina|" %}
         {% with is_open_a="|"|add:request.resolver_match.url_name|add:"|" %}
         <div class="nav-group {% if is_open_a in ajustes_active %}open{% endif %}" id="grupoAjustes">
           <button class="nav-group-toggle" aria-expanded="false" aria-controls="ajustesMenu" id="ajustesToggle">
@@ -198,6 +198,11 @@
               {% if request.resolver_match.url_name == 'ajustes_asignaciones' %}active{% endif %}">
               <span class="material-icons nav-icon">manage_accounts</span>
               <span class="nav-text">Asignación de presupuestos</span>
+            </a>
+            <a href="{% url 'ajustes_destinos_nomina' %}" class="nav-link nav-child
+              {% if request.resolver_match.url_name == 'ajustes_destinos_nomina' %}active{% endif %}">
+              <span class="material-icons nav-icon">call_split</span>
+              <span class="nav-text">Destinos de nómina</span>
             </a>
           </div>
         </div>
