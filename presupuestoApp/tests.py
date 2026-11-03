@@ -466,8 +466,9 @@ class CargarPlantillaTests(TestCase):
         self.assertEqual(PresupuestoArea.objects.count(), 12)
 
 
-class MigracionDestinosConPorcentajeTests(TransactionTestCase):
-    """0053: las asignaciones que ya existían (un destino) quedan con 100 %."""
+class MigracionDestinosPorAreaTests(TransactionTestCase):
+    """0054: los destinos pasan a ser por área. Se conservan los inequívocos
+    (un destino al 100 % y una sola área en 020301); los repartos a mano se quitan."""
 
     def migrar(self, destino):
         executor = MigrationExecutor(connection)
@@ -478,12 +479,20 @@ class MigracionDestinosConPorcentajeTests(TransactionTestCase):
     def tearDown(self):
         self.migrar(MigrationExecutor(connection).loader.graph.leaf_nodes())
 
-    def test_existentes_quedan_al_100(self):
-        apps = self.migrar([("presupuestoApp", "0052_destino_nomina")])
-        apps.get_model("presupuestoApp", "DestinoNomina").objects.create(persona="2002", destino="AT-00001")
+    def test_pasa_a_areas(self):
         apps = self.migrar([("presupuestoApp", "0053_destino_nomina_porcentaje")])
-        fila = apps.get_model("presupuestoApp", "DestinoNomina").objects.get()
-        self.assertEqual((fila.persona, fila.destino, fila.porcentaje), ("2002", "AT-00001", 100))
+        Mes = apps.get_model("presupuestoApp", "PresupuestoNominaMes")
+        D = apps.get_model("presupuestoApp", "DestinoNomina")
+        comun = dict(tipo="sueldos", nombre="X", cuenta="510506", linea=1, fecha=datetime.date(ANIO, 1, 1), valor=10)
+        Mes.objects.create(cedula="2002", area="Asistencia técnica propia", codcosto="020301", **comun)
+        Mes.objects.create(cedula="3003", area="ASISTENCIA TECNICA PROPIA", codcosto="020301", **{**comun, "linea": 2})
+        D.objects.create(persona="2002", destino="AT-00001", porcentaje=100)    # inequívoco: se conserva
+        D.objects.create(persona="3003", destino="AT-00001", porcentaje=60)     # reparto a mano: se quita
+        D.objects.create(persona="3003", destino="AT-00003", porcentaje=40)
+        apps = self.migrar([("presupuestoApp", "0054_destino_nomina_por_area")])
+        D = apps.get_model("presupuestoApp", "DestinoNomina")
+        self.assertEqual(list(D.objects.values_list("persona", "area", "destino")),
+                         [("2002", "ASISTENCIA TECNICA PROPIA", "AT-00001")])
 
 
 class MigracionSegmentosComoExcelTests(TransactionTestCase):
@@ -1023,7 +1032,10 @@ class Cuenta5NominaTests(TestCase):
 
 
 class DestinosNominaTests(TestCase):
-    """Personas con centro de costo 020301: destino obligatorio antes de subir la nómina."""
+    """Nómina con centro de costo 020301: un destino por área de la persona (el
+    reparto entre áreas sale de la distribución de nómina) antes de subirla."""
+
+    PROPIA, CONVENIO = "ASISTENCIA TECNICA PROPIA", "ASISTENCIA TECNICA CONVENIO"
 
     @classmethod
     def setUpTestData(cls):
@@ -1035,16 +1047,43 @@ class DestinosNominaTests(TestCase):
         self.client.force_login(self.aprobador)
         confirmar_nomina(True)
         linea_nomina(codcosto="020202").save()                                      # no necesita destino
-        linea_nomina(cedula="2002", nombre="LUIS TECNICO", cargo="TECNICO", codcosto="020301").save()
-        linea_nomina(cedula="2002", nombre="LUIS TECNICO", concepto="PRIMA", codcosto="020301").save()
-        linea_nomina(cedula="3003", nombre="EVA ZOOTECNISTA", codcosto="20301").save()   # sin el cero
+        # LUIS: técnico sin distribución, todo en AT propia (sueldo + prima)
+        linea_nomina(cedula="2002", nombre="LUIS TECNICO", cargo="TECNICO", area=self.PROPIA, codcosto="020301").save()
+        linea_nomina(cedula="2002", nombre="LUIS TECNICO", concepto="PRIMA", area=self.PROPIA, codcosto="020301").save()
+        # ARCE: repartido por la distribución de nómina: 90 % ventas, 5 % AT propia, 5 % AT convenio
+        for area, codcosto, factor in (("VENTAS GASTOS DE PERSONAL", "020202", .9),
+                                       (self.PROPIA, "020301", .05), (self.CONVENIO, "20301", .05)):
+            linea_nomina(cedula="3003", nombre="ARCE FRANCO", area=area, codcosto=codcosto,
+                         **{m: 1000 * i * factor for i, m in enumerate(MESES_N, 1)}).save()
+        # Se inserta con SQL: la migración 0048 crea la columna "activa" pero el modelo no la tiene.
+        from django.db import connection as conexion
+        with conexion.cursor() as cur:
+            columnas = {c.name for c in conexion.introspection.get_table_description(cur, "distribucion_nomina")}
+            extra = ", activa" if "activa" in columnas else ""
+            for area, pct in (("VENTAS GASTOS DE PERSONAL", 90), (self.PROPIA, 5), (self.CONVENIO, 5)):
+                cur.execute(f"INSERT INTO distribucion_nomina (cedula, centro, area, porcentaje, actualizado, "
+                            f"actualizado_por{extra}) VALUES (%s, %s, %s, %s, NOW(), ''{', TRUE' if extra else ''})",
+                            ["3003", "ALMACEN TULUA", area, pct])
 
     def subir(self):
         return self.client.post(reverse("subir_cuenta5_nomina"))
 
-    def asignar(self, **destinos):
-        datos = {f"destino::{k}": v for k, v in destinos.items()}
+    def asignar(self, *asignaciones):
+        """asignaciones: (persona, área, destino)."""
+        datos = {f"destino::{p}||{a}": d for p, a, d in asignaciones}
         return self.client.post(reverse("ajustes_destinos_nomina"), datos)
+
+    def asignar_todo(self):
+        return self.asignar(("2002", self.PROPIA, "AT-00001"), ("3003", self.PROPIA, "AT-00002"),
+                            ("3003", self.CONVENIO, "at-00003"))                 # minúsculas: se normaliza
+
+    def test_partes_salen_de_la_distribucion(self):
+        from .destinos_nomina import personas_020301
+        personas = {p["persona"]: p for p in personas_020301()}
+        self.assertEqual(set(personas), {"2002", "3003"})                       # 1001 es 020202
+        self.assertEqual([(x["area"], x["porcentaje"]) for x in personas["2002"]["partes"]], [(self.PROPIA, None)])
+        self.assertEqual([(x["area"], x["porcentaje"]) for x in personas["3003"]["partes"]],
+                         [(self.CONVENIO, 5), (self.PROPIA, 5)])                # ventas (020202) no aparece
 
     def test_sin_destino_bloquea_la_subida(self):
         estado = vpa.estado_cuenta5_nomina()
@@ -1053,101 +1092,55 @@ class DestinosNominaTests(TestCase):
         self.assertEqual(r.status_code, 400)
         self.assertIn("2 persona(s) con centro de costo 020301 sin destino", r.json()["msg"])
         self.assertFalse(Cuenta5Presupuestado.objects.exists())
-        # Con una sola asignada sigue bloqueado
-        self.asignar(**{"2002": "AT-00001", "3003": ""})
+        # ARCE con solo una de sus dos áreas: sigue bloqueado
+        self.asignar(("2002", self.PROPIA, "AT-00001"), ("3003", self.PROPIA, "AT-00002"))
+        self.assertEqual(vpa.estado_cuenta5_nomina()["faltan_destinos"], 1)
         self.assertEqual(self.subir().status_code, 400)
 
-    def test_con_destinos_sube_y_los_pone_en_mcndestino(self):
-        r = self.asignar(**{"2002": "AT-00001", "3003": "at-00003"})          # minúsculas: se normaliza
-        self.assertEqual(r.status_code, 302)
-        self.assertEqual(dict(self.DN.objects.values_list("persona", "destino")),
-                         {"2002": "AT-00001", "3003": "AT-00003"})
+    def test_cada_area_sube_con_su_destino(self):
+        self.assertEqual(self.asignar_todo().status_code, 302)
+        self.assertEqual(sorted(self.DN.objects.values_list("persona", "area", "destino")), [
+            ("2002", self.PROPIA, "AT-00001"), ("3003", self.CONVENIO, "AT-00003"), ("3003", self.PROPIA, "AT-00002")])
         self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "pendiente")
-        r = self.subir()
-        self.assertTrue(r.json()["success"], r.content)
+        self.assertTrue(self.subir().json()["success"])
         qs = Cuenta5Presupuestado.objects.filter(origen_area="nomina")
-        destino = lambda ced: set(qs.filter(mcnvincula=ced).values_list("mcndestino", flat=True))  # noqa: E731
-        self.assertEqual(destino("2002"), {"AT-00001"})
-        self.assertEqual(destino("3003"), {"AT-00003"})
-        self.assertEqual(destino("1001"), {None})                              # 020202: sin destino
+        destinos = lambda **f: set(qs.filter(**f).values_list("mcndestino", flat=True))  # noqa: E731
+        self.assertEqual(destinos(mcnvincula="2002"), {"AT-00001"})
+        self.assertEqual(destinos(mcnvincula="3003", mcnccosto="020301"), {"AT-00002"})
+        self.assertEqual(destinos(mcnvincula="3003", mcnccosto="20301"), {"AT-00003"})
+        self.assertEqual(destinos(mcnvincula="3003", mcnccosto="020202"), {None})     # su parte de ventas
+        self.assertEqual(destinos(mcnvincula="1001"), {None})
         self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "subido")
         # Cambiar un destino deja lo subido desactualizado
-        self.asignar(**{"2002": "AT-00002", "3003": "AT-00003"})
+        self.asignar(("3003", self.CONVENIO, "AT-00004"))
+        self.assertEqual(self.DN.objects.get(persona="3003", area=self.CONVENIO).destino, "AT-00004")
         self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "desactualizado")
 
     def test_el_consolidado_los_ubica_por_destino(self):
-        self.asignar(**{"2002": "AT-00001", "3003": "AT-00003"})               # propia -> 6, convenio -> 7
+        self.asignar_todo()                                    # AT-00001/02 propia -> 6, AT-00003 convenio -> 7
         self.subir()
-        resultado = views.calcular_movimientos("presupuestado", "total")
-        self.assertTrue(resultado["success"], resultado)
-        filas = {c: sum(r["meses"].values()) for c, r in resultado["data"].items()}
-        total_persona = sum(1000 * i for i in range(1, 13))
-        self.assertEqual(filas.get("6"), 2 * total_persona)                   # LUIS: sueldo + prima
-        self.assertEqual(filas.get("7"), total_persona)                       # EVA
+        datos = views.calcular_movimientos("presupuestado", "total")["data"]
+        total = sum(1000 * i for i in range(1, 13))
+        self.assertAlmostEqual(sum(datos["6"]["meses"].values()), 2 * total + total * .05, delta=12)
+        self.assertAlmostEqual(sum(datos["7"]["meses"].values()), total * .05, delta=12)
 
     def test_pantalla_de_ajustes(self):
         r = self.client.get(reverse("ajustes_destinos_nomina"))
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, "LUIS TECNICO")
-        self.assertContains(r, "EVA ZOOTECNISTA")
+        self.assertContains(r, "ARCE FRANCO")
         self.assertNotContains(r, "ANA PEREZ")                                # no es 020301
-        self.assertContains(r, "2 de 2 personas sin destino o con reparto incompleto")
+        self.assertContains(r, "2 de 2 personas con áreas sin destino")
+        self.assertContains(r, f'name="destino::3003||{self.CONVENIO}"')
         self.assertContains(r, 'value="AT-00001"')
         # Destino que no está en la lista: no se guarda nada
-        r = self.asignar(**{"2002": "XX-1", "3003": "AT-00003"})
+        r = self.asignar(("2002", self.PROPIA, "XX-1"), ("3003", self.PROPIA, "AT-00003"))
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, "no está en la lista")
         self.assertFalse(self.DN.objects.exists())
         # Solo el aprobador
         self.client.force_login(User.objects.create_user("OTRO"))
         self.assertEqual(self.client.get(reverse("ajustes_destinos_nomina")).status_code, 403)
-
-    def repartir_en(self, persona, *pares):
-        """Envía el formulario con varios destinos para `persona` (y deja a los demás como están)."""
-        datos = {f"destino::{persona}": [d for d, _ in pares], f"porcentaje::{persona}": [p for _, p in pares]}
-        for otra, destino in (("2002", "AT-00001"), ("3003", "AT-00003")):
-            if otra != persona:
-                datos.setdefault(f"destino::{otra}", [destino])
-        return self.client.post(reverse("ajustes_destinos_nomina"), datos)
-
-    def test_repartir_no_pierde_pesos(self):
-        from .destinos_nomina import repartir
-        self.assertEqual(repartir(1000, [("A", 60), ("B", 40)]), [("A", 600), ("B", 400)])
-        self.assertEqual(repartir(100, [("A", 33.33), ("B", 33.33), ("C", 33.34)]), [("A", 33), ("B", 33), ("C", 34)])
-        self.assertEqual(sum(v for _, v in repartir(-1001, [("A", 50), ("B", 50)])), -1001)
-        for valor in (1, 7, 99, 12345, 98765431):
-            self.assertEqual(sum(v for _, v in repartir(valor, [("A", 12.5), ("B", 37.5), ("C", 50)])), valor)
-
-    def test_varios_destinos_reparten_cada_registro(self):
-        r = self.repartir_en("2002", ("AT-00001", "60"), ("AT-00003", "40"))
-        self.assertEqual(r.status_code, 302, r.content.decode()[:500])
-        self.assertEqual(sorted(self.DN.objects.filter(persona="2002").values_list("destino", "porcentaje")),
-                         [("AT-00001", 60.0), ("AT-00003", 40.0)])
-        self.assertTrue(self.subir().json()["success"])
-        qs = Cuenta5Presupuestado.objects.filter(origen_area="nomina", mcnvincula="2002")
-        por_destino = {d: qs.filter(mcndestino=d).aggregate(t=Sum("mcnvaldebi"))["t"] for d in ("AT-00001", "AT-00003")}
-        total_luis = 2 * sum(1000 * i for i in range(1, 13))                  # sueldo + prima
-        self.assertEqual(por_destino, {"AT-00001": total_luis * 0.6, "AT-00003": total_luis * 0.4})
-        self.assertEqual(qs.count(), 2 * 24)                                   # 24 registros x 2 destinos
-        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "subido")      # cuenta los registros extra
-        # En el consolidado: 60 % a la fila 6 (propia) y 40 % a la 7 (convenio, + EVA)
-        datos = views.calcular_movimientos("presupuestado", "total")["data"]
-        total_persona = sum(1000 * i for i in range(1, 13))
-        self.assertEqual(sum(datos["6"]["meses"].values()), total_luis * 0.6)
-        self.assertEqual(sum(datos["7"]["meses"].values()), total_luis * 0.4 + total_persona)
-
-    def test_reparto_que_no_suma_100_no_se_guarda_y_bloquea(self):
-        r = self.repartir_en("2002", ("AT-00001", "60"), ("AT-00003", "30"))
-        self.assertEqual(r.status_code, 200)
-        self.assertContains(r, "suman 90 %, deben sumar 100 %")
-        self.assertFalse(self.DN.objects.exists())                              # no se guardó nada
-        r = self.repartir_en("2002", ("AT-00001", "60"), ("AT-00001", "40"))
-        self.assertContains(r, "AT-00001 está repetido")
-        # Un reparto incompleto guardado (p. ej. por un cambio manual) también bloquea la subida
-        self.DN.objects.create(persona="2002", destino="AT-00001", porcentaje=50)
-        self.DN.objects.create(persona="3003", destino="AT-00003", porcentaje=100)
-        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "sin_destinos")
-        self.assertIn("no suma 100 %", self.subir().json()["msg"])
 
     def test_tarjeta_muestra_enlace_a_ajustes(self):
         self.client.force_login(User.objects.create_user("admin"))
