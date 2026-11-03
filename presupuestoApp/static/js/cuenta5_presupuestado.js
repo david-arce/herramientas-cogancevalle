@@ -92,7 +92,8 @@ const COLUMNS = [
 ];
 
 // Columnas que tienen filtro Excel (deben coincidir con data-filter en el HTML)
-const FILTER_COLS = ["mcncuenta", "mcnfecha", "mcnccosto", "mcndestino", "mcnzona", "ctanombre", "responsable"];
+const FILTER_COLS = ["mcncuenta", "mcnfecha", "mcnvincula", "vinnombre", "mcnccosto", "mcndestino",
+                     "mcnzona", "cconombre", "ctanombre", "responsable"];
 
 // ─── Estado global ────────────────────────────────────────────
 let allRows            = [];  // todos los registros cargados del servidor
@@ -143,6 +144,7 @@ function loadData() {
 // ─── Alimentar valores únicos en el módulo C5Filters ──────────
 function feedFilterValues() {
   if (!window.C5Filters) return;
+  if (C5Filters.setSource) C5Filters.setSource(valoresEnCascada);   // opciones en cascada al abrir
   FILTER_COLS.forEach(col => {
     const set = new Set();
     allRows.forEach(row => set.add(getFilterValue(row, col)));
@@ -157,24 +159,47 @@ function feedFilterValues() {
 }
 
 // ─── Filtrar + ordenar + renderizar ───────────────────────────
+/** ¿La fila pasa la búsqueda y los filtros? `excluir` = columna cuyo filtro no se aplica. */
+function pasaFiltros(row, q, filtros, excluir = null) {
+  if (q) {
+    const matchSearch = COLUMNS.some(col => {
+      const v = row[col.key];
+      return v !== null && v !== undefined && String(v).toLowerCase().includes(q);
+    });
+    if (!matchSearch) return false;
+  }
+  for (const [col, allowed] of Object.entries(filtros)) {
+    if (col === excluir || !allowed || allowed.size === 0) continue;
+    if (!allowed.has(getFilterValue(row, col))) return false;
+  }
+  return true;
+}
+
+function filtrosActivos() {
+  const params = window.C5Filters ? C5Filters.getParams() : {};
+  return Object.fromEntries(Object.entries(params).map(([c, vals]) => [c, new Set(vals)]));
+}
+
+/** Valores de `col` que existen en las filas que pasan los DEMÁS filtros y la
+ *  búsqueda (como Excel: el filtro de una columna no limita sus propias opciones). */
+function valoresEnCascada(col) {
+  const q = searchQuery.trim().toLowerCase();
+  const filtros = filtrosActivos();
+  const set = new Set();
+  allRows.forEach(row => { if (pasaFiltros(row, q, filtros, col)) set.add(getFilterValue(row, col)); });
+  const values = [...set];
+  let labels = null;
+  if (col === "mcnfecha") {
+    labels = {};
+    values.forEach(v => { labels[v] = monthLabel(v); });
+  }
+  return { values, labels };
+}
+
 function applyFilterAndRender() {
   const q = searchQuery.trim().toLowerCase();
-  const excelFilters = window.C5Filters ? C5Filters.getParams() : {};
-
-  filteredRows = allRows.filter(row => {
-    if (q) {
-      const matchSearch = COLUMNS.some(col => {
-        const v = row[col.key];
-        return v !== null && v !== undefined && String(v).toLowerCase().includes(q);
-      });
-      if (!matchSearch) return false;
-    }
-    for (const [col, allowed] of Object.entries(excelFilters)) {
-      if (!allowed || allowed.length === 0) continue;
-      if (!allowed.includes(getFilterValue(row, col))) return false;
-    }
-    return true;
-  });
+  const filtros = filtrosActivos();
+  filteredRows = allRows.filter(row => pasaFiltros(row, q, filtros));
 
   currentPage = 1;
   renderTable();

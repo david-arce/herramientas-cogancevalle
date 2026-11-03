@@ -270,12 +270,24 @@
       renderList(state.activeCol);
     });
 
+    // Fuente de valores en cascada (como Excel): la tabla la registra con
+    // C5Filters.setSource(fn); fn(col) devuelve los valores de `col` que existen
+    // en las filas que pasan los DEMÁS filtros y la búsqueda.
+    let fuente = null;
+
     function openDropdown(col, iconEl) {
       state.activeCol = col;
       state.query = '';
       searchInput.value = '';
-      // Selección inicial = filtro actual, o todo si no hay filtro
-      const base = state.filters[col] ? [...state.filters[col]] : (state.values[col] || []).map(String);
+      if (fuente) {
+        const r = fuente(col) || {};
+        state.values[col] = [...new Set((r.values || []).map(String))]
+          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        state.labels[col] = r.labels || {};
+      }
+      // Selección inicial = filtro actual (solo lo que existe ahora), o todo si no hay filtro
+      const opciones = (state.values[col] || []).map(String);
+      const base = state.filters[col] ? opciones.filter(v => state.filters[col].has(v)) : opciones;
       state.tempSelection = new Set(base);
 
       renderList(col);
@@ -383,6 +395,7 @@
         COLS.forEach(k => { state.filters[k] = null; });
         updateIcons(); updateCounter();
       },
+      setSource(fn) { fuente = fn; },
       getActiveCount() { return Object.values(state.filters).filter(Boolean).length; },
     };
   })();

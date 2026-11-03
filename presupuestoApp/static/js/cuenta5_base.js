@@ -143,6 +143,7 @@ function loadData() {
 // ─── Alimentar valores únicos en el módulo C5Filters ──────────
 function feedFilterValues() {
   if (!window.C5Filters) return;
+  if (C5Filters.setSource) C5Filters.setSource(valoresEnCascada);   // opciones en cascada al abrir
 
   FILTER_COLS.forEach(col => {
     // Recoger todos los valores únicos no nulos de esa columna
@@ -161,32 +162,51 @@ function feedFilterValues() {
 }
 
 // ─── Filtrar + ordenar + renderizar ───────────────────────────
+/** ¿La fila pasa la búsqueda y los filtros? `excluir` = columna cuyo filtro no se aplica. */
+function pasaFiltros(row, q, filtros, excluir = null) {
+  if (q) {
+    const matchSearch = COLUMNS.some(col => {
+      const v = row[col.key];
+      return v !== null && v !== undefined && String(v).toLowerCase().includes(q);
+    });
+    if (!matchSearch) return false;
+  }
+  for (const [col, allowed] of Object.entries(filtros)) {
+    if (col === excluir || !allowed || allowed.size === 0) continue;
+    if (!allowed.has(getFilterValue(row, col))) return false;
+  }
+  return true;
+}
+
+function filtrosActivos() {
+  const params = window.C5Filters ? C5Filters.getParams() : {};
+  return Object.fromEntries(Object.entries(params).map(([c, vals]) => [c, new Set(vals)]));
+}
+
+/** Valores de `col` que existen en las filas que pasan los DEMÁS filtros y la
+ *  búsqueda (como Excel: el filtro de una columna no limita sus propias opciones). */
+function valoresEnCascada(col) {
+  const q = searchQuery.trim().toLowerCase();
+  const filtros = filtrosActivos();
+  const set = new Set();
+  allRows.forEach(row => {
+    if (row[col] !== null && row[col] !== undefined && pasaFiltros(row, q, filtros, col)) set.add(getFilterValue(row, col));
+  });
+  const values = [...set];
+  let labels = null;
+  if (FILTER_VALUE_GETTERS[col] === monthKey) {
+    labels = {};
+    values.forEach(v => { labels[v] = monthLabel(v); });
+  }
+  return { values, labels };
+}
+
 function applyFilterAndRender() {
   const q = searchQuery.trim().toLowerCase();
 
-  // 1. Obtener filtros Excel activos
-  const excelFilters = window.C5Filters ? C5Filters.getParams() : {};
-  // excelFilters = { mcncuenta: ["510506","510507"], mcnzona: ["NORTE"], ... }
-
-  // 2. Filtrar sobre allRows
-  filteredRows = allRows.filter(row => {
-    // 2a. Búsqueda libre (searchInput)
-    if (q) {
-      const matchSearch = COLUMNS.some(col => {
-        const v = row[col.key];
-        return v !== null && v !== undefined && String(v).toLowerCase().includes(q);
-      });
-      if (!matchSearch) return false;
-    }
-
-    // 2b. Filtros Excel — cada columna activa debe coincidir
-    for (const [col, allowed] of Object.entries(excelFilters)) {
-      if (!allowed || allowed.length === 0) continue;
-      if (!allowed.includes(getFilterValue(row, col))) return false;
-    }
-
-    return true;
-  });
+  // 1-2. Búsqueda libre + filtros Excel (cada columna activa debe coincidir)
+  const filtros = filtrosActivos();
+  filteredRows = allRows.filter(row => pasaFiltros(row, q, filtros));
 
   // 3. Ordenamiento
   if (sortCol !== null) {
