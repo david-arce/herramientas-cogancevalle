@@ -37,7 +37,7 @@ from .models import Cuenta5Presupuestado
 from .models_nomina import ConfiguracionNomina, PresupuestoNominaMes
 from .models_presupuesto import (
     CAMPOS_LINEA, CAMPOS_NUMERICOS, CAMPOS_PRESUPUESTO, MESES, PlazoEdicionArea, PresupuestoArea,
-    anio_elaboracion, codigo_costo_de_centro, fecha_mes, filas_verticales, tiene_asignacion,
+    anio_elaboracion, codigo_costo, fecha_mes, filas_verticales, tiene_asignacion,
 )
 
 AUXILIAR = PresupuestoArea.Etapa.AUXILIAR
@@ -831,7 +831,7 @@ def guardar_presupuesto_consolidado(request, area):
 #   mcncuenta   <- mcncuenta             mcnfecha   <- fecha (serial Excel)
 #   mcnvaldebi  <- valor si es >= 0      mcnvalcred <- -valor si es < 0
 #   mcnzona, zonnombre, ctanombre, mcndetalle  <- iguales
-#   mcnccosto   <- el del centro (zonnombre), ver CODIGO_COSTO_POR_CENTRO
+#   mcnccosto   <- el de la cuenta (CODIGO_COSTO_POR_CUENTA) o el del centro (CODIGO_COSTO_POR_CENTRO)
 #   vinnombre   <- vacío (no tiene relación con presupuesto_area)
 #   comentario, responsable  <- de la línea (responsable vacío = el del área)
 #
@@ -874,8 +874,9 @@ def _movimientos_cuenta5(area, config, ahora):
             mcnfecha=_serial_excel(r["fecha"]),
             mcnvaldebi=float(valor) if valor >= 0 else 0.0,
             mcnvalcred=0.0 if valor >= 0 else float(-valor),
-            # El código de costo sale del centro (no del guardado, que puede ser viejo).
-            mcnccosto=codigo_costo_de_centro(r["zonnombre"], r["mcnccosto"]),
+            # El código de costo sale de la cuenta (5105 → 0101, 5405 → 020201) o
+            # del centro (no del guardado, que puede ser viejo).
+            mcnccosto=codigo_costo(r["zonnombre"], r["mcncuenta"], r["mcnccosto"]),
             mcnzona=r["mcnzona"],
             zonnombre=r["zonnombre"],
             ctanombre=r["ctanombre"],
@@ -1203,6 +1204,11 @@ def subir_cuenta5_nomina(request):
             "faltan_destinos": len(faltan),
             "estado": estado_cuenta5_nomina(),
         }, status=400)
+
+    # Las cuentas se vuelven a asignar antes de subir (aftosa y asistencia técnica
+    # llevan las 54… de ventas según el concepto: nomina_motor.cuenta_de_ventas)
+    from . import nomina_motor
+    nomina_motor.asignar_cuentas()
 
     ahora = timezone.now()
     del_informe = zonas_de_centros_nomina()

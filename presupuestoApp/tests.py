@@ -2134,10 +2134,10 @@ class CodigoCostoPorCentroTests(TestCase):
         PresupuestoArea.objects.bulk_create(registros)
 
     def test_subir_usa_el_codigo_del_centro_aunque_lo_guardado_sea_otro(self):
-        # Caso reportado: Tuluá es 020202 pero la línea quedó guardada con 020201
-        # (cuenta 540531 o plantilla con un código viejo).
+        # Tuluá es 020202 pero la línea quedó guardada con 020201 (plantilla con un
+        # código viejo). (Las cuentas 5405… sí van a 020201: CodigoCostoPorCuentaTests.)
         self.aprobar_tal_cual([
-            fila("tulua", 100, mcncuenta="540531", mcnccosto="020201"),
+            fila("tulua", 100, mcncuenta="541001", mcnccosto="020201"),
             fila("buga", 100, zonnombre="ALMACEN BUGA", mcnccosto="020200"),   # código viejo de Buga
             fila("otro centro", 100, zonnombre="CENTRO NUEVO", mcnccosto="9999"),
         ])
@@ -2161,9 +2161,10 @@ class CodigoCostoPorCentroTests(TestCase):
         bloque = _re.search(r"const OPCIONES_NOMBRE_CENTRO = \{(.*?)\};", js, _re.S).group(1)
         en_js = dict(_re.findall(r'"([^"]+)":\s*\{\s*codigoCosto:\s*"([^"]+)"', bloque))
         self.assertEqual(en_js, CODIGO_COSTO_POR_CENTRO)
-        # Ya no hay cuentas que fuercen otro código de costo.
-        self.assertNotIn('row.mcnccosto = "020201"', js)
-        self.assertNotIn('row.mcnccosto = "0101"', js)
+        # Las cuentas que fijan el código de costo: el mismo mapa que en Python
+        from .models_presupuesto import CODIGO_COSTO_POR_CUENTA
+        bloque = _re.search(r"const CODIGO_COSTO_POR_CUENTA = \{(.*?)\};", js, _re.S).group(1)
+        self.assertEqual(dict(_re.findall(r'"([^"]+)":\s*"([^"]+)"', bloque)), CODIGO_COSTO_POR_CUENTA)
 
 
 class TablaDinamicaResponsableYBusquedaTests(TestCase):
@@ -4512,3 +4513,99 @@ class HuellaEjecutadoTests(TestCase):
              mock.patch.object(views, "_proyeccion_ventas_por_centro", return_value={}):
             with self.assertRaises(ValueError):      # sigue hasta el cálculo (sin proyección), no TypeError
                 views.generar_presupuesto_ventas()
+
+
+class CuentasVentasParaAftosaYAsistenciaTests(TestCase):
+    """Proyecto aftosa y asistencia técnica (convenio y propia) llevan, por concepto,
+    las cuentas 54… de VENTAS GASTOS DE PERSONAL; AT convenio + horas extra → 54050501."""
+
+    def setUp(self):
+        from .models_nomina import ConceptosNomina
+        anio = timezone.localdate().year
+        filas = [  # (nomcosto, código, nombre del concepto, cuenta, veces)
+            ("VENTAS GASTOS DE PERSONAL", "001", "SUELDO BASICO", "54050601", 5),
+            ("VENTAS GASTOS DE PERSONAL", "114", "HORAS EXTRAS DIURNAS", "54051501", 3),
+            ("VENTAS GASTOS DE PERSONAL", "", "CESANTIAS", "54053001", 2),
+            ("VENTAS GASTOS DE PERSONAL", "", "INTERESES SOBRE CESANTIAS", "54053301", 1),
+            ("VENTAS GASTOS DE PERSONAL", "", "APORTE SALUD", "54056901", 1),
+            ("VENTAS GASTOS DE PERSONAL", "001", "SUELDO BASICO", "51050601", 1),   # no es 54: no cuenta
+            ("PROYECTO AFTOSA GASTOS DE PERSONAL", "001", "SUELDO BASICO", "52050601", 4),
+            ("ASISTENCIA TECNICA CONVENIO", "001", "SUELDO BASICO", "73050601", 4),
+            ("ADMINISTRACION", "001", "SUELDO BASICO", "51050601", 4),
+        ]
+        for nomcosto, codigo, nombre, cuenta, veces in filas:
+            for _ in range(veces):
+                ConceptosNomina.objects.create(anio=anio, archivo="prueba", nomcosto=nomcosto,
+                                               concepto=codigo, nombre_con=nombre, cuenta=cuenta)
+        self.ctx = nomina_motor.Contexto()
+
+    def cuenta(self, area, tipo, concepto):
+        return self.ctx.cuenta(area, tipo, concepto)
+
+    def test_cuentas_por_concepto(self):
+        for area in ("PROYECTO AFTOSA GASTOS DE PERSONAL", "ASISTENCIA TECNICA PROPIA", "Asistencia Técnica Convenio"):
+            self.assertEqual(self.cuenta(area, "sueldos", "SUELDO BASICO"), "54050601", area)
+            self.assertEqual(self.cuenta(area, "cesantias", "CESANTÍAS"), "54053001", area)
+            self.assertEqual(self.cuenta(area, "intereses_cesantias", "INTERESES CESANTÍAS"), "54053301", area)
+            self.assertEqual(self.cuenta(area, "seguridad_social", "APORTE SALUD"), "54056901", area)
+            # sin ese concepto en ventas: la cuenta 54 más usada del área de ventas
+            self.assertEqual(self.cuenta(area, "bonos_kyrovet", "BONOS CANASTA KYROVET"), "54050601", area)
+
+    def test_horas_extra(self):
+        self.assertEqual(self.cuenta("ASISTENCIA TECNICA CONVENIO", "horas_extra", "HORAS EXTRA"), "54050501")
+        self.assertEqual(self.cuenta("ASISTENCIA TECNICA CONVENIOS", "horas_extra", "HORAS EXTRA"), "54050501")
+        # las otras áreas: la de horas extra en ventas (códigos 114/110/111)
+        self.assertEqual(self.cuenta("ASISTENCIA TECNICA PROPIA", "horas_extra", "HORAS EXTRA"), "54051501")
+        self.assertEqual(self.cuenta("PROYECTO AFTOSA GASTOS DE PERSONAL", "horas_extra", "HORAS EXTRA"), "54051501")
+
+    def test_las_demas_areas_no_cambian(self):
+        self.assertEqual(self.cuenta("ADMINISTRACION", "sueldos", "SUELDO BASICO"), "51050601")
+        self.assertEqual(self.cuenta("VENTAS GASTOS DE PERSONAL", "horas_extra", "HORAS EXTRA"),
+                         nomina_motor.cuenta_para(nomina_motor.mapa_cuentas(self.ctx.anio), "VENTAS GASTOS DE PERSONAL"))
+
+    def test_asignar_cuentas_a_las_filas_guardadas(self):
+        linea_nomina(area="ASISTENCIA TECNICA CONVENIO", tipo="horas_extra", concepto="HORAS EXTRA", cuenta="x").save()
+        linea_nomina(area="PROYECTO AFTOSA GASTOS DE PERSONAL", tipo="sueldos", concepto="SUELDO BASICO", cuenta="x").save()
+        nomina_motor.asignar_cuentas()
+        self.assertEqual(sorted(PresupuestoNomina.objects.values_list("area", "cuenta")),
+                         [("ASISTENCIA TECNICA CONVENIO", "54050501"), ("PROYECTO AFTOSA GASTOS DE PERSONAL", "54050601")])
+        self.assertEqual(set(PresupuestoNominaMes.objects.values_list("cuenta", flat=True)), {"54050501", "54050601"})
+
+
+
+class CodigoCostoPorCuentaTests(TestCase):
+    """Presupuesto por área: 5105… va al código de costo 0101 y 5405… al 020201,
+    sin importar el centro; las demás cuentas, el código de su centro."""
+
+    def test_regla(self):
+        from .models_presupuesto import codigo_costo
+        self.assertEqual(codigo_costo("ALMACEN TULUA", 51050601), "0101")
+        self.assertEqual(codigo_costo("ADMINISTRACIÓN", "510506"), "0101")
+        self.assertEqual(codigo_costo("ADMINISTRACIÓN", 540506), "020201")
+        self.assertEqual(codigo_costo("ALMACEN CALI", "54050501"), "020201")
+        self.assertEqual(codigo_costo("ALMACEN CALI", 541001), "020202")      # otra 54: el del centro
+        self.assertEqual(codigo_costo("ADMINISTRACIÓN", 511001), "0102")
+        self.assertEqual(codigo_costo("DESCONOCIDO", 511001, "9999"), "9999")
+
+    def test_al_guardar_y_al_subir_a_cuenta5(self):
+        from .models_presupuesto import filas_verticales
+        filas = [{"zonnombre": "ALMACEN TULUA", "mcncuenta": 540506, "mcnccosto": "020202", "enero": 10},
+                 {"zonnombre": "ADMINISTRACIÓN", "mcncuenta": 510506, "mcnccosto": "0102", "enero": 10},
+                 {"zonnombre": "ALMACEN BUGA", "mcncuenta": 541001, "mcnccosto": "", "enero": 10}]
+        regs = filas_verticales(filas, area="logistica", etapa="aprobado", version=1)
+        self.assertEqual({(r.mcncuenta, r.mcnccosto) for r in regs},
+                         {(540506, "020201"), (510506, "0101"), (541001, "020202")})
+        for r in regs:
+            r.save()
+        # Aunque lo guardado tenga un código viejo, al subir manda la cuenta
+        from .models_presupuesto import PresupuestoArea
+        PresupuestoArea.objects.filter(mcncuenta=540506).update(mcnccosto="020202")
+        movs, _, _ = vpa._movimientos_cuenta5("logistica", vpa.SEDE_CONFIG["logistica"], timezone.now())
+        self.assertEqual({(m.mcncuenta, m.mcnccosto) for m in movs},
+                         {("540506", "020201"), ("510506", "0101"), ("541001", "020202")})
+
+    def test_la_grilla_aplica_la_regla(self):
+        import pathlib
+        js = (pathlib.Path(__file__).parent / "static/js/grilla_presupuesto.js").read_text(encoding="utf-8")
+        self.assertEqual(js.count("row.mcnccosto = codigoCostoFila(row)"), 2)    # al cambiar cuenta y centro
+        self.assertIn("mcnccosto: codigoCostoFila({ zonnombre: nombreCen, mcncuenta: codigoCuenta })", js)

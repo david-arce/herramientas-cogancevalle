@@ -400,6 +400,103 @@ def cuenta_para(mapa, area):
     return mapa.get(_clave_area(area), '') if texto(area) else ''
 
 
+# ── Áreas que llevan las cuentas de VENTAS GASTOS DE PERSONAL ─────────────
+# Proyecto aftosa y asistencia técnica (convenio y propia) no usan la cuenta de
+# su NOMCOSTO: cada concepto lleva la cuenta que tiene ese mismo concepto en
+# VENTAS GASTOS DE PERSONAL (las 54…). Se reconocen por el comienzo del nombre.
+AREA_VENTAS_PERSONAL = 'VENTAS GASTOS DE PERSONAL'
+PREFIJO_CUENTAS_VENTAS = '54'
+AREAS_CON_CUENTAS_DE_VENTAS = ('PROYECTO AFTOSA', 'ASISTENCIA TECNICA CONVENIO', 'ASISTENCIA TECNICA PROPIA')
+# Excepciones (área, concepto) → cuenta fija
+CUENTAS_FIJAS = [
+    ('ASISTENCIA TECNICA CONVENIO', 'horas_extra', '54050501'),   # horas extra de AT convenios
+]
+_PALABRAS_VACIAS = {'DE', 'DEL', 'LA', 'LAS', 'LOS', 'EL', 'Y', 'X', 'POR', 'SOBRE', 'A', 'EN'}
+
+
+def usa_cuentas_de_ventas(area):
+    clave = _clave_area(area)
+    return any(clave.startswith(p) for p in AREAS_CON_CUENTAS_DE_VENTAS)
+
+
+def _nombre_concepto(valor):
+    """'Intereses Cesantías.' → 'INTERESES CESANTIAS' (sin tildes ni signos)."""
+    limpio = ''.join(ch if ch.isalnum() else ' ' for ch in _sin_tildes(valor))
+    return ' '.join(limpio.split())
+
+
+def _es_horas_extra(tipo, concepto):
+    return tipo == 'horas_extra' or 'HORAS EXTRA' in _nombre_concepto(concepto)
+
+
+def codigos_de_concepto(tipo):
+    """Códigos de ConceptosNomina con los que se carga el concepto `tipo` (ej. horas extra → 114, 110, 111)."""
+    c = CONCEPTOS.get(tipo)
+    filtro = (c.carga or {}).get('filtro', {}) if c else {}
+    codigos = list(filtro.get('concepto__in') or [])
+    if filtro.get('concepto'):
+        codigos.append(filtro['concepto'])
+    return codigos
+
+
+def mapa_cuentas_ventas(anio=None):
+    """Cuentas 54… de VENTAS GASTOS DE PERSONAL en ConceptosNomina:
+    {'codigo': {código de concepto: cuenta}, 'nombre': {nombre del concepto: cuenta},
+     'conteo': {nombre: filas}, 'area': cuenta 54 más frecuente del área}."""
+    qs = (ConceptosNomina.objects.exclude(cuenta='')
+          .filter(cuenta__startswith=PREFIJO_CUENTAS_VENTAS, nomcosto__icontains='VENTAS'))
+    if anio is not None and qs.filter(anio=anio).exists():
+        qs = qs.filter(anio=anio)
+    por_codigo, por_nombre, del_area = defaultdict(Counter), defaultdict(Counter), Counter()
+    for nomcosto, codigo, nombre, cuenta, n in (qs.values_list('nomcosto', 'concepto', 'nombre_con', 'cuenta')
+                                                .annotate(n=Count('id'))):
+        if _clave_area(nomcosto) != AREA_VENTAS_PERSONAL:
+            continue
+        cuenta = texto(cuenta)
+        del_area[cuenta] += n
+        if texto(codigo):
+            por_codigo[texto(codigo)][cuenta] += n
+        if _nombre_concepto(nombre):
+            por_nombre[_nombre_concepto(nombre)][cuenta] += n
+    elegir = lambda d: {k: c.most_common(1)[0][0] for k, c in d.items()}  # noqa: E731
+    return {'codigo': elegir(por_codigo), 'nombre': elegir(por_nombre),
+            'conteo': {k: sum(c.values()) for k, c in por_nombre.items()},
+            'area': del_area.most_common(1)[0][0] if del_area else ''}
+
+
+def cuenta_de_ventas(mapa, area, tipo, concepto, cuenta_area_ventas=''):
+    """Cuenta 54… para una fila de aftosa / asistencia técnica según su concepto:
+
+      1. excepción fija (AT convenio + horas extra → 54050501)
+      2. el mismo concepto (por nombre) en VENTAS GASTOS DE PERSONAL
+      3. los códigos con que se carga el concepto (ej. horas extra: 114/110/111)
+      4. el nombre más parecido (todas las palabras del concepto en el nombre)
+      5. la cuenta del área VENTAS GASTOS DE PERSONAL
+    """
+    clave = _clave_area(area)
+    for prefijo, slug, cuenta in CUENTAS_FIJAS:
+        if clave.startswith(prefijo) and (tipo == slug or (slug == 'horas_extra' and _es_horas_extra(tipo, concepto))):
+            return cuenta
+    nombre = _nombre_concepto(concepto)
+    if nombre in mapa['nombre']:
+        return mapa['nombre'][nombre]
+    for codigo in codigos_de_concepto(tipo):
+        if codigo in mapa['codigo']:
+            return mapa['codigo'][codigo]
+    palabras = set(nombre.split()) - _PALABRAS_VACIAS
+    if palabras:
+        candidatos = []
+        for otro, cuenta in mapa['nombre'].items():
+            suyas = set(otro.split()) - _PALABRAS_VACIAS
+            if palabras <= suyas:
+                candidatos.append((len(palabras) / len(suyas), mapa['conteo'].get(otro, 0), cuenta))
+        if candidatos:
+            return max(candidatos)[2]
+    if texto(cuenta_area_ventas).startswith(PREFIJO_CUENTAS_VENTAS):
+        return texto(cuenta_area_ventas)
+    return mapa['area']
+
+
 def asignar_cuentas(ctx=None, solo_vacias=False):
     """Pone a cada fila guardada la cuenta y el CODCOSTO de su área (NOMCOSTO).
     Las áreas que no están en ConceptosNomina conservan lo que tenían."""
@@ -408,8 +505,8 @@ def asignar_cuentas(ctx=None, solo_vacias=False):
     if solo_vacias:
         qs = qs.filter(Q(cuenta='') | Q(codcosto=''))
     cambiadas = []
-    for fila in qs.only('id', 'area', 'cuenta', 'codcosto'):
-        cuenta, codcosto = ctx.cuenta(fila.area), ctx.codcosto(fila.area)
+    for fila in qs.only('id', 'area', 'cuenta', 'codcosto', 'tipo', 'concepto'):
+        cuenta, codcosto = ctx.cuenta(fila.area, fila.tipo, fila.concepto), ctx.codcosto(fila.area)
         cambio = False
         if cuenta and cuenta != fila.cuenta:
             fila.cuenta, cambio = cuenta, True
@@ -480,10 +577,21 @@ class Contexto:
         return filas
 
     # ---------------------------------------------------------- cuentas
-    def cuenta(self, area, tipo=None):
-        """Cuenta del área (NOMCOSTO). `tipo` se ignora: la cuenta depende solo del área."""
+    def cuenta(self, area, tipo=None, concepto=None):
+        """Cuenta del área (NOMCOSTO).
+
+        Proyecto aftosa y asistencia técnica (convenio y propia) llevan, según
+        su concepto, la cuenta 54… de VENTAS GASTOS DE PERSONAL (ver
+        cuenta_de_ventas). Las demás áreas: la cuenta de su NOMCOSTO."""
         if not hasattr(self, '_cuentas'):
             self._cuentas = mapa_cuentas(self.anio)
+        if texto(area) and usa_cuentas_de_ventas(area):
+            if not hasattr(self, '_cuentas_ventas'):
+                self._cuentas_ventas = mapa_cuentas_ventas(self.anio)
+            cuenta = cuenta_de_ventas(self._cuentas_ventas, area, tipo, concepto,
+                                      cuenta_para(self._cuentas, AREA_VENTAS_PERSONAL))
+            if cuenta:
+                return cuenta
         return cuenta_para(self._cuentas, area)
 
     def codcosto(self, area):
@@ -700,7 +808,9 @@ def filas_de_conceptos(c, ctx):
             tipo=c.slug, origen=SISTEMA, clave=f'{cedula}#{i}',
             centro_origen=texto(r['nombre_cen']), area_origen=texto(r['nomcosto']),
             cedula=cedula, nombre=nombre,
-            cuenta=ctx.cuenta(r['nomcosto']) or texto(r.get('cuenta')),
+            cuenta=ctx.cuenta(r['nomcosto'], c.slug,
+                              carga.get('concepto') or texto(r.get('nombre_con')) or c.etiqueta.upper())
+                   or texto(r.get('cuenta')),
             codcosto=ctx.codcosto(r['nomcosto']) or texto(r.get('codcosto')),
             cargo=texto(r['nombrecar']), area=texto(r['nomcosto']), centro=texto(r['nombre_cen']),
             concepto=carga.get('concepto') or texto(r.get('nombre_con')) or c.etiqueta.upper(),
@@ -766,7 +876,8 @@ def distribuir_filas(c, filas, reparto_por_cedula, p, usuario='', ctx=None):
                 centro=centro, area=area, centro_origen=centro0, area_origen=area0,
                 base=ref.base or 0, historico=dict(ref.historico or {}), factor=parte,
                 excluir_de=list(ref.excluir_de or []),
-                cuenta=ctx.cuenta(area) or (ref.cuenta if _clave_area(area) == _clave_area(ref.area) else ''),
+                cuenta=ctx.cuenta(area, ref.tipo, ref.concepto)
+                       or (ref.cuenta if _clave_area(area) == _clave_area(ref.area) else ''),
                 codcosto=ctx.codcosto(area) or (ref.codcosto if _clave_area(area) == _clave_area(ref.area) else ''),
                 actualizado_por=usuario or ref.actualizado_por,
             )
@@ -1467,7 +1578,7 @@ def regenerar(ctx, c):
         if clave in bloqueadas:
             continue
         meses = {m: datos.pop(m, 0) for m in MESES}
-        datos.setdefault('cuenta', ctx.cuenta(datos.get('area')))
+        datos.setdefault('cuenta', ctx.cuenta(datos.get('area'), c.slug, datos.get('concepto')))
         datos.setdefault('codcosto', ctx.codcosto(datos.get('area')))
         fila = PresupuestoNomina(tipo=c.slug, origen=SISTEMA, clave=clave, **datos)
         fijar_meses(fila, meses)
@@ -1908,7 +2019,9 @@ def _crear_en_otros(filas, usuario, ctx):
                 tipo=slug, origen=MANUAL, clave='', cedula=fila.cedula, nombre=fila.nombre,
                 centro=fila.centro, area=fila.area, cargo=fila.cargo,
                 concepto=(c.carga or {}).get('concepto') or c.etiqueta.upper(),
-                cuenta=ctx.cuenta(fila.area) or fila.cuenta, codcosto=ctx.codcosto(fila.area) or fila.codcosto,
+                cuenta=ctx.cuenta(fila.area, slug, (c.carga or {}).get('concepto') or c.etiqueta.upper())
+                       or fila.cuenta,
+                codcosto=ctx.codcosto(fila.area) or fila.codcosto,
                 actualizado_por=usuario)
             fijar_meses(nueva, {})
             nuevas.append(nueva)
@@ -2114,7 +2227,7 @@ def guardar(slug, filas_json, usuario='', con_editados=False):
                 fila.excluir_de = excluir
             # la cuenta la define el área (NOMCOSTO)
             misma_area = not nueva and _clave_area(antes['area']) == _clave_area(fila.area)
-            fila.cuenta = ctx.cuenta(fila.area) or (fila.cuenta if misma_area else '')
+            fila.cuenta = ctx.cuenta(fila.area, slug, fila.concepto) or (fila.cuenta if misma_area else '')
             fila.codcosto = ctx.codcosto(fila.area) or (fila.codcosto if misma_area else '')
             if not nueva and (antes['cedula'], antes['nombre']) != (fila.cedula, fila.nombre):
                 identidades.append((antes['cedula'], antes['nombre'], fila))

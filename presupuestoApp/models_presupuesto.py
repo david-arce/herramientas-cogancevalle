@@ -61,7 +61,8 @@ CAMPOS_NUMERICOS = ["mcncuenta", "sede_distribucion", *MESES, "total"]
 
 
 # Código de costo de cada centro ("Nombre asignación del gasto" en la grilla).
-# El centro es la ÚNICA fuente del código de costo: se aplica al guardar y al
+# Salvo las cuentas de CODIGO_COSTO_POR_CUENTA (5105 → 0101, 5405 → 020201),
+# el centro es la fuente del código de costo: se aplica al guardar y al
 # subir a Cuenta 5, así se corrigen filas traídas de la plantilla con códigos
 # viejos. Debe coincidir con OPCIONES_NOMBRE_CENTRO de grilla_presupuesto.js
 # (hay un test que lo verifica).
@@ -76,9 +77,33 @@ CODIGO_COSTO_POR_CENTRO = {
 _CODIGO_COSTO_NORMALIZADO = {k.upper(): v for k, v in CODIGO_COSTO_POR_CENTRO.items()}
 
 
+# Cuentas que SIEMPRE van a un código de costo, sin importar el centro
+# (validación del presupuesto por área). Debe coincidir con
+# CODIGO_COSTO_POR_CUENTA de grilla_presupuesto.js (hay un test que lo verifica).
+CODIGO_COSTO_POR_CUENTA = {
+    "5105": "0101",      # gastos de personal administración
+    "5405": "020201",    # gastos de personal ventas
+}
+
+
 def codigo_costo_de_centro(zonnombre, actual=None):
     """Código de costo que corresponde al centro; si el centro no es conocido, el actual."""
     return _CODIGO_COSTO_NORMALIZADO.get(str(zonnombre or "").strip().upper(), actual)
+
+
+def codigo_costo_de_cuenta(mcncuenta):
+    """Código de costo obligatorio para la cuenta (5105… → 0101, 5405… → 020201) o None."""
+    cuenta = str(mcncuenta if mcncuenta is not None else "").strip()
+    for prefijo, codigo in CODIGO_COSTO_POR_CUENTA.items():
+        if cuenta.startswith(prefijo):
+            return codigo
+    return None
+
+
+def codigo_costo(zonnombre, mcncuenta, actual=None):
+    """Código de costo de una línea: el de su cuenta si la cuenta lo fija
+    (CODIGO_COSTO_POR_CUENTA); si no, el de su centro."""
+    return codigo_costo_de_cuenta(mcncuenta) or codigo_costo_de_centro(zonnombre, actual)
 
 
 def anio_presupuesto():
@@ -215,7 +240,7 @@ def filas_verticales(filas, *, area, etapa, version=None, fecha_version=None, an
     for linea, fila in enumerate(filas, start=1):
         anio_fila = fila.get("anio") or anio_defecto
         comunes = {c: fila.get(c) for c in CAMPOS_LINEA}
-        comunes["mcnccosto"] = codigo_costo_de_centro(comunes["zonnombre"], comunes["mcnccosto"])
+        comunes["mcnccosto"] = codigo_costo(comunes["zonnombre"], comunes["mcncuenta"], comunes["mcnccosto"])
         for mes in MESES:
             registros.append(PresupuestoArea(
                 area=area, etapa=etapa, version=version, fecha_version=fecha_version,

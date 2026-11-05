@@ -57,6 +57,20 @@ const OPCIONES_NOMBRE_CENTRO = {
     "ADMINISTRACIÓN":   { codigoCosto: "0102",   centro: "001" },
     "SEVICIOS TÉCNICOS":{ codigoCosto: "020302", centro: "001" },
 };
+// Cuentas que SIEMPRE van a un código de costo, sin importar el centro
+// (mismo mapa que CODIGO_COSTO_POR_CUENTA en models_presupuesto.py).
+const CODIGO_COSTO_POR_CUENTA = {
+    "5105": "0101",
+    "5405": "020201",
+};
+// Código de costo de una fila: el de su cuenta si la cuenta lo fija; si no, el de su centro.
+function codigoCostoFila(row) {
+    const cuenta = String(row.mcncuenta ?? "").trim();
+    const prefijo = Object.keys(CODIGO_COSTO_POR_CUENTA).find(p => cuenta.startsWith(p));
+    if (prefijo) return CODIGO_COSTO_POR_CUENTA[prefijo];
+    const centro = OPCIONES_NOMBRE_CENTRO[row.zonnombre];
+    return centro ? centro.codigoCosto : (row.mcnccosto || "");
+}
 const EXCLUIR_CUENTAS = ["51","52","5105","5110","54","541001","541003","541006",
     "5410","541019","541027","541033","541095"];
 
@@ -973,7 +987,8 @@ function init(opciones) {
             }
             row.mcncuenta = codigo;
             row.ctanombre = mapaCuentaMayor[codigo] || "";
-            // El código de costo NO depende de la cuenta: siempre sale del centro.
+            // 5105… → 0101 y 5405… → 020201; las demás cuentas, el código del centro
+            row.mcnccosto = codigoCostoFila(row);
             return true;
         }
         if (colKey === "zonnombre") {
@@ -982,7 +997,7 @@ function init(opciones) {
             const clave = Object.keys(OPCIONES_NOMBRE_CENTRO).find(k => k.toUpperCase() === crudo.toUpperCase());
             if (!clave) return false;
             row.zonnombre = clave;
-            row.mcnccosto = OPCIONES_NOMBRE_CENTRO[clave].codigoCosto;
+            row.mcnccosto = codigoCostoFila(row);
             row.mcnzona = OPCIONES_NOMBRE_CENTRO[clave].centro;
             return true;
         }
@@ -2192,7 +2207,7 @@ function init(opciones) {
             const nueva = {
                 mcnzona: centroValido.centro,
                 zonnombre: nombreCen,
-                mcnccosto: centroValido.codigoCosto,
+                mcnccosto: codigoCostoFila({ zonnombre: nombreCen, mcncuenta: codigoCuenta }),
                 responsable: "",
                 mcncuenta: codigoCuenta,
                 ctanombre: cuentaValida,
