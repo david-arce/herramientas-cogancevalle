@@ -4549,60 +4549,107 @@ class HuellaEjecutadoTests(TestCase):
 
 class CuentasVentasParaAftosaYAsistenciaTests(TestCase):
     """Proyecto aftosa y asistencia técnica (convenio y propia) llevan, por concepto,
-    las cuentas 54… de VENTAS GASTOS DE PERSONAL; AT convenio + horas extra → 54050501."""
+    las cuentas 54… de VENTAS GASTOS DE PERSONAL; AT convenio + horas extra → 54050501.
+    No importa el CODCOSTO propio del área (020301, 0101…): nunca toman una 51…."""
+
+    AREAS = ("PROYECTO AFTOSA GASTOS DE PERSONAL", "ASISTENCIA TECNICA PROPIA", "Asistencia Técnica Convenio")
 
     def setUp(self):
         from .models_nomina import ConceptosNomina
         anio = timezone.localdate().year
-        filas = [  # (nomcosto, código, nombre del concepto, cuenta, veces)
-            ("VENTAS GASTOS DE PERSONAL", "001", "SUELDO BASICO", "54050601", 5),
-            ("VENTAS GASTOS DE PERSONAL", "114", "HORAS EXTRAS DIURNAS", "54051501", 3),
-            ("VENTAS GASTOS DE PERSONAL", "", "CESANTIAS", "54053001", 2),
-            ("VENTAS GASTOS DE PERSONAL", "", "INTERESES SOBRE CESANTIAS", "54053301", 1),
-            ("VENTAS GASTOS DE PERSONAL", "", "APORTE SALUD", "54056901", 1),
-            ("VENTAS GASTOS DE PERSONAL", "001", "SUELDO BASICO", "51050601", 1),   # no es 54: no cuenta
-            ("PROYECTO AFTOSA GASTOS DE PERSONAL", "001", "SUELDO BASICO", "52050601", 4),
-            ("ASISTENCIA TECNICA CONVENIO", "001", "SUELDO BASICO", "73050601", 4),
-            ("ADMINISTRACION", "001", "SUELDO BASICO", "51050601", 4),
+        filas = [  # (nomcosto, codcosto, código, nombre del concepto, cuenta, veces)
+            ("VENTAS GASTOS DE PERSONAL", "020201", "001", "SUELDO BASICO", "54050601", 5),
+            ("VENTAS GASTOS DE PERSONAL", "020201", "114", "HORAS EXTRAS DIURNAS", "54051501", 3),
+            ("VENTAS GASTOS DE PERSONAL", "020201", "", "CESANTIAS", "54053001", 2),
+            ("VENTAS GASTOS DE PERSONAL", "020201", "", "AYUDA DE TRANSPORTE", "54059901", 1),
+            ("VENTAS GASTOS DE PERSONAL", "020201", "001", "SUELDO BASICO", "51050601", 1),   # no es 54: no cuenta
+            ("PROYECTO AFTOSA GASTOS DE PERSONAL", "0101", "001", "SUELDO BASICO", "52050601", 4),
+            ("ASISTENCIA TECNICA CONVENIO", "020301", "001", "SUELDO BASICO", "73050601", 4),
+            ("ASISTENCIA TECNICA PROPIA", "020301", "001", "SUELDO BASICO", "73050602", 4),
+            ("ADMINISTRACION", "0101", "001", "SUELDO BASICO", "51050601", 4),
         ]
-        for nomcosto, codigo, nombre, cuenta, veces in filas:
+        for nomcosto, codcosto, codigo, nombre, cuenta, veces in filas:
             for _ in range(veces):
-                ConceptosNomina.objects.create(anio=anio, archivo="prueba", nomcosto=nomcosto,
+                ConceptosNomina.objects.create(anio=anio, archivo="prueba", nomcosto=nomcosto, codcosto=codcosto,
                                                concepto=codigo, nombre_con=nombre, cuenta=cuenta)
         self.ctx = nomina_motor.Contexto()
 
-    def cuenta(self, area, tipo, concepto):
-        return self.ctx.cuenta(area, tipo, concepto)
+    def cuenta(self, area, tipo, concepto, cargo=""):
+        return self.ctx.cuenta(area, tipo, concepto, cargo)
 
-    def test_cuentas_por_concepto(self):
-        for area in ("PROYECTO AFTOSA GASTOS DE PERSONAL", "ASISTENCIA TECNICA PROPIA", "Asistencia Técnica Convenio"):
+    def test_cuentas_por_concepto_iguales_a_ventas(self):
+        """Cada concepto lleva la misma cuenta que tiene en VENTAS GASTOS DE PERSONAL (020201)."""
+        casos = [("sueldos", "SALARIO BASICO", "", "54050301"),
+                 ("cesantias", "CESANTÍAS", "", "54051001"),
+                 ("intereses_cesantias", "INTERESES CESANTÍAS", "", "54051101"),
+                 ("prima", "PRIMA LEGAL", "", "54051201"),
+                 ("vacaciones", "VACACIONES", "", "54051601"),
+                 ("seguridad_social", "APORTE SALUD", "", "540523"),
+                 ("seguridad_social", "APORTE A.R.L", "", "540525"),
+                 ("seguridad_social", "APORTE PENSIÓN", "", "540524"),
+                 ("seguridad_social", "APORTE CAJAS DE COMPENSACIÓN", "", "540526"),
+                 ("auxilio_transporte", "AUXILIO DE TRANSPORTE", "", "54050901"),
+                 ("medios_transporte", "MEDIOS DE TRANSPORTE", "", "54059501"),
+                 ("bonos_kyrovet", "BONOS CANASTA KYROVET", "", "54059505"),
+                 ("comisiones", "COMISIONES", "", "540506"),
+                 ("cesantias", "CESANTÍAS", "APRENDIZ DEL SENA REFORMA", "54051002")]
+        for area in self.AREAS:
+            for tipo, concepto, cargo, esperada in casos:
+                with self.subTest(area=area, concepto=concepto, cargo=cargo):
+                    self.assertEqual(self.cuenta(area, tipo, concepto, cargo), esperada)
+                    self.assertEqual(esperada, nomina_motor.cuenta_por_regla(concepto, "020201", cargo))
+
+    def test_sin_regla_usa_los_datos_de_ventas(self):
+        for area in self.AREAS:
+            # el mismo concepto en ConceptosNomina de ventas (solo cuentas 54)
             self.assertEqual(self.cuenta(area, "sueldos", "SUELDO BASICO"), "54050601", area)
-            self.assertEqual(self.cuenta(area, "cesantias", "CESANTÍAS"), "54053001", area)
-            self.assertEqual(self.cuenta(area, "intereses_cesantias", "INTERESES CESANTÍAS"), "54053301", area)
-            self.assertEqual(self.cuenta(area, "seguridad_social", "APORTE SALUD"), "54056901", area)
-            # sin ese concepto en ventas: la cuenta 54 más usada del área de ventas
-            self.assertEqual(self.cuenta(area, "bonos_kyrovet", "BONOS CANASTA KYROVET"), "54050601", area)
+            self.assertEqual(self.cuenta(area, "ayuda_transporte", "AYUDA DE TRANSPORTE"), "54059901", area)
+            # ni regla ni concepto en ventas: la cuenta 54 más usada del área de ventas
+            self.assertEqual(self.cuenta(area, "otro", "CONCEPTO RARO"), "54050601", area)
 
     def test_horas_extra(self):
-        self.assertEqual(self.cuenta("ASISTENCIA TECNICA CONVENIO", "horas_extra", "HORAS EXTRA"), "54050501")
-        self.assertEqual(self.cuenta("ASISTENCIA TECNICA CONVENIOS", "horas_extra", "HORAS EXTRA"), "54050501")
-        # las otras áreas: la de horas extra en ventas (códigos 114/110/111)
-        self.assertEqual(self.cuenta("ASISTENCIA TECNICA PROPIA", "horas_extra", "HORAS EXTRA"), "54051501")
-        self.assertEqual(self.cuenta("PROYECTO AFTOSA GASTOS DE PERSONAL", "horas_extra", "HORAS EXTRA"), "54051501")
+        for area in ("ASISTENCIA TECNICA CONVENIO", "ASISTENCIA TECNICA CONVENIOS", "Asistencia Técnica Convenios"):
+            self.assertEqual(self.cuenta(area, "horas_extra", "HORAS EXTRA"), "54050501", area)
+            self.assertEqual(self.cuenta(area, "", "HORA EXTRA NOCTURNA 75%"), "54050501", area)
+            self.assertEqual(self.cuenta(area, "", "HORA DOMINICAL DIURNA O FESTIVA 115%"), "54050501", area)
+            # fija para AT convenios, también para el aprendiz de reforma
+            self.assertEqual(self.cuenta(area, "horas_extra", "HORAS EXTRA", "APRENDIZ DEL SENA REFORMA"),
+                             "54050501", area)
+        # las otras áreas: la de horas extra de ventas según el concepto y el cargo
+        for area in ("ASISTENCIA TECNICA PROPIA", "PROYECTO AFTOSA GASTOS DE PERSONAL"):
+            self.assertEqual(self.cuenta(area, "horas_extra", "HORAS EXTRA"), "54050501", area)
+            self.assertEqual(self.cuenta(area, "horas_extra", "HORAS EXTRA", "APRENDIZ DEL SENA REFORMA"),
+                             "54050502", area)
 
     def test_las_demas_areas_no_cambian(self):
         self.assertEqual(self.cuenta("ADMINISTRACION", "sueldos", "SUELDO BASICO"), "51050601")
         self.assertEqual(self.cuenta("VENTAS GASTOS DE PERSONAL", "horas_extra", "HORAS EXTRA"),
                          nomina_motor.cuenta_para(nomina_motor.mapa_cuentas(self.ctx.anio), "VENTAS GASTOS DE PERSONAL"))
 
-    def test_asignar_cuentas_a_las_filas_guardadas(self):
-        linea_nomina(area="ASISTENCIA TECNICA CONVENIO", tipo="horas_extra", concepto="HORAS EXTRA", cuenta="x").save()
-        linea_nomina(area="PROYECTO AFTOSA GASTOS DE PERSONAL", tipo="sueldos", concepto="SUELDO BASICO", cuenta="x").save()
+    def test_asignar_cuentas_ignora_el_codcosto_propio(self):
+        """020301 (AT) daba 510525 para la ARL y 0101 (aftosa) daba 51… en todo: ahora 54… de ventas."""
+        filas = [("ASISTENCIA TECNICA CONVENIO", "horas_extra", "HORAS EXTRA", "ASESOR", "54050501"),
+                 ("ASISTENCIA TECNICA PROPIA", "seguridad_social", "APORTE A.R.L", "ASESOR", "540525"),
+                 ("ASISTENCIA TECNICA PROPIA", "sueldos", "SALARIO BASICO", "ASESOR", "54050301"),
+                 ("PROYECTO AFTOSA GASTOS DE PERSONAL", "sueldos", "SALARIO BASICO", "ASESOR", "54050301"),
+                 ("PROYECTO AFTOSA GASTOS DE PERSONAL", "cesantias", "CESANTÍAS", "ASESOR", "54051001"),
+                 ("PROYECTO AFTOSA GASTOS DE PERSONAL", "seguridad_social", "APORTE SENA", "ASESOR", "54050601"),
+                 ("PROYECTO AFTOSA GASTOS DE PERSONAL", "cesantias", "CESANTÍAS",
+                  "APRENDIZ DEL SENA REFORMA", "54051002"),
+                 ("ADMINISTRACION", "sueldos", "SALARIO BASICO", "ASESOR", "510503")]
+        for i, (area, tipo, concepto, cargo, _) in enumerate(filas):
+            linea_nomina(cedula=str(i), area=area, tipo=tipo, concepto=concepto, cargo=cargo,
+                         cuenta="x", codcosto="").save()
         nomina_motor.asignar_cuentas()
-        self.assertEqual(sorted(PresupuestoNomina.objects.values_list("area", "cuenta")),
-                         [("ASISTENCIA TECNICA CONVENIO", "54050501"), ("PROYECTO AFTOSA GASTOS DE PERSONAL", "54050601")])
-        self.assertEqual(set(PresupuestoNominaMes.objects.values_list("cuenta", flat=True)), {"54050501", "54050601"})
-
+        guardadas = {(f.area, f.concepto, f.cargo): f for f in PresupuestoNomina.objects.all()}
+        for area, _, concepto, cargo, esperada in filas:
+            with self.subTest(area=area, concepto=concepto, cargo=cargo):
+                self.assertEqual(guardadas[(area, concepto, cargo)].cuenta, esperada)
+        # el CODCOSTO de la fila sigue siendo el de su área (020301 pide destino al subir)
+        self.assertEqual(guardadas[("ASISTENCIA TECNICA PROPIA", "APORTE A.R.L", "ASESOR")].codcosto, "020301")
+        self.assertEqual(guardadas[("PROYECTO AFTOSA GASTOS DE PERSONAL", "SALARIO BASICO", "ASESOR")].codcosto, "0101")
+        self.assertTrue(all(c.startswith("54") for c in PresupuestoNominaMes.objects.exclude(
+            area="ADMINISTRACION").values_list("cuenta", flat=True)))
 
 
 class CodigoCostoPorCuentaTests(TestCase):
