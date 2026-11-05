@@ -4607,6 +4607,14 @@ class CuentasVentasParaAftosaYAsistenciaTests(TestCase):
             # ni regla ni concepto en ventas: la cuenta 54 más usada del área de ventas
             self.assertEqual(self.cuenta(area, "otro", "CONCEPTO RARO"), "54050601", area)
 
+    def test_auxilio_tbc_y_kit(self):
+        """Auxilio de movilización TBC y KIT → 54059502 en aftosa y asistencia técnica."""
+        for area in self.AREAS + ("ASISTENCIA TECNICA CONVENIOS",):
+            for concepto in ("AUXILIO DE MOVILIZACIÓN TBC Y KIT DE BRUCELA", "Auxilio de movilizacion TBC y KIT",
+                             "AUXILIO TBC Y KIT", "OTRO NOMBRE DEL INFORME"):
+                with self.subTest(area=area, concepto=concepto):
+                    self.assertEqual(self.cuenta(area, "auxilio_tbckit", concepto), "54059502")
+
     def test_horas_extra(self):
         for area in ("ASISTENCIA TECNICA CONVENIO", "ASISTENCIA TECNICA CONVENIOS", "Asistencia Técnica Convenios"):
             self.assertEqual(self.cuenta(area, "horas_extra", "HORAS EXTRA"), "54050501", area)
@@ -4636,6 +4644,11 @@ class CuentasVentasParaAftosaYAsistenciaTests(TestCase):
                  ("PROYECTO AFTOSA GASTOS DE PERSONAL", "seguridad_social", "APORTE SENA", "ASESOR", "54050601"),
                  ("PROYECTO AFTOSA GASTOS DE PERSONAL", "cesantias", "CESANTÍAS",
                   "APRENDIZ DEL SENA REFORMA", "54051002"),
+                 ("ASISTENCIA TECNICA PROPIA", "auxilio_tbckit", "AUXILIO TBC Y KIT", "ASESOR", "54059502"),
+                 ("ASISTENCIA TECNICA CONVENIO", "auxilio_tbckit", "AUX. TBC KIT", "ASESOR", "54059502"),
+                 ("PROYECTO AFTOSA GASTOS DE PERSONAL", "auxilio_tbckit",
+                  "AUXILIO DE MOVILIZACIÓN TBC Y KIT DE BRUCELA", "ASESOR", "54059502"),
+                 ("ADMINISTRACION", "auxilio_tbckit", "AUXILIO TBC Y KIT", "ASESOR", "54059502"),
                  ("ADMINISTRACION", "sueldos", "SALARIO BASICO", "ASESOR", "510503")]
         for i, (area, tipo, concepto, cargo, _) in enumerate(filas):
             linea_nomina(cedula=str(i), area=area, tipo=tipo, concepto=concepto, cargo=cargo,
@@ -4649,7 +4662,7 @@ class CuentasVentasParaAftosaYAsistenciaTests(TestCase):
         self.assertEqual(guardadas[("ASISTENCIA TECNICA PROPIA", "APORTE A.R.L", "ASESOR")].codcosto, "020301")
         self.assertEqual(guardadas[("PROYECTO AFTOSA GASTOS DE PERSONAL", "SALARIO BASICO", "ASESOR")].codcosto, "0101")
         self.assertTrue(all(c.startswith("54") for c in PresupuestoNominaMes.objects.exclude(
-            area="ADMINISTRACION").values_list("cuenta", flat=True)))
+            area="ADMINISTRACION", tipo="sueldos").values_list("cuenta", flat=True)))
 
 
 class CodigoCostoPorCuentaTests(TestCase):
@@ -5312,6 +5325,16 @@ class CuentasPorConceptoYCodcostoTests(TestCase):
         for concepto, codcosto, cargo, cuenta in self.ESPERADO:
             with self.subTest(concepto=concepto, codcosto=codcosto, cargo=cargo):
                 self.assertEqual(nomina_motor.cuenta_por_regla(concepto, codcosto, cargo), cuenta)
+
+    def test_auxilio_tbc_y_kit_en_cualquier_codcosto(self):
+        for codcosto in ("020201", "020301", "0101", "020401", "020202", ""):
+            for concepto in ("AUXILIO DE MOVILIZACIÓN TBC Y KIT DE BRUCELA", "AUXILIO DE MOVILIZACION TBC Y KIT",
+                             "AUXILIO TBC Y KIT"):
+                with self.subTest(codcosto=codcosto, concepto=concepto):
+                    self.assertEqual(nomina_motor.cuenta_por_regla(concepto, codcosto), "54059502")
+            # con otro nombre, por el tipo del concepto
+            self.assertEqual(nomina_motor.cuenta_por_regla("AUX TBC KIT", codcosto, "", "auxilio_tbckit"), "54059502")
+        self.assertEqual(nomina_motor.cuenta_por_regla("AUX TBC KIT", "020301"), "")       # sin tipo no se adivina
 
     def test_nombres_del_informe_como_alias(self):
         for concepto, cuenta in (("APORTE PATRONAL AFP", "540524"), ("PROVISION CESANTIAS", "54051001"),

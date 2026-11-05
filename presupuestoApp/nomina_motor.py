@@ -488,7 +488,7 @@ def cuenta_de_ventas(mapa, area, tipo, concepto, cuenta_area_ventas='', cargo=''
     for prefijo, slug, cuenta in CUENTAS_FIJAS:
         if clave.startswith(prefijo) and (tipo == slug or (slug == 'horas_extra' and _es_horas_extra(tipo, concepto))):
             return cuenta
-    regla = cuenta_por_regla(concepto, CODCOSTO_VENTAS_PERSONAL, cargo)
+    regla = cuenta_por_regla(concepto, CODCOSTO_VENTAS_PERSONAL, cargo, tipo or '')
     if regla.startswith(PREFIJO_CUENTAS_VENTAS):
         return regla
     nombre = _nombre_concepto(concepto)
@@ -522,7 +522,9 @@ def cuenta_de_ventas(mapa, area, tipo, concepto, cuenta_area_ventas='', cargo=''
 # ──────────────────────────────────────────────────────────────────────
 APRENDIZ_REFORMA = 'APRENDIZ DEL SENA REFORMA'
 
-# (nombres del concepto, [(CODCOSTOs, cargo o None, cuenta), ...])
+CUALQUIER_CODCOSTO = None   # en una regla: aplica sin importar el CODCOSTO
+
+# (nombres del concepto, [(CODCOSTOs o CUALQUIER_CODCOSTO, cargo o None, cuenta), ...])
 REGLAS_CUENTA = [
     (('SALARIO BASICO',),
      [(('020201', '020301'), None, '54050301'),
@@ -554,8 +556,10 @@ REGLAS_CUENTA = [
       (('0101',), None, '51059502')]),
     (('AUXILIO DE MOVILIZACIÓN BOLSA DE CONSUMIBLES',),
      [(('020201', '020301'), None, '54059502')]),
-    (('AUXILIO DE MOVILIZACIÓN TBC Y KIT DE BRUCELA',),
-     [(('020301',), None, '54059502')]),
+    # TBC y KIT: 54059502 en todas las áreas y CODCOSTOS (CUALQUIER_CODCOSTO)
+    (('AUXILIO DE MOVILIZACIÓN TBC Y KIT DE BRUCELA', 'AUXILIO DE MOVILIZACIÓN TBC Y KIT',
+      'AUXILIO DE MOVILIZACIÓN TBC', 'AUXILIO TBC Y KIT', 'AUXILIO TBC'),
+     [(CUALQUIER_CODCOSTO, None, '54059502')]),
     (('AUXILIO DE TRANSPORTE',),
      [(('020201',), APRENDIZ_REFORMA, '54050902'),
       (('020201', '020301'), None, '54050901'),
@@ -598,7 +602,10 @@ REGLAS_CUENTA = [
       (('020201', '020301'), None, '54051601')]),
 ]
 # Conceptos que en el aplicativo llevan algo más al final del nombre
-PREFIJOS_CUENTA = ('AUXILIO DE ANTIGÜEDAD',)
+PREFIJOS_CUENTA = ('AUXILIO DE ANTIGÜEDAD', 'AUXILIO DE MOVILIZACIÓN TBC', 'AUXILIO TBC')
+# Si el nombre de la fila no coincide con ninguna regla, se usa la del tipo de concepto
+# (p. ej. el informe trae el auxilio TBC y KIT con otro nombre)
+REGLA_POR_TIPO = {'auxilio_tbckit': 'AUXILIO DE MOVILIZACIÓN TBC Y KIT DE BRUCELA'}
 # Nombres con que llegan las horas extra (para la excepción de AT convenio)
 _NOMBRES_HORAS_EXTRA = next(n for n, _ in REGLAS_CUENTA if 'HORAS EXTRA' in n)
 
@@ -611,7 +618,8 @@ def _codcosto_clave(codcosto):
 def _indice_reglas_cuenta():
     exactos, prefijos = {}, []
     for nombres, casos in REGLAS_CUENTA:
-        casos_ = [({_codcosto_clave(c) for c in codcostos}, _sin_tildes(cargo) if cargo else None, cuenta)
+        casos_ = [(None if codcostos is CUALQUIER_CODCOSTO else {_codcosto_clave(c) for c in codcostos},
+                   _sin_tildes(cargo) if cargo else None, cuenta)
                   for codcostos, cargo, cuenta in casos]
         for nombre in nombres:
             if nombre in PREFIJOS_CUENTA:
@@ -624,8 +632,9 @@ def _indice_reglas_cuenta():
 _REGLAS = []          # [(exactos, prefijos)] — se arma en el primer uso
 
 
-def cuenta_por_regla(concepto, codcosto, cargo=''):
-    """Cuenta según REGLAS_CUENTA, o '' si ninguna aplica."""
+def cuenta_por_regla(concepto, codcosto, cargo='', tipo=''):
+    """Cuenta según REGLAS_CUENTA, o '' si ninguna aplica. Si el nombre del
+    concepto no está en las reglas, se prueba con la regla de su tipo (REGLA_POR_TIPO)."""
     if not _REGLAS:
         _REGLAS.append(_indice_reglas_cuenta())
     exactos, prefijos = _REGLAS[0]
@@ -633,11 +642,13 @@ def cuenta_por_regla(concepto, codcosto, cargo=''):
     casos = exactos.get(nombre)
     if casos is None:
         casos = next((c for prefijo, c in prefijos if nombre.startswith(prefijo)), None)
+    if casos is None and tipo in REGLA_POR_TIPO:
+        casos = exactos.get(_sin_tildes(REGLA_POR_TIPO[tipo]))
     if not casos:
         return ''
     cod, cargo_ = _codcosto_clave(codcosto), _sin_tildes(cargo)
     for codcostos, cargo_pedido, cuenta in casos:
-        if cod in codcostos and (cargo_pedido is None or cargo_ == cargo_pedido):
+        if (codcostos is None or cod in codcostos) and (cargo_pedido is None or cargo_ == cargo_pedido):
             return cuenta
     return ''
 
@@ -665,7 +676,7 @@ def asignar_cuentas(ctx=None, solo_vacias=False):
             cuenta = ctx.cuenta(fila.area, fila.tipo, fila.concepto, fila.cargo)
         else:
             # 1) reglas concepto + CODCOSTO (+ cargo); 2) la del área
-            cuenta = (cuenta_por_regla(fila.concepto, codcosto, fila.cargo)
+            cuenta = (cuenta_por_regla(fila.concepto, codcosto, fila.cargo, fila.tipo)
                       or (ctx.cuenta(fila.area, fila.tipo, fila.concepto) if con_area else ''))
         cambio = False
         if cuenta and cuenta != fila.cuenta:
