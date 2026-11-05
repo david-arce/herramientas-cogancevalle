@@ -2448,7 +2448,8 @@ class PresupuestoVentasRepartoTests(TestCase):
 
 class PresupuestoCostoVentasTests(TestCase):
     """Costo de ventas presupuestado = ventas netas presupuestadas de la sede × % costo del
-    ejecutado TOTAL BASE del mes (el mismo % para todas las sedes)."""
+    ejecutado de la MISMA sede y mes; la fila "% Costo de Ventas" del presupuestado muestra
+    tal cual la del ejecutado de cada pestaña (también Total Base)."""
 
     # Ejecutado Tuluá (pantalla Comparativo): enero 87,82 %, febrero 90 %; el resto del año sin datos
     EJECUTADO = {1: (759_222_744, 479_318_539, -6_508_501, 1_081_977_357),
@@ -2485,8 +2486,8 @@ class PresupuestoCostoVentasTests(TestCase):
         # Meses sin ejecutado: % del año
         pct_anual = (1_081_977_357 + 900_000_000) / (1_232_032_782 + 1_000_000_000)
         self.assertEqual(self.costo_ppto(7), round(self.PROYECCION * pct_anual))
-        self.assertAlmostEqual(r["pct_costo_ventas"]["total"]["Enero"], pct_enero * 100, places=3)   # 87,82 %
-        self.assertIn("Julio", r["pct_costo_ventas"]["total"]["meses_con_pct_del_anio"])
+        self.assertAlmostEqual(r["pct_costo_ventas"]["tulua"]["Enero"], pct_enero * 100, places=3)   # 87,82 %
+        self.assertIn("Julio", r["pct_costo_ventas"]["tulua"]["meses_con_pct_del_anio"])
 
     def test_presupuestado_muestra_el_mismo_pct_que_el_ejecutado(self):
         from .models import Cuenta5Presupuestado
@@ -2501,22 +2502,28 @@ class PresupuestoCostoVentasTests(TestCase):
             self.assertAlmostEqual(pct(ppto, mes), pct(ejec, mes), places=6, msg=mes)
         self.assertEqual(ppto["613522"]["meses"]["Enero"], self.costo_ppto(1))        # sin el 999.999 del detalle
 
-    def test_todas_las_sedes_usan_el_pct_del_total_y_el_total_coincide(self):
-        # Buga en el ejecutado: enero con 80 % de costo (Tuluá 87,82 %) → el total ejecutado queda en medio
+    def test_cada_pestana_muestra_el_pct_del_ejecutado(self):
+        # Buga en el ejecutado: enero con 80 % de costo (Tuluá 87,82 %) y crece mucho más que Tuluá
         for cta, nombre, valor in (("1", "Ventas a crédito", 500_000_000), ("613522", "Costo de ventas", 400_000_000)):
             self.T.objects.create(mcncuenta=cta, ctanombre=nombre, mcnfecha=datetime.date(self.anio, 1, 1),
                                   valor=valor, sede="buga", origen="ejecutado")
-        # Buga crece mucho más que Tuluá: con % por sede, el total presupuestado se movería
         proyeccion = {"ALMACEN TULUA": {m: self.PROYECCION for m in range(1, 13)},
                       "ALMACEN BUGA": {m: 3 * self.PROYECCION for m in range(1, 13)}}
         with mock.patch.object(views, "_proyeccion_ventas_por_centro", return_value=proyeccion):
             views.generar_presupuesto_ventas()
         pct = lambda d: d["613522"]["meses"]["Enero"] / sum(d[c]["meses"].get("Enero", 0) for c in ("1", "2", "41750201") if c in d)  # noqa: E731
-        ejecutado_total = pct(views.calcular_movimientos("ejecutado", "total")["data"])
+        # Cada sede: su costo sale con SU % del ejecutado
+        for sede in ("tulua", "buga"):
+            self.assertAlmostEqual(pct(views.calcular_movimientos("presupuestado", sede)["data"]),
+                                   pct(views.calcular_movimientos("ejecutado", sede)["data"]), places=6, msg=sede)
+        # La fila "% Costo de Ventas" del presupuestado = la del ejecutado, en cada pestaña (incluido Total Base)
+        self.client.force_login(User.objects.create_user("admin"))
         for sede in ("tulua", "buga", "total"):
-            self.assertAlmostEqual(pct(views.calcular_movimientos("presupuestado", sede)["data"]), ejecutado_total,
-                                   places=6, msg=sede)
-        self.assertAlmostEqual(ejecutado_total, (1_081_977_357 + 400_000_000) / (1_232_032_782 + 500_000_000), places=9)
+            fila = self.client.get(reverse("obtener_presupuestado") + f"?sede={sede}").json()["pct_costo_ejecutado"]
+            self.assertAlmostEqual(fila["Enero"] / 100, pct(views.calcular_movimientos("ejecutado", sede)["data"]),
+                                   places=9, msg=sede)
+        total = self.client.get(reverse("obtener_presupuestado") + "?sede=total").json()["pct_costo_ejecutado"]
+        self.assertAlmostEqual(total["Enero"], (1_081_977_357 + 400_000_000) / (1_232_032_782 + 500_000_000) * 100, places=6)
 
     def test_volver_a_generar_reemplaza(self):
         self.generar()

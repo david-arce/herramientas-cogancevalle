@@ -57,9 +57,19 @@
   const PORCENTAJES = new Set(["PctCostoVentas", "PctMargenBruto", "PctMargenContribucion",
                                "PctUtilidadOperacional", "PctExcedentes"]);
 
-  /* Calcula (y recuerda) las filas de un conjunto de datos. */
-  function calculadora(data, modo, claveDe) {
+  /* Calcula (y recuerda) las filas de un conjunto de datos.
+     `fijos` = {tipo: {Enero, ..., total}}: filas que NO se calculan sino que se
+     muestran con esos valores (p. ej. el presupuestado muestra el % Costo de
+     Ventas del ejecutado tal cual). */
+  function calculadora(data, modo, claveDe, fijos) {
     const cache = {};
+    Object.entries(fijos || {}).forEach(([tipo, valores]) => {
+      if (!valores) return;
+      const t = {};
+      MESES.forEach(m => { t[m] = Number(valores[m]) || 0; });
+      t.total = Number(valores.total) || 0;
+      cache[tipo] = t;
+    });
     const sumar = clave => Subtotales.sumar(data || [], clave, MESES, claveDe);
     const op = fn => {
       const t = {};
@@ -134,8 +144,8 @@
   /* Filas de la tabla: las cuentas de `data` (en el orden en que vienen) con las
      filas calculadas intercaladas en la posición que tienen en `orden`. */
   function construir(data, orden, modo, opciones = {}) {
-    const { claveDe = null, nombres = {} } = opciones;
-    const calc = calculadora(data, modo, claveDe);
+    const { claveDe = null, nombres = {}, fijos = null } = opciones;
+    const calc = calculadora(data, modo, claveDe, fijos);
     const lista = (orden || []).map(c => String(c ?? ""));
     const pos = new Map();
     lista.forEach((c, i) => { if (!pos.has(c)) pos.set(c, i); });
@@ -157,8 +167,8 @@
     return resultado;
   }
 
-  function calcular(tipo, data, modo, claveDe) {
-    return calculadora(data, modo, claveDe).valores(tipo);
+  function calcular(tipo, data, modo, claveDe, fijos) {
+    return calculadora(data, modo, claveDe, fijos).valores(tipo);
   }
 
   global.FilasCalculadas = {

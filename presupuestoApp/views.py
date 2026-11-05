@@ -2970,14 +2970,12 @@ def calcular_presupuestado(sede='total'):
 #  VISTA GENÉRICA
 # ══════════════════════════════════════════════════════════════════
 
-def _responder_movimientos(request, origen):
-    sede = normalizar_sede(request.GET.get('sede'))
-    if sede is None:
-        return JsonResponse({'error': f"Sede inválida: {request.GET.get('sede')}"}, status=400)
-
+def _filas_movimientos(origen, sede):
+    """(filas, orden, nombres) que muestra la pantalla de `origen` para la sede.
+    Lanza RuntimeError si el cálculo falla."""
     resultado = calcular_movimientos(origen, sede)
     if not resultado['success']:
-        return JsonResponse({'error': resultado.get('error', 'Error')}, status=500)
+        raise RuntimeError(resultado.get('error', 'Error'))
 
     ORDEN_PERSONALIZADO = obtener_orden_cuentas('total' if sede == 'total' else 'sede')
     NOMBRES = nombres_personalizados()
@@ -3000,16 +2998,32 @@ def _responder_movimientos(request, origen):
 
     posicion = {cta: i for i, cta in enumerate(ORDEN_PERSONALIZADO)}
     filas.sort(key=lambda item: posicion[item['mcncuenta']])
+    return filas, ORDEN_PERSONALIZADO, NOMBRES
+
+
+def _responder_movimientos(request, origen):
+    sede = normalizar_sede(request.GET.get('sede'))
+    if sede is None:
+        return JsonResponse({'error': f"Sede inválida: {request.GET.get('sede')}"}, status=400)
+    try:
+        filas, ORDEN_PERSONALIZADO, NOMBRES = _filas_movimientos(origen, sede)
+    except RuntimeError as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
     # Nombre de las filas calculadas (CALC-...): el de Orden de cuentas o el de por defecto
     calculadas = {c: NOMBRES.get(c) or filas_calculadas.NOMBRES[c]
                   for c in ORDEN_PERSONALIZADO if filas_calculadas.es_calculada(c)}
 
-    return JsonResponse({'data': filas,
-                         'orden': ORDEN_PERSONALIZADO,
-                         'calculadas': calculadas,
-                         'recordsTotal': len(filas),
-                         'recordsFiltered': len(filas)})
+    respuesta = {'data': filas,
+                 'orden': ORDEN_PERSONALIZADO,
+                 'calculadas': calculadas,
+                 'recordsTotal': len(filas),
+                 'recordsFiltered': len(filas)}
+    if origen == 'presupuestado':
+        # La fila "% Costo de Ventas" del presupuestado muestra EXACTAMENTE la del
+        # ejecutado de la misma pestaña (ver _pct_costo_pantalla_ejecutado).
+        respuesta['pct_costo_ejecutado'] = _pct_costo_pantalla_ejecutado(sede)
+    return JsonResponse(respuesta)
 
 
 def obtener_consolidado(request):
@@ -4283,9 +4297,10 @@ CUENTAS_VENTAS = {
 # costo de ventas) en el consolidado presupuestado.
 USUARIOS_GENERAR_VENTAS = ['admin', 'NICOLAS']
 
-# Costo de ventas del presupuestado: ventas netas presupuestadas de la sede
-# en el mes × % costo de ventas del EJECUTADO TOTAL BASE de ese mes (el mismo %
-# para todas las sedes, así el total presupuestado da el mismo % que el ejecutado).
+# Costo de ventas del presupuestado: ventas netas presupuestadas de la sede en
+# el mes × % costo de ventas del EJECUTADO de la misma sede y mes. La fila
+# "% Costo de Ventas" del presupuestado muestra tal cual la del ejecutado de la
+# misma pestaña (también en Total Base): ver _pct_costo_pantalla_ejecutado.
 CUENTA_COSTO_VENTAS = '613522'
 CUENTAS_GENERADAS = {**CUENTAS_VENTAS, CUENTA_COSTO_VENTAS: 'Costo de ventas'}
 
@@ -4381,45 +4396,69 @@ def _participacion_ventas_sede(anio_base, sede):
         for mes in range(1, 13)
     }
 
+def _ventas_y_costo_ejecutado(sede):
+    """({mes: ventas netas}, {mes: costo de ventas}, total ventas, total costo) del
+    EJECUTADO de la sede, sumando exactamente lo que suma la pantalla (las filas
+    de Orden de cuentas y las cuentas de Ajustes → Filas calculadas, como
+    static/js/subtotales.js). None si el cálculo falla."""
+    from .subtotales import configuracion_subtotales
+    try:
+        filas, _, _ = _filas_movimientos('ejecutado', sede)
+    except RuntimeError:
+        return None
+    cfg = configuracion_subtotales()
+
+    def coincide(clave, codigo, codigo_clave):
+        c = cfg.get(clave) or {}
+        cuentas, prefijos = c.get('cuentas') or [], c.get('prefijos') or []
+        if codigo and (codigo in cuentas or any(codigo.startswith(p) for p in prefijos)):
+            return True
+        return bool(codigo_clave) and (codigo_clave in cuentas or codigo_clave in prefijos)
+
+    ventas, costo = dict.fromkeys(range(1, 13), 0), dict.fromkeys(range(1, 13), 0)
+    total_ventas = total_costo = 0
+    for fila in filas:
+        codigo = str(fila.get('mcncuenta') or '').strip()
+        clave = resolver_cuenta_clave(codigo, fila.get('ctanombre'))
+        clave = clave if clave in ALIAS_CUENTAS_CLAVE else None
+        for nombre_clave, destino_mes in (('VentasNetas', ventas), ('CostoVentas', costo)):
+            if coincide(nombre_clave, codigo, clave):
+                for n, nombre_mes in MESES_ES.items():
+                    destino_mes[n] += fila.get(nombre_mes) or 0
+                if nombre_clave == 'VentasNetas':
+                    total_ventas += fila.get('total') or 0
+                else:
+                    total_costo += fila.get('total') or 0
+    return ventas, costo, total_ventas, total_costo
+
+
+def _pct_costo_pantalla_ejecutado(sede):
+    """{'Enero': %, ..., 'total': %}: los MISMOS valores de la fila "% Costo de
+    Ventas" de la pantalla Ejecutado para esa pestaña (costo ÷ ventas netas × 100;
+    0 si el mes no tiene ventas, igual que en el ejecutado)."""
+    datos = _ventas_y_costo_ejecutado(sede)
+    if datos is None:
+        return None
+    ventas, costo, total_ventas, total_costo = datos
+    salida = {MESES_ES[m]: (costo[m] / ventas[m] * 100 if ventas[m] else 0) for m in range(1, 13)}
+    salida['total'] = total_costo / total_ventas * 100 if total_ventas else 0
+    return salida
+
+
 def _pct_costo_ventas_ejecutado(sede):
     """
-    {mes: fracción} del % costo de ventas del EJECUTADO de la sede ('total' =
-    Total Base, el que usa el presupuesto): lo mismo que muestra la fila
-    "% Costo de Ventas" del Consolidado y del Comparativo
-    (costo de ventas ÷ ventas netas, con las cuentas de Ajustes → Filas
-    calculadas: por defecto 613522 ÷ (1 + 2 + 41750201)).
+    {mes: fracción} del % costo de ventas del EJECUTADO de la sede, el mismo
+    que muestra su fila "% Costo de Ventas". Con él se calcula el costo de
+    ventas presupuestado de la sede.
 
     Un mes sin ventas netas o sin costo en el ejecutado (p. ej. un mes que aún
     no se ha cargado) usa el % del año. Devuelve (porcentajes, meses_con_%_del_año)
     o (None, []) si el ejecutado de la sede no tiene ventas ni costo.
     """
-    from .subtotales import configuracion_subtotales
-    resultado = calcular_movimientos('ejecutado', sede)
-    if not resultado.get('success'):
+    datos = _ventas_y_costo_ejecutado(sede)
+    if datos is None:
         return None, []
-    cfg = configuracion_subtotales()
-
-    def entra(clave, cuenta):
-        c = cfg.get(clave) or {}
-        return cuenta in (c.get('cuentas') or []) or any(cuenta.startswith(p) for p in (c.get('prefijos') or []))
-
-    num_mes = {nombre: n for n, nombre in MESES_ES.items()}
-    ventas = dict.fromkeys(range(1, 13), 0)
-    costo = dict.fromkeys(range(1, 13), 0)
-    for cuenta, reg in resultado['data'].items():
-        cuenta = str(cuenta)
-        es_venta, es_costo = entra('VentasNetas', cuenta), entra('CostoVentas', cuenta)
-        if not (es_venta or es_costo):
-            continue
-        for nombre_mes, valor in reg['meses'].items():
-            mes = num_mes.get(nombre_mes)
-            if mes:
-                if es_venta:
-                    ventas[mes] += valor or 0
-                if es_costo:
-                    costo[mes] += valor or 0
-
-    total_ventas, total_costo = sum(ventas.values()), sum(costo.values())
+    ventas, costo, total_ventas, total_costo = datos
     if not total_ventas or not total_costo:
         return None, []
     anual = total_costo / total_ventas
@@ -4479,14 +4518,6 @@ def generar_presupuesto_ventas(anio_base=None):
 
     nuevos, procesadas, omitidas = [], [], {}
     costo_generado, sin_costo, pct_costo_resp = [], {}, {}
-    # % costo de ventas del ejecutado TOTAL BASE, mes a mes: el que se ve en la
-    # fila "% Costo de Ventas" de Ejecutado → Total Base. Es el mismo para todas
-    # las sedes (opción elegida para que el total presupuestado coincida).
-    pct_costo, meses_pct_anual = _pct_costo_ventas_ejecutado('total')
-    if pct_costo is not None:
-        pct_costo_resp['total'] = {MESES_ES[m]: round(pct_costo[m] * 100, 4) for m in range(1, 13)}
-        if meses_pct_anual:
-            pct_costo_resp['total']['meses_con_pct_del_anio'] = [MESES_ES[m] for m in meses_pct_anual]
     participacion_resp, detalle_resp, anios_usados = {}, {}, {}
 
     for sede, centro in SEDE_CENTRO_OPERACION.items():
@@ -4516,11 +4547,15 @@ def generar_presupuesto_ventas(anio_base=None):
             for cta, valor in repartir_proyeccion(proy_centro[mes], participacion[mes]).items():
                 valores[cta][mes] = valor
 
-        # ── costo de ventas = ventas netas presupuestadas del mes × % costo del ejecutado total ──
+        # ── costo de ventas = ventas netas presupuestadas del mes × % costo del ejecutado de la sede ──
+        pct_costo, meses_pct_anual = _pct_costo_ventas_ejecutado(sede)
         costo_ventas = {}
         if pct_costo is None:
-            sin_costo[sede] = 'el ejecutado total no tiene ventas netas y costo de ventas para sacar el %'
+            sin_costo[sede] = 'el ejecutado no tiene ventas netas y costo de ventas para sacar el %'
         else:
+            pct_costo_resp[sede] = {MESES_ES[m]: round(pct_costo[m] * 100, 4) for m in range(1, 13)}
+            if meses_pct_anual:
+                pct_costo_resp[sede]['meses_con_pct_del_anio'] = [MESES_ES[m] for m in meses_pct_anual]
             for mes in range(1, 13):
                 ventas_netas_mes = sum(valores[cta][mes] for cta in CUENTAS_VENTAS)
                 costo_ventas[mes] = round(ventas_netas_mes * pct_costo[mes])

@@ -144,6 +144,7 @@ let sortCol         = null;
 let sortDir         = 'asc';
 let ordenCuentas    = [];   // orden de cuentas que envía el backend (incluye las CALC-...)
 let nombresCalculadas = {}; // { 'CALC-...': nombre } según Orden de cuentas
+let pctCostoEjecutado = null; // % Costo de Ventas del ejecutado de esta pestaña (se muestra tal cual)
 /* ══════════════════════════════════════════════════════════════════
    TOAST
 ══════════════════════════════════════════════════════════════════ */
@@ -191,11 +192,13 @@ function cuentaClave(row) {
    Las filas calculadas (CALC-...) salen donde estén en Orden de cuentas
    y solo si están visibles en la pestaña (Total / Sede).
 ══════════════════════════════════════════════════════════════════ */
+// "% Costo de Ventas" = el del ejecutado de la misma pestaña, tal cual (lo manda el servidor)
+const filasFijas = () => (pctCostoEjecutado ? { PctCostoVentas: pctCostoEjecutado } : null);
 function construirFilasSede(data) {
-    return FilasCalculadas.construir(data, ordenCuentas, 'sede', { claveDe: cuentaClave, nombres: nombresCalculadas });
+    return FilasCalculadas.construir(data, ordenCuentas, 'sede', { claveDe: cuentaClave, nombres: nombresCalculadas, fijos: filasFijas() });
 }
 function construirFilasTotalBase(data) {
-    return FilasCalculadas.construir(data, ordenCuentas, 'total', { claveDe: cuentaClave, nombres: nombresCalculadas });
+    return FilasCalculadas.construir(data, ordenCuentas, 'total', { claveDe: cuentaClave, nombres: nombresCalculadas, fijos: filasFijas() });
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -516,6 +519,7 @@ async function cargarDatos() {
         datosOriginales = json.data || [];
         ordenCuentas    = json.orden || [];
         nombresCalculadas = json.calculadas || {};
+        pctCostoEjecutado = json.pct_costo_ejecutado || null;
         renderTabla(datosOrdenados());   // conserva el orden elegido al cambiar de pestaña
     } catch (e) {
         showToast('Error al cargar datos: ' + e.message, 'error');

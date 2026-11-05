@@ -230,6 +230,9 @@ function construirFilas() {
 }
 
 function obtenerFilaEquivalente(filaC, mapaPresupuestado) {
+    // "% Costo de Ventas" del presupuestado = el del ejecutado (columna CONSOL.), tal cual
+    if (filaC.isTotalRow && filaC.tipoTotal === 'PctCostoVentas')
+        return FilasCalculadas.calcular('PctCostoVentas', datosConsolidado, modoActual());
     if (filaC.isTotalRow) return FilasCalculadas.calcular(filaC.tipoTotal, datosPresupuestado, modoActual());
     return mapaPresupuestado.get(String(filaC.mcncuenta)) || cerosTotales();
 }
