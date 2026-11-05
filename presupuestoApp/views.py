@@ -4604,7 +4604,12 @@ def generar_presupuesto_ventas(anio_base=None, usuario='', huella=None):
     """
     anio_ppto = _anio_presupuesto()
     if huella is None:
-        huella = huella_ejecutado()      # con qué ejecutado se genera (ver recalcular_si_cambio_ejecutado)
+        try:
+            huella = huella_ejecutado()  # con qué ejecutado se genera (ver recalcular_si_cambio_ejecutado)
+        except Exception:
+            # La huella solo sirve para el recálculo automático: nunca impide generar
+            logger_presupuesto.exception('No se pudo calcular la huella del ejecutado')
+            huella = ''
 
     proyeccion = _proyeccion_ventas_por_centro()
     if not proyeccion:
@@ -4803,7 +4808,13 @@ def huella_ejecutado():
         partes.append(configuracion_subtotales())
     except Exception:
         partes.append(None)
-    texto = json.dumps(partes, sort_keys=True, default=lambda v: round(float(v), 2))
+    def a_texto(v):
+        # Decimal / numpy → número; fechas y cualquier otra cosa → texto
+        try:
+            return round(float(v), 2)
+        except (TypeError, ValueError):
+            return v.isoformat() if hasattr(v, 'isoformat') else str(v)
+    texto = json.dumps(partes, sort_keys=True, default=a_texto)
     return f'{zlib.crc32(texto.encode()):08x}-{len(texto)}'
 
 

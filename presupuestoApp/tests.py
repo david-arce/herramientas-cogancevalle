@@ -4494,3 +4494,21 @@ class RecalculoPorCambioEnEjecutadoTests(TestCase):
         with mock.patch.object(views, "generar_presupuesto_ventas") as gen:
             self.abrir()
         gen.assert_not_called()
+
+
+class HuellaEjecutadoTests(TestCase):
+    def test_huella_admite_fechas_y_decimales_de_la_configuracion(self):
+        import decimal
+        cfg = {"VentasNetas": {"cuentas": ["1"], "actualizado": timezone.now()},
+               "x": decimal.Decimal("1.5"), "d": datetime.date(2026, 1, 1)}
+        with mock.patch("presupuestoApp.subtotales.configuracion_subtotales", return_value=cfg):
+            h1 = views.huella_ejecutado()
+            h2 = views.huella_ejecutado()
+        self.assertTrue(h1)
+        self.assertEqual(h1, h2)
+
+    def test_si_la_huella_falla_igual_se_genera(self):
+        with mock.patch.object(views, "huella_ejecutado", side_effect=TypeError("x")), \
+             mock.patch.object(views, "_proyeccion_ventas_por_centro", return_value={}):
+            with self.assertRaises(ValueError):      # sigue hasta el cálculo (sin proyección), no TypeError
+                views.generar_presupuesto_ventas()
