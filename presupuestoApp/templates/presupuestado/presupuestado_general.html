@@ -22,6 +22,11 @@
                 <input type="text" id="globalSearch" placeholder="Buscar cuenta o concepto...">
             </div>
             <button class="btn btn-outline" id="recargarBtn">🔄 Recargar</button>
+            {% if puede_generar_ventas %}
+            <button class="btn btn-outline" id="recalcularVentasBtn"
+                    title="Vuelve a generar las ventas (crédito, contado, descuentos) y el costo de ventas de cada sede a partir del presupuesto comercial">
+                📈 Recalcular presupuesto de ventas</button>
+            {% endif %}
             <button class="btn btn-export"  id="exportarBtn">📥 Exportar CSV</button>
         </div>
     </div>
@@ -117,6 +122,7 @@
 // Esta página muestra el PRESUPUESTADO → obtener_presupuestado (antes obtener_consolidado)
 const URL_OBTENER_SEDE   = "{% url 'obtener_presupuestado' %}";
 const CSRF_TOKEN         = "{{ csrf_token }}";
+const URL_GENERAR_VENTAS = "{% url 'generar_presupuesto_ventas' %}";
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -490,7 +496,7 @@ function setLoading(activo, texto = 'Cargando datos...') {
 }
 
 function bloquearControles(bloquear) {
-    document.querySelectorAll('.tab-btn, #recargarBtn').forEach(el => { el.disabled = bloquear; });
+    document.querySelectorAll('.tab-btn, #recargarBtn, #recalcularVentasBtn').forEach(el => { el.disabled = bloquear; });
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -567,6 +573,40 @@ document.querySelectorAll('thead th.sortable').forEach(th => {
    RECARGAR / EXPORTAR
 ══════════════════════════════════════════════════════════════════ */
 document.getElementById('recargarBtn').addEventListener('click', cargarDatos);
+
+/* Recalcular presupuesto de ventas: vuelve a generar en el consolidado presupuestado
+   las cuentas 1, 2, 41750201 y el costo de ventas (613522) de cada sede, y recarga. */
+const btnRecalcular = document.getElementById('recalcularVentasBtn');
+if (btnRecalcular) btnRecalcular.addEventListener('click', async () => {
+    bloquearControles(true);
+    setLoading(true, 'Recalculando presupuesto de ventas...');
+    try {
+        const resp = await fetch(URL_GENERAR_VENTAS, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
+            body: '{}',
+        });
+        let json = {};
+        try { json = await resp.json(); } catch (e) { /* respuesta sin JSON (p. ej. sesión cerrada) */ }
+        if (!resp.ok || !json.success) {
+            showToast('❌ No se recalculó el presupuesto de ventas: ' + (json.error || `HTTP ${resp.status}`), 'error');
+            return;
+        }
+        const avisos = [
+            ...Object.entries(json.sedes_omitidas || {}).map(([s, m]) => `${s}: ${m}`),
+            ...Object.entries(json.sedes_sin_costo_ventas || {}).map(([s, m]) => `${s} (sin costo de ventas): ${m}`),
+        ];
+        if (avisos.length) showToast('⚠️ Recalculado con avisos — ' + avisos.join(' · '), 'info');
+        else showToast(`✅ Presupuesto de ventas recalculado (${(json.sedes_procesadas || []).join(', ')})`, 'success');
+        setLoading(false);
+        await cargarDatos();
+    } catch (e) {
+        showToast('❌ Error de conexión al recalcular: ' + e.message, 'error');
+    } finally {
+        setLoading(false);
+        bloquearControles(false);
+    }
+});
 
 document.getElementById('exportarBtn').addEventListener('click', () => {
     if (!datosOriginales.length) { showToast('Sin datos para exportar', 'error'); return; }

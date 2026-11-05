@@ -2447,7 +2447,8 @@ class PresupuestoVentasRepartoTests(TestCase):
 
 
 class PresupuestoCostoVentasTests(TestCase):
-    """Costo de ventas presupuestado = ventas netas presupuestadas × % costo del ejecutado (por sede y mes)."""
+    """Costo de ventas presupuestado = ventas netas presupuestadas de la sede × % costo del
+    ejecutado TOTAL BASE del mes (el mismo % para todas las sedes)."""
 
     # Ejecutado Tuluá (pantalla Comparativo): enero 87,82 %, febrero 90 %; el resto del año sin datos
     EJECUTADO = {1: (759_222_744, 479_318_539, -6_508_501, 1_081_977_357),
@@ -2484,8 +2485,8 @@ class PresupuestoCostoVentasTests(TestCase):
         # Meses sin ejecutado: % del año
         pct_anual = (1_081_977_357 + 900_000_000) / (1_232_032_782 + 1_000_000_000)
         self.assertEqual(self.costo_ppto(7), round(self.PROYECCION * pct_anual))
-        self.assertAlmostEqual(r["pct_costo_ventas"]["tulua"]["Enero"], pct_enero * 100, places=3)   # 87,82 %
-        self.assertIn("Julio", r["pct_costo_ventas"]["tulua"]["meses_con_pct_del_anio"])
+        self.assertAlmostEqual(r["pct_costo_ventas"]["total"]["Enero"], pct_enero * 100, places=3)   # 87,82 %
+        self.assertIn("Julio", r["pct_costo_ventas"]["total"]["meses_con_pct_del_anio"])
 
     def test_presupuestado_muestra_el_mismo_pct_que_el_ejecutado(self):
         from .models import Cuenta5Presupuestado
@@ -2499,6 +2500,23 @@ class PresupuestoCostoVentasTests(TestCase):
         for mes in ("Enero", "Febrero"):
             self.assertAlmostEqual(pct(ppto, mes), pct(ejec, mes), places=6, msg=mes)
         self.assertEqual(ppto["613522"]["meses"]["Enero"], self.costo_ppto(1))        # sin el 999.999 del detalle
+
+    def test_todas_las_sedes_usan_el_pct_del_total_y_el_total_coincide(self):
+        # Buga en el ejecutado: enero con 80 % de costo (Tuluá 87,82 %) → el total ejecutado queda en medio
+        for cta, nombre, valor in (("1", "Ventas a crédito", 500_000_000), ("613522", "Costo de ventas", 400_000_000)):
+            self.T.objects.create(mcncuenta=cta, ctanombre=nombre, mcnfecha=datetime.date(self.anio, 1, 1),
+                                  valor=valor, sede="buga", origen="ejecutado")
+        # Buga crece mucho más que Tuluá: con % por sede, el total presupuestado se movería
+        proyeccion = {"ALMACEN TULUA": {m: self.PROYECCION for m in range(1, 13)},
+                      "ALMACEN BUGA": {m: 3 * self.PROYECCION for m in range(1, 13)}}
+        with mock.patch.object(views, "_proyeccion_ventas_por_centro", return_value=proyeccion):
+            views.generar_presupuesto_ventas()
+        pct = lambda d: d["613522"]["meses"]["Enero"] / sum(d[c]["meses"].get("Enero", 0) for c in ("1", "2", "41750201") if c in d)  # noqa: E731
+        ejecutado_total = pct(views.calcular_movimientos("ejecutado", "total")["data"])
+        for sede in ("tulua", "buga", "total"):
+            self.assertAlmostEqual(pct(views.calcular_movimientos("presupuestado", sede)["data"]), ejecutado_total,
+                                   places=6, msg=sede)
+        self.assertAlmostEqual(ejecutado_total, (1_081_977_357 + 400_000_000) / (1_232_032_782 + 500_000_000), places=9)
 
     def test_volver_a_generar_reemplaza(self):
         self.generar()
@@ -2706,8 +2724,11 @@ class PresupuestoComercialGuardadoTests(TestCase):
         self.assertEqual(self.guardar({"no": "lista"}).status_code, 400)
 
     def test_presupuestado_general_ya_no_genera_ventas_al_entrar(self):
+        # Al entrar solo carga lo guardado; generar solo pasa al pulsar "Recalcular presupuesto de ventas".
         html = self.client.get(reverse("presupuestado_general")).content.decode()
-        self.assertNotIn(reverse("generar_presupuesto_ventas"), html)
+        self.assertEqual(html.count("fetch(URL_GENERAR_VENTAS"), 1)
+        self.assertGreater(html.index("fetch(URL_GENERAR_VENTAS"),
+                           html.index("btnRecalcular.addEventListener('click'"))
 
     def test_pantalla_comercial_usa_envio_seguro_y_genera_ventas(self):
         html = self.client.get(reverse("presupuestoComercial")).content.decode()
@@ -2715,6 +2736,11 @@ class PresupuestoComercialGuardadoTests(TestCase):
         self.assertIn(reverse("generar_presupuesto_ventas"), html)
         self.assertIn('name="csrf-token"', html)
         self.assertIn('id="recalcularVentasBtn"', html)                     # admin puede generar
+
+    def test_boton_recalcular_en_presupuestado_general(self):
+        html = self.client.get(reverse("presupuestado_general")).content.decode()
+        self.assertIn('id="recalcularVentasBtn"', html)
+        self.assertIn(reverse("generar_presupuesto_ventas"), html)
 
     def test_boton_recalcular_solo_para_quien_puede_generar(self):
         self.client.force_login(User.objects.create_user("OTRO"))

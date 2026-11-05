@@ -3291,8 +3291,11 @@ def presupuestado_general(request):
     usuarios_permitidos = ['admin', 'NICOLAS']
     if request.user.username not in usuarios_permitidos:
         return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
-    return render(request, "presupuestado/presupuestado_general.html",
-                  {'subtotales': configuracion_para_tablas()})
+    return render(request, "presupuestado/presupuestado_general.html", {
+        'subtotales': configuracion_para_tablas(),
+        # Botón "Recalcular presupuesto de ventas" (ventas 1, 2, 41750201 y costo de ventas)
+        'puede_generar_ventas': request.user.username in USUARIOS_GENERAR_VENTAS,
+    })
 
 # TABLA DINÁMICA FLEXIBLE
 # Filtros de la tabla dinámica. Se aplican IGUAL en la tabla, en las listas de
@@ -4280,8 +4283,9 @@ CUENTAS_VENTAS = {
 # costo de ventas) en el consolidado presupuestado.
 USUARIOS_GENERAR_VENTAS = ['admin', 'NICOLAS']
 
-# Costo de ventas del presupuestado: ventas netas presupuestadas del mes ×
-# % costo de ventas del EJECUTADO de la misma sede y mes.
+# Costo de ventas del presupuestado: ventas netas presupuestadas de la sede
+# en el mes × % costo de ventas del EJECUTADO TOTAL BASE de ese mes (el mismo %
+# para todas las sedes, así el total presupuestado da el mismo % que el ejecutado).
 CUENTA_COSTO_VENTAS = '613522'
 CUENTAS_GENERADAS = {**CUENTAS_VENTAS, CUENTA_COSTO_VENTAS: 'Costo de ventas'}
 
@@ -4379,8 +4383,9 @@ def _participacion_ventas_sede(anio_base, sede):
 
 def _pct_costo_ventas_ejecutado(sede):
     """
-    {mes: fracción} del % costo de ventas del EJECUTADO de la sede: lo mismo
-    que muestra la fila "% Costo de Ventas" del Consolidado y del Comparativo
+    {mes: fracción} del % costo de ventas del EJECUTADO de la sede ('total' =
+    Total Base, el que usa el presupuesto): lo mismo que muestra la fila
+    "% Costo de Ventas" del Consolidado y del Comparativo
     (costo de ventas ÷ ventas netas, con las cuentas de Ajustes → Filas
     calculadas: por defecto 613522 ÷ (1 + 2 + 41750201)).
 
@@ -4474,6 +4479,14 @@ def generar_presupuesto_ventas(anio_base=None):
 
     nuevos, procesadas, omitidas = [], [], {}
     costo_generado, sin_costo, pct_costo_resp = [], {}, {}
+    # % costo de ventas del ejecutado TOTAL BASE, mes a mes: el que se ve en la
+    # fila "% Costo de Ventas" de Ejecutado → Total Base. Es el mismo para todas
+    # las sedes (opción elegida para que el total presupuestado coincida).
+    pct_costo, meses_pct_anual = _pct_costo_ventas_ejecutado('total')
+    if pct_costo is not None:
+        pct_costo_resp['total'] = {MESES_ES[m]: round(pct_costo[m] * 100, 4) for m in range(1, 13)}
+        if meses_pct_anual:
+            pct_costo_resp['total']['meses_con_pct_del_anio'] = [MESES_ES[m] for m in meses_pct_anual]
     participacion_resp, detalle_resp, anios_usados = {}, {}, {}
 
     for sede, centro in SEDE_CENTRO_OPERACION.items():
@@ -4503,11 +4516,10 @@ def generar_presupuesto_ventas(anio_base=None):
             for cta, valor in repartir_proyeccion(proy_centro[mes], participacion[mes]).items():
                 valores[cta][mes] = valor
 
-        # ── costo de ventas = ventas netas presupuestadas del mes × % costo del ejecutado ──
-        pct_costo, meses_pct_anual = _pct_costo_ventas_ejecutado(sede)
+        # ── costo de ventas = ventas netas presupuestadas del mes × % costo del ejecutado total ──
         costo_ventas = {}
         if pct_costo is None:
-            sin_costo[sede] = 'el ejecutado no tiene ventas netas y costo de ventas para sacar el %'
+            sin_costo[sede] = 'el ejecutado total no tiene ventas netas y costo de ventas para sacar el %'
         else:
             for mes in range(1, 13):
                 ventas_netas_mes = sum(valores[cta][mes] for cta in CUENTAS_VENTAS)
@@ -4535,12 +4547,6 @@ def generar_presupuesto_ventas(anio_base=None):
             MESES_ES[m]: {cta: round(p * 100, 4) for cta, p in pcts.items()}
             for m, pcts in participacion.items()
         }
-        if pct_costo is not None:
-            pct_costo_resp[sede] = {
-                MESES_ES[m]: round(pct_costo[m] * 100, 4) for m in range(1, 13)
-            }
-            if meses_pct_anual:
-                pct_costo_resp[sede]['meses_con_pct_del_anio'] = [MESES_ES[m] for m in meses_pct_anual]
         detalle_resp[sede] = {
             'centro_operacion': centro,
             'proyeccion': {MESES_ES[m]: v for m, v in sorted(proy_centro.items())},
