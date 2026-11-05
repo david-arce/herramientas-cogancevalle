@@ -568,3 +568,42 @@ class SubtotalCuentas(models.Model):
 # ── Nómina: tabla única ────────────────────────────────────────────────
 from .models_nomina import PresupuestoNomina  # noqa: E402,F401
 from .models_presupuesto import AsignacionPresupuesto, PresupuestoArea  # noqa
+
+class AjustePresupuestado(models.Model):
+    """Valor escrito a mano en el Presupuestado general (modo edición).
+
+    Reemplaza, para esa sede, cuenta y mes, el valor calculado. Recalcular el
+    presupuesto de ventas (o cualquier otro cálculo) NUNCA lo toca: se muestra
+    por encima del cálculo hasta que alguien lo restablezca.
+    """
+    sede = models.CharField(max_length=20)                  # tulua | buga | cartago | cali
+    cuenta = models.CharField(max_length=60)                # código de la fila (1, 613522, 5105, AT-00003...)
+    ctanombre = models.CharField(max_length=255, blank=True, default='')
+    mes = models.PositiveSmallIntegerField()                # 1..12
+    anio = models.PositiveIntegerField()                    # año del presupuesto
+    valor = models.FloatField()
+    valor_calculado = models.FloatField(null=True, blank=True)   # el que había al editar (referencia)
+    actualizado = models.DateTimeField(auto_now=True)
+    actualizado_por = models.CharField(max_length=150, blank=True, default='')
+
+    class Meta:
+        db_table = 'ajuste_presupuestado'
+        constraints = [
+            models.UniqueConstraint(fields=['sede', 'cuenta', 'mes', 'anio'], name='ajuste_presupuestado_uniq'),
+        ]
+
+    def __str__(self):
+        return f'{self.sede} {self.cuenta} {self.mes}/{self.anio} = {self.valor}'
+
+
+class EstadoPresupuestoVentas(models.Model):
+    """Una sola fila: con qué ejecutado se generó por última vez el presupuesto
+    de ventas. Si el ejecutado cambia (otra "huella"), se vuelve a generar."""
+    clave = models.CharField(max_length=20, unique=True, default='ventas')
+    huella_ejecutado = models.TextField(blank=True, default='')
+    generado = models.DateTimeField(null=True, blank=True)
+    generado_por = models.CharField(max_length=150, blank=True, default='')
+    ultimo_error = models.TextField(blank=True, default='')
+
+    class Meta:
+        db_table = 'estado_presupuesto_ventas'

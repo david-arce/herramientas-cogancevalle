@@ -4,6 +4,40 @@
 {% block css %}
 <link rel="stylesheet" href="{% static_v 'css/consolidado_total_base.css' %}">
 <link rel="stylesheet" href="{% static_v 'css/sedes_tabs.css' %}">
+<style>
+/* ── Modo edición (valores manuales) ───────────────────────────── */
+.btn.btn-edicion.activo { background: var(--c-amber); border-color: var(--c-amber); color: #fff; }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.aviso-edicion {
+    display: none; align-items: center; gap: .6rem; flex-wrap: wrap;
+    margin: 0 0 .5rem; padding: .45rem .75rem; border-radius: 8px;
+    background: var(--c-amber-lt); color: #78350f; border: 1px solid #fcd34d; font-size: .8rem;
+}
+.consolidado-wrap.modo-edicion .aviso-edicion { display: flex; }
+.stat-pill.stat-manuales { background: var(--c-amber-lt); color: #78350f; cursor: pointer; border: 1px solid #fcd34d; }
+.stat-pill.stat-manuales.filtrando { background: var(--c-amber); color: #fff; }
+.stat-pill.stat-manuales[hidden] { display: none; }
+table.consolidado td.celda-manual {
+    background: var(--c-amber-lt) !important; color: #78350f; font-weight: 600;
+    box-shadow: inset 3px 0 0 var(--c-amber);
+}
+table.consolidado td.celda-manual-total { box-shadow: inset 3px 0 0 var(--c-amber); }
+table.consolidado td.celda-manual-total::after { content: ' ✎'; color: var(--c-amber); font-size: .7em; }
+.consolidado-wrap.modo-edicion table.consolidado td.celda-editable { cursor: text; }
+.consolidado-wrap.modo-edicion table.consolidado td.celda-editable:hover { outline: 2px solid var(--c-indigo); outline-offset: -2px; }
+table.consolidado td.celda-editando { padding: 0 !important; outline: 2px solid var(--c-indigo); outline-offset: -2px; }
+table.consolidado td.celda-editando input {
+    width: 100%; min-width: 7.5rem; box-sizing: border-box; border: 0; padding: .35rem .4rem;
+    font: inherit; text-align: right; background: #fff; color: var(--c-text);
+}
+table.consolidado td.celda-guardando { opacity: .5; }
+.btn-restablecer {
+    border: 0; background: transparent; color: #b45309; cursor: pointer; padding: 0 .25rem 0 0;
+    font-size: .85em; line-height: 1; display: none;
+}
+.consolidado-wrap.modo-edicion td.celda-manual .btn-restablecer { display: inline; }
+#presupuestadoBody.solo-manuales tr:not(.fila-con-manual) { display: none; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -27,6 +61,11 @@
                     title="Vuelve a generar las ventas (crédito, contado, descuentos) y el costo de ventas de cada sede a partir del presupuesto comercial">
                 📈 Recalcular presupuesto de ventas</button>
             {% endif %}
+            {% if puede_editar %}
+            <button class="btn btn-outline btn-edicion" id="modoEdicionBtn" aria-pressed="false"
+                    title="Cambiar a mano valores del presupuestado. Los valores manuales no se recalculan nunca">
+                ✏️ Modo edición</button>
+            {% endif %}
             <button class="btn btn-export"  id="exportarBtn">📥 Exportar CSV</button>
         </div>
     </div>
@@ -49,7 +88,19 @@
             <div class="stat-pill stat-indigo">
                 Total anual: <span class="stat-val" id="statTotal">—</span>
             </div>
+            <button type="button" class="stat-pill stat-manuales" id="statManuales" hidden
+                    title="Clic: ver solo las filas con cambios manuales">
+                ✏️ Cambios manuales: <span class="stat-val" id="statManualesN">0</span>
+            </button>
         </div>
+    </div>
+
+    <div class="aviso-edicion" id="avisoEdicion" role="status">
+        <strong>✏️ Modo edición</strong>
+        <span>Haz clic en un valor de una cuenta para cambiarlo · <kbd>Enter</kbd> guarda · <kbd>Esc</kbd> cancela ·
+              déjalo vacío o usa ↺ para volver al valor calculado.</span>
+        <span>Las celdas <span style="background:var(--c-amber-lt);padding:0 .3rem;border-left:3px solid var(--c-amber);">resaltadas</span>
+              son manuales: recalcular el presupuesto no las cambia.</span>
     </div>
 
     <!-- TABLA -->
@@ -123,6 +174,8 @@
 const URL_OBTENER_SEDE   = "{% url 'obtener_presupuestado' %}";
 const CSRF_TOKEN         = "{{ csrf_token }}";
 const URL_GENERAR_VENTAS = "{% url 'generar_presupuesto_ventas' %}";
+const URL_GUARDAR_AJUSTE = "{% url 'guardar_ajuste_presupuestado' %}";
+const PUEDE_EDITAR       = {{ puede_editar|yesno:"true,false" }};
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -145,6 +198,9 @@ let sortDir         = 'asc';
 let ordenCuentas    = [];   // orden de cuentas que envía el backend (incluye las CALC-...)
 let nombresCalculadas = {}; // { 'CALC-...': nombre } según Orden de cuentas
 let pctCostoEjecutado = null; // % Costo de Ventas del ejecutado de esta pestaña (se muestra tal cual)
+let manuales = {};            // { cuenta: { Mes: {valor, calculado, usuario, fecha} | {sedes:[...]} } }
+let modoEdicion = false;
+let soloManuales = false;
 /* ══════════════════════════════════════════════════════════════════
    TOAST
 ══════════════════════════════════════════════════════════════════ */
@@ -432,6 +488,9 @@ function renderTabla(data) {
             tr.className = 'fila-subtotal ' + claseTotalRow(fila.tipoTotal) +
                            (TIPOS_PCT.has(fila.tipoTotal) ? ' fila-pct' : '');
         }
+        const cuenta = fila.isTotalRow ? null : String(fila.mcncuenta || '');
+        const manualesFila = (cuenta && manuales[cuenta]) || null;
+        if (manualesFila) tr.classList.add('fila-con-manual');
 
         [{ key:'mcncuenta' }, { key:'ctanombre' },
          ...MESES.map(m => ({ key:m, num:true })),
@@ -448,6 +507,7 @@ function renderTabla(data) {
                     td.textContent = FMT.format(Math.round(v) || 0);   // calculadas: 0 en vez de "-"
                 } else {
                     td.textContent = fmt(v);
+                    if (cuenta && MESES.includes(key)) marcarCeldaCuenta(td, fila, cuenta, key, manualesFila);
                 }
             } else {
                 td.textContent = fila[key] || '';
@@ -468,6 +528,166 @@ function renderTabla(data) {
     actualizarStats(data);
     aplicarBusqueda();
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   MODO EDICIÓN: valores manuales por sede, cuenta y mes
+   Se guardan aparte (AjustePresupuestado) y se muestran por encima del
+   cálculo; recalcular el presupuesto nunca los cambia.
+══════════════════════════════════════════════════════════════════ */
+function textoManual(info) {
+    if (info.sedes) {
+        return '✏️ Incluye valores manuales:\n' + info.sedes.map(x =>
+            `• ${(SEDES.find(s => s.key === x.sede) || {}).label || x.sede}: ${FMT.format(x.valor)} (calculado ${FMT.format(x.calculado)})`
+        ).join('\n');
+    }
+    const dif = info.valor - (info.calculado || 0);
+    return `✏️ Valor manual${info.usuario ? ' de ' + info.usuario : ''}${info.fecha ? ' (' + info.fecha + ')' : ''}\n` +
+           `Calculado: ${FMT.format(info.calculado || 0)}\n` +
+           `Diferencia: ${dif > 0 ? '+' : ''}${FMT.format(dif)}`;
+}
+
+function marcarCeldaCuenta(td, fila, cuenta, mes, manualesFila) {
+    td.dataset.cuenta = cuenta;
+    td.dataset.mes = mes;
+    const info = manualesFila && manualesFila[mes];
+    if (sedeActual === 'total_base') {
+        if (info) { td.classList.add('celda-manual-total'); td.title = textoManual(info); }
+        return;
+    }
+    td.classList.add('celda-editable');
+    td.dataset.valor = Math.round(parseFloat(fila[mes]) || 0);
+    td.dataset.nombre = fila.ctanombre || '';
+    if (info) {
+        td.classList.add('celda-manual');
+        td.title = textoManual(info);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn-restablecer';
+        btn.textContent = '↺';
+        btn.title = `Volver al valor calculado (${FMT.format(info.calculado || 0)})`;
+        btn.setAttribute('aria-label', btn.title);
+        td.prepend(btn);
+    }
+}
+
+function contarManuales() {
+    let n = 0;
+    Object.values(manuales).forEach(meses => Object.values(meses).forEach(info => {
+        n += info.sedes ? info.sedes.length : 1;
+    }));
+    return n;
+}
+
+function actualizarUIEdicion() {
+    const n = contarManuales();
+    const pill = document.getElementById('statManuales');
+    pill.hidden = n === 0;
+    document.getElementById('statManualesN').textContent = n;
+    if (!n) soloManuales = false;
+    pill.classList.toggle('filtrando', soloManuales);
+    document.getElementById('presupuestadoBody').classList.toggle('solo-manuales', soloManuales);
+
+    const btn = document.getElementById('modoEdicionBtn');
+    if (!btn) return;
+    const enTotal = sedeActual === 'total_base';
+    if (enTotal && modoEdicion) modoEdicion = false;
+    btn.disabled = enTotal;
+    btn.title = enTotal
+        ? 'El Total Base es la suma de las sedes: edita los valores en cada sede'
+        : 'Cambiar a mano valores del presupuestado. Los valores manuales no se recalculan nunca';
+    btn.classList.toggle('activo', modoEdicion);
+    btn.setAttribute('aria-pressed', String(modoEdicion));
+    btn.textContent = modoEdicion ? '✅ Terminar edición' : '✏️ Modo edición';
+    document.querySelector('.consolidado-wrap').classList.toggle('modo-edicion', modoEdicion);
+}
+
+document.getElementById('statManuales').addEventListener('click', () => {
+    soloManuales = !soloManuales;
+    actualizarUIEdicion();
+});
+
+const btnEdicion = document.getElementById('modoEdicionBtn');
+if (btnEdicion) btnEdicion.addEventListener('click', () => {
+    modoEdicion = !modoEdicion;
+    actualizarUIEdicion();
+});
+
+async function guardarManual(td, valor) {
+    td.classList.add('celda-guardando');
+    try {
+        const resp = await fetch(URL_GUARDAR_AJUSTE, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sede: sedeActual, cuenta: td.dataset.cuenta, mes: td.dataset.mes,
+                                   valor, ctanombre: td.dataset.nombre }),
+        });
+        let json = {};
+        try { json = await resp.json(); } catch (e) { /* sin JSON */ }
+        if (!resp.ok || !json.success) {
+            showToast('❌ No se guardó: ' + (json.error || `HTTP ${resp.status}`), 'error');
+            renderTabla(datosOrdenados());
+            return;
+        }
+        const quien = `${td.dataset.cuenta} · ${td.dataset.mes}`;
+        showToast(json.restablecido ? `↺ ${quien}: vuelve al valor calculado`
+                                    : `✏️ ${quien}: guardado ${FMT.format(json.valor)}` +
+                                      (json.costo_ventas_actualizado ? ' (costo de ventas actualizado)' : ''),
+                  'success');
+        await cargarDatos({ silencioso: true });
+    } catch (e) {
+        showToast('❌ Error de conexión al guardar: ' + e.message, 'error');
+        renderTabla(datosOrdenados());
+    }
+}
+
+function editarCelda(td) {
+    if (td.classList.contains('celda-editando')) return;
+    ocultarTooltip();
+    const original = td.dataset.valor;
+    const esManual = td.classList.contains('celda-manual');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.inputMode = 'decimal';
+    input.value = original;
+    input.setAttribute('aria-label', `${td.dataset.nombre || td.dataset.cuenta}, ${td.dataset.mes}`);
+    td.classList.add('celda-editando');
+    td.replaceChildren(input);
+    input.focus();
+    input.select();
+
+    let cerrado = false;
+    const cerrar = (guardar) => {
+        if (cerrado) return;
+        cerrado = true;
+        const texto = input.value.trim();
+        // Sin cambios (o vacío en una celda que ya era calculada): se deja como estaba
+        if (!guardar || texto === original || (texto === '' && !esManual)) {
+            renderTabla(datosOrdenados());
+            return;
+        }
+        td.classList.remove('celda-editando');
+        td.textContent = texto === '' ? '…' : texto;
+        guardarManual(td, texto === '' ? null : texto);
+    };
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); cerrar(true); }
+        else if (e.key === 'Escape') { e.preventDefault(); cerrar(false); }
+    });
+    input.addEventListener('blur', () => cerrar(true));
+}
+
+document.getElementById('presupuestadoBody').addEventListener('click', e => {
+    if (!modoEdicion) return;
+    const td = e.target.closest('td.celda-editable');
+    if (!td) return;
+    if (e.target.closest('.btn-restablecer')) {
+        e.stopPropagation();
+        td.textContent = '…';
+        guardarManual(td, null);
+        return;
+    }
+    editarCelda(td);
+});
 
 function actualizarFooter(data) {
     const t = { total: 0 };
@@ -500,15 +720,21 @@ function setLoading(activo, texto = 'Cargando datos...') {
 
 function bloquearControles(bloquear) {
     document.querySelectorAll('.tab-btn, #recargarBtn, #recalcularVentasBtn').forEach(el => { el.disabled = bloquear; });
+    const edicion = document.getElementById('modoEdicionBtn');
+    if (edicion) edicion.disabled = bloquear || sedeActual === 'total_base';
 }
 
 /* ══════════════════════════════════════════════════════════════════
    CARGA DE DATOS
 ══════════════════════════════════════════════════════════════════ */
-async function cargarDatos() {
-    setLoading(true, 'Cargando datos...');
-    document.getElementById('presupuestadoBody').innerHTML =
-        `<tr class="empty-row"><td colspan="15">⏳ Cargando...</td></tr>`;
+async function cargarDatos({ silencioso = false } = {}) {
+    const scroll = document.querySelector('.table-scroll');
+    const posicion = scroll ? scroll.scrollTop : 0;
+    if (!silencioso) {
+        setLoading(true, 'Cargando datos...');
+        document.getElementById('presupuestadoBody').innerHTML =
+            `<tr class="empty-row"><td colspan="15">⏳ Cargando...</td></tr>`;
+    }
     try {
         const url = sedeActual === 'total_base'
             ? URL_OBTENER_SEDE
@@ -520,7 +746,12 @@ async function cargarDatos() {
         ordenCuentas    = json.orden || [];
         nombresCalculadas = json.calculadas || {};
         pctCostoEjecutado = json.pct_costo_ejecutado || null;
+        manuales = json.manuales || {};
+        const recalculo = json.recalculado_por_ejecutado;
+        if (recalculo) showToast((recalculo.ok ? '♻️ ' : '⚠️ ') + recalculo.mensaje, recalculo.ok ? 'success' : 'error');
         renderTabla(datosOrdenados());   // conserva el orden elegido al cambiar de pestaña
+        actualizarUIEdicion();
+        if (silencioso && scroll) scroll.scrollTop = posicion;
     } catch (e) {
         showToast('Error al cargar datos: ' + e.message, 'error');
         document.getElementById('presupuestadoBody').innerHTML =
@@ -601,7 +832,8 @@ if (btnRecalcular) btnRecalcular.addEventListener('click', async () => {
             ...Object.entries(json.sedes_sin_costo_ventas || {}).map(([s, m]) => `${s} (sin costo de ventas): ${m}`),
         ];
         if (avisos.length) showToast('⚠️ Recalculado con avisos — ' + avisos.join(' · '), 'info');
-        else showToast(`✅ Presupuesto de ventas recalculado (${(json.sedes_procesadas || []).join(', ')})`, 'success');
+        else showToast(`✅ Presupuesto de ventas recalculado (${(json.sedes_procesadas || []).join(', ')})` +
+                       (contarManuales() ? '. Los cambios manuales se conservan.' : ''), 'success');
         setLoading(false);
         await cargarDatos();
     } catch (e) {
@@ -647,10 +879,12 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 actualizarTabsUI();
+actualizarUIEdicion();
 
-// Al entrar solo se cargan los datos guardados. El presupuesto de ventas
-// (cuentas 1, 2 y 41750201) ya NO se recalcula aquí: se recalcula cuando se
-// edita la tabla de Presupuesto comercial (crecimientos), que es lo único que lo cambia.
+// Al entrar se cargan los datos guardados. El presupuesto de ventas (cuentas 1,
+// 2, 41750201 y costo de ventas) se recalcula al editar el Presupuesto comercial,
+// con el botón "Recalcular", o solo, en el servidor, si el ejecutado cambió desde
+// la última vez (ver recalcular_si_cambio_ejecutado en views.py).
 cargarDatos();
 </script>
 {% endblock %}

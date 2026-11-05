@@ -26,16 +26,21 @@ from .models import (
     PresupuestoCentroSegLineaVentas,
     ConsolidadoTotalBase,
     Cuenta5Presupuestado,
+    AjustePresupuestado,
+    EstadoPresupuestoVentas,
 )
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.db.models.functions import Coalesce, Concat, Trim
 from django.db.models import Sum, Max, Q, Avg, Value
 from django.db import DatabaseError, transaction
+import logging
 import numpy as np
 import json
 import zlib
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
+
+logger_presupuesto = logging.getLogger('presupuestoApp.cargas')
 from django.db import models
 from django.core.paginator import Paginator
 from .log_cargas import log_carga
@@ -2827,7 +2832,86 @@ def _nombres_cuentas(*modelos):
 
 def calcular_movimientos(origen='ejecutado', sede='total'):
     """
-    Motor único para ejecutado y presupuestado.
+    Motor único para ejecutado y presupuestado (ver _calcular_movimientos_base).
+
+    En el PRESUPUESTADO, los valores escritos a mano en el modo edición del
+    Presupuestado general (AjustePresupuestado) se ponen por encima de lo
+    calculado; `manuales` dice cuáles son (ver _aplicar_ajustes_presupuestado).
+    """
+    resultado = _calcular_movimientos_base(origen, sede)
+    if origen != 'presupuestado' or not resultado.get('success'):
+        return resultado
+    try:
+        resultado['manuales'] = _aplicar_ajustes_presupuestado(resultado['data'], normalizar_sede(sede))
+    except Exception as e:
+        logger_presupuesto.exception('Error aplicando los cambios manuales del presupuestado (%s)', sede)
+        return {'success': False, 'error': f'Error aplicando los cambios manuales: {e}'}
+    return resultado
+
+
+def _anio_presupuesto():
+    """Año que se presupuesta (el mismo de generar_presupuesto_ventas)."""
+    return timezone.now().year + 1
+
+
+def _aplicar_ajustes_presupuestado(registros, sede):
+    """
+    Pone los valores manuales (AjustePresupuestado) del año del presupuesto
+    sobre `registros` (salida de _calcular_movimientos_base) y devuelve qué
+    celdas son manuales:
+
+      sede:  {cuenta: {'Enero': {valor, calculado, al_editar, usuario, fecha}}}
+      total: {cuenta: {'Enero': {'sedes': [{sede, valor, calculado}]}}}
+
+    En una sede el valor manual REEMPLAZA al calculado. En el total se suma la
+    diferencia (manual − calculado de esa sede), así el total sigue siendo la
+    suma de las sedes.
+    """
+    qs = AjustePresupuestado.objects.filter(anio=_anio_presupuesto())
+    if sede != 'total':
+        qs = qs.filter(sede=sede)
+    ajustes = list(qs.order_by('sede', 'cuenta', 'mes'))
+    manuales = {}
+    if not ajustes:
+        return manuales
+
+    bases = {}
+    for a in ajustes:
+        mes = MESES_ES.get(a.mes)
+        if not mes:
+            continue
+        valor = round(a.valor)
+        reg = registros[a.cuenta]
+        if not reg['mcncuenta']:
+            reg['mcncuenta'] = a.cuenta
+            reg['ctanombre'] = a.ctanombre or a.cuenta
+        if sede != 'total':
+            calculado = reg['meses'].get(mes, 0)
+            reg['meses'][mes] = valor
+            manuales.setdefault(a.cuenta, {})[mes] = {
+                'valor': valor,
+                'calculado': calculado,
+                'al_editar': None if a.valor_calculado is None else round(a.valor_calculado),
+                'usuario': a.actualizado_por,
+                'fecha': timezone.localtime(a.actualizado).strftime('%Y-%m-%d %H:%M') if a.actualizado else '',
+            }
+        else:
+            if a.sede not in bases:
+                base = _calcular_movimientos_base('presupuestado', a.sede)
+                if not base['success']:
+                    raise RuntimeError(base.get('error', 'Error'))
+                bases[a.sede] = base['data']
+            base_reg = bases[a.sede].get(a.cuenta)
+            calculado = base_reg['meses'].get(mes, 0) if base_reg else 0
+            reg['meses'][mes] = reg['meses'].get(mes, 0) + valor - calculado
+            manuales.setdefault(a.cuenta, {}).setdefault(mes, {'sedes': []})['sedes'].append(
+                {'sede': a.sede, 'valor': valor, 'calculado': calculado})
+    return manuales
+
+
+def _calcular_movimientos_base(origen='ejecutado', sede='total'):
+    """
+    Motor único para ejecutado y presupuestado (sin los cambios manuales).
 
     origen: 'ejecutado' | 'presupuestado'
     sede:   'cali' | 'tulua' | 'buga' | 'cartago' | 'total'
@@ -2970,12 +3054,15 @@ def calcular_presupuestado(sede='total'):
 #  VISTA GENÉRICA
 # ══════════════════════════════════════════════════════════════════
 
-def _filas_movimientos(origen, sede):
+def _filas_movimientos(origen, sede, salida_manuales=None):
     """(filas, orden, nombres) que muestra la pantalla de `origen` para la sede.
-    Lanza RuntimeError si el cálculo falla."""
+    Si se pasa `salida_manuales` (dict), se llena con las celdas escritas a mano
+    (solo presupuestado). Lanza RuntimeError si el cálculo falla."""
     resultado = calcular_movimientos(origen, sede)
     if not resultado['success']:
         raise RuntimeError(resultado.get('error', 'Error'))
+    if salida_manuales is not None:
+        salida_manuales.update(resultado.get('manuales') or {})
 
     ORDEN_PERSONALIZADO = obtener_orden_cuentas('total' if sede == 'total' else 'sede')
     NOMBRES = nombres_personalizados()
@@ -3005,8 +3092,14 @@ def _responder_movimientos(request, origen):
     sede = normalizar_sede(request.GET.get('sede'))
     if sede is None:
         return JsonResponse({'error': f"Sede inválida: {request.GET.get('sede')}"}, status=400)
+    recalculo = None
+    if origen == 'presupuestado':
+        # Si el ejecutado cambió desde la última vez que se generó el presupuesto
+        # de ventas, se vuelve a generar ANTES de mostrar (cubre Presupuestado y Comparativo).
+        recalculo = recalcular_si_cambio_ejecutado(request.user.username)
+    manuales = {}
     try:
-        filas, ORDEN_PERSONALIZADO, NOMBRES = _filas_movimientos(origen, sede)
+        filas, ORDEN_PERSONALIZADO, NOMBRES = _filas_movimientos(origen, sede, manuales)
     except RuntimeError as e:
         return JsonResponse({'error': str(e)}, status=500)
 
@@ -3023,6 +3116,10 @@ def _responder_movimientos(request, origen):
         # La fila "% Costo de Ventas" del presupuestado muestra EXACTAMENTE la del
         # ejecutado de la misma pestaña (ver _pct_costo_pantalla_ejecutado).
         respuesta['pct_costo_ejecutado'] = _pct_costo_pantalla_ejecutado(sede)
+        visibles = {f['mcncuenta'] for f in filas}
+        respuesta['manuales'] = {c: v for c, v in manuales.items() if c in visibles}
+        if recalculo:
+            respuesta['recalculado_por_ejecutado'] = recalculo
     return JsonResponse(respuesta)
 
 
@@ -3309,6 +3406,8 @@ def presupuestado_general(request):
         'subtotales': configuracion_para_tablas(),
         # Botón "Recalcular presupuesto de ventas" (ventas 1, 2, 41750201 y costo de ventas)
         'puede_generar_ventas': request.user.username in USUARIOS_GENERAR_VENTAS,
+        # Modo edición: valores manuales por sede, cuenta y mes (guardar_ajuste_presupuestado)
+        'puede_editar': request.user.username in USUARIOS_GENERAR_VENTAS,
     })
 
 # TABLA DINÁMICA FLEXIBLE
@@ -4495,7 +4594,7 @@ def _anio_base_sede(sede, anio_pedido=None):
     })
     return anios[-1] if anios else None
 
-def generar_presupuesto_ventas(anio_base=None):
+def generar_presupuesto_ventas(anio_base=None, usuario='', huella=None):
     """
     anio_base: año del ejecutado del que se toma la participación.
                Si es None se usa el último año con ventas ejecutadas.
@@ -4503,7 +4602,9 @@ def generar_presupuesto_ventas(anio_base=None):
     (año actual + 1).
     Idempotente: borra lo generado antes para ese año y lo vuelve a crear.
     """
-    anio_ppto = timezone.now().year + 1
+    anio_ppto = _anio_presupuesto()
+    if huella is None:
+        huella = huella_ejecutado()      # con qué ejecutado se genera (ver recalcular_si_cambio_ejecutado)
 
     proyeccion = _proyeccion_ventas_por_centro()
     if not proyeccion:
@@ -4556,8 +4657,10 @@ def generar_presupuesto_ventas(anio_base=None):
             pct_costo_resp[sede] = {MESES_ES[m]: round(pct_costo[m] * 100, 4) for m in range(1, 13)}
             if meses_pct_anual:
                 pct_costo_resp[sede]['meses_con_pct_del_anio'] = [MESES_ES[m] for m in meses_pct_anual]
+            # Las ventas que se cambiaron a mano (modo edición) cuentan con su valor manual
+            manuales_sede = _ajustes_sede(sede, anio_ppto)
             for mes in range(1, 13):
-                ventas_netas_mes = sum(valores[cta][mes] for cta in CUENTAS_VENTAS)
+                ventas_netas_mes = sum(manuales_sede.get((cta, mes), valores[cta][mes]) for cta in CUENTAS_VENTAS)
                 costo_ventas[mes] = round(ventas_netas_mes * pct_costo[mes])
             valores[CUENTA_COSTO_VENTAS] = costo_ventas
             costo_generado.append(sede)
@@ -4621,6 +4724,7 @@ def generar_presupuesto_ventas(anio_base=None):
                    and (sede_fila or '').strip().lower() in con_costo)]
         ConsolidadoTotalBase.objects.filter(id__in=ids).delete()
         ConsolidadoTotalBase.objects.bulk_create(nuevos)
+        _guardar_estado_ventas(huella, usuario)
 
     return {
         'anio_base': anios_usados,
@@ -4652,7 +4756,8 @@ def generar_presupuesto_ventas_view(request):
         body = json.loads(request.body or '{}')
         anio = body.get('anio_base')
         with log_carga('presupuesto_ventas', request, anio_base=anio) as info:
-            resultado = generar_presupuesto_ventas(int(anio) if anio else None)
+            resultado = generar_presupuesto_ventas(int(anio) if anio else None,
+                                                   usuario=request.user.username)
             info.update(registros=resultado['registros'],
                         sedes=','.join(resultado['sedes_procesadas']),
                         omitidas=','.join(resultado['sedes_omitidas']))
@@ -4668,3 +4773,225 @@ def generar_presupuesto_ventas_view(request):
         # (antes se veía como "servidor no disponible" y se reintentaba 3 minutos).
         return JsonResponse({'success': False, 'reintentar': False,
                              'error': f'Error al generar el presupuesto de ventas: {e}'}, status=500)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  RECALCULAR EL PRESUPUESTO DE VENTAS CUANDO CAMBIA EL EJECUTADO
+# ══════════════════════════════════════════════════════════════════
+# El presupuesto de ventas usa el ejecutado (participación de crédito, contado y
+# descuentos; % costo de ventas). Cada vez que se genera se guarda una "huella"
+# del ejecutado (EstadoPresupuestoVentas). Al abrir el Presupuestado o el
+# Comparativo, si la huella cambió (se subió, borró o cambió ejecutado), se
+# vuelve a generar antes de mostrar. Los valores manuales no se tocan nunca.
+RECALCULO_AUTOMATICO_VENTAS = True
+
+
+def huella_ejecutado():
+    """Resumen corto de todo lo que del ejecutado usa el presupuesto de ventas:
+    cantidad de registros, sumas y último id de ConsolidadoTotalBase (ejecutado),
+    Cuenta 4 base y Cuenta 5 base, más la configuración de Filas calculadas (de
+    ella sale el % costo de ventas). Si algo de eso cambia, cambia la huella."""
+    from .subtotales import configuracion_subtotales
+    partes = []
+    consolidado = (ConsolidadoTotalBase.objects.filter(origen='ejecutado')
+                   .aggregate(n=models.Count('pk'), m=Max('pk'), v=Sum('valor')))
+    partes.append(consolidado)
+    for modelo in (Cuenta4Base, Cuenta5Base):
+        partes.append(modelo.objects.aggregate(n=models.Count('pk'), m=Max('pk'),
+                                               d=Sum('mcnvaldebi'), c=Sum('mcnvalcred')))
+    try:
+        partes.append(configuracion_subtotales())
+    except Exception:
+        partes.append(None)
+    texto = json.dumps(partes, sort_keys=True, default=lambda v: round(float(v), 2))
+    return f'{zlib.crc32(texto.encode()):08x}-{len(texto)}'
+
+
+def _guardar_estado_ventas(huella, usuario='', error=''):
+    EstadoPresupuestoVentas.objects.update_or_create(
+        clave='ventas',
+        defaults={'huella_ejecutado': huella, 'generado': timezone.now(),
+                  'generado_por': usuario or '', 'ultimo_error': error or ''},
+    )
+
+
+def _hay_ventas_generadas():
+    return ConsolidadoTotalBase.objects.filter(
+        origen='presupuestado', mcncuenta__in=list(CUENTAS_VENTAS)).exists()
+
+
+def recalcular_si_cambio_ejecutado(usuario=''):
+    """Vuelve a generar el presupuesto de ventas si el ejecutado cambió desde la
+    última vez. Devuelve None si no hizo falta, o {'ok', 'mensaje', ...}.
+
+    Nunca rompe la pantalla: si falla, se registra en el log y se muestra lo
+    que ya estaba guardado. Si el error es del cálculo (p. ej. falta la
+    proyección), se guarda la huella para no reintentarlo en cada carga; se
+    vuelve a intentar cuando el ejecutado cambie otra vez o con el botón.
+    """
+    if not RECALCULO_AUTOMATICO_VENTAS:
+        return None
+    try:
+        huella = huella_ejecutado()
+        estado = EstadoPresupuestoVentas.objects.filter(clave='ventas').first()
+        if estado and estado.huella_ejecutado == huella:
+            return None
+        if not _hay_ventas_generadas():
+            return None            # nunca se ha generado: no hay nada que recalcular
+
+        with transaction.atomic():
+            # Una sola petición recalcula; las demás esperan y luego ven la huella nueva
+            if connection.vendor == 'postgresql':
+                with connection.cursor() as cursor:
+                    cursor.execute('SELECT pg_advisory_xact_lock(%s)', [LOCK_PRESUPUESTO_VENTAS])
+            estado = EstadoPresupuestoVentas.objects.filter(clave='ventas').first()
+            if estado and estado.huella_ejecutado == huella:
+                return None        # otra petición ya lo recalculó
+            try:
+                with log_carga('presupuesto_ventas_auto', None, motivo='cambio en el ejecutado') as info:
+                    resultado = generar_presupuesto_ventas(usuario=usuario, huella=huella)
+                    info.update(registros=resultado['registros'],
+                                sedes=','.join(resultado['sedes_procesadas']))
+            except ValueError as e:
+                _guardar_estado_ventas(huella, usuario, str(e))
+                return {'ok': False,
+                        'mensaje': f'El ejecutado cambió pero no se pudo recalcular el presupuesto de ventas: {e}'}
+        return {'ok': True,
+                'mensaje': 'El ejecutado cambió: se recalculó el presupuesto de ventas '
+                           f"({', '.join(resultado['sedes_procesadas'])}). Los cambios manuales se conservan.",
+                'sedes': resultado['sedes_procesadas'],
+                'sedes_omitidas': resultado['sedes_omitidas']}
+    except Exception:
+        logger_presupuesto.exception('No se pudo recalcular el presupuesto de ventas tras un cambio en el ejecutado')
+        return None
+
+
+# ══════════════════════════════════════════════════════════════════
+#  MODO EDICIÓN DEL PRESUPUESTADO GENERAL (valores manuales)
+# ══════════════════════════════════════════════════════════════════
+SEDES_EDITABLES = [s for s, cfg in SEDE_CONFIG_CONSOLIDADO.items() if cfg is not None]
+
+
+def _ajustes_sede(sede, anio):
+    """{(cuenta, mes): valor} de los valores manuales de una sede."""
+    return {(a, m): v for a, m, v in AjustePresupuestado.objects
+            .filter(sede=sede, anio=anio).values_list('cuenta', 'mes', 'valor')}
+
+
+def _recalcular_costo_ventas_sede(sede, anio):
+    """Vuelve a calcular el costo de ventas (613522) generado de la sede con las
+    ventas que hay ahora (las generadas, o las manuales donde las haya).
+    Devuelve True si actualizó algo."""
+    filas = list(
+        ConsolidadoTotalBase.objects
+        .filter(origen='presupuestado', sede__iexact=sede, mcnfecha__year=anio)
+        .filter(q_cuentas_clave(CUENTAS_GENERADAS))
+    )
+    costos = [f for f in filas if resolver_cuenta_clave(f.mcncuenta, f.ctanombre) == CUENTA_COSTO_VENTAS]
+    if not costos:
+        return False
+    pct, _ = _pct_costo_ventas_ejecutado(sede)
+    if pct is None:
+        return False
+    ventas = defaultdict(lambda: dict.fromkeys(CUENTAS_VENTAS, 0))
+    for f in filas:
+        cta = resolver_cuenta_clave(f.mcncuenta, f.ctanombre)
+        if cta in CUENTAS_VENTAS and f.mcnfecha:
+            ventas[f.mcnfecha.month][cta] += f.valor or 0
+    manuales = _ajustes_sede(sede, anio)
+    nuevos = {}
+    for mes in range(1, 13):
+        netas = sum(manuales.get((cta, mes), ventas[mes][cta]) for cta in CUENTAS_VENTAS)
+        nuevos[mes] = round(netas * pct[mes])
+    total_anual = sum(nuevos.values())
+    for f in costos:
+        if f.mcnfecha:
+            f.valor = nuevos[f.mcnfecha.month]
+            f.total_anual = total_anual
+    ConsolidadoTotalBase.objects.bulk_update(costos, ['valor', 'total_anual'])
+    return True
+
+
+def _mes_numero(valor):
+    if isinstance(valor, int) or (isinstance(valor, str) and valor.strip().isdigit()):
+        n = int(valor)
+        return n if 1 <= n <= 12 else None
+    por_nombre = {v.lower(): k for k, v in MESES_ES.items()}
+    return por_nombre.get(str(valor or '').strip().lower())
+
+
+@login_required
+@require_POST
+def guardar_ajuste_presupuestado(request):
+    """POST {sede, cuenta, mes, valor, ctanombre}
+    Guarda el valor manual de una celda del Presupuestado general.
+    valor = null (o vacío) → se borra el valor manual y vuelve el calculado."""
+    if request.user.username not in USUARIOS_GENERAR_VENTAS:
+        return JsonResponse({'success': False, 'error': 'Sin permisos para editar el presupuestado'}, status=403)
+    try:
+        body = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'JSON inválido'}, status=400)
+
+    sede = normalizar_sede(body.get('sede'))
+    if sede not in SEDES_EDITABLES:
+        return JsonResponse({'success': False,
+                             'error': 'Solo se editan las sedes (el Total Base es la suma de las sedes)'}, status=400)
+    cuenta = str(body.get('cuenta') or '').strip()
+    if not cuenta or filas_calculadas.es_calculada(cuenta) or cuenta.upper().startswith(filas_calculadas.PREFIJO):
+        return JsonResponse({'success': False, 'error': 'Las filas calculadas no se editan'}, status=400)
+    mes = _mes_numero(body.get('mes'))
+    if mes is None:
+        return JsonResponse({'success': False, 'error': f"Mes inválido: {body.get('mes')}"}, status=400)
+
+    valor = body.get('valor')
+    if isinstance(valor, str):
+        valor = valor.strip()
+        if valor:
+            # admite "1.234.567", "-1234,5" o "1234.5"
+            limpio = valor.replace(' ', '').replace('$', '')
+            if ',' in limpio:
+                limpio = limpio.replace('.', '').replace(',', '.')
+            elif limpio.count('.') > 1 or re.fullmatch(r'-?\d{1,3}(\.\d{3})+', limpio):
+                limpio = limpio.replace('.', '')
+            valor = limpio
+        else:
+            valor = None
+    if valor is not None:
+        try:
+            valor = float(valor)
+        except (TypeError, ValueError):
+            return JsonResponse({'success': False, 'error': f'Valor inválido: {body.get("valor")}'}, status=400)
+        if not np.isfinite(valor):
+            return JsonResponse({'success': False, 'error': 'Valor inválido'}, status=400)
+
+    anio = _anio_presupuesto()
+    try:
+        with transaction.atomic():
+            if valor is None:
+                AjustePresupuestado.objects.filter(sede=sede, cuenta=cuenta, mes=mes, anio=anio).delete()
+            else:
+                base = _calcular_movimientos_base('presupuestado', sede)
+                if not base['success']:
+                    raise RuntimeError(base.get('error', 'Error'))
+                reg = base['data'].get(cuenta)
+                calculado = reg['meses'].get(MESES_ES[mes], 0) if reg else 0
+                ajuste, creado = AjustePresupuestado.objects.get_or_create(
+                    sede=sede, cuenta=cuenta, mes=mes, anio=anio,
+                    defaults={'valor': valor, 'valor_calculado': calculado})
+                ajuste.valor = valor
+                ajuste.valor_calculado = calculado
+                ajuste.ctanombre = str(body.get('ctanombre') or ajuste.ctanombre or '')[:255]
+                ajuste.actualizado_por = request.user.username
+                ajuste.save()
+            costo = (_recalcular_costo_ventas_sede(sede, anio)
+                     if resolver_cuenta_clave(cuenta, '') in CUENTAS_VENTAS else False)
+    except DatabaseError as e:
+        return JsonResponse({'success': False, 'error': f'La base de datos no está disponible: {e}'}, status=503)
+    except Exception as e:
+        logger_presupuesto.exception('Error guardando un valor manual del presupuestado')
+        return JsonResponse({'success': False, 'error': f'No se pudo guardar: {e}'}, status=500)
+
+    return JsonResponse({'success': True, 'sede': sede, 'cuenta': cuenta, 'mes': MESES_ES[mes],
+                         'valor': None if valor is None else round(valor),
+                         'restablecido': valor is None, 'costo_ventas_actualizado': costo})

@@ -174,6 +174,7 @@ urlpatterns = [
     
     # urls.py
     path('ventas/generar/', views.generar_presupuesto_ventas_view, name='generar_presupuesto_ventas'),
+    path('presupuestado/ajuste/', views.guardar_ajuste_presupuestado, name='guardar_ajuste_presupuestado'),
     
     # TABLA DINAMICA ------------------------------
     path('obtener-valores-filtros/', views.obtener_valores_filtros, name='obtener_valores_filtros'),

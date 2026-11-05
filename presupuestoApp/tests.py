@@ -4334,3 +4334,163 @@ class ReemplazarAnioVentasTests(TestCase):
         r = self.client.get(reverse("vistaImportarVentas"))
         self.assertContains(r, 'id="resumenAnio"')
         self.assertContains(r, f'value="{timezone.now().year}" selected')
+
+
+class ModoEdicionPresupuestadoTests(TestCase):
+    """Modo edición del Presupuestado general: los valores escritos a mano se
+    guardan aparte, se muestran por encima del cálculo y recalcular no los toca."""
+
+    setUp = PresupuestoCostoVentasTests.setUp
+    generar = PresupuestoCostoVentasTests.generar
+    costo_ppto = PresupuestoCostoVentasTests.costo_ppto
+    EJECUTADO = PresupuestoCostoVentasTests.EJECUTADO
+    PROYECCION = PresupuestoCostoVentasTests.PROYECCION
+
+    def entrar(self, usuario="admin"):
+        self.client.force_login(User.objects.create_user(usuario))
+
+    def guardar(self, **datos):
+        return self.client.post(reverse("guardar_ajuste_presupuestado"), json.dumps(datos),
+                                content_type="application/json")
+
+    def fila(self, sede, cuenta):
+        r = self.client.get(reverse("obtener_presupuestado") + f"?sede={sede}").json()
+        return next((f for f in r["data"] if f["mcncuenta"] == cuenta), None), r
+
+    def test_valor_manual_reemplaza_al_calculado_y_queda_marcado(self):
+        self.generar()
+        self.entrar()
+        antes, _ = self.fila("tulua", "1")
+        r = self.guardar(sede="tulua", cuenta="1", mes="Marzo", valor="1.000.000", ctanombre="Ventas a crédito")
+        self.assertEqual(r.status_code, 200, r.content)
+        fila, resp = self.fila("tulua", "1")
+        self.assertEqual(fila["Marzo"], 1_000_000)
+        self.assertEqual(fila["Enero"], antes["Enero"])
+        self.assertEqual(fila["total"], antes["total"] - antes["Marzo"] + 1_000_000)
+        info = resp["manuales"]["1"]["Marzo"]
+        self.assertEqual((info["valor"], info["calculado"], info["usuario"]), (1_000_000, antes["Marzo"], "admin"))
+
+    def test_recalcular_no_toca_los_manuales_y_el_costo_usa_las_ventas_manuales(self):
+        self.generar()
+        self.entrar()
+        self.guardar(sede="tulua", cuenta="1", mes=1, valor=500_000_000)
+        ventas = {c: self.T.objects.get(origen="presupuestado", sede="tulua", mcncuenta=c,
+                                        mcnfecha=datetime.date(self.anio + 1, 1, 1)).valor for c in ("2", "41750201")}
+        pct_enero = 1_081_977_357 / (759_222_744 + 479_318_539 - 6_508_501)
+        esperado = round((500_000_000 + ventas["2"] + ventas["41750201"]) * pct_enero)
+        self.assertEqual(self.costo_ppto(1), esperado)            # al guardar se actualiza el costo de ventas
+        self.generar()                                            # recalcular
+        self.assertEqual(self.costo_ppto(1), esperado)            # ... y al recalcular también
+        fila, _ = self.fila("tulua", "1")
+        self.assertEqual(fila["Enero"], 500_000_000)              # el manual sigue ahí
+
+    def test_total_suma_la_diferencia_de_las_sedes(self):
+        self.generar()
+        self.entrar()
+        total_antes, _ = self.fila("total", "1")
+        tulua, _ = self.fila("tulua", "1")
+        self.guardar(sede="tulua", cuenta="1", mes="Abril", valor=tulua["Abril"] + 1234)
+        total, resp = self.fila("total", "1")
+        self.assertEqual(total["Abril"], total_antes["Abril"] + 1234)
+        self.assertEqual(resp["manuales"]["1"]["Abril"]["sedes"][0]["sede"], "tulua")
+
+    def test_restablecer_vuelve_al_calculado(self):
+        self.generar()
+        self.entrar()
+        antes, _ = self.fila("tulua", "2")
+        self.guardar(sede="tulua", cuenta="2", mes="Mayo", valor=7)
+        r = self.guardar(sede="tulua", cuenta="2", mes="Mayo", valor=None).json()
+        self.assertTrue(r["restablecido"])
+        fila, resp = self.fila("tulua", "2")
+        self.assertEqual(fila["Mayo"], antes["Mayo"])
+        self.assertEqual(resp["manuales"], {})
+        self.assertEqual(views.AjustePresupuestado.objects.count(), 0)
+
+    def test_validaciones_y_permisos(self):
+        self.entrar("otro")
+        self.assertEqual(self.guardar(sede="tulua", cuenta="1", mes=1, valor=1).status_code, 403)
+        self.client.logout()
+        self.entrar()
+        self.assertEqual(self.guardar(sede="total", cuenta="1", mes=1, valor=1).status_code, 400)
+        self.assertEqual(self.guardar(sede="tulua", cuenta="CALC-VentasNetas", mes=1, valor=1).status_code, 400)
+        self.assertEqual(self.guardar(sede="tulua", cuenta="1", mes=13, valor=1).status_code, 400)
+        self.assertEqual(self.guardar(sede="tulua", cuenta="1", mes=1, valor="abc").status_code, 400)
+        self.assertEqual(views.AjustePresupuestado.objects.count(), 0)
+
+    def test_formatos_de_numero(self):
+        self.entrar()
+        for texto, esperado in (("-7.029.414", -7_029_414), ("1234,5", 1234.5), ("1234.5", 1234.5), ("$ 2.000", 2000)):
+            self.guardar(sede="buga", cuenta="5105", mes=1, valor=texto)
+            self.assertEqual(views.AjustePresupuestado.objects.get(sede="buga").valor, esperado, texto)
+
+    def test_la_pagina_tiene_el_modo_edicion(self):
+        self.entrar()
+        html = self.client.get(reverse("presupuestado_general")).content.decode()
+        self.assertIn('id="modoEdicionBtn"', html)
+        self.assertIn(reverse("guardar_ajuste_presupuestado"), html)
+        self.client.logout()
+        self.entrar("NICOLAS")
+        self.assertIn('id="modoEdicionBtn"', self.client.get(reverse("presupuestado_general")).content.decode())
+
+
+class RecalculoPorCambioEnEjecutadoTests(TestCase):
+    """Si el ejecutado cambia, al abrir el Presupuestado (o el Comparativo) se
+    vuelve a generar el presupuesto de ventas antes de mostrar."""
+
+    setUp = PresupuestoCostoVentasTests.setUp
+    generar = PresupuestoCostoVentasTests.generar
+    costo_ppto = PresupuestoCostoVentasTests.costo_ppto
+    EJECUTADO = PresupuestoCostoVentasTests.EJECUTADO
+    PROYECCION = PresupuestoCostoVentasTests.PROYECCION
+
+    def abrir(self):
+        proyeccion = {"ALMACEN TULUA": {m: self.PROYECCION for m in range(1, 13)}}
+        with mock.patch.object(views, "_proyeccion_ventas_por_centro", return_value=proyeccion):
+            return self.client.get(reverse("obtener_presupuestado") + "?sede=tulua").json()
+
+    def test_sin_cambios_no_recalcula(self):
+        self.generar()
+        self.client.force_login(User.objects.create_user("admin"))
+        with mock.patch.object(views, "generar_presupuesto_ventas") as gen:
+            r = self.abrir()
+        gen.assert_not_called()
+        self.assertNotIn("recalculado_por_ejecutado", r)
+
+    def test_cambio_en_el_ejecutado_recalcula_y_conserva_manuales(self):
+        self.generar()
+        self.client.force_login(User.objects.create_user("admin"))
+        self.client.post(reverse("guardar_ajuste_presupuestado"),
+                         json.dumps({"sede": "tulua", "cuenta": "2", "mes": 3, "valor": 42}),
+                         content_type="application/json")
+        costo_antes = self.costo_ppto(2)
+        # Cambia el ejecutado de febrero: el costo pasa de 90 % a 50 %
+        self.T.objects.filter(origen="ejecutado", mcncuenta="613522",
+                              mcnfecha=datetime.date(self.anio, 2, 1)).update(valor=500_000_000)
+        r = self.abrir()
+        self.assertTrue(r["recalculado_por_ejecutado"]["ok"], r.get("recalculado_por_ejecutado"))
+        self.assertNotEqual(self.costo_ppto(2), costo_antes)
+        self.assertEqual(self.costo_ppto(2), round(self.PROYECCION * 0.5))
+        fila = next(f for f in r["data"] if f["mcncuenta"] == "2")
+        self.assertEqual(fila["Marzo"], 42)
+        # La segunda vez ya no recalcula
+        self.assertNotIn("recalculado_por_ejecutado", self.abrir())
+
+    def test_error_del_calculo_no_rompe_la_pantalla_ni_reintenta(self):
+        self.generar()
+        self.client.force_login(User.objects.create_user("admin"))
+        self.T.objects.create(mcncuenta="1", ctanombre="Ventas a crédito", mcnfecha=datetime.date(self.anio, 3, 1),
+                              valor=10, sede="tulua", origen="ejecutado")
+        with mock.patch.object(views, "_proyeccion_ventas_por_centro", return_value={}):
+            r = self.client.get(reverse("obtener_presupuestado") + "?sede=tulua")
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(r.json()["recalculado_por_ejecutado"]["ok"])
+        self.assertTrue(views.EstadoPresupuestoVentas.objects.get().ultimo_error)
+        with mock.patch.object(views, "generar_presupuesto_ventas") as gen:
+            self.client.get(reverse("obtener_presupuestado") + "?sede=tulua")
+        gen.assert_not_called()
+
+    def test_si_nunca_se_genero_no_hace_nada(self):
+        self.client.force_login(User.objects.create_user("admin"))
+        with mock.patch.object(views, "generar_presupuesto_ventas") as gen:
+            self.abrir()
+        gen.assert_not_called()
