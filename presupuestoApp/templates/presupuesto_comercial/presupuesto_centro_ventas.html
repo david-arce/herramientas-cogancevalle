@@ -21,10 +21,11 @@ document.addEventListener('DOMContentLoaded', function () {
                            'utilidad_pct', 'utilidad_valor', 'total_proyectado'];
 
     const tabla = new PresupuestoTable({
+        filaTotales: true,          // total por mes y año al final
         container: 'tablaCentroVentas',
         exportFileName: 'Presupuesto_Centro_Operacion_Ventas',
         emptyMessage: 'No hay datos cargados todavía',
-        pivot: (data) => PresupuestoUtils.pivotByMonth(data, GROUP_FIELDS, EXTRA_FIELDS),
+        pivot: (data) => PresupuestoUtils.pivotConMargenAnual(data, GROUP_FIELDS, EXTRA_FIELDS),
         columns: [
             { key: 'year', label: 'Año', type: 'text', filterable: true },
             { key: 'nombre_centro_operacion', label: 'Centro de operación', type: 'text', filterable: true },

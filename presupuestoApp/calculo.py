@@ -17,6 +17,7 @@ NIVELES = {
 }
 
 CAMPOS_DETALLE = ['nombre_linea_n1', 'nombre_centro_de_operacion', 'nombre_clase_cliente']
+
 _COL_TODO = '__todo__'
 
 def _a_registros(df):

@@ -2842,24 +2842,25 @@ def calcular_movimientos(origen='ejecutado', sede='total'):
             modelos['cuenta5'].objects
             .filter(**filtro_detalle)
             .exclude(mcncuenta__in=CUENTAS_OMITIR)
-            .values(*CAMPOS_DETALLE_CONTABLE)
+            .values(*CAMPOS_DETALLE_CONTABLE, 'mcnzona')
         )
 
         # Cuentas 4x desde su propia tabla + cuentas clave reconocidas por nombre.
-        # Las cuentas de ventas (1, 2, 41750201) del PRESUPUESTADO las genera
-        # generar_presupuesto_ventas en ConsolidadoTotalBase; si se tomaran
-        # también del detalle contable quedarían sumadas dos veces.
-        zonas_generadas = set()
+        # Las cuentas de ventas (1, 2, 41750201) y el costo de ventas (613522)
+        # del PRESUPUESTADO las genera generar_presupuesto_ventas en
+        # ConsolidadoTotalBase; si se tomaran también del detalle contable
+        # quedarían sumadas dos veces. {cuenta: zonas de las sedes generadas}
+        zonas_generadas = defaultdict(set)
         if origen == 'presupuestado':
-            sedes_generadas = (
+            generadas = (
                 ConsolidadoTotalBase.objects
-                .filter(origen='presupuestado', mcncuenta__in=list(CUENTAS_VENTAS))
-                .values_list('sede', flat=True).distinct()
+                .filter(origen='presupuestado', mcncuenta__in=list(CUENTAS_GENERADAS))
+                .values_list('sede', 'mcncuenta').distinct()
             )
-            for s in sedes_generadas:
+            for s, cta in generadas:
                 cfg = SEDE_CONFIG_CONSOLIDADO.get((s or '').strip().lower())
                 if cfg:
-                    zonas_generadas.update(str(z) for z in cfg['zona'])
+                    zonas_generadas[str(cta)].update(str(z) for z in cfg['zona'])
 
         queryset_4 = (
             modelos['cuenta4'].objects
@@ -2889,9 +2890,9 @@ def calcular_movimientos(origen='ejecutado', sede='total'):
                 destino_norm = destino.strip().upper()
                 cuenta  = resolver_cuenta_clave(row['mcncuenta'], row['ctanombre']) or 'SIN CUENTA'
                 
-                if (tabla == 'cuenta4' and cuenta in CUENTAS_VENTAS
-                        and str(row.get('mcnzona') or '') in zonas_generadas):
-                    continue   # esta sede ya tiene la cuenta generada
+                if (cuenta in zonas_generadas
+                        and str(row.get('mcnzona') or '') in zonas_generadas[cuenta]):
+                    continue   # esta sede ya tiene la cuenta generada (ventas / costo de ventas)
                 if cuenta in ALIAS_CUENTAS_CLAVE:
                     pass  # cuenta clave: se conserva, no se reagrupa
                 elif tabla == 'cuenta4' and not cuenta.startswith('4'):
@@ -4272,6 +4273,10 @@ CUENTAS_VENTAS = {
     '2':        'Ventas a contado',
     '41750201': 'Descuentos otorgados x pto pago',
 }
+# Costo de ventas del presupuestado: ventas netas presupuestadas del mes ×
+# % costo de ventas del EJECUTADO de la misma sede y mes.
+CUENTA_COSTO_VENTAS = '613522'
+CUENTAS_GENERADAS = {**CUENTAS_VENTAS, CUENTA_COSTO_VENTAS: 'Costo de ventas'}
 
 
 
@@ -4365,6 +4370,57 @@ def _participacion_ventas_sede(anio_base, sede):
         for mes in range(1, 13)
     }
 
+def _pct_costo_ventas_ejecutado(sede):
+    """
+    {mes: fracción} del % costo de ventas del EJECUTADO de la sede: lo mismo
+    que muestra la fila "% Costo de Ventas" del Consolidado y del Comparativo
+    (costo de ventas ÷ ventas netas, con las cuentas de Ajustes → Filas
+    calculadas: por defecto 613522 ÷ (1 + 2 + 41750201)).
+
+    Un mes sin ventas netas o sin costo en el ejecutado (p. ej. un mes que aún
+    no se ha cargado) usa el % del año. Devuelve (porcentajes, meses_con_%_del_año)
+    o (None, []) si el ejecutado de la sede no tiene ventas ni costo.
+    """
+    from .subtotales import configuracion_subtotales
+    resultado = calcular_movimientos('ejecutado', sede)
+    if not resultado.get('success'):
+        return None, []
+    cfg = configuracion_subtotales()
+
+    def entra(clave, cuenta):
+        c = cfg.get(clave) or {}
+        return cuenta in (c.get('cuentas') or []) or any(cuenta.startswith(p) for p in (c.get('prefijos') or []))
+
+    num_mes = {nombre: n for n, nombre in MESES_ES.items()}
+    ventas = dict.fromkeys(range(1, 13), 0)
+    costo = dict.fromkeys(range(1, 13), 0)
+    for cuenta, reg in resultado['data'].items():
+        cuenta = str(cuenta)
+        es_venta, es_costo = entra('VentasNetas', cuenta), entra('CostoVentas', cuenta)
+        if not (es_venta or es_costo):
+            continue
+        for nombre_mes, valor in reg['meses'].items():
+            mes = num_mes.get(nombre_mes)
+            if mes:
+                if es_venta:
+                    ventas[mes] += valor or 0
+                if es_costo:
+                    costo[mes] += valor or 0
+
+    total_ventas, total_costo = sum(ventas.values()), sum(costo.values())
+    if not total_ventas or not total_costo:
+        return None, []
+    anual = total_costo / total_ventas
+    pct, con_anual = {}, []
+    for mes in range(1, 13):
+        if ventas[mes] and costo[mes]:
+            pct[mes] = costo[mes] / ventas[mes]
+        else:
+            pct[mes] = anual
+            con_anual.append(mes)
+    return pct, con_anual
+
+
 def _anio_base_sede(sede, anio_pedido=None):
     """
     Último año con ventas ejecutadas de ESA sede. Antes se usaba un único
@@ -4410,6 +4466,7 @@ def generar_presupuesto_ventas(anio_base=None):
         raise ValueError(f'No hay proyección de ventas por centro de operación para {anio_ppto}')
 
     nuevos, procesadas, omitidas = [], [], {}
+    costo_generado, sin_costo, pct_costo_resp = [], {}, {}
     participacion_resp, detalle_resp, anios_usados = {}, {}, {}
 
     for sede, centro in SEDE_CENTRO_OPERACION.items():
@@ -4439,13 +4496,25 @@ def generar_presupuesto_ventas(anio_base=None):
             for cta, valor in repartir_proyeccion(proy_centro[mes], participacion[mes]).items():
                 valores[cta][mes] = valor
 
+        # ── costo de ventas = ventas netas presupuestadas del mes × % costo del ejecutado ──
+        pct_costo, meses_pct_anual = _pct_costo_ventas_ejecutado(sede)
+        costo_ventas = {}
+        if pct_costo is None:
+            sin_costo[sede] = 'el ejecutado no tiene ventas netas y costo de ventas para sacar el %'
+        else:
+            for mes in range(1, 13):
+                ventas_netas_mes = sum(valores[cta][mes] for cta in CUENTAS_VENTAS)
+                costo_ventas[mes] = round(ventas_netas_mes * pct_costo[mes])
+            valores[CUENTA_COSTO_VENTAS] = costo_ventas
+            costo_generado.append(sede)
+
         for cta, meses in valores.items():
             total_anual = sum(meses.values())
             for mes, valor in meses.items():
                 nuevos.append(ConsolidadoTotalBase(
                     mcncuenta=cta,
                     mcnccosto=None,      # sin centro de costo: evita reagrupaciones (ej. 0101 → 5105)
-                    ctanombre=CUENTAS_VENTAS[cta],
+                    ctanombre=CUENTAS_GENERADAS[cta],
                     mcnfecha=datetime.date(anio_ppto, mes, 1),
                     valor=valor,
                     total_anual=total_anual,
@@ -4459,6 +4528,12 @@ def generar_presupuesto_ventas(anio_base=None):
             MESES_ES[m]: {cta: round(p * 100, 4) for cta, p in pcts.items()}
             for m, pcts in participacion.items()
         }
+        if pct_costo is not None:
+            pct_costo_resp[sede] = {
+                MESES_ES[m]: round(pct_costo[m] * 100, 4) for m in range(1, 13)
+            }
+            if meses_pct_anual:
+                pct_costo_resp[sede]['meses_con_pct_del_anio'] = [MESES_ES[m] for m in meses_pct_anual]
         detalle_resp[sede] = {
             'centro_operacion': centro,
             'proyeccion': {MESES_ES[m]: v for m, v in sorted(proy_centro.items())},
@@ -4488,10 +4563,14 @@ def generar_presupuesto_ventas(anio_base=None):
         previas = (
             ConsolidadoTotalBase.objects
             .filter(filtro_sede, origen='presupuestado', mcnfecha__year=anio_ppto)
-            .filter(q_cuentas_clave(CUENTAS_VENTAS))
-            .values_list('id', 'mcncuenta', 'ctanombre')
+            .filter(q_cuentas_clave(CUENTAS_GENERADAS))
+            .values_list('id', 'mcncuenta', 'ctanombre', 'sede')
         )
-        ids = [pk for pk, cta, nom in previas if resolver_cuenta_clave(cta, nom) in CUENTAS_VENTAS]
+        con_costo = {s.lower() for s in costo_generado} | {'total'}
+        ids = [pk for pk, cta, nom, sede_fila in previas
+               if resolver_cuenta_clave(cta, nom) in CUENTAS_VENTAS
+               or (resolver_cuenta_clave(cta, nom) == CUENTA_COSTO_VENTAS
+                   and (sede_fila or '').strip().lower() in con_costo)]
         ConsolidadoTotalBase.objects.filter(id__in=ids).delete()
         ConsolidadoTotalBase.objects.bulk_create(nuevos)
 
@@ -4502,6 +4581,8 @@ def generar_presupuesto_ventas(anio_base=None):
         'sedes_procesadas': procesadas,
         'sedes_omitidas': omitidas,
         'participacion': participacion_resp,
+        'pct_costo_ventas': pct_costo_resp,
+        'sedes_sin_costo_ventas': sin_costo,
         'detalle': detalle_resp,
     }
 

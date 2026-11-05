@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const EXTRA_FIELDS = ['total_year'];
 
     const tabla = new PresupuestoTable({
+        filaTotales: true,          // total por mes y año al final
         container: 'tablaCentroSegmentoLineaCostos',
         exportFileName: 'Presupuesto_Centro_Segmento_Linea_Costos',
         emptyMessage: 'No hay datos cargados todavía',

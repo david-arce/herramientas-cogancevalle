@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // (equivalente a las filas "R2"/"Margen" que el código original
     // añadía manualmente sobre el resultado de DataTables).
     function pivotConMargen(data) {
-        const filas = PresupuestoUtils.pivotByMonth(data, GROUP_FIELDS, EXTRA_FIELDS)
+        const filas = PresupuestoUtils.pivotConMargenAnual(data, GROUP_FIELDS, EXTRA_FIELDS)
             .sort((a, b) => a.year - b.year);
 
         const filaActual = filas.find(f => f.year === ANIO_ACTUAL);

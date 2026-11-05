@@ -169,7 +169,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     `⏳ Presupuesto de ventas: ${error.message} · reintento en ${Math.round(espera / 1000)} s`,
                     'editando', error.message),
             });
-            const omitidas = Object.entries(r.sedes_omitidas || {});
+            // Sedes sin costo de ventas (su ejecutado no tiene ventas netas y costo para sacar el %)
+            const sinCosto = Object.entries(r.sedes_sin_costo_ventas || {})
+                .map(([s, m]) => [s + ' (sin costo de ventas)', m]);
+            const omitidas = [...Object.entries(r.sedes_omitidas || {}), ...sinCosto];
             if (omitidas.length) {
                 estadoVentas(`⚠️ Presupuesto de ventas actualizado ${hora()} · sin actualizar: ${omitidas.map(([s]) => s).join(', ')}`,
                              'error', omitidas.map(([s, m]) => `${s}: ${m}`).join('\n'));
@@ -218,6 +221,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const tabla = new PresupuestoTable({
+        filaTotales: true,          // total por mes y año al final
         container: 'tablaComercial',
         exportFileName: 'Presupuesto_Comercial',
         emptyMessage: 'No hay datos cargados todavía',

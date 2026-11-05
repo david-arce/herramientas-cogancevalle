@@ -2446,6 +2446,73 @@ class PresupuestoVentasRepartoTests(TestCase):
         self.assertEqual(T.objects.filter(origen="presupuestado", sede="tulua").count(), 36)
 
 
+class PresupuestoCostoVentasTests(TestCase):
+    """Costo de ventas presupuestado = ventas netas presupuestadas × % costo del ejecutado (por sede y mes)."""
+
+    # Ejecutado Tuluá (pantalla Comparativo): enero 87,82 %, febrero 90 %; el resto del año sin datos
+    EJECUTADO = {1: (759_222_744, 479_318_539, -6_508_501, 1_081_977_357),
+                 2: (600_000_000, 400_000_000, 0, 900_000_000)}
+    PROYECCION = 1_330_639_488          # ventas netas presupuestadas de cada mes
+
+    def setUp(self):
+        from .models import ConsolidadoTotalBase as T
+        self.T = T
+        self.anio = timezone.now().year
+        for mes, (credito, contado, descuento, costo) in self.EJECUTADO.items():
+            for cta, nombre, valor in (("1", "Ventas a crédito", credito), ("2", "Ventas a contado", contado),
+                                       ("41750201", "Descuentos otorgados x pto pago", descuento),
+                                       ("613522", "Costo de ventas", costo)):
+                if valor:
+                    T.objects.create(mcncuenta=cta, ctanombre=nombre, mcnfecha=datetime.date(self.anio, mes, 1),
+                                     valor=valor, sede="tulua", origen="ejecutado")
+
+    def generar(self):
+        proyeccion = {"ALMACEN TULUA": {m: self.PROYECCION for m in range(1, 13)}}
+        with mock.patch.object(views, "_proyeccion_ventas_por_centro", return_value=proyeccion):
+            return views.generar_presupuesto_ventas()
+
+    def costo_ppto(self, mes):
+        return self.T.objects.get(origen="presupuestado", sede="tulua", mcncuenta="613522",
+                                  mcnfecha=datetime.date(self.anio + 1, mes, 1)).valor
+
+    def test_costo_es_ventas_netas_por_pct_ejecutado(self):
+        r = self.generar()
+        self.assertEqual(r["sedes_procesadas"], ["tulua"])
+        pct_enero = 1_081_977_357 / (759_222_744 + 479_318_539 - 6_508_501)       # 87,82 %
+        self.assertEqual(self.costo_ppto(1), round(self.PROYECCION * pct_enero))
+        self.assertEqual(self.costo_ppto(2), round(self.PROYECCION * 0.9))       # febrero 90 %
+        # Meses sin ejecutado: % del año
+        pct_anual = (1_081_977_357 + 900_000_000) / (1_232_032_782 + 1_000_000_000)
+        self.assertEqual(self.costo_ppto(7), round(self.PROYECCION * pct_anual))
+        self.assertAlmostEqual(r["pct_costo_ventas"]["tulua"]["Enero"], pct_enero * 100, places=3)   # 87,82 %
+        self.assertIn("Julio", r["pct_costo_ventas"]["tulua"]["meses_con_pct_del_anio"])
+
+    def test_presupuestado_muestra_el_mismo_pct_que_el_ejecutado(self):
+        from .models import Cuenta5Presupuestado
+        # Un costo de ventas cargado en el detalle de Cuenta 5 presupuestado no se suma otra vez
+        Cuenta5Presupuestado.objects.create(mcncuenta="613522", ctanombre="COSTO DE VENTAS", mcnvaldebi=999_999,
+                                            mcnfecha=46023, mcnzona="001")
+        self.generar()
+        ejec = views.calcular_movimientos("ejecutado", "tulua")["data"]
+        ppto = views.calcular_movimientos("presupuestado", "tulua")["data"]
+        pct = lambda d, mes: d["613522"]["meses"][mes] / sum(d[c]["meses"].get(mes, 0) for c in ("1", "2", "41750201") if c in d)  # noqa: E731
+        for mes in ("Enero", "Febrero"):
+            self.assertAlmostEqual(pct(ppto, mes), pct(ejec, mes), places=6, msg=mes)
+        self.assertEqual(ppto["613522"]["meses"]["Enero"], self.costo_ppto(1))        # sin el 999.999 del detalle
+
+    def test_volver_a_generar_reemplaza(self):
+        self.generar()
+        self.generar()
+        self.assertEqual(self.T.objects.filter(origen="presupuestado", sede="tulua", mcncuenta="613522").count(), 12)
+
+    def test_sin_costo_en_el_ejecutado_no_genera_costo(self):
+        self.T.objects.filter(mcncuenta="613522").delete()
+        r = self.generar()
+        self.assertIn("tulua", r["sedes_sin_costo_ventas"])
+        self.assertFalse(self.T.objects.filter(origen="presupuestado", mcncuenta="613522").exists())
+        self.assertEqual(self.T.objects.filter(origen="presupuestado", sede="tulua").count(), 36)   # ventas sí (3 cuentas x 12)
+
+
 class GuardadoDuranteDespliegueTests(TestCase):
     """Si la base de datos no responde (p. ej. durante un despliegue) se responde 503 = "reintenta"."""
 

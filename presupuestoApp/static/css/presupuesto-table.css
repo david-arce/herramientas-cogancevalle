@@ -303,3 +303,14 @@ hr.pt-filter-sep {
     border-radius: 8px;
     color: #7f1d1d;
 }
+/* Fila(s) de totales al final de la tabla (cfg.filaTotales) */
+.pt-table tfoot td {
+    padding: 7px 10px;
+    font-weight: 700;
+    background-color: #e8eef7;
+    border-top: 2px solid #4a6fa5;
+    color: #1f2d3d;
+    white-space: nowrap;
+}
+.pt-table tfoot tr + tr td { border-top: 1px solid #c7d3e5; }
+.pt-table tfoot td.num { text-align: right; font-variant-numeric: tabular-nums; }

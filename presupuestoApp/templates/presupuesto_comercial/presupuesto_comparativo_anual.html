@@ -58,6 +58,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!tabla) {
             tabla = new PresupuestoTable({
+                filaTotales: true,          // total por mes y año al final
                 container: 'tablaComparativoAnual',
                 exportFileName: 'Comparativo_Anual',
                 emptyMessage: 'No hay datos para comparar',

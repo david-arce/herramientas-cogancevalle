@@ -63,6 +63,42 @@
     }
 
     // ---------------------------------------------------------------
+    // Fila de totales: las columnas de porcentaje NO se suman; se calculan
+    // con los totales de las columnas de valor (las mismas fórmulas que usa
+    // el servidor para cada fila). Si falta un dato o se dividiría por 0, la
+    // celda queda vacía. `s` = sumas de todas las columnas numéricas.
+    // ---------------------------------------------------------------
+    const div = (a, b) => (b ? a / b : null);
+    const PORCENTAJES_TOTAL = {
+        // Variación contra el año anterior (anterior = total − variación)
+        variacion_pct: s => div(s.variacion_valor, s.total_year - s.variacion_valor) * 100,
+        variacion_porcentual_ventas: s => div(s.variacion_valor_ventas, s.ventas - s.variacion_valor_ventas) * 100,
+        variacion_porcentual_costos: s => div(s.variacion_valor_costos, s.costos - s.variacion_valor_costos) * 100,
+        variacion_pct_ventas: s => div(s.variacion_valor_ventas, s.ventas_anterior) * 100,
+        variacion_pct_costos: s => div(s.variacion_valor_costos, s.costos_anterior) * 100,
+        // Crecimiento y márgenes de la proyección comercial
+        crecimiento_ventas: s => (div(s.proyeccion_ventas, s.ventas) - 1) * 100,
+        utilidad_porcentual: s => (1 - div(s.costos, s.proyeccion_ventas)) * 100,
+        utilidad_porcentual_actual: s => (1 - div(s.costos, s.ventas)) * 100,
+        variacion_proyectada_porcentual: s =>
+            ((1 - div(s.costos, s.proyeccion_ventas)) - (1 - div(s.costos, s.ventas))) * 100,
+        // Margen del año siguiente en las tablas de ventas (margen valor ÷ ventas)
+        utilidad_pct: s => div(s.utilidad_valor, s.total_year) * 100,
+        // Comparativo anual
+        margen_pct_anterior: s => (1 - div(s.costos_anterior, s.ventas_anterior)) * 100,
+        margen_pct_actual: s => (1 - div(s.costos_actual, s.ventas_actual)) * 100,
+    };
+
+    function porcentajeTotal(key, sumas) {
+        const f = PORCENTAJES_TOTAL[key];
+        if (!f) return null;
+        try {
+            const v = f(sumas);
+            return (v === null || !isFinite(v) || isNaN(v)) ? null : Math.round(v * 100) / 100;
+        } catch (e) { return null; }
+    }
+
+    // ---------------------------------------------------------------
     // Un único listener global (evita el bug de "fugas" de handlers
     // que se acumulaban cada vez que se recargaba una tabla DataTables).
     // Los menús de filtro se crean de nuevo cada vez que se abren (para
@@ -94,6 +130,9 @@
          * @param {Function} [cfg.onChange] - (row, key, nuevoValor) => void  (se dispara sólo cuando el valor realmente cambió; pensado para autoguardado)
          * @param {string} [cfg.emptyMessage]
          * @param {string} [cfg.exportFileName]
+         * @param {boolean|Object} [cfg.filaTotales] - fila(s) de total al final con la suma
+         *        de las filas visibles (respeta filtros). Si la tabla tiene columna `year`,
+         *        sale un total por cada año visible. Objeto: { agruparPor: 'year', etiqueta: 'Total' }.
          */
         constructor(cfg) {
             this.cfg = Object.assign({
@@ -103,6 +142,7 @@
                 onChange: null,
                 emptyMessage: 'Sin datos para mostrar',
                 exportFileName: 'presupuesto',
+                filaTotales: false,
             }, cfg);
 
             this.container = typeof cfg.container === 'string' ? document.getElementById(cfg.container) : cfg.container;
@@ -130,8 +170,10 @@
             this.table.className = 'pt-table';
             this.thead = document.createElement('thead');
             this.tbody = document.createElement('tbody');
+            this.tfoot = document.createElement('tfoot');
             this.table.appendChild(this.thead);
             this.table.appendChild(this.tbody);
+            this.table.appendChild(this.tfoot);
             this.container.appendChild(this.table);
             this._renderHead();
             this._renderBody();
@@ -425,6 +467,7 @@
             this._filasActuales = filas;
             this._colsActuales = cols;
 
+            this._renderTotales(filas, cols);
             if (!filas.length) {
                 const tr = document.createElement('tr');
                 const td = document.createElement('td');
@@ -489,6 +532,66 @@
                     }
                 });
             }
+        }
+
+        // ------------------------------------------------------------------
+        // Fila(s) de totales
+        // ------------------------------------------------------------------
+        /** [{etiqueta, valores}] de las filas visibles: un total por año si la
+         *  tabla tiene columna de año (sumar años distintos no tiene sentido). */
+        _calcularTotales(filas) {
+            const opc = this.cfg.filaTotales;
+            if (!opc || !filas.length) return [];
+            const conf = typeof opc === 'object' ? opc : {};
+            const etiqueta = conf.etiqueta || 'Total';
+            const tieneAnio = this.cfg.columns.some(c => c.key === 'year');
+            const agrupar = conf.agruparPor !== undefined ? conf.agruparPor : (tieneAnio ? 'year' : null);
+            const numericas = this.cfg.columns.filter(c => ['number', 'money', 'percent'].includes(c.type));
+
+            const grupos = new Map();
+            filas.forEach(row => {
+                const g = agrupar ? String(row[agrupar] ?? '') : '';
+                if (!grupos.has(g)) grupos.set(g, []);
+                grupos.get(g).push(row);
+            });
+            const orden = [...grupos.keys()].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+            return orden.map(g => {
+                const sumas = {};
+                numericas.forEach(c => {
+                    if (c.type === 'percent') return;
+                    sumas[c.key] = grupos.get(g).reduce((t, r) => t + (aNumero(r[c.key]) || 0), 0);
+                });
+                const valores = Object.assign({}, sumas);
+                numericas.forEach(c => { if (c.type === 'percent') valores[c.key] = porcentajeTotal(c.key, sumas); });
+                return { etiqueta, valores, grupo: g, campoGrupo: agrupar };
+            });
+        }
+
+        _renderTotales(filas, cols) {
+            this.tfoot.innerHTML = '';
+            const totales = this._calcularTotales(filas);
+            if (!totales.length) return;
+            // La etiqueta va en la primera columna de texto visible
+            const colEtiqueta = cols.find(c => !['number', 'money', 'percent'].includes(c.type || 'text'));
+            totales.forEach(t => {
+                const tr = document.createElement('tr');
+                tr.className = 'pt-fila-total';
+                cols.forEach(col => {
+                    const td = document.createElement('td');
+                    const tipo = col.type || 'text';
+                    if (col === colEtiqueta) {
+                        td.textContent = (col.key === t.campoGrupo && t.grupo) ? `${t.etiqueta} ${t.grupo}` : t.etiqueta;
+                        td.classList.add('pt-total-etiqueta');
+                    } else if (['number', 'money', 'percent'].includes(tipo)) {
+                        td.classList.add('num');
+                        td.textContent = formatearValor(t.valores[col.key], tipo);
+                    } else if (col.key === t.campoGrupo) {
+                        td.textContent = t.grupo;
+                    }
+                    tr.appendChild(td);
+                });
+                this.tfoot.appendChild(tr);
+            });
         }
 
         // ------------------------------------------------------------------
@@ -732,7 +835,25 @@
                 });
                 html += '</tr>';
             });
-            html += '</tbody></table>';
+            html += '</tbody>';
+            const totales = this._calcularTotales(filas);
+            if (totales.length) {
+                const colEtiqueta = cols.find(c => !['number', 'money', 'percent'].includes(c.type || 'text'));
+                html += '<tfoot>';
+                totales.forEach(t => {
+                    html += '<tr>';
+                    cols.forEach(c => {
+                        let val = '';
+                        if (c === colEtiqueta) val = (c.key === t.campoGrupo && t.grupo) ? `${t.etiqueta} ${t.grupo}` : t.etiqueta;
+                        else if (['number', 'money', 'percent'].includes(c.type)) val = t.valores[c.key] ?? '';
+                        else if (c.key === t.campoGrupo) val = t.grupo;
+                        html += '<td><b>' + String(val).replace(/</g, '&lt;') + '</b></td>';
+                    });
+                    html += '</tr>';
+                });
+                html += '</tfoot>';
+            }
+            html += '</table>';
 
             const plantilla = '<html xmlns:o="urn:schemas-microsoft-com:office:office" ' +
                 'xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">' +
@@ -768,8 +889,11 @@
          * Convierte filas planas {year, mes, total, ...} en filas pivotadas
          * por mes: {year, Ene, Feb, ..., Dic, ...extras}
          */
-        pivotByMonth(data, groupFields, extraFields) {
+        pivotByMonth(data, groupFields, extraFields, sumFields) {
             extraFields = extraFields || [];
+            // sumFields: campos que vienen POR MES y se deben sumar en la fila del año
+            // (p. ej. utilidad_valor); los extraFields se toman tal cual del primer registro.
+            sumFields = sumFields || [];
             const pivot = {};
             (data || []).forEach(row => {
                 const key = groupFields.map(f => row[f]).join('|');
@@ -777,13 +901,28 @@
                     const base = {};
                     groupFields.forEach(f => { base[f] = row[f]; });
                     extraFields.forEach(f => { base[f] = row[f] !== undefined && row[f] !== null ? row[f] : 0; });
+                    sumFields.forEach(f => { base[f] = 0; });
                     NOMBRES_MESES.forEach(m => { base[m] = 0; });
                     pivot[key] = base;
                 }
+                sumFields.forEach(f => { pivot[key][f] += Number(row[f]) || 0; });
                 const nombreMes = MESES_NUM_A_NOMBRE[parseInt(row.mes, 10)];
                 if (nombreMes) pivot[key][nombreMes] = row.total;
             });
             return Object.values(pivot);
+        },
+
+        /**
+         * pivotByMonth para las tablas de ventas con margen: "Margen Valor" es la
+         * suma de los 12 meses y "Margen %" el del año (margen valor ÷ ventas del
+         * año). Antes ambas columnas mostraban solo el valor de enero.
+         */
+        pivotConMargenAnual(data, groupFields, extraFields) {
+            const extras = (extraFields || []).filter(f => f !== 'utilidad_valor' && f !== 'utilidad_pct');
+            return PresupuestoUtils.pivotByMonth(data, groupFields, extras, ['utilidad_valor']).map(fila => {
+                fila.utilidad_pct = fila.total_year ? Math.round(fila.utilidad_valor / fila.total_year * 10000) / 100 : 0;
+                return fila;
+            });
         },
 
         /**
