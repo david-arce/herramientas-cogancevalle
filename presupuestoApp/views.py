@@ -2304,7 +2304,10 @@ def obtener_presupuesto_comercial(request):
     return JsonResponse(calculo._a_registros(calculo.calcular_comercial()), safe=False)
 
 def vista_presupuesto_comercial(request):
-    return render(request, 'presupuesto_comercial/presupuesto_comercial_final.html')
+    return render(request, 'presupuesto_comercial/presupuesto_comercial_final.html', {
+        # El botón "Recalcular presupuesto de ventas" solo se muestra a quien puede generarlo
+        'puede_generar_ventas': request.user.username in USUARIOS_GENERAR_VENTAS,
+    })
 
 #  ---------------------NOMINA-------------------------------------------------------------
 #  La nómina usa ahora una sola tabla (PresupuestoNomina). Las vistas están en
@@ -4273,6 +4276,10 @@ CUENTAS_VENTAS = {
     '2':        'Ventas a contado',
     '41750201': 'Descuentos otorgados x pto pago',
 }
+# Quiénes pueden generar el presupuesto de ventas (cuentas 1, 2, 41750201 y
+# costo de ventas) en el consolidado presupuestado.
+USUARIOS_GENERAR_VENTAS = ['admin', 'NICOLAS']
+
 # Costo de ventas del presupuestado: ventas netas presupuestadas del mes ×
 # % costo de ventas del EJECUTADO de la misma sede y mes.
 CUENTA_COSTO_VENTAS = '613522'
@@ -4595,7 +4602,7 @@ def generar_presupuesto_ventas(anio_base=None):
 @require_POST
 def generar_presupuesto_ventas_view(request):
     """POST  { "anio_base": 2026 }   (opcional)"""
-    if request.user.username not in ['admin', 'NICOLAS']:
+    if request.user.username not in USUARIOS_GENERAR_VENTAS:
         return JsonResponse({'success': False, 'error': 'Sin permisos'}, status=403)
     # Queda en el log del servidor (logger presupuestoApp.cargas): INICIO, FIN
     # con la duración, o ERROR con el traceback. Un INICIO sin FIN ni ERROR

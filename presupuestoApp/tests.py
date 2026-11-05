@@ -2714,6 +2714,12 @@ class PresupuestoComercialGuardadoTests(TestCase):
         self.assertIn("js/envio_seguro.js", html)
         self.assertIn(reverse("generar_presupuesto_ventas"), html)
         self.assertIn('name="csrf-token"', html)
+        self.assertIn('id="recalcularVentasBtn"', html)                     # admin puede generar
+
+    def test_boton_recalcular_solo_para_quien_puede_generar(self):
+        self.client.force_login(User.objects.create_user("OTRO"))
+        html = self.client.get(reverse("presupuestoComercial")).content.decode()
+        self.assertNotIn('id="recalcularVentasBtn"', html)
 
 
 class CerrarSesionComercialTests(TestCase):

@@ -15,6 +15,11 @@
         <button type="button" id="exportarBaseBtn" class="pt-btn secondary">📤 Exportar base Año Actual</button>
         <button type="button" id="exportarExcelBtn" class="pt-btn secondary">📥 Exportar a Excel Esta Tabla</button>
         <button type="button" id="colvisBtn" class="pt-btn secondary">👁️ Mostrar / ocultar columnas</button>
+        {% if puede_generar_ventas %}
+        <button type="button" id="recalcularVentasBtn" class="pt-btn secondary"
+                title="Vuelve a generar en el presupuestado las ventas (crédito, contado, descuentos) y el costo de ventas de cada sede">
+            📈 Recalcular presupuesto de ventas</button>
+        {% endif %}
         <span id="autosaveStatus" class="pt-autosave-status" aria-live="polite"></span>
         <span id="ventasStatus" class="pt-autosave-status" aria-live="polite"></span>
     </div>
@@ -266,6 +271,11 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById('exportarExcelBtn').addEventListener('click', () => tabla.exportToExcel());
+
+    // Recalcular a mano el presupuesto de ventas y el costo de ventas del consolidado
+    // (sin tener que cambiar un crecimiento). Espera a que se guarde lo pendiente.
+    const btnRecalcular = document.getElementById('recalcularVentasBtn');
+    if (btnRecalcular) btnRecalcular.addEventListener('click', () => programarVentas(0));
 
     document.getElementById('colvisBtn').addEventListener('click', function (e) {
         e.stopPropagation();
