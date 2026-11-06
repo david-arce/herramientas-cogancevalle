@@ -4205,8 +4205,8 @@ class FocoCargosValorInformeTests(TestCase):
 
     def test_sin_cargos_elegidos_calculo_normal(self):
         f = self.foco()
-        self.assertEqual(f["1"], (220000, 0))           # base general 200.000 × 1,10
-        self.assertEqual(f["2"], (220000, 0))
+        self.assertEqual(f["1"], (165000, 0))           # 75 % de la base general 200.000 × 1,10
+        self.assertEqual(f["2"], (165000, 0))
 
     def test_cargo_elegido_toma_el_informe_mas_ipc(self):
         r = self.client.post(reverse("presupuestoNomina"), {"action": "foco_cargos_informe", "cargos": ["coordinador"]},
@@ -4215,7 +4215,7 @@ class FocoCargosValorInformeTests(TestCase):
         self.assertEqual(list(FocoCargoInforme.objects.values_list("cargo", flat=True)), ["COORDINADOR"])
         f = self.foco()
         self.assertEqual(f["1"], (550000, 330000))       # 500.000 y 300.000 × 1,10
-        self.assertEqual(f["2"], (220000, 0))            # CAJERO sigue con el cálculo normal
+        self.assertEqual(f["2"], (165000, 0))            # CAJERO sigue con el cálculo normal (75 %)
         self.assertNotIn("3", f)                         # coordinador sin valor en el informe: no recibe
         nomina_motor.recalcular_todo()                   # se mantiene al recalcular
         self.assertEqual(self.foco()["1"], (550000, 330000))
@@ -4261,7 +4261,7 @@ class BonificacionFocoEditarEliminarTests(TestCase):
         uno.update(enero=123456, _editados=["enero"])
         self.enviar(filas)
         nomina_motor.recalcular_todo()
-        self.assertEqual(self.foco(), [("1", "manual", 123456), ("2", "sistema", 242000)])
+        self.assertEqual(self.foco(), [("1", "manual", 123456), ("2", "sistema", 181500)])
 
     def test_eliminar_una_calculada_no_vuelve(self):
         self.enviar([f for f in self.datos() if f["cedula"] != "1"])
@@ -4280,14 +4280,14 @@ class BonificacionFocoEditarEliminarTests(TestCase):
         filas = self.datos()
         next(f for f in filas if f["cedula"] == "1")["_recalcular"] = True
         self.enviar(filas)
-        self.assertEqual(self.foco(), [("1", "sistema", 242000), ("2", "sistema", 242000)])
+        self.assertEqual(self.foco(), [("1", "sistema", 181500), ("2", "sistema", 181500)])
 
     def test_deshacer_la_eliminacion(self):
         filas = self.datos()
         uno = next(f for f in filas if f["cedula"] == "1")
         self.enviar([f for f in filas if f["cedula"] != "1"])
         self.enviar(self.datos() + [dict(uno, id=None, _uid="u1", _restaurada=True)])
-        self.assertEqual(self.foco(), [("1", "sistema", 242000), ("2", "sistema", 242000)])
+        self.assertEqual(self.foco(), [("1", "sistema", 181500), ("2", "sistema", 181500)])
         self.assertFalse(FilaEliminadaNomina.objects.exists())
 
     def test_sin_cambios_no_toca_nada(self):
@@ -5448,9 +5448,8 @@ class ArlElegidaPorCargoTests(TestCase):
 
 
 class FocoDescuentoComisionanTests(TestCase):
-    """Bonificación foco de quien comisiona y NO está en la lista "sin comisión":
-    se le descuenta el 25 % solo en enero (julio va completo). A los de la lista
-    (base general) y a quienes no comisionan no se les descuenta."""
+    """Bonificación foco: a TODOS se les paga el 75 % de enero (descuento del 25 %),
+    comisionen o no y estén o no en la lista "sin comisión". Julio va completo."""
 
     def setUp(self):
         from .models import ParametrosPresupuestos
@@ -5491,20 +5490,24 @@ class FocoDescuentoComisionanTests(TestCase):
         # julio: mitad del promedio presupuestado ene-jun (600.000) = 300.000, sin descuento
         self.assertEqual(self.foco("1"), (450000, 300000))
 
-    def test_lista_sin_comision_sin_descuento(self):
-        self.assertEqual(self.foco("2"), (220000, 0))                      # base 200.000 + 10 % IPC
+    def test_lista_sin_comision_tambien_75(self):
+        self.assertEqual(self.foco("2"), (165000, 0))                      # (200.000 + 10 % IPC) × 75 %
 
-    def test_quien_no_comisiona_sin_descuento(self):
-        self.assertEqual(self.foco("3"), (220000, 0))
+    def test_quien_no_comisiona_tambien_75(self):
+        self.assertEqual(self.foco("3"), (165000, 0))
 
     def test_si_queda_por_debajo_de_la_base_recibe_la_base(self):
-        # 200.000 − 25 % = 150.000 < base 220.000 → 220.000 · julio sin cambio (200.000 / 2)
-        self.assertEqual(self.foco("4"), (220000, 100000))
+        # promedio 200.000 < base 220.000 → base × 75 % = 165.000 (lo mismo que quien no
+        # comisiona) · julio sin cambio (200.000 / 2)
+        self.assertEqual(self.foco("4"), (165000, 100000))
 
     def test_la_base_minima_es_proporcional_a_los_dias(self):
-        # promedio anual (200.000 + 4 × 100.000) / 12 = 50.000 − 25 % = 37.500
-        # base de quien trabajó 180 días: 220.000 / 360 × 180 = 110.000 → 110.000
-        self.assertEqual(self.foco("5")[0], 110000)
+        # promedio anual (200.000 + 4 × 100.000) / 12 = 50.000
+        # base de quien trabajó 180 días: 220.000 / 360 × 180 = 110.000 → 110.000 × 75 % = 82.500
+        self.assertEqual(self.foco("5")[0], 82500)
+
+    def test_nadie_que_comisiona_recibe_menos_que_quien_no(self):
+        self.assertGreaterEqual(self.foco("4")[0], self.foco("3")[0])
 
     def test_si_queda_por_encima_se_deja_el_calculo(self):
         self.assertEqual(self.foco("1")[0], 450000)                         # 450.000 > 220.000
@@ -5517,7 +5520,7 @@ class FocoDescuentoComisionanTests(TestCase):
                          centro="ALMACEN TULUA", area="VENTAS", **{m: valor for m in MESES_N}).save()
         nomina_motor.recalcular_todo()
         self.assertEqual(self.foco("9"), (0, 200000))
-        self.assertEqual(self.foco("4")[0], 220000)                         # los del informe sí
+        self.assertEqual(self.foco("4")[0], 165000)                         # los del informe sí (75 % de la base)
 
 
 class CualquierCambioRecalculaTodoTests(TestCase):
