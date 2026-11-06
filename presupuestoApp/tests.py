@@ -1150,6 +1150,108 @@ class DestinosNominaTests(TestCase):
         self.assertContains(r, reverse("ajustes_destinos_nomina"))
 
 
+class DestinosComercialesTests(TestCase):
+    """Ajustes → Destinos de nómina → Cargos comerciales: asesor comercial, auxiliar
+    comercial y asistente técnico comercial llevan un destino VT-00001 … VT-00027."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.aprobador = User.objects.create_user("NICOLAS")
+
+    def setUp(self):
+        from .models_nomina import DestinoNomina
+        self.DN = DestinoNomina
+        self.client.force_login(self.aprobador)
+        confirmar_nomina(True)
+        linea_nomina(cedula="5001", nombre="ANA ASESORA", cargo="ASESOR COMERCIAL",
+                     area="VENTAS GASTOS DE PERSONAL", codcosto="020202").save()
+        linea_nomina(cedula="5002", nombre="BETO AUXILIAR", cargo="Auxiliar Comercial",
+                     area="VENTAS GASTOS DE PERSONAL", codcosto="020202").save()
+        linea_nomina(cedula="5003", nombre="CAMI ASISTENTE", cargo="ASISTENTE TÉCNICO COMERCIAL",
+                     area="VENTAS GASTOS DE PERSONAL", codcosto="020202").save()
+        # la asistente también tiene una parte en 020301: esa lleva el destino de su área
+        linea_nomina(cedula="5003", nombre="CAMI ASISTENTE", cargo="ASISTENTE TÉCNICO COMERCIAL",
+                     area="ASISTENCIA TECNICA PROPIA", codcosto="020301").save()
+        linea_nomina(cedula="5004", nombre="DORA GERENTE", cargo="GERENTE COMERCIAL",     # no es de la lista
+                     area="VENTAS GASTOS DE PERSONAL", codcosto="020202").save()
+        linea_nomina(cedula="5005", nombre="EVA CERO", cargo="ASESOR COMERCIAL",          # todo en 0: no se sube
+                     area="VENTAS GASTOS DE PERSONAL", codcosto="020202",
+                     **{m: 0 for m in MESES_N}).save()
+
+    def url(self):
+        return reverse("ajustes_destinos_nomina")
+
+    def asignar(self, **destinos):
+        datos = {"seccion": "comerciales", **{f"comercial::{p}": d for p, d in destinos.items()}}
+        return self.client.post(self.url(), datos)
+
+    def test_lista_solo_los_cargos_comerciales(self):
+        from .destinos_nomina import personas_comerciales
+        personas = {p["persona"]: p for p in personas_comerciales()}
+        self.assertEqual(set(personas), {"5001", "5002", "5003"})
+        self.assertEqual(personas["5003"]["areas"], ["ASISTENCIA TECNICA PROPIA", "VENTAS GASTOS DE PERSONAL"])
+
+    def test_opciones_vt_00001_a_vt_00027(self):
+        from .destinos_nomina import opciones_destino_comercial
+        codigos = [c for c, _ in opciones_destino_comercial()]
+        self.assertEqual(len(codigos), 27)
+        self.assertEqual((codigos[0], codigos[-1]), ("VT-00001", "VT-00027"))
+
+    def test_pantalla(self):
+        r = self.client.get(self.url())
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'id="comerciales"')
+        for nombre in ("ANA ASESORA", "BETO AUXILIAR", "CAMI ASISTENTE"):
+            self.assertContains(r, nombre)
+        self.assertNotContains(r, "DORA GERENTE")
+        self.assertNotContains(r, "EVA CERO")
+        self.assertContains(r, 'name="comercial::5001"')
+        self.assertContains(r, 'value="VT-00027"')
+        self.assertNotContains(r, 'value="VT-00028"')
+        self.assertContains(r, "3 de 3 personas sin destino")
+        self.assertContains(r, 'name="destino::5003||ASISTENCIA TECNICA PROPIA"')   # la sección 020301 sigue
+
+    def test_guardar_y_validar(self):
+        r = self.asignar(**{"5001": "vt-00005", "5002": "VT-00027"})                  # minúsculas: se normaliza
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("seccion=comerciales", r["Location"])
+        self.assertEqual(sorted(self.DN.objects.values_list("persona", "destino")),
+                         [("5001", "VT-00005"), ("5002", "VT-00027")])
+        r = self.client.get(self.url())
+        self.assertContains(r, "1 de 3 personas sin destino")
+        # fuera de la lista (VT-00028 o un AT): no se guarda nada
+        for malo in ("VT-00028", "AT-00001"):
+            r = self.asignar(**{"5003": malo, "5001": "VT-00001"})
+            self.assertEqual(r.status_code, 200)
+            self.assertContains(r, "no está en la lista")
+        self.assertEqual(self.DN.objects.get(persona="5001").destino, "VT-00005")
+        # quitar
+        self.asignar(**{"5002": ""})
+        self.assertFalse(self.DN.objects.filter(persona="5002").exists())
+
+    def test_no_toca_los_destinos_de_020301(self):
+        self.client.post(self.url(), {"destino::5003||ASISTENCIA TECNICA PROPIA": "AT-00001"})
+        self.asignar(**{"5003": "VT-00003"})
+        self.assertEqual(sorted(self.DN.objects.values_list("persona", "area", "destino")), [
+            ("5003", "*CARGO COMERCIAL*", "VT-00003"), ("5003", "ASISTENCIA TECNICA PROPIA", "AT-00001")])
+
+    def test_sube_con_el_destino_vt(self):
+        self.client.post(self.url(), {"destino::5003||ASISTENCIA TECNICA PROPIA": "AT-00001"})
+        # sin destinos comerciales la subida no se bloquea
+        self.assertTrue(self.client.post(reverse("subir_cuenta5_nomina")).json()["success"])
+        self.asignar(**{"5001": "VT-00010", "5003": "VT-00003"})
+        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "desactualizado")
+        self.assertTrue(self.client.post(reverse("subir_cuenta5_nomina")).json()["success"])
+        qs = Cuenta5Presupuestado.objects.filter(origen_area="nomina")
+        destinos = lambda **f: set(qs.filter(**f).values_list("mcndestino", flat=True))  # noqa: E731
+        self.assertEqual(destinos(mcnvincula="5001"), {"VT-00010"})
+        self.assertEqual(destinos(mcnvincula="5002"), {None})                          # sin asignar
+        self.assertEqual(destinos(mcnvincula="5003", mcnccosto="020202"), {"VT-00003"})
+        self.assertEqual(destinos(mcnvincula="5003", mcnccosto="020301"), {"AT-00001"})  # el de su área
+        self.assertEqual(destinos(mcnvincula="5004"), {None})                          # gerente comercial
+        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "subido")
+
+
 class MigracionNominaVerticalTests(TransactionTestCase):
     antes = [("presupuestoApp", "0033_plazo_edicion_area")]
     despues = [("presupuestoApp", "0034_presupuesto_nomina_vertical")]

@@ -14,6 +14,12 @@ calcular_movimientos en views.py: AT propia → 6, convenios → 7).
   - La persona es su cédula (sin cédula, su nombre).
   - Los destinos se eligen de la lista de códigos AT/VT que conoce el sistema.
   - Si a alguna parte le falta destino, la subida de nómina se bloquea.
+
+Cargos comerciales (asesor comercial, auxiliar comercial y asistente técnico
+comercial): en la misma pantalla se elige un destino por persona, de la lista
+fija VT-00001 … VT-00027. Al subir, va en mcndestino de sus filas con cargo
+comercial que no sean 020301 (esas llevan el destino de su área). Se guarda en
+DestinoNomina con el área AREA_COMERCIAL. Que falte no bloquea la subida.
 """
 import re
 import unicodedata
@@ -30,6 +36,12 @@ from .models_nomina import DestinoNomina, DistribucionNomina, PresupuestoNominaM
 CODCOSTO_CON_DESTINO = "020301"
 _PATRON_DESTINO = re.compile(r"^(AT|VT)-\d+$")
 SEPARADOR = "||"     # nombre del campo del formulario: destino::<persona>||<área>
+
+# Cargos comerciales: un destino VT por persona
+CARGOS_COMERCIALES = ("ASESOR COMERCIAL", "AUXILIAR COMERCIAL", "ASISTENTE TECNICO COMERCIAL")
+DESTINOS_COMERCIALES = tuple(f"VT-{n:05d}" for n in range(1, 28))      # VT-00001 … VT-00027
+AREA_COMERCIAL = "*CARGO COMERCIAL*"   # 'area' en DestinoNomina (no choca con un área real)
+PREFIJO_COMERCIAL = "comercial::"      # nombre del campo del formulario: comercial::<persona>
 
 
 def _codcosto(valor):
@@ -147,6 +159,68 @@ def personas_020301():
     return sorted(personas, key=lambda p: (p["nombre"], p["persona"]))
 
 
+def es_cargo_comercial(cargo):
+    """'Asesor Comercial', 'ASISTENTE TÉCNICO COMERCIAL II'… (sin tildes, empieza por el cargo)."""
+    clave = clave_area(cargo)
+    return any(clave.startswith(c) for c in CARGOS_COMERCIALES)
+
+
+def opciones_destino_comercial():
+    """[(codigo, nombre)] VT-00001 … VT-00027, con el nombre de Agrupación de cuentas si lo tiene."""
+    nombres = {(codigo or "").strip().upper(): nombre for codigo, nombre
+               in AgrupacionCuenta.objects.filter(codigo__istartswith="VT-").values_list("codigo", "nombre")}
+    return [(c, nombres.get(c, "")) for c in DESTINOS_COMERCIALES]
+
+
+def destinos_comerciales():
+    """{persona: destino} de los cargos comerciales."""
+    return dict(DestinoNomina.objects.filter(area=AREA_COMERCIAL).values_list("persona", "destino"))
+
+
+def personas_comerciales():
+    """Personas con cargo comercial en la nómina que se subiría a Cuenta 5
+    (valor distinto de 0 y con cuenta):
+
+      {persona, cedula, nombre, cargo, areas, centros, destino}
+    """
+    filas = (PresupuestoNominaMes.objects
+             .filter(cargo__icontains="COMERCIAL").exclude(valor=0).exclude(cuenta="")
+             .values_list("cedula", "nombre", "cargo", "centro", "area"))
+    datos = defaultdict(lambda: {"nombres": Counter(), "cargos": Counter(), "cedula": "",
+                                 "areas": Counter(), "centros": set()})
+    for cedula, nombre, cargo, centro, area in filas:
+        if not es_cargo_comercial(cargo):
+            continue
+        d = datos[clave_persona(cedula, nombre)]
+        d["cedula"] = clave_persona(cedula) if str(cedula or "").strip() else ""
+        d["nombres"][nombre] += 1
+        d["cargos"][cargo] += 1
+        if area:
+            d["areas"][area] += 1
+        if centro:
+            d["centros"].add(centro)
+
+    asignados = destinos_comerciales()
+    mas_comun = lambda c: c.most_common(1)[0][0] if c else ""  # noqa: E731
+    personas = [{
+        "persona": clave,
+        "cedula": d["cedula"],
+        "nombre": mas_comun(d["nombres"]),
+        "cargo": mas_comun(d["cargos"]),
+        "areas": sorted(d["areas"]),
+        "centros": sorted(d["centros"]),
+        "destino": asignados.get(clave, ""),
+    } for clave, d in datos.items()]
+    return sorted(personas, key=lambda p: (p["nombre"], p["persona"]))
+
+
+def destino_comercial(destinos, cedula, nombre, cargo):
+    """Destino VT de una fila de nómina con cargo comercial (None si no aplica o no tiene)."""
+    if not es_cargo_comercial(cargo):
+        return None
+    return destinos.get(clave_persona(cedula, nombre)) or None
+
+
 def faltantes():
     """Personas de 020301 con alguna parte (área) sin destino."""
     return [p for p in personas_020301() if not p["completo"]]
@@ -185,11 +259,24 @@ def ajustes_destinos_nomina(request):
 
     opciones = opciones_destino()
     validos = {c for c, _ in opciones}
+    opciones_com = opciones_destino_comercial()
+    validos_com = set(DESTINOS_COMERCIALES)
     errores = []
     personas = personas_020301()
+    comerciales = personas_comerciales()
+    seccion = request.POST.get("seccion") or request.GET.get("seccion") or ""
 
     if request.method == "POST":
         nuevos = {}
+        for p in comerciales:
+            campo = PREFIJO_COMERCIAL + p["persona"]
+            if campo not in request.POST:
+                continue                          # no vino en el formulario: no se toca
+            valor = (request.POST.get(campo) or "").strip().upper()
+            if valor and valor not in validos_com:
+                errores.append(f"{p['nombre'] or p['persona']} ({p['cargo']}): "
+                               f"destino {valor} no está en la lista")
+            nuevos[(p["persona"], AREA_COMERCIAL)] = valor
         for p in personas:
             for parte in p["partes"]:
                 campo = f"destino::{p['persona']}{SEPARADOR}{parte['area_clave']}"
@@ -202,6 +289,8 @@ def ajustes_destinos_nomina(request):
                 nuevos[(p["persona"], parte["area_clave"])] = valor
         if not errores:
             _guardar(nuevos, request.user.username)
+            if seccion == "comerciales":
+                return redirect(f"{request.path}?guardado=1&seccion=comerciales#comerciales")
             return redirect(f"{request.path}?guardado=1")
 
     return render(request, "ajustes/destinos_nomina.html", {
@@ -213,4 +302,10 @@ def ajustes_destinos_nomina(request):
         "separador": SEPARADOR,
         "guardado": request.GET.get("guardado") == "1",
         "errores": errores,
+        "seccion": seccion,
+        "comerciales": comerciales,
+        "opciones_comercial": opciones_com,
+        "comerciales_sin_destino": sum(1 for p in comerciales if not p["destino"]),
+        "cargos_comerciales": CARGOS_COMERCIALES,
+        "prefijo_comercial": PREFIJO_COMERCIAL,
     })

@@ -8,13 +8,17 @@
 {% block content %}
 <div class="pl-wrap dn-wrap">
   <h1 class="pl-title"><span class="material-icons" aria-hidden="true">call_split</span> Destinos de nómina</h1>
-  <p class="pl-sub">
-    La nómina con centro de costo <b>{{ codcosto }}</b> necesita <b>destino</b> antes de subirla a Cuenta 5.
-    El reparto <b>sale de la distribución de nómina</b>: si una persona está repartida entre varias áreas
-    (p. ej. 5 % Asistencia técnica propia y 5 % Asistencia técnica convenio), aquí aparece cada una de sus
-    áreas con {{ codcosto }} y se elige el destino de cada una. Mientras a alguna le falte,
-    <b>la subida de nómina queda bloqueada</b>.
-  </p>
+
+  <nav class="dn-nav" aria-label="Secciones">
+    <a href="#codcosto" class="dn-nav-item">
+      <span class="material-icons" aria-hidden="true">account_tree</span> Centro de costo {{ codcosto }}
+      {% if sin_destino %}<span class="dn-nav-badge">{{ sin_destino }}</span>{% endif %}
+    </a>
+    <a href="#comerciales" class="dn-nav-item">
+      <span class="material-icons" aria-hidden="true">storefront</span> Cargos comerciales
+      {% if comerciales_sin_destino %}<span class="dn-nav-badge">{{ comerciales_sin_destino }}</span>{% endif %}
+    </a>
+  </nav>
 
   {% if guardado %}<div class="pl-aviso pl-ok" role="status">Destinos guardados ✅</div>{% endif %}
   {% if errores %}
@@ -23,173 +27,277 @@
   </div>
   {% endif %}
 
-  {% if not personas %}
-  <div class="pl-card dn-vacio">
-    <span class="material-icons" aria-hidden="true">check_circle</span>
-    No hay nómina con centro de costo {{ codcosto }}. No hace falta asignar destinos.
-  </div>
-  {% else %}
-  <div class="dn-resumen {% if sin_destino %}dn-resumen--falta{% else %}dn-resumen--ok{% endif %}" id="dnResumen" role="status">
-    <span class="material-icons" aria-hidden="true">{% if sin_destino %}error_outline{% else %}check_circle{% endif %}</span>
-    <span id="dnResumenTexto">{% if sin_destino %}{{ sin_destino }} de {{ personas|length }} persona{{ personas|length|pluralize }} con áreas sin destino{% else %}Las {{ personas|length }} persona{{ personas|length|pluralize }} tienen destino en todas sus áreas{% endif %}</span>
-  </div>
+  {# ───────────── Centro de costo 020301: un destino por área ───────────── #}
+  <section class="dn-seccion" id="codcosto" data-dn-seccion data-texto-falta="{n} de {t} persona{s} con áreas sin destino"
+           data-texto-ok="Las {t} persona{s} tienen destino en todas sus áreas">
+    <h2 class="dn-h2"><span class="material-icons" aria-hidden="true">account_tree</span> Centro de costo {{ codcosto }}</h2>
+    <p class="pl-sub">
+      La nómina con centro de costo <b>{{ codcosto }}</b> necesita <b>destino</b> antes de subirla a Cuenta 5.
+      El reparto <b>sale de la distribución de nómina</b>: si una persona está repartida entre varias áreas
+      (p. ej. 5 % Asistencia técnica propia y 5 % Asistencia técnica convenio), aquí aparece cada una de sus
+      áreas con {{ codcosto }} y se elige el destino de cada una. Mientras a alguna le falte,
+      <b>la subida de nómina queda bloqueada</b>.
+    </p>
 
-  <form method="post" id="formDestinos">
-    {% csrf_token %}
-    <div class="pl-card pl-todas">
-      <div>
-        <label for="dnBuscar">Buscar</label>
-        <input type="search" id="dnBuscar" class="pl-input" placeholder="Nombre, cédula, cargo, área…" autocomplete="off">
+    {% if not personas %}
+    <div class="pl-card dn-vacio">
+      <span class="material-icons" aria-hidden="true">check_circle</span>
+      No hay nómina con centro de costo {{ codcosto }}. No hace falta asignar destinos.
+    </div>
+    {% else %}
+    <div class="dn-resumen {% if sin_destino %}dn-resumen--falta{% else %}dn-resumen--ok{% endif %}" data-dn="resumen" role="status">
+      <span class="material-icons" aria-hidden="true">{% if sin_destino %}error_outline{% else %}check_circle{% endif %}</span>
+      <span data-dn="resumen-texto">{% if sin_destino %}{{ sin_destino }} de {{ personas|length }} persona{{ personas|length|pluralize }} con áreas sin destino{% else %}Las {{ personas|length }} persona{{ personas|length|pluralize }} tienen destino en todas sus áreas{% endif %}</span>
+    </div>
+
+    <form method="post" id="formDestinos" data-dn="form">
+      {% csrf_token %}
+      <input type="hidden" name="seccion" value="codcosto">
+      <div class="pl-card pl-todas">
+        <div>
+          <label for="dnBuscar">Buscar</label>
+          <input type="search" id="dnBuscar" data-dn="buscar" class="pl-input" placeholder="Nombre, cédula, cargo, área…" autocomplete="off">
+        </div>
+        <label class="dn-check"><input type="checkbox" data-dn="solo-faltan"> Solo pendientes</label>
+        <div class="dn-masivo">
+          <label for="dnDestinoMasivo">Destino para todas las áreas de las seleccionadas</label>
+          <div class="dn-masivo-fila">
+            <select id="dnDestinoMasivo" data-dn="masivo" class="pl-input">
+              <option value="">— Elegir —</option>
+              {% for codigo, nombre in opciones %}<option value="{{ codigo }}">{{ codigo }}{% if nombre %} · {{ nombre }}{% endif %}</option>{% endfor %}
+            </select>
+            <button type="button" class="pl-btn" data-dn="aplicar" disabled>
+              <span class="material-icons" aria-hidden="true">done_all</span> Aplicar (<span data-dn="seleccionadas">0</span>)
+            </button>
+          </div>
+        </div>
       </div>
-      <label class="dn-check"><input type="checkbox" id="dnSoloFaltan"> Solo pendientes</label>
-      <div class="dn-masivo">
-        <label for="dnDestinoMasivo">Destino para todas las áreas de las seleccionadas</label>
-        <div class="dn-masivo-fila">
-          <select id="dnDestinoMasivo" class="pl-input">
-            <option value="">— Elegir —</option>
-            {% for codigo, nombre in opciones %}<option value="{{ codigo }}">{{ codigo }}{% if nombre %} · {{ nombre }}{% endif %}</option>{% endfor %}
-          </select>
-          <button type="button" class="pl-btn" id="dnAplicar" disabled>
-            <span class="material-icons" aria-hidden="true">done_all</span> Aplicar (<span id="dnSeleccionadas">0</span>)
+
+      <div class="pl-card">
+        <table class="pl-table dn-table">
+          <thead>
+            <tr>
+              <th class="dn-col-check"><input type="checkbox" data-dn="todas" aria-label="Seleccionar todas las visibles"></th>
+              <th>Persona</th><th>Cargo</th><th colspan="2">Áreas con {{ codcosto }} (porcentaje de la distribución de nómina) y su destino</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in personas %}
+            <tr class="dn-fila{% if not p.completo %} dn-falta{% endif %}"
+                data-buscar="{{ p.nombre|lower }} {{ p.cedula }} {{ p.cargo|lower }}{% for parte in p.partes %} {{ parte.area|lower }}{% endfor %}">
+              <td class="dn-col-check"><input type="checkbox" class="dn-sel" aria-label="Seleccionar {{ p.nombre }}"></td>
+              <td><div class="dn-nombre">{{ p.nombre|default:"(sin nombre)" }}</div>
+                  <div class="pl-auto">{% if p.cedula %}CC {{ p.cedula }}{% else %}Sin cédula{% endif %}</div></td>
+              <td>{{ p.cargo|default:"—" }}</td>
+              <td colspan="2" class="dn-partes-celda">
+                {% for parte in p.partes %}
+                <div class="dn-parte">
+                  <div class="dn-parte-area">
+                    <span class="dn-pct-chip" title="{% if parte.porcentaje is None %}La persona no tiene distribución: todo su costo está en esta área{% else %}Porcentaje de la distribución de nómina{% endif %}">
+                      {% if parte.porcentaje is None %}100 %{% else %}{{ parte.porcentaje|floatformat:"-2" }} %{% endif %}
+                    </span>
+                    <span class="dn-area-nombre">{{ parte.area }}</span>
+                    {% if parte.centros %}<div class="pl-auto">{{ parte.centros|join:", " }}</div>{% endif %}
+                  </div>
+                  <select name="destino::{{ p.persona }}{{ separador }}{{ parte.area_clave }}" class="pl-input dn-destino"
+                          aria-label="Destino de {{ p.nombre }} en {{ parte.area }}">
+                    <option value="">— Sin destino —</option>
+                    {% if parte.destino and parte.destino not in nombres_destino %}
+                    <option value="{{ parte.destino }}" selected>{{ parte.destino }} (ya no está en la lista)</option>
+                    {% endif %}
+                    {% for codigo, nombre in opciones %}
+                    <option value="{{ codigo }}"{% if codigo == parte.destino %} selected{% endif %}>{{ codigo }}{% if nombre %} · {{ nombre }}{% endif %}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                {% endfor %}
+                {% if p.distribuida %}<div class="dn-nota">El resto de su distribución va a otros centros de costo y no necesita destino.</div>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <p class="dn-sin-resultados" data-dn="sin-resultados" hidden>Ninguna persona coincide con la búsqueda.</p>
+        <div class="pl-acciones">
+          <span class="dn-cambios" data-dn="cambios" hidden>Hay cambios sin guardar</span>
+          <button type="submit" class="pl-btn pl-btn-primary">
+            <span class="material-icons" aria-hidden="true">save</span> Guardar destinos
           </button>
         </div>
       </div>
+    </form>
+    {% endif %}
+  </section>
+
+  {# ───────────── Cargos comerciales: un destino VT por persona ───────────── #}
+  <section class="dn-seccion" id="comerciales" data-dn-seccion data-texto-falta="{n} de {t} persona{s} sin destino"
+           data-texto-ok="Las {t} persona{s} tienen destino">
+    <h2 class="dn-h2"><span class="material-icons" aria-hidden="true">storefront</span> Cargos comerciales</h2>
+    <p class="pl-sub">
+      Personas con cargo <b>asesor comercial</b>, <b>auxiliar comercial</b> o <b>asistente técnico comercial</b>.
+      Elige su destino (<b>VT-00001</b> a <b>VT-00027</b>): al subir la nómina a Cuenta 5 va en el destino de
+      sus registros. Los de centro de costo {{ codcosto }} siguen llevando el destino de su área (sección de arriba).
+    </p>
+
+    {% if not comerciales %}
+    <div class="pl-card dn-vacio dn-vacio--info">
+      <span class="material-icons" aria-hidden="true">info</span>
+      No hay personas con cargo comercial en el presupuesto de nómina.
+    </div>
+    {% else %}
+    <div class="dn-resumen {% if comerciales_sin_destino %}dn-resumen--falta{% else %}dn-resumen--ok{% endif %}" data-dn="resumen" role="status">
+      <span class="material-icons" aria-hidden="true">{% if comerciales_sin_destino %}error_outline{% else %}check_circle{% endif %}</span>
+      <span data-dn="resumen-texto">{% if comerciales_sin_destino %}{{ comerciales_sin_destino }} de {{ comerciales|length }} persona{{ comerciales|length|pluralize }} sin destino{% else %}Las {{ comerciales|length }} persona{{ comerciales|length|pluralize }} tienen destino{% endif %}</span>
     </div>
 
-    <div class="pl-card">
-      <table class="pl-table dn-table">
-        <thead>
-          <tr>
-            <th class="dn-col-check"><input type="checkbox" id="dnTodas" aria-label="Seleccionar todas las visibles"></th>
-            <th>Persona</th><th>Cargo</th><th colspan="2">Áreas con {{ codcosto }} (porcentaje de la distribución de nómina) y su destino</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for p in personas %}
-          <tr class="dn-fila{% if not p.completo %} dn-falta{% endif %}"
-              data-buscar="{{ p.nombre|lower }} {{ p.cedula }} {{ p.cargo|lower }}{% for parte in p.partes %} {{ parte.area|lower }}{% endfor %}">
-            <td class="dn-col-check"><input type="checkbox" class="dn-sel" aria-label="Seleccionar {{ p.nombre }}"></td>
-            <td><div class="dn-nombre">{{ p.nombre|default:"(sin nombre)" }}</div>
-                <div class="pl-auto">{% if p.cedula %}CC {{ p.cedula }}{% else %}Sin cédula{% endif %}</div></td>
-            <td>{{ p.cargo|default:"—" }}</td>
-            <td colspan="2" class="dn-partes-celda">
-              {% for parte in p.partes %}
-              <div class="dn-parte">
-                <div class="dn-parte-area">
-                  <span class="dn-pct-chip" title="{% if parte.porcentaje is None %}La persona no tiene distribución: todo su costo está en esta área{% else %}Porcentaje de la distribución de nómina{% endif %}">
-                    {% if parte.porcentaje is None %}100 %{% else %}{{ parte.porcentaje|floatformat:"-2" }} %{% endif %}
-                  </span>
-                  <span class="dn-area-nombre">{{ parte.area }}</span>
-                  {% if parte.centros %}<div class="pl-auto">{{ parte.centros|join:", " }}</div>{% endif %}
-                </div>
-                <select name="destino::{{ p.persona }}{{ separador }}{{ parte.area_clave }}" class="pl-input dn-destino"
-                        aria-label="Destino de {{ p.nombre }} en {{ parte.area }}">
+    <form method="post" id="formComerciales" data-dn="form">
+      {% csrf_token %}
+      <input type="hidden" name="seccion" value="comerciales">
+      <div class="pl-card pl-todas">
+        <div>
+          <label for="dnBuscarCom">Buscar</label>
+          <input type="search" id="dnBuscarCom" data-dn="buscar" class="pl-input" placeholder="Nombre, cédula, cargo, área, centro…" autocomplete="off">
+        </div>
+        <label class="dn-check"><input type="checkbox" data-dn="solo-faltan"> Solo pendientes</label>
+        <div class="dn-masivo">
+          <label for="dnMasivoCom">Destino para las seleccionadas</label>
+          <div class="dn-masivo-fila">
+            <select id="dnMasivoCom" data-dn="masivo" class="pl-input">
+              <option value="">— Elegir —</option>
+              {% for codigo, nombre in opciones_comercial %}<option value="{{ codigo }}">{{ codigo }}{% if nombre %} · {{ nombre }}{% endif %}</option>{% endfor %}
+            </select>
+            <button type="button" class="pl-btn" data-dn="aplicar" disabled>
+              <span class="material-icons" aria-hidden="true">done_all</span> Aplicar (<span data-dn="seleccionadas">0</span>)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pl-card">
+        <table class="pl-table dn-table dn-table--com">
+          <thead>
+            <tr>
+              <th class="dn-col-check"><input type="checkbox" data-dn="todas" aria-label="Seleccionar todas las visibles"></th>
+              <th>Persona</th><th>Cargo</th><th>Área · centro</th><th class="dn-col-destino">Destino</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in comerciales %}
+            <tr class="dn-fila{% if not p.destino %} dn-falta{% endif %}"
+                data-buscar="{{ p.nombre|lower }} {{ p.cedula }} {{ p.cargo|lower }} {{ p.areas|join:' '|lower }} {{ p.centros|join:' '|lower }}">
+              <td class="dn-col-check"><input type="checkbox" class="dn-sel" aria-label="Seleccionar {{ p.nombre }}"></td>
+              <td><div class="dn-nombre">{{ p.nombre|default:"(sin nombre)" }}</div>
+                  <div class="pl-auto">{% if p.cedula %}CC {{ p.cedula }}{% else %}Sin cédula{% endif %}</div></td>
+              <td><span class="dn-cargo-chip">{{ p.cargo }}</span></td>
+              <td><div class="dn-area-nombre">{{ p.areas|join:", "|default:"—" }}</div>
+                  {% if p.centros %}<div class="pl-auto">{{ p.centros|join:", " }}</div>{% endif %}</td>
+              <td class="dn-col-destino">
+                <select name="{{ prefijo_comercial }}{{ p.persona }}" class="pl-input dn-destino"
+                        aria-label="Destino de {{ p.nombre }}">
                   <option value="">— Sin destino —</option>
-                  {% if parte.destino and parte.destino not in nombres_destino %}
-                  <option value="{{ parte.destino }}" selected>{{ parte.destino }} (ya no está en la lista)</option>
-                  {% endif %}
-                  {% for codigo, nombre in opciones %}
-                  <option value="{{ codigo }}"{% if codigo == parte.destino %} selected{% endif %}>{{ codigo }}{% if nombre %} · {{ nombre }}{% endif %}</option>
+                  {% for codigo, nombre in opciones_comercial %}
+                  <option value="{{ codigo }}"{% if codigo == p.destino %} selected{% endif %}>{{ codigo }}{% if nombre %} · {{ nombre }}{% endif %}</option>
                   {% endfor %}
                 </select>
-              </div>
-              {% endfor %}
-              {% if p.distribuida %}<div class="dn-nota">El resto de su distribución va a otros centros de costo y no necesita destino.</div>{% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      <p class="dn-sin-resultados" id="dnSinResultados" hidden>Ninguna persona coincide con la búsqueda.</p>
-      <div class="pl-acciones">
-        <span class="dn-cambios" id="dnCambios" hidden>Hay cambios sin guardar</span>
-        <button type="submit" class="pl-btn pl-btn-primary">
-          <span class="material-icons" aria-hidden="true">save</span> Guardar destinos
-        </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <p class="dn-sin-resultados" data-dn="sin-resultados" hidden>Ninguna persona coincide con la búsqueda.</p>
+        <div class="pl-acciones">
+          <span class="dn-cambios" data-dn="cambios" hidden>Hay cambios sin guardar</span>
+          <button type="submit" class="pl-btn pl-btn-primary">
+            <span class="material-icons" aria-hidden="true">save</span> Guardar destinos comerciales
+          </button>
+        </div>
       </div>
-    </div>
-  </form>
-  {% endif %}
+    </form>
+    {% endif %}
+  </section>
 </div>
 
 <script>
 (() => {
-  const form = document.getElementById("formDestinos");
-  if (!form) return;
-  const filas = [...document.querySelectorAll(".dn-fila")];
-  const buscar = document.getElementById("dnBuscar");
-  const soloFaltan = document.getElementById("dnSoloFaltan");
-  const todas = document.getElementById("dnTodas");
-  const aplicar = document.getElementById("dnAplicar");
-  const masivo = document.getElementById("dnDestinoMasivo");
-  const total = filas.length;
   let cambios = false;
 
-  const selects = fila => [...fila.querySelectorAll(".dn-destino")];
-  const completa = fila => selects(fila).every(s => s.value);
-  const visibles = () => filas.filter(f => !f.hidden);
+  function montar(seccion) {
+    const form = seccion.querySelector('[data-dn="form"]');
+    if (!form) return;
+    const $ = rol => seccion.querySelector(`[data-dn="${rol}"]`);
+    const filas = [...form.querySelectorAll(".dn-fila")];
+    const buscar = $("buscar"), soloFaltan = $("solo-faltan"), todas = $("todas");
+    const aplicar = $("aplicar"), masivo = $("masivo");
+    const total = filas.length;
 
-  function resumen() {
-    filas.forEach(f => {
-      f.classList.toggle("dn-falta", !completa(f));
-      selects(f).forEach(s => s.classList.toggle("dn-vacio-sel", !s.value));
+    const selects = fila => [...fila.querySelectorAll(".dn-destino")];
+    const completa = fila => selects(fila).every(s => s.value);
+    const visibles = () => filas.filter(f => !f.hidden);
+    const texto = (plantilla, n) => plantilla.replace("{n}", n).replace("{t}", total)
+                                             .replace("{s}", total === 1 ? "" : "s");
+
+    function resumen() {
+      filas.forEach(f => {
+        f.classList.toggle("dn-falta", !completa(f));
+        selects(f).forEach(s => s.classList.toggle("dn-vacio-sel", !s.value));
+      });
+      const faltan = filas.filter(f => !completa(f)).length;
+      const caja = $("resumen");
+      caja.className = "dn-resumen " + (faltan ? "dn-resumen--falta" : "dn-resumen--ok");
+      caja.querySelector(".material-icons").textContent = faltan ? "error_outline" : "check_circle";
+      $("resumen-texto").textContent = texto(faltan ? seccion.dataset.textoFalta : seccion.dataset.textoOk, faltan);
+    }
+
+    function contarSeleccion() {
+      const sel = visibles().filter(f => f.querySelector(".dn-sel").checked);
+      $("seleccionadas").textContent = sel.length;
+      aplicar.disabled = !sel.length || !masivo.value;
+      const vis = visibles();
+      todas.checked = vis.length > 0 && sel.length === vis.length;
+      todas.indeterminate = sel.length > 0 && sel.length < vis.length;
+    }
+
+    function filtrar() {
+      const q = buscar.value.trim().toLowerCase();
+      filas.forEach(f => {
+        f.hidden = (q && !f.dataset.buscar.includes(q)) || (soloFaltan.checked && completa(f));
+      });
+      $("sin-resultados").hidden = visibles().length > 0;
+      contarSeleccion();
+    }
+
+    function marcarCambio() {
+      cambios = true;
+      $("cambios").hidden = false;
+      resumen();
+    }
+
+    buscar.addEventListener("input", filtrar);
+    soloFaltan.addEventListener("change", filtrar);
+    masivo.addEventListener("change", contarSeleccion);
+    todas.addEventListener("change", () => {
+      visibles().forEach(f => { f.querySelector(".dn-sel").checked = todas.checked; });
+      contarSeleccion();
     });
-    const faltan = filas.filter(f => !completa(f)).length;
-    const caja = document.getElementById("dnResumen");
-    caja.className = "dn-resumen " + (faltan ? "dn-resumen--falta" : "dn-resumen--ok");
-    caja.querySelector(".material-icons").textContent = faltan ? "error_outline" : "check_circle";
-    document.getElementById("dnResumenTexto").textContent = faltan
-      ? `${faltan} de ${total} persona${total === 1 ? "" : "s"} con áreas sin destino`
-      : `Las ${total} persona${total === 1 ? "" : "s"} tienen destino en todas sus áreas`;
-  }
-
-  function filtrar() {
-    const q = buscar.value.trim().toLowerCase();
-    filas.forEach(f => {
-      f.hidden = (q && !f.dataset.buscar.includes(q)) || (soloFaltan.checked && completa(f));
+    form.addEventListener("change", e => {
+      if (e.target.classList.contains("dn-sel")) contarSeleccion();
+      if (e.target.classList.contains("dn-destino")) marcarCambio();
     });
-    document.getElementById("dnSinResultados").hidden = visibles().length > 0;
-    contarSeleccion();
-  }
-
-  function contarSeleccion() {
-    const sel = visibles().filter(f => f.querySelector(".dn-sel").checked);
-    document.getElementById("dnSeleccionadas").textContent = sel.length;
-    aplicar.disabled = !sel.length || !masivo.value;
-    const vis = visibles();
-    todas.checked = vis.length > 0 && sel.length === vis.length;
-    todas.indeterminate = sel.length > 0 && sel.length < vis.length;
-  }
-
-  function marcarCambio() {
-    cambios = true;
-    document.getElementById("dnCambios").hidden = false;
+    aplicar.addEventListener("click", () => {
+      visibles().forEach(f => {
+        if (!f.querySelector(".dn-sel").checked) return;
+        selects(f).forEach(s => { s.value = masivo.value; });
+        f.querySelector(".dn-sel").checked = false;
+      });
+      marcarCambio();
+      filtrar();
+    });
+    form.addEventListener("submit", () => { cambios = false; });
     resumen();
   }
 
-  buscar.addEventListener("input", filtrar);
-  soloFaltan.addEventListener("change", filtrar);
-  masivo.addEventListener("change", contarSeleccion);
-  todas.addEventListener("change", () => {
-    visibles().forEach(f => { f.querySelector(".dn-sel").checked = todas.checked; });
-    contarSeleccion();
-  });
-  form.addEventListener("change", e => {
-    if (e.target.classList.contains("dn-sel")) contarSeleccion();
-    if (e.target.classList.contains("dn-destino")) marcarCambio();
-  });
-  aplicar.addEventListener("click", () => {
-    visibles().forEach(f => {
-      if (!f.querySelector(".dn-sel").checked) return;
-      selects(f).forEach(s => { s.value = masivo.value; });
-      f.querySelector(".dn-sel").checked = false;
-    });
-    marcarCambio();
-    filtrar();
-  });
-  form.addEventListener("submit", () => { cambios = false; });
+  document.querySelectorAll("[data-dn-seccion]").forEach(montar);
   window.addEventListener("beforeunload", e => { if (cambios) { e.preventDefault(); e.returnValue = ""; } });
-  resumen();
 })();
 </script>
 {% endblock %}

@@ -1076,7 +1076,9 @@ def ajustes_plazos_edicion(request):
 #   mcndestino <- si su codcosto es 020301, el destino elegido para esa área
 #                 de la persona (Ajustes → Destinos de nómina; sin destino no
 #                 se sube). El reparto entre áreas viene de la distribución
-#                 de nómina: cada parte ya es su propia fila.
+#                 de nómina: cada parte ya es su propia fila. Las demás filas
+#                 con cargo comercial (asesor/auxiliar comercial, asistente
+#                 técnico comercial) llevan el destino VT de la persona.
 #   responsable <- "nomina" (fijo)
 #   mcnfecha   <- fecha (serial Excel)
 #   mcnvaldebi <- valor si es >= 0,  mcnvalcred <- -valor si es < 0
@@ -1213,10 +1215,11 @@ def subir_cuenta5_nomina(request):
     ahora = timezone.now()
     del_informe = zonas_de_centros_nomina()
     destinos = destinos_nomina.destinos_asignados()
+    destinos_com = destinos_nomina.destinos_comerciales()
     with log_carga("cuenta5_nomina", request) as info, transaction.atomic():
         registros, sin_cuenta, sin_zona, con_destino = [], set(), set(), 0
         for r in PresupuestoNominaMes.objects.exclude(valor=0).order_by("linea", "fecha").values(
-            "linea", "cuenta", "codcosto", "centro", "area", "cedula", "nombre", "fecha", "valor"
+            "linea", "cuenta", "codcosto", "centro", "area", "cedula", "nombre", "cargo", "fecha", "valor"
         ):
             if not (r["cuenta"] or "").strip():
                 sin_cuenta.add(r["linea"])
@@ -1232,6 +1235,11 @@ def subir_cuenta5_nomina(request):
                 destino = destinos.get((destinos_nomina.clave_persona(r["cedula"], r["nombre"]),
                                         destinos_nomina.clave_area(r["area"])))
                 con_destino += 1
+            else:
+                # cargos comerciales: el destino VT de la persona (Ajustes → Destinos de nómina)
+                destino = destinos_nomina.destino_comercial(destinos_com, r["cedula"], r["nombre"], r["cargo"])
+                if destino:
+                    con_destino += 1
             registros.append(Cuenta5Presupuestado(
                 mcncuenta=r["cuenta"].strip(),
                 mcnccosto=(r["codcosto"] or "").strip() or None,
