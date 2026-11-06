@@ -29,9 +29,9 @@
         <header class="pt-dialogo__cabecera">
           <h3 id="dlgManualesTitulo">Filas manuales: ¿recalcularlas también?</h3>
           <p class="pt-dialogo__sub">Estas filas se escribieron o editaron a mano y el cálculo no las toca.
-            Las marcadas vuelven a ser <strong>calculadas</strong> (pierden el valor manual);
-            las desmarcadas conservan su valor y la próxima vez saldrán desmarcadas.
-            Las de <strong>⚠️</strong> quedarían en 0 o se quitarían (no tienen datos de origen): salen desmarcadas.</p>
+            Las marcadas se <strong>recalculan con los valores escritos</strong> (los parámetros y la fórmula
+            se aplican sobre lo que se ingresó) y vuelven a ser calculadas; las desmarcadas conservan su valor
+            y la próxima vez saldrán desmarcadas. Las de <strong>⚠️</strong> quedarían en 0 o se quitarían: salen desmarcadas.</p>
         </header>
         <div class="pt-dialogo__cuerpo">
           <div class="rm-barra">

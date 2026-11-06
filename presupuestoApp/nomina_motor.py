@@ -2880,7 +2880,11 @@ def guardar(slug, filas_json, usuario='', con_editados=False, propagar_cambios=T
                 fila.origen = SISTEMA
                 forzadas = True
                 invertibles = c.invertibles(fila, ctx.meses_reales())
-                if not c.derivado and invertibles and not any(m in (fila.historico or {}) for m in MESES):
+                if not c.derivado and era_manual and datos.get('_desde_manual'):
+                    # Ventana de "Recalcular": se calcula con lo que se ESCRIBIÓ en
+                    # la fila (no con los datos de origen)
+                    entradas_desde_manual(fila, c, entrantes, ctx.meses_reales(), p)
+                elif not c.derivado and invertibles and not any(m in (fila.historico or {}) for m in MESES):
                     # fila escrita a mano: sus valores pasan a ser el histórico. En
                     # AJUSTAN_MANUALES (comisiones) ya traen el incremento vigente:
                     # se les quita para no incrementarlos dos veces.
@@ -3120,9 +3124,52 @@ def recordar_no_recalcular(ids):
     return len(filas)
 
 
+def entradas_desde_manual(fila, c, meses, meses_reales, p):
+    """Convierte lo escrito en una fila manual (`meses`) en los datos de entrada
+    de su fórmula, para recalcularla "con base en los datos manuales":
+
+      - incrementar (auxilios TBC, bolsa, educación): los 12 meses escritos son
+        el histórico → cada uno × el incremento.
+      - incremento_promedio (comisiones, horas extra): los meses escritos de la
+        ventana de meses reales son el histórico; los demás salen de su promedio.
+      - retroactivo (sueldos, transporte): el valor de enero (o el primer mes
+        con valor) es el salario/valor actual → enero y febrero con ese valor,
+        desde marzo con el incremento y el retroactivo. Si el primer mes con
+        valor es de marzo en adelante, ya trae el incremento: se le quita.
+      - base_fija (aprendices) y kyrovet: el primer mes con valor (febrero en
+        kyrovet) es la base → × el incremento.
+
+    En AJUSTAN_MANUALES (comisiones) lo escrito ya trae el incremento vigente
+    (ver ajustar_manuales): se le quita antes, para no incrementarlo dos veces.
+    Si no se escribió nada, se deja lo que había (base o histórico)."""
+    divisor = fila.factor or 1
+    if c.slug in AJUSTAN_MANUALES:
+        divisor *= 1 + p.pct(c.pct)
+    if c.formula in ('incrementar', 'incremento_promedio'):
+        if not any(meses.values()):
+            return
+        if c.formula == 'incrementar':
+            ventana = MESES
+        else:
+            propios = [m for m in MESES if m in (fila.historico or {})]
+            ventana = propios or MESES[:meses_reales] or MESES
+        especiales = {k: v for k, v in (fila.historico or {}).items() if k not in MESES}
+        fila.historico = {**especiales, **{m: meses[m] / divisor for m in ventana}}
+    elif c.formula in ('retroactivo', 'base_fija', 'kyrovet'):
+        orden = ['febrero', *[m for m in MESES if m != 'febrero']] if c.formula == 'kyrovet' else MESES
+        mes = next((m for m in orden if meses.get(m)), None)
+        if mes is None:
+            return
+        valor = meses[mes] / divisor
+        if c.formula == 'retroactivo' and MESES.index(mes) >= 2:
+            valor /= 1 + p.pct(c.pct)               # de marzo en adelante ya trae el incremento
+        fila.base = int(round(valor))
+
+
 def restablecer_manuales(ids, usuario=''):
-    """Las filas manuales `ids` vuelven a ser calculadas, como con "⚙️ Restablecer
-    cálculo" en cada tabla (se usa ese mismo camino: guardar con `_recalcular`).
+    """Las filas manuales `ids` vuelven a ser calculadas CON LO QUE SE ESCRIBIÓ en
+    ellas (entradas_desde_manual): se usa el camino de "⚙️ Restablecer cálculo"
+    (guardar con `_recalcular`) más `_desde_manual`.
     No recalcula el resto: quien llama recalcula una vez al final. Devuelve
     {slug: cuántas}."""
     ids = {int(i) for i in ids}
@@ -3143,6 +3190,7 @@ def restablecer_manuales(ids, usuario=''):
                 d['_editados'] = []                  # nada editado: solo se restablecen las elegidas
                 if d['id'] in elegidas:
                     d['_recalcular'] = True
+                    d['_desde_manual'] = True        # con lo que se escribió, no con los datos de origen
             guardar(c.slug, filas, usuario, con_editados=True, propagar_cambios=False)
             hechos[c.slug] = len(elegidas)
     return hechos

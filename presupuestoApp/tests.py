@@ -1518,6 +1518,51 @@ class RecalcularConManualesTests(TestCase):
         self.post(url)
         self.assertEqual(PresupuestoNomina.objects.get(pk=self.foco9.pk).origen, "manual")
 
+    def test_se_recalcula_con_lo_que_se_escribio(self):
+        # sueldo escrito a mano (sin salario base ni datos de origen): 3.000.000 todos los meses
+        sueldo = linea_nomina(tipo="sueldos", cedula="30", nombre="ESCRITO", origen="manual", base=0,
+                              clave="", centro="ALMACEN TULUA", area="VENTAS", **{m: 3000000 for m in MESES_N})
+        sueldo.save()
+        # horas extra escritas a mano: 100.000 todos los meses
+        horas = linea_nomina(tipo="horas_extra", cedula="30", nombre="ESCRITO", origen="manual", clave="",
+                             centro="ALMACEN TULUA", area="VENTAS", **{m: 100000 for m in MESES_N})
+        horas.save()
+        g = self.grupos(reverse("nomina_recalcular_todo"))
+        # la vista previa ya muestra lo que dará el cálculo con lo escrito (no $0)
+        self.assertEqual(g["sueldos"]["30"]["total_calculado"], 3000000 * 2 + 3900000 + 3300000 * 9)
+        self.assertTrue(g["sueldos"]["30"]["recalcular"])
+        self.assertEqual(g["horas_extra"]["30"]["total_calculado"], 12 * 110000)
+        self.post(reverse("nomina_recalcular_todo"), recalcular=[str(sueldo.pk), str(horas.pk)])
+        sueldo.refresh_from_db()
+        horas.refresh_from_db()
+        # enero y febrero con lo escrito, desde marzo + 10 % (marzo con 2 meses de retroactivo)
+        self.assertEqual((sueldo.origen, sueldo.base, sueldo.enero, sueldo.marzo, sueldo.abril),
+                         ("sistema", 3000000, 3000000, 3900000, 3300000))
+        self.assertEqual((horas.origen, horas.enero, horas.diciembre), ("sistema", 110000, 110000))
+
+    def test_meses_en_cero_y_primer_mes_despues_de_marzo(self):
+        # ingresa en mayo: lo escrito de mayo ya trae el incremento → base = 3.300.000 / 1,10
+        meses = {m: (3300000 if i >= 4 else 0) for i, m in enumerate(MESES_N)}
+        sueldo = linea_nomina(tipo="sueldos", cedula="31", nombre="DESDE MAYO", origen="manual", base=0,
+                              clave="", centro="ALMACEN TULUA", area="VENTAS", **meses)
+        sueldo.save()
+        self.post(reverse("nomina_recalcular_todo"), recalcular=[str(sueldo.pk)])
+        sueldo.refresh_from_db()
+        self.assertEqual(sueldo.base, 3000000)
+        self.assertEqual((sueldo.enero, sueldo.abril, sueldo.mayo, sueldo.diciembre), (0, 0, 3300000, 3300000))
+
+    def test_restablecer_de_la_tabla_sigue_volviendo_al_origen(self):
+        # el botón "⚙️ Restablecer cálculo" de cada tabla es un "deshacer": vuelve a los datos de origen
+        datos = self.client.get(reverse("nomina_datos", args=["sueldos"])).json()["data"]
+        for d in datos:
+            if d["id"] == self.sueldo2.pk:
+                d.update(_recalcular=True, enero=9999999, _editados=["enero"])
+        r = self.client.post(reverse("nomina_guardar", args=["sueldos"]), json.dumps({"filas": datos, "con_editados": True}),
+                             content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.sueldo2.refresh_from_db()
+        self.assertEqual((self.sueldo2.origen, self.sueldo2.base, self.sueldo2.abril), ("sistema", 2000000, 2200000))
+
     def test_pantallas_cargan_la_ventana(self):
         html = self.client.get(reverse("presupuestoNomina")).content.decode()
         self.assertIn("js/nomina_manuales.js", html)
