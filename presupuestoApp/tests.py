@@ -1393,6 +1393,34 @@ class BonoCanastaTrimestralTests(TestCase):
         self.assertIn(reverse("nomina_tabla", args=["bono_canasta_trimestral"]), html)
         self.assertEqual(self.client.get(reverse("nomina_tabla", args=["bono_canasta_trimestral"])).status_code, 200)
 
+    def test_variantes_del_cargo(self):
+        si = ["DIRECTOR TECNICO", "Director Técnico", "DIRECTORA TÉCNICA", "DIR. TECNICO", "DIR TECN.",
+              "  director   técnico  ", "DIRECTOR TÉCNICO ZONA NORTE", "COORDINADOR / DIRECTOR TECNICO",
+              "DIRECTOR DE TECNICA", "DIRECTOR-TECNICO", "DIRECTOR\xa0TÉCNICO"]
+        no = ["SUBDIRECTOR TECNICO", "DIRECTOR DE TECNOLOGIA", "DIRECTOR COMERCIAL", "TECNICO", "", None,
+              "AUXILIAR TECNICO", "DIRECTOR ADMINISTRATIVO Y TECNICO"]
+        for cargo in si:
+            self.assertTrue(nomina_motor.tiene_bono_canasta_trimestral(cargo), cargo)
+        for cargo in no:
+            self.assertFalse(nomina_motor.tiene_bono_canasta_trimestral(cargo), cargo)
+
+    def test_al_abrir_la_tabla_se_calcula_si_nunca_se_calculo(self):
+        # recién instalado: el concepto no tiene filas porque nadie ha recalculado
+        PresupuestoNomina.objects.filter(tipo="bono_canasta_trimestral").delete()
+        datos = self.client.get(reverse("nomina_datos", args=["bono_canasta_trimestral"])).json()["data"]
+        self.assertEqual(sorted(d["cedula"] for d in datos), ["1", "2"])
+        # los conceptos de los que dependen otros no se calculan solos al abrir
+        self.assertEqual(nomina_motor.asegurar_calculado("cesantias"), 0)
+
+    def test_director_que_no_esta_en_sueldos(self):
+        linea_nomina(tipo="comisiones", cedula="8", nombre="DT SIN SUELDO", cargo="Directora Técnica",
+                     origen="manual", centro="ALMACEN TULUA", area="VENTAS").save()
+        linea_nomina(tipo="horas_extra", cedula="8", nombre="DT SIN SUELDO", cargo="Directora Técnica",
+                     origen="manual", centro="ALMACEN TULUA", area="VENTAS").save()
+        nomina_motor.recalcular_todo()
+        filas = [f for f in PresupuestoNomina.objects.filter(tipo="bono_canasta_trimestral") if f.cedula == "8"]
+        self.assertEqual(len(filas), 1)                            # una sola fila aunque esté en dos conceptos
+
     def test_un_director_nuevo_en_sueldos_aparece(self):
         linea_nomina(tipo="sueldos", cedula="9", nombre="NUEVO DT", cargo="DIRECTOR TECNICO", origen="manual",
                      centro="ALMACEN TULUA", area="VENTAS").save()
@@ -4268,11 +4296,11 @@ class FocoCargosValorInformeTests(TestCase):
         self.assertEqual(r.json()["status"], "ok")
         self.assertEqual(list(FocoCargoInforme.objects.values_list("cargo", flat=True)), ["COORDINADOR"])
         f = self.foco()
-        self.assertEqual(f["1"], (550000, 330000))       # 500.000 y 300.000 × 1,10
+        self.assertEqual(f["1"], (412500, 330000))       # 500.000 y 300.000 × 1,10 · enero al 75 %
         self.assertEqual(f["2"], (165000, 0))            # CAJERO sigue con el cálculo normal (75 %)
         self.assertNotIn("3", f)                         # coordinador sin valor en el informe: no recibe
         nomina_motor.recalcular_todo()                   # se mantiene al recalcular
-        self.assertEqual(self.foco()["1"], (550000, 330000))
+        self.assertEqual(self.foco()["1"], (412500, 330000))
 
     def test_tablero_lista_los_cargos(self):
         html = self.client.get(reverse("presupuestoNomina")).content.decode()

@@ -14,6 +14,7 @@ los cálculos del navegador (presupuesto_calculos.js) vive aquí:
 
 Regla de oro: una fila con origen='manual' nunca se sobrescribe.
 """
+import re
 import unicodedata
 from collections import Counter, defaultdict
 from contextlib import contextmanager
@@ -1602,12 +1603,14 @@ def gen_bonificaciones_foco(ctx, c):
 
     Cargos elegidos en el tablero ("valor del informe"): para esas personas no
     se usa nada de lo anterior. Cada mes se toma su valor del informe (concepto
-    E17 del Excel del año base) × (1 + incremento IPC).
+    E17 del Excel del año base) × (1 + incremento IPC); a enero también se le
+    paga el 75 % (DESCUENTO_FOCO), como a todos. Los demás meses van completos.
     """
     p = ctx.p
     reales = comisiones_reales(ctx)
     ingresos = fechas_ingreso(ctx.anio)
     sin_comision = set(FocoSinComision.objects.values_list('cedula', flat=True))
+    queda = 1 - DESCUENTO_FOCO                      # enero: el 75 % para todos
 
     # 0) Cargos que toman el valor del informe + IPC
     cargos_informe = {c_.strip().upper() for c_ in FocoCargoInforme.objects.values_list('cargo', flat=True)}
@@ -1627,6 +1630,7 @@ def gen_bonificaciones_foco(ctx, c):
             if not informe:
                 continue                       # no tiene valor en el informe: no recibe
             datos = {mes: informe[mes] * factor * cuota[id(fila)][mes] for mes in MESES}
+            datos['enero'] *= queda
             yield dict(identidad(fila, concepto='BONIFICACIÓN FOCO'), clave=clave_persona(fila), **datos)
 
     filas_comisiones = [f for f in ctx.filas('comisiones') if f.cedula not in del_informe]
@@ -1647,7 +1651,6 @@ def gen_bonificaciones_foco(ctx, c):
     #    mínimo NO aplica a cargos nuevos: personas que no están en el
     #    informe) y a enero se le paga el 75 % (DESCUENTO_FOCO).
     cuota = cuotas_mensuales(por_promedio, lambda f: f.cedula)
-    queda = 1 - DESCUENTO_FOCO
     en_informe = personas_en_informe(ctx)
     vistos = set()
     for fila in por_promedio:
@@ -1674,23 +1677,37 @@ def gen_bonificaciones_foco(ctx, c):
         datos['enero'] = base_de(fila.cedula) * queda * cuota[id(fila)]['enero']
         yield dict(identidad(fila, concepto='BONIFICACIÓN FOCO'), clave=clave_persona(fila), **datos)
 
-# Bono canasta trimestral: solo este cargo (sin tildes; también "DIRECTOR TÉCNICO …")
-CARGOS_BONO_CANASTA_TRIMESTRAL = ('DIRECTOR TECNICO',)
+# Bono canasta trimestral: personas con cargo Director Técnico. Se reconoce en
+# cualquier parte del cargo, sin tildes ni signos: "DIRECTOR TÉCNICO",
+# "Directora Técnica", "DIR. TECNICO", "COORDINADOR / DIRECTOR TÉCNICO ZONA"…
+# No: "SUBDIRECTOR TÉCNICO", "DIRECTOR DE TECNOLOGÍA".
+_CARGO_DIRECTOR_TECNICO = re.compile(r'\bDIR(?:ECTOR|ECTORA)?\s+(?:DE\s+)?(?:TECNIC[OA]|TECN)\b')
 
 
 def tiene_bono_canasta_trimestral(cargo):
-    clave = _sin_tildes(cargo)
-    return any(clave == c or clave.startswith(c + ' ') for c in CARGOS_BONO_CANASTA_TRIMESTRAL)
+    limpio = ' '.join(re.sub(r'[^A-Z0-9]+', ' ', _sin_tildes(cargo)).split())
+    return bool(_CARGO_DIRECTOR_TECNICO.search(limpio))
 
 
 def gen_bono_canasta_trimestral(ctx, c):
-    """Bono canasta trimestral: una fila por cada Director Técnico de Sueldos,
-    con los 12 meses en 0. Los valores se escriben en pantalla: la fila pasa a
-    manual y se conserva al recalcular (permite_manual)."""
-    for emp in ctx.filas('sueldos'):
-        if tiene_bono_canasta_trimestral(emp.cargo):
+    """Bono canasta trimestral: una fila por persona con cargo Director Técnico,
+    con los 12 meses en 0. Las personas salen de Sueldos (una fila por cada
+    fila suya, si está distribuida) y, si no tiene sueldo, de cualquier otro
+    concepto base. Los valores se escriben en pantalla: la fila pasa a manual
+    y se conserva al recalcular (permite_manual)."""
+    vistos = set()
+    for base in BASE:
+        cedulas_de_este = set()
+        for emp in ctx.filas(base.slug):
+            persona = emp.cedula or f'#{emp.nombre}'
+            if persona in vistos or not tiene_bono_canasta_trimestral(emp.cargo):
+                continue
+            cedulas_de_este.add(persona)
             yield dict(identidad(emp, concepto='BONO CANASTA TRIMESTRAL'), clave=clave_persona(emp),
                        **dict.fromkeys(MESES, 0))
+            if base.slug != 'sueldos':
+                vistos.add(persona)          # fuera de Sueldos basta una fila por persona
+        vistos |= cedulas_de_este
 
 
 # Años cumplidos en la empresa → salarios mínimos de auxilio de antigüedad
@@ -2348,6 +2365,22 @@ def _reemplazar_base(c, ctx):
     if bloqueadas:
         ctx.bloqueadas[c.slug] = len(bloqueadas)
     return len(nuevas), len(conservadas)
+
+def asegurar_calculado(slug):
+    """Concepto calculado sin ninguna fila (p. ej. uno nuevo, recién instalado,
+    que nunca se ha recalculado): se calcula al abrirlo. Solo los que no
+    afectan a otros conceptos, así no queda nada desactualizado. Devuelve
+    cuántas filas se crearon."""
+    c = CONCEPTOS.get(slug)
+    if c is None or not c.derivado or afectados_por(slug):
+        return 0
+    if PresupuestoNomina.objects.filter(tipo=slug).exists():
+        return 0
+    with bloqueo():
+        if PresupuestoNomina.objects.filter(tipo=slug).exists():     # otro lo calculó mientras tanto
+            return 0
+        return regenerar(Contexto(), c)
+
 
 def cargar_base(slug):
     """Concepto base: recarga lo calculado desde Conceptos (las filas manuales se conservan).

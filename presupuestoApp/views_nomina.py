@@ -700,6 +700,7 @@ def nomina_tabla(request, tipo):
 def nomina_datos(request, tipo):
     if tipo != TODOS:
         _concepto_o_404(tipo)
+        nomina.asegurar_calculado(tipo)       # concepto nuevo que nunca se ha calculado
     return JsonResponse({'data': nomina.listar(None if tipo == TODOS else tipo)})
 
 
