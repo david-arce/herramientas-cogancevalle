@@ -1346,6 +1346,60 @@ class ComisionesManualesSiguenElPorcentajeTests(TestCase):
         self.assertIn("se ajustan cuando cambia el incremento de comisiones", html)
 
 
+class BonoCanastaTrimestralTests(TestCase):
+    """Bono canasta trimestral: solo el cargo Director Técnico, con los meses en 0, editable."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1423500, incremento_salarial=10)
+        comunes = dict(anio=timezone.localdate().year, archivo="prueba", nombre_cen="ALMACEN TULUA",
+                       nomcosto="VENTAS", fecha_ingreso=datetime.date(2015, 1, 1))
+        for ced, cargo in ((1, "DIRECTOR TÉCNICO"), (2, "Director Tecnico"), (3, "CAJERO"),
+                           (4, "SUBDIRECTOR TECNICO")):
+            ConceptosNomina.objects.create(concepto="001", cedula=ced, nombre=f"P{ced}", nombrecar=cargo,
+                                           concepto_f=2000000, **comunes, **{m: 2000000 for m in MESES_N[:8]})
+        nomina_motor.recargar_bases()
+        self.client.force_login(User.objects.create_user("admin"))
+
+    def filas(self):
+        return {f.cedula: f for f in PresupuestoNomina.objects.filter(tipo="bono_canasta_trimestral")}
+
+    def test_solo_directores_tecnicos_en_cero(self):
+        filas = self.filas()
+        self.assertEqual(set(filas), {"1", "2"})
+        for f in filas.values():
+            self.assertEqual(f.origen, "sistema")
+            self.assertEqual(f.concepto, "BONO CANASTA TRIMESTRAL")
+            self.assertTrue(all(getattr(f, m) == 0 for m in MESES_N))
+            self.assertEqual(f.total, 0)
+
+    def test_editable_y_se_conserva_al_recalcular(self):
+        datos = self.client.get(reverse("nomina_datos", args=["bono_canasta_trimestral"])).json()["data"]
+        fila = next(d for d in datos if d["cedula"] == "1")
+        fila.update(marzo=350000, junio=350000, _editados=["marzo", "junio"])
+        r = self.client.post(reverse("nomina_guardar", args=["bono_canasta_trimestral"]),
+                             json.dumps({"filas": datos, "con_editados": True}), content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        nomina_motor.recalcular_todo()
+        filas = self.filas()
+        self.assertEqual((filas["1"].origen, filas["1"].marzo, filas["1"].junio, filas["1"].total),
+                         ("manual", 350000, 350000, 700000))
+        self.assertEqual(filas["2"].total, 0)                     # el otro sigue calculado en 0
+        self.assertEqual(len(filas), 2)                           # sin duplicar al de la fila editada
+
+    def test_aparece_en_el_tablero_y_tiene_su_tabla(self):
+        html = self.client.get(reverse("presupuestoNomina")).content.decode()
+        self.assertIn("Bono canasta trimestral", html)
+        self.assertIn(reverse("nomina_tabla", args=["bono_canasta_trimestral"]), html)
+        self.assertEqual(self.client.get(reverse("nomina_tabla", args=["bono_canasta_trimestral"])).status_code, 200)
+
+    def test_un_director_nuevo_en_sueldos_aparece(self):
+        linea_nomina(tipo="sueldos", cedula="9", nombre="NUEVO DT", cargo="DIRECTOR TECNICO", origen="manual",
+                     centro="ALMACEN TULUA", area="VENTAS").save()
+        nomina_motor.recalcular_todo()
+        self.assertIn("9", self.filas())
+
+
 class DestinosComercialesTests(TestCase):
     """Ajustes → Destinos de nómina → Cargos comerciales: asesor comercial, auxiliar
     comercial y asistente técnico comercial llevan un destino VT-00001 … VT-00027."""

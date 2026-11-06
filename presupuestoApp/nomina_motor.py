@@ -199,6 +199,9 @@ _LISTA = [
              # IPC: base de quienes no comisionan · comisiones: julio (presupuestadas)
              parametros=('incremento_ipc', 'incremento_comisiones'),
              depende=('sueldos', 'comisiones')),   # enero: comisiones REALES · julio: PRESUPUESTADAS
+    Concepto('bono_canasta_trimestral', 'Bono canasta trimestral', G_PRESTACIONES, derivado=True,
+             permite_manual=True,              # sale en 0: los valores se escriben a mano
+             depende=('sueldos',)),            # una fila por cada Director Técnico de Sueldos
     Concepto('auxilio_antiguedad', 'Auxilio de antigüedad', G_PRESTACIONES, derivado=True,
              # 20 años → 2 SMMLV · 25 → 3 · 30 → 4 (salario mínimo proyectado), en diciembre
              parametros=('salario_minimo', 'incremento_salarial'),
@@ -1671,6 +1674,25 @@ def gen_bonificaciones_foco(ctx, c):
         datos['enero'] = base_de(fila.cedula) * queda * cuota[id(fila)]['enero']
         yield dict(identidad(fila, concepto='BONIFICACIÓN FOCO'), clave=clave_persona(fila), **datos)
 
+# Bono canasta trimestral: solo este cargo (sin tildes; también "DIRECTOR TÉCNICO …")
+CARGOS_BONO_CANASTA_TRIMESTRAL = ('DIRECTOR TECNICO',)
+
+
+def tiene_bono_canasta_trimestral(cargo):
+    clave = _sin_tildes(cargo)
+    return any(clave == c or clave.startswith(c + ' ') for c in CARGOS_BONO_CANASTA_TRIMESTRAL)
+
+
+def gen_bono_canasta_trimestral(ctx, c):
+    """Bono canasta trimestral: una fila por cada Director Técnico de Sueldos,
+    con los 12 meses en 0. Los valores se escriben en pantalla: la fila pasa a
+    manual y se conserva al recalcular (permite_manual)."""
+    for emp in ctx.filas('sueldos'):
+        if tiene_bono_canasta_trimestral(emp.cargo):
+            yield dict(identidad(emp, concepto='BONO CANASTA TRIMESTRAL'), clave=clave_persona(emp),
+                       **dict.fromkeys(MESES, 0))
+
+
 # Años cumplidos en la empresa → salarios mínimos de auxilio de antigüedad
 ANTIGUEDAD_SALARIOS = {20: 2, 25: 3, 30: 4}
 
@@ -2002,6 +2024,7 @@ GENERADORES = {
     'intereses_cesantias': gen_intereses_cesantias,
     'bonificaciones': gen_bonificaciones,
     'bonificaciones_foco': gen_bonificaciones_foco,
+    'bono_canasta_trimestral': gen_bono_canasta_trimestral,
     'auxilio_antiguedad': gen_auxilio_antiguedad,
     'seguridad_social': gen_seguridad_social,
 }
