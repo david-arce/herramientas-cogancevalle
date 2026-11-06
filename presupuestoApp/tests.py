@@ -1150,6 +1150,202 @@ class DestinosNominaTests(TestCase):
         self.assertContains(r, reverse("ajustes_destinos_nomina"))
 
 
+class ParametrosDecimalesTests(TestCase):
+    """Los parámetros de nómina se escriben con coma o con punto decimal: '7,44' es 7,44 %
+    (antes el campo numérico del navegador botaba la coma y se guardaba 744)."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        self.Params = ParametrosPresupuestos
+        self.Params.objects.create(id=1, incremento_comisiones=5, salario_minimo=1423500)
+        self.client.force_login(User.objects.create_user("admin"))
+
+    def guardar(self, **campos):
+        return self.client.post(reverse("presupuestoNomina"), campos, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+
+    def test_leer_parametro(self):
+        from .views_nomina import leer_parametro
+        casos = {"7,44": 7.44, "7.44": 7.44, " 7,44 % ": 7.44, "12": 12, "0,5": 0.5, "": None, None: None,
+                 "1.423.500": 1423500, "1,423,500": 1423500, "1423500": 1423500,
+                 "1.423.500,50": 1423500.5, "1,423,500.50": 1423500.5, "$ 200.000,00": 200000}
+        for crudo, esperado in casos.items():
+            with self.subTest(crudo=crudo):
+                self.assertEqual(leer_parametro(crudo), esperado)
+        with self.assertRaises(ValueError):
+            leer_parametro("abc")
+
+    def test_guarda_con_coma_y_calcula_comisiones(self):
+        r = self.guardar(incrementoComisiones="7,44", salarioMinimo="1.423.500", incrementoIPC="5")
+        self.assertEqual(r.json()["status"], "ok")
+        params = self.Params.objects.get(id=1)
+        self.assertEqual((params.incremento_comisiones, params.salario_minimo, params.incremento_ipc),
+                         (7.44, 1423500, 5))
+        p = nomina_motor.Parametros.cargar()
+        fila = PresupuestoNomina(tipo="comisiones", historico={"enero": 1000000, "febrero": 2000000})
+        nomina_motor.aplicar_formula(fila, nomina_motor.CONCEPTOS["comisiones"], p)
+        self.assertAlmostEqual(fila.enero, 1074400)
+        self.assertAlmostEqual(fila.diciembre, 1611600)        # promedio (1.074.400 + 2.148.800) / 2
+        # la pantalla lo muestra como se escribió, en un campo de texto (no numérico)
+        html = self.client.get(reverse("presupuestoNomina")).content.decode()
+        self.assertIn('id="incrementoComisiones" name="incrementoComisiones" inputmode="decimal"', html)
+        self.assertIn('value="7,44"', html)
+        self.assertIn('value="1423500"', html)
+
+    def test_rechaza_valores_imposibles_sin_guardar_nada(self):
+        for campos, mensaje in ((dict(incrementoComisiones="744", incrementoIPC="6"), "demasiado alto"),
+                                (dict(incrementoComisiones="abc", incrementoIPC="6"), "no es un número"),
+                                (dict(incrementoComisiones="-3", incrementoIPC="6"), "negativo")):
+            with self.subTest(campos=campos):
+                r = self.guardar(**campos)
+                self.assertEqual(r.status_code, 400)
+                self.assertIn(mensaje, r.json()["msg"])
+                params = self.Params.objects.get(id=1)
+                self.assertEqual((params.incremento_comisiones, params.incremento_ipc), (5, None))
+        self.assertIn("7,44", self.guardar(incrementoComisiones="744").json()["msg"])   # sugiere el valor
+
+
+class ComisionesManualesSiguenElPorcentajeTests(TestCase):
+    """Con 8 % → 7,44 % el total de comisiones casi no bajaba porque las filas MANUALES
+    conservaban su valor. Ahora sus valores se toman como ya incrementados con el
+    porcentaje vigente y se ajustan por (1 + nuevo) / (1 + anterior), como las calculadas."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, incremento_comisiones=8, incremento_salarial=10)
+        self.client.force_login(User.objects.create_user("admin"))
+        p = nomina_motor.Parametros.cargar()
+        c = nomina_motor.CONCEPTOS["comisiones"]
+        calculada = PresupuestoNomina(tipo="comisiones", origen="sistema", clave="1#0", cedula="1", nombre="A",
+                                      historico={"enero": 1000000})
+        nomina_motor.aplicar_formula(calculada, c, p)
+        calculada.save()
+        meses = {m: 4000000 for m in nomina_motor.MESES}
+        meses["enero"] = 0                                         # un mes en 0 sigue en 0
+        for tipo, cedula in (("comisiones", "2"), ("sueldos", "3")):
+            manual = PresupuestoNomina(tipo=tipo, origen="manual", cedula=cedula, nombre="B", **meses)
+            manual.calcular_total()
+            manual.save()
+
+    def guardar(self, **campos):
+        r = self.client.post(reverse("presupuestoNomina"), campos, HTTP_X_REQUESTED_WITH="XMLHttpRequest").json()
+        self.assertEqual(r["status"], "ok", r)
+        return r
+
+    def fila(self, tipo, cedula):
+        return PresupuestoNomina.objects.get(tipo=tipo, cedula=cedula)
+
+    def total_comisiones(self):
+        return sum(PresupuestoNomina.objects.filter(tipo="comisiones").values_list("total", flat=True))
+
+    def test_todo_el_total_sigue_el_porcentaje(self):
+        antes = self.total_comisiones()
+        self.assertEqual(antes, 12 * 1080000 + 11 * 4000000)
+        r = self.guardar(incrementoComisiones="7,44", incrementoSalarial="10")
+        self.assertEqual(self.fila("comisiones", "1").total, 12 * 1074400)              # calculada
+        manual = self.fila("comisiones", "2")
+        self.assertEqual(manual.origen, "manual")                                       # sigue siendo manual
+        self.assertEqual(manual.enero, 0)
+        self.assertEqual(manual.febrero, round(4000000 * 1.0744 / 1.08))                # 3.979.259
+        # el total completo baja en la misma proporción (± redondeo de pesos)
+        self.assertAlmostEqual(self.total_comisiones() / antes, 1.0744 / 1.08, places=6)
+        self.assertIn("Comisiones: 1 fila(s) manuales ajustadas de 8 % a 7,44 %", r["msg"])
+        self.assertIn("$44.000.000 → $43.771.849", r["msg"])
+        self.assertEqual(r["manuales"], 0)                                              # sin avisos pendientes
+
+    def test_ida_y_vuelta_y_sin_cambio(self):
+        self.guardar(incrementoComisiones="7,44")
+        self.guardar(incrementoComisiones="7,44")                                       # igual: no se toca
+        self.assertEqual(self.fila("comisiones", "2").febrero, 3979259)
+        self.guardar(incrementoComisiones="8")
+        self.assertAlmostEqual(self.fila("comisiones", "2").febrero, 4000000, delta=1)
+        self.guardar(incrementoComisiones="")                                           # vacío = 0 %
+        self.assertAlmostEqual(self.fila("comisiones", "2").febrero, 4000000 / 1.08, delta=1)
+
+    def test_las_otras_manuales_no_cambian_y_se_avisa(self):
+        r = self.guardar(incrementoComisiones="8", incrementoSalarial="12")
+        self.assertEqual(self.fila("sueldos", "3").febrero, 4000000)
+        self.assertIn("Sueldos: 1 fila(s) manuales por $44.000.000", r["msg"])
+        self.assertEqual(r["manuales"], 1)
+
+    def test_los_derivados_usan_las_comisiones_ajustadas(self):
+        nomina_motor.ajustar_manuales(nomina_motor.Parametros(incremento_comisiones=8),
+                                      nomina_motor.Parametros(incremento_comisiones=7.44))
+        self.assertEqual(self.fila("comisiones", "2").febrero, 3979259)
+        # sin cambio de porcentaje no hace nada
+        self.assertEqual(nomina_motor.ajustar_manuales(nomina_motor.Parametros(incremento_comisiones=5),
+                                                       nomina_motor.Parametros(incremento_comisiones=5)), [])
+
+    def test_restablecer_calculo_no_incrementa_dos_veces(self):
+        config = origen_nomina.ConfiguracionNomina.actual()
+        config.meses_reales = 12
+        config.save()
+        manual = self.fila("comisiones", "2")
+        datos = self.client.get(reverse("nomina_datos", args=["comisiones"])).json()["data"]
+        for d in datos:
+            if d["id"] == manual.pk:
+                d["_recalcular"] = True
+        r = self.client.post(reverse("nomina_guardar", args=["comisiones"]), json.dumps({"filas": datos}),
+                             content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        manual.refresh_from_db()
+        self.assertEqual(manual.origen, "sistema")
+        self.assertEqual((manual.enero, manual.febrero, manual.diciembre), (0, 4000000, 4000000))
+
+    def test_vista_previa_y_excluir_filas(self):
+        otra = PresupuestoNomina(tipo="comisiones", origen="manual", cedula="4", nombre="C",
+                                 **{m: 1000000 for m in nomina_motor.MESES})
+        otra.calcular_total()
+        otra.save()
+        manual = self.fila("comisiones", "2")
+        previa = self.guardar(action="previa_ajuste", incrementoComisiones="7,44")
+        self.assertEqual(len(previa["grupos"]), 1)
+        g = previa["grupos"][0]
+        self.assertEqual((g["etiqueta"], g["pct_antes_fmt"], g["pct_despues_fmt"]), ("Comisiones", "8", "7,44"))
+        filas = {f["cedula"]: f for f in g["filas"]}
+        self.assertEqual(set(filas), {"2", "4"})                                  # solo las manuales
+        self.assertEqual((filas["2"]["total"], filas["2"]["total_nuevo"], filas["2"]["ajustar"]),
+                         (44000000, 43771849, True))
+        # la vista previa no guarda nada
+        self.assertEqual(nomina_motor.Parametros.cargar().incremento_comisiones, 8)
+        self.assertEqual(self.fila("comisiones", "2").febrero, 4000000)
+        # sin cambio de porcentaje no hay nada que mostrar
+        self.assertEqual(self.guardar(action="previa_ajuste", incrementoComisiones="8")["grupos"], [])
+
+        # se guarda dejando la fila 2 sin ajustar
+        r = self.guardar(incrementoComisiones="7,44", ajuste_elegido="1", no_ajustar=[str(manual.pk)])
+        self.assertEqual(self.fila("comisiones", "2").febrero, 4000000)            # conserva su valor
+        self.assertEqual(self.fila("comisiones", "4").febrero, round(1000000 * 1.0744 / 1.08))
+        self.assertIn("1 fila(s) manuales de comisiones conservan su valor", r["msg"])
+        self.assertTrue(nomina_motor.no_se_ajusta(self.fila("comisiones", "2")))
+
+        # la elección se recuerda: en la próxima vista previa sale desmarcada y, sin
+        # ventana (no_ajustar=None), tampoco se ajusta
+        previa = self.guardar(action="previa_ajuste", incrementoComisiones="7")
+        self.assertFalse({f["cedula"]: f for f in previa["grupos"][0]["filas"]}["2"]["ajustar"])
+        self.guardar(incrementoComisiones="7")
+        self.assertEqual(self.fila("comisiones", "2").febrero, 4000000)
+        # volver a marcarla la ajusta y quita la marca
+        self.guardar(incrementoComisiones="8", ajuste_elegido="1")
+        self.assertEqual(self.fila("comisiones", "2").febrero, round(4000000 * 1.08 / 1.07))
+        self.assertFalse(nomina_motor.no_se_ajusta(self.fila("comisiones", "2")))
+
+    def test_vista_previa_valida_igual_que_guardar(self):
+        r = self.client.post(reverse("presupuestoNomina"), {"action": "previa_ajuste", "incrementoComisiones": "744"},
+                             HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("demasiado alto", r.json()["msg"])
+
+    def test_la_ventana_esta_en_el_tablero(self):
+        html = self.client.get(reverse("presupuestoNomina")).content.decode()
+        self.assertIn('id="dlgAjuste"', html)
+        self.assertIn("previa_ajuste", html)
+
+    def test_tablero_muestra_valor_manual(self):
+        html = self.client.get(reverse("presupuestoNomina")).content.decode()
+        self.assertIn("$44.000.000", html)
+        self.assertIn("se ajustan cuando cambia el incremento de comisiones", html)
+
+
 class DestinosComercialesTests(TestCase):
     """Ajustes → Destinos de nómina → Cargos comerciales: asesor comercial, auxiliar
     comercial y asistente técnico comercial llevan un destino VT-00001 … VT-00027."""

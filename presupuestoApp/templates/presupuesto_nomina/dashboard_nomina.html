@@ -367,38 +367,67 @@
 
   <div class="pt-panel dash-seccion">
     <h3>Parámetros del presupuesto</h3>
-    <p>Se escriben en porcentaje: <strong>12</strong> son 12 %. Al guardarlos se recalculan todos los conceptos calculados.</p>
+    <p>Se escriben en porcentaje: <strong>12</strong> son 12 % y los decimales van con coma o con punto
+      (<strong>7,44</strong> o <strong>7.44</strong>). Al guardarlos se recalculan todos los conceptos calculados.</p>
     {% if avisos_parametros %}
       <p class="dash-aviso">⚠️ Revise estos valores, están fuera de lo habitual: <strong>{{ avisos_parametros|join:" · " }}</strong></p>
     {% endif %}
     <div class="dash-grid">
       <div class="dash-campo"><label for="incrementoSalarial">Incremento salarial (%)</label>
-        <input type="number" id="incrementoSalarial" name="incrementoSalarial" min="0" step="0.01" value="{{ parametros.incremento_salarial|default_if_none:''|cut:',' }}"></div>
+        <input type="text" id="incrementoSalarial" name="incrementoSalarial" inputmode="decimal" autocomplete="off" value="{{ valores_parametros.incremento_salarial }}"></div>
       <div class="dash-campo"><label for="ipcActual" title="IPC del año en curso. Lo usa el auxilio de educación antes del incremento IPC del año proyectado">IPC año actual (%)</label>
-        <input type="number" id="ipcActual" name="ipcActual" min="0" step="0.01" value="{{ parametros.ipc_actual|default_if_none:''|cut:',' }}"></div>
+        <input type="text" id="ipcActual" name="ipcActual" inputmode="decimal" autocomplete="off" value="{{ valores_parametros.ipc_actual }}"></div>
       <div class="dash-campo"><label for="incrementoIPC">Incremento IPC (%)</label>
-        <input type="number" id="incrementoIPC" name="incrementoIPC" min="0" step="0.01" value="{{ parametros.incremento_ipc|default_if_none:''|cut:',' }}"></div>
+        <input type="text" id="incrementoIPC" name="incrementoIPC" inputmode="decimal" autocomplete="off" value="{{ valores_parametros.incremento_ipc }}"></div>
       <div class="dash-campo"><label for="incrementoComisiones">Incremento comisiones (%)</label>
-        <input type="number" id="incrementoComisiones" name="incrementoComisiones" min="0" step="0.01" value="{{ parametros.incremento_comisiones|default_if_none:''|cut:',' }}"></div>
+        <input type="text" id="incrementoComisiones" name="incrementoComisiones" inputmode="decimal" autocomplete="off" value="{{ valores_parametros.incremento_comisiones }}"></div>
       <div class="dash-campo"><label for="auxilioTransporte">Auxilio de transporte (%)</label>
-        <input type="number" id="auxilioTransporte" name="auxilioTransporte" min="0" step="0.01" value="{{ parametros.auxilio_transporte|default_if_none:''|cut:',' }}"></div>
+        <input type="text" id="auxilioTransporte" name="auxilioTransporte" inputmode="decimal" autocomplete="off" value="{{ valores_parametros.auxilio_transporte }}"></div>
       <div class="dash-campo"><label for="cesantias">Cesantías (%)</label>
-        <input type="number" id="cesantias" name="cesantias" min="0" step="0.01" value="{{ parametros.cesantias|default_if_none:''|cut:',' }}"></div>
+        <input type="text" id="cesantias" name="cesantias" inputmode="decimal" autocomplete="off" value="{{ valores_parametros.cesantias }}"></div>
       <div class="dash-campo"><label for="interesesCesantias">Intereses cesantías (%)</label>
-        <input type="number" id="interesesCesantias" name="interesesCesantias" min="0" step="0.01" value="{{ parametros.intereses_cesantias|default_if_none:''|cut:',' }}"></div>
+        <input type="text" id="interesesCesantias" name="interesesCesantias" inputmode="decimal" autocomplete="off" value="{{ valores_parametros.intereses_cesantias }}"></div>
       <div class="dash-campo"><label for="prima">Prima (%)</label>
-        <input type="number" id="prima" name="prima" min="0" step="0.01" value="{{ parametros.prima|default_if_none:''|cut:',' }}"></div>
+        <input type="text" id="prima" name="prima" inputmode="decimal" autocomplete="off" value="{{ valores_parametros.prima }}"></div>
       <div class="dash-campo"><label for="vacaciones">Vacaciones (%)</label>
-        <input type="number" id="vacaciones" name="vacaciones" min="0" step="0.01" value="{{ parametros.vacaciones|default_if_none:''|cut:',' }}"></div>
+        <input type="text" id="vacaciones" name="vacaciones" inputmode="decimal" autocomplete="off" value="{{ valores_parametros.vacaciones }}"></div>
       <div class="dash-campo"><label for="salarioMinimo">Salario mínimo</label>
-        <input type="number" id="salarioMinimo" name="salarioMinimo" min="0" step="0.01" value="{{ parametros.salario_minimo|default_if_none:''|cut:',' }}"></div>
+        <input type="text" id="salarioMinimo" name="salarioMinimo" inputmode="decimal" autocomplete="off" value="{{ valores_parametros.salario_minimo }}"></div>
       <div class="dash-campo"><label for="baseAuxilioTransporte">Base auxilio de transporte ($)</label>
-        <input type="number" id="baseAuxilioTransporte" name="baseAuxilioTransporte" min="0" step="1" placeholder="200000" value="{{ parametros.base_auxilio_transporte|default_if_none:''|cut:',' }}"></div>
+        <input type="text" id="baseAuxilioTransporte" name="baseAuxilioTransporte" inputmode="decimal" autocomplete="off" placeholder="200000" value="{{ valores_parametros.base_auxilio_transporte }}"></div>
     </div>
     <div class="dash-acciones">
       <button type="button" class="pt-btn pt-btn--exito" id="btnActualizar">Guardar parámetros y recalcular</button>
     </div>
   </div>
+
+  {# Ventana: filas manuales que el nuevo incremento va a ajustar; se puede dejar alguna sin ajustar #}
+  <dialog class="pt-dialogo pt-dialogo--ancho" id="dlgAjuste" aria-labelledby="dlgAjusteTitulo">
+    <form method="dialog" class="pt-dialogo__caja">
+      <header class="pt-dialogo__cabecera">
+        <h3 id="dlgAjusteTitulo">Filas manuales que se van a ajustar</h3>
+        <p class="pt-dialogo__sub" id="dlgAjusteSub"></p>
+      </header>
+      <div class="pt-dialogo__cuerpo">
+        <div class="aj-barra">
+          <input type="search" class="aj-buscar" id="dlgAjusteBuscar" placeholder="Buscar nombre, cédula, área…"
+                 aria-label="Buscar filas" autocomplete="off">
+          <div class="da-atajos">
+            <button type="button" class="pt-btn pt-btn--enlace" data-ajuste-marcar="todos">Ajustar todas</button>
+            <button type="button" class="pt-btn pt-btn--enlace" data-ajuste-marcar="ninguno">Ninguna</button>
+          </div>
+        </div>
+        <div id="dlgAjusteGrupos"></div>
+        <p class="da-nota">Desmarque las filas que <strong>no</strong> deben cambiar con el nuevo porcentaje: conservan su valor.
+          La elección se recuerda para la próxima vez.</p>
+      </div>
+      <footer class="pt-dialogo__pie aj-pie">
+        <span class="aj-resumen" id="dlgAjusteResumen" role="status"></span>
+        <button type="submit" class="pt-btn" value="cancelar">Cancelar</button>
+        <button type="submit" class="pt-btn pt-btn--exito" value="aceptar">Guardar y recalcular</button>
+      </footer>
+    </form>
+  </dialog>
 
   <div class="pt-panel dash-seccion">
     <h3>Resumen consolidado</h3>
@@ -424,7 +453,9 @@
                   {% if c.derivado %}<span class="pt-origen pt-origen--sistema" title="Se calcula a partir de otros conceptos">⚙️</span>{% endif %}
                 </td>
                 <td class="num">{{ c.filas }}</td>
-                <td class="num">{% if c.manuales %}<span class="pt-origen pt-origen--manual">✋ {{ c.manuales }}</span>{% else %}<span class="vacio">0</span>{% endif %}</td>
+                <td class="num">{% if c.manuales %}<span class="pt-origen pt-origen--manual"
+                      title="{% if c.slug == 'comisiones' %}Filas manuales: no usan la fórmula, pero se ajustan cuando cambia el incremento de comisiones{% else %}Filas manuales: conservan su valor y no se recalculan al cambiar los parámetros{% endif %}">✋ {{ c.manuales }}</span>
+                  <div class="resumen-manual">${{ c.total_manual_fmt }}</div>{% else %}<span class="vacio">0</span>{% endif %}</td>
                 <td class="num">{% if c.total %}{{ c.total_fmt }}{% else %}<span class="vacio">0</span>{% endif %}</td>
                 <td class="dep">{{ c.depende|join:", "|default:"Datos de origen" }}</td>
                 <td class="dep">{{ c.afecta|join:", "|default:"—" }}</td>
@@ -537,14 +568,91 @@
 
       const recargar = () => setTimeout(() => window.location.reload(), 900);
 
+      // ── Ventana de filas manuales que el nuevo incremento ajusta ──
+      const dlgAjuste = document.getElementById('dlgAjuste');
+      const pesos = v => '$' + Math.round(v || 0).toLocaleString('es-CO');
+      const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+      function resumenAjuste() {
+        let n = 0, total = 0, antes = 0, nuevo = 0;
+        dlgAjuste.querySelectorAll('.aj-fila').forEach(tr => {
+          const marcada = tr.querySelector('input').checked;
+          const t0 = +tr.dataset.total, t1 = +tr.dataset.nuevo;
+          total += 1; antes += t0; nuevo += marcada ? t1 : t0;
+          if (marcada) n += 1;
+          tr.classList.toggle('aj-fila--fuera', !marcada);
+        });
+        document.getElementById('dlgAjusteResumen').textContent =
+          `${n} de ${total} se ajustan · ${pesos(antes)} → ${pesos(nuevo)}`;
+      }
+
+      /** Muestra la ventana y devuelve los ids que NO se ajustan, o null si se cancela. */
+      function elegirAjuste(grupos) {
+        const caja = document.getElementById('dlgAjusteGrupos');
+        document.getElementById('dlgAjusteSub').textContent = grupos.map(g =>
+          `${g.parametro.replace(/\s*\(%\)\s*$/, '')} de ${g.pct_antes_fmt} % a ${g.pct_despues_fmt} %`).join(' · ')
+          + '. Sus valores manuales se ajustan en la misma proporción que las filas calculadas.';
+        caja.innerHTML = grupos.map(g => `
+          <table class="aj-tabla">
+            <thead><tr><th class="aj-check">Ajustar</th><th>${esc(g.etiqueta)} · persona</th><th>Área · centro</th>
+              <th class="num">Total actual</th><th class="num">Quedaría</th></tr></thead>
+            <tbody>${g.filas.map(f => `
+              <tr class="aj-fila" data-total="${f.total}" data-nuevo="${f.total_nuevo}"
+                  data-buscar="${esc([f.nombre, f.cedula, f.cargo, f.area, f.centro, f.concepto].join(' ').toLowerCase())}">
+                <td class="aj-check"><input type="checkbox" value="${f.id}" ${f.ajustar ? 'checked' : ''}
+                    aria-label="Ajustar ${esc(f.nombre)}"></td>
+                <td><div class="aj-nombre">${esc(f.nombre) || '(sin nombre)'}</div>
+                    <div class="aj-sub">${f.cedula ? 'CC ' + esc(f.cedula) : 'Sin cédula'}${f.cargo ? ' · ' + esc(f.cargo) : ''}</div></td>
+                <td><div>${esc(f.area) || '—'}</div><div class="aj-sub">${esc(f.centro)}</div></td>
+                <td class="num">${pesos(f.total)}</td>
+                <td class="num aj-nuevo">${pesos(f.total_nuevo)}</td>
+              </tr>`).join('')}</tbody>
+          </table>`).join('');
+        document.getElementById('dlgAjusteBuscar').value = '';
+        resumenAjuste();
+        dlgAjuste.returnValue = '';
+        dlgAjuste.showModal();
+        return new Promise(resolver => {
+          dlgAjuste.addEventListener('close', () => resolver(dlgAjuste.returnValue === 'aceptar'
+            ? [...dlgAjuste.querySelectorAll('.aj-fila input:not(:checked)')].map(i => i.value)
+            : null), { once: true });
+        });
+      }
+      dlgAjuste.addEventListener('change', e => { if (e.target.matches('.aj-fila input')) resumenAjuste(); });
+      document.getElementById('dlgAjusteBuscar').addEventListener('input', e => {
+        const q = e.target.value.trim().toLowerCase();
+        dlgAjuste.querySelectorAll('.aj-fila').forEach(tr => { tr.hidden = !!q && !tr.dataset.buscar.includes(q); });
+      });
+      dlgAjuste.querySelectorAll('[data-ajuste-marcar]').forEach(b => b.addEventListener('click', () => {
+        // solo las visibles (respeta la búsqueda)
+        dlgAjuste.querySelectorAll('.aj-fila:not([hidden]) input')
+          .forEach(i => { i.checked = b.dataset.ajusteMarcar === 'todos'; });
+        resumenAjuste();
+      }));
+
       const btnActualizar = document.getElementById('btnActualizar');
       btnActualizar.addEventListener('click', () => PT.conSpinner(btnActualizar, async () => {
         const datos = new FormData();
         document.querySelectorAll('.dash-campo input[name]').forEach(i => datos.append(i.name, i.value));
         try {
+          // 1) ¿el cambio ajusta filas manuales? → ventana para elegir cuáles
+          const previa = new FormData();
+          for (const [k, v] of datos.entries()) previa.append(k, v);
+          previa.append('action', 'previa_ajuste');
+          const p = await enviar(previa);
+          if (p.status === 'error') { PT.toast(p.msg, 'error', 9000); return; }
+          if (p.grupos && p.grupos.length) {
+            const fuera = await elegirAjuste(p.grupos);
+            if (fuera === null) { PT.toast('No se guardó nada', 'info'); return; }
+            datos.append('ajuste_elegido', '1');
+            fuera.forEach(id => datos.append('no_ajustar', id));
+          }
+          // 2) guardar y recalcular
           const r = await enviar(datos);
-          PT.toast(r.msg || 'Parámetros actualizados ✅', r.status === 'error' ? 'error' : 'success');
-          if (r.status !== 'error') recargar();
+          const conAviso = r.status !== 'error' && r.manuales;
+          PT.toast(r.msg || 'Parámetros actualizados ✅', r.status === 'error' ? 'error' : (conAviso ? 'warning' : 'success'),
+                   conAviso ? 15000 : undefined);
+          if (r.status !== 'error') setTimeout(recargar, conAviso ? 6000 : 0);
         } catch (e) { PT.toast('Error al guardar ❌', 'error'); }
       }));
 

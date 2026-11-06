@@ -7,6 +7,7 @@ Ahora: 8 vistas que reciben el concepto en la URL y un solo template.
 
 Toda la lógica de cálculo está en nomina_motor.py.
 """
+import dataclasses
 import datetime as dt
 import json
 
@@ -60,6 +61,54 @@ CAMPOS_PARAMETROS = {
     'baseAuxilioTransporte': 'base_auxilio_transporte',
 }
 
+
+# Parámetros en pesos (los demás son porcentajes y deben estar entre 0 y 100)
+PARAMETROS_EN_PESOS = {'salario_minimo', 'base_auxilio_transporte'}
+
+
+def leer_parametro(valor):
+    """Número escrito en la pantalla de parámetros, con coma o con punto decimal:
+    '7,44' / '7.44' → 7.44 · '1.423.500' / '1,423,500' / '1.423.500,50' → 1423500(.5).
+    Vacío → None. Si no es un número → ValueError."""
+    texto = str(valor or '').strip().replace(' ', '').replace('%', '').replace('$', '')
+    if not texto:
+        return None
+    if ',' in texto and '.' in texto:
+        # el último separador es el decimal; el otro, de miles
+        miles = '.' if texto.rfind(',') > texto.rfind('.') else ','
+        texto = texto.replace(miles, '').replace(',', '.')
+    elif texto.count(',') > 1 or texto.count('.') > 1:
+        texto = texto.replace(',', '').replace('.', '')          # solo separadores de miles
+    else:
+        texto = texto.replace(',', '.')                          # una coma = decimal
+    return float(texto)
+
+
+def valor_parametro(valor):
+    """Cómo se muestra un parámetro en su campo: 7.44 → '7,44', 12.0 → '12', None → ''."""
+    if valor is None:
+        return ''
+    return f'{valor:.6f}'.rstrip('0').rstrip('.').replace('.', ',')
+
+
+def _parametros_del_formulario(post):
+    """{campo: valor} leído del formulario y la lista de errores (si hay, no se guarda nada)."""
+    valores, errores = {}, []
+    for variable, campo in CAMPOS_PARAMETROS.items():
+        crudo = post.get(variable)
+        etiqueta = nomina.ETIQUETAS_PARAMETRO.get(campo, campo)
+        try:
+            valor = leer_parametro(crudo)
+        except ValueError:
+            errores.append(f"{etiqueta}: '{crudo}' no es un número")
+            continue
+        if valor is not None and valor < 0:
+            errores.append(f'{etiqueta}: no puede ser negativo')
+        elif valor is not None and campo not in PARAMETROS_EN_PESOS and valor > 100:
+            errores.append(f'{etiqueta}: {valor_parametro(valor)} % es demasiado alto '
+                           f'(¿quiso escribir {valor_parametro(valor / 100)}?)')
+        valores[campo] = valor
+    return valores, errores
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -204,19 +253,54 @@ def presupuestoNomina(request):
             return JsonResponse({'status': 'ok', 'msg': msg, 'texto': f"{valor} · {extra['cuenta']}"
                                  if extra else valor})
 
-        for variable, campo in CAMPOS_PARAMETROS.items():
-            setattr(params, campo, request.POST.get(variable) or None)
+        valores, errores = _parametros_del_formulario(request.POST)
+        if errores:
+            return _error('No se guardó nada · ' + ' · '.join(errores))
+        antes = nomina.Parametros.cargar()
+
+        if accion == 'previa_ajuste':
+            # Ventana previa al guardar: filas manuales que el cambio de porcentaje ajustaría
+            despues = dataclasses.replace(antes, **{campo: valor or 0 for campo, valor in valores.items()})
+            grupos = nomina.filas_a_ajustar(antes, despues)
+            for g in grupos:
+                g['pct_antes_fmt'] = valor_parametro(g['pct_antes'])
+                g['pct_despues_fmt'] = valor_parametro(g['pct_despues'])
+            return JsonResponse({'status': 'ok', 'grupos': [g for g in grupos if g['filas']]})
+
+        # Filas manuales que el usuario dejó sin ajustar en la ventana (None: no se mostró)
+        no_ajustar = None
+        if request.POST.get('ajuste_elegido') == '1':
+            no_ajustar = [int(i) for i in request.POST.getlist('no_ajustar') if str(i).isdigit()]
+        cambiados = [campo for campo, valor in valores.items() if getattr(params, campo) != valor]
+        for campo, valor in valores.items():
+            setattr(params, campo, valor)
         params.save()
-        # Cambiar un parámetro afecta a todo: se recalcula el presupuesto completo.
-        nomina.recalcular_todo()
-        return JsonResponse({'status': 'ok',
-                             'msg': 'Parámetros guardados y presupuesto recalculado ✅'})
+        # Cambiar un parámetro afecta a todo: se recalcula el presupuesto completo
+        # (y las filas manuales de comisiones siguen al nuevo incremento).
+        ajustadas = nomina.recalcular_por_parametros(antes, no_ajustar)
+        msg = 'Parámetros guardados y presupuesto recalculado ✅'
+        for a in ajustadas:
+            if a['filas']:
+                msg += (f" · {a['etiqueta']}: {a['filas']} fila(s) manuales ajustadas de "
+                        f"{valor_parametro(a['pct_antes'])} % a {valor_parametro(a['pct_despues'])} % "
+                        f"(${_pesos(a['antes'])} → ${_pesos(a['despues'])})")
+            if a['excluidas']:
+                msg += f" · {a['excluidas']} fila(s) manuales de {a['etiqueta'].lower()} conservan su valor"
+
+        # Las filas MANUALES conservan su valor: se avisa cuánto no tomó el porcentaje nuevo
+        avisos = [f"{m['etiqueta']}: {m['filas']} fila(s) manuales por ${_pesos(m['total_manual'])} "
+                  f"de ${_pesos(m['total'])} conservan su valor y no toman el {m['parametro'].lower()}"
+                  for m in nomina.manuales_que_no_toman(cambiados)]
+        if avisos:
+            msg += ' · ⚠️ ' + ' · '.join(avisos)
+        return JsonResponse({'status': 'ok', 'msg': msg, 'manuales': len(avisos)})
 
     listas = _listas()
     cuentas = nomina.mapa_cuentas(origen.anio_base())
     resumen = nomina.resumen()
     for fila in resumen:
         fila['total_fmt'] = _pesos(fila['total'])
+        fila['total_manual_fmt'] = _pesos(fila['total_manual'])
     grupos = [
         {'nombre': grupo, 'conceptos': [r for r in resumen if r['grupo'] == grupo]}
         for grupo in nomina.GRUPOS
@@ -231,6 +315,9 @@ def presupuestoNomina(request):
     anio_base = origen.anio_base()
     return render(request, 'presupuesto_nomina/dashboard_nomina.html', {
         'parametros': params,
+        # texto de cada campo (coma decimal, sin separador de miles ni formato regional)
+        'valores_parametros': {campo: valor_parametro(getattr(params, campo))
+                               for campo in CAMPOS_PARAMETROS.values()},
         'avisos_parametros': avisos,
         'foco_personas': foco,
         'correcciones': nomina.listar_correcciones(),

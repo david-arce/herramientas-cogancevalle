@@ -96,3 +96,37 @@ table.or-tabla .or-col-acciones .pt-btn { margin-left: 4px; text-decoration: non
 .or-educacion > div { display: flex; flex-direction: column; gap: 2px; }
 .or-educacion .pt-btn { white-space: nowrap; }
 .foco-cargos { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--pt-borde-fuerte); }
+.resumen-manual { font-size: .78rem; color: #8a4b00; margin-top: 2px; white-space: nowrap; }
+
+/* Ventana: filas manuales que ajusta el nuevo incremento */
+.pt-dialogo--ancho { width: min(860px, calc(100vw - 32px)); }
+.aj-barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.aj-buscar { flex: 1 1 220px; max-width: 320px; padding: 6px 8px; border: 1px solid var(--pt-borde-fuerte);
+             border-radius: var(--pt-radio); font: inherit; }
+.aj-tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
+.aj-tabla + .aj-tabla { margin-top: 14px; }
+.aj-tabla th { position: sticky; top: -12px; background: var(--pt-fondo-alt); text-align: left; font-size: 12px;
+               padding: 6px 8px; border-bottom: 1px solid var(--pt-borde); z-index: 1; }
+.aj-tabla td { padding: 6px 8px; border-bottom: 1px solid var(--pt-borde); vertical-align: top; }
+.aj-tabla .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.aj-check { width: 56px; text-align: center !important; }
+.aj-check input { width: 16px; height: 16px; cursor: pointer; }
+.aj-nombre { font-weight: 600; }
+.aj-sub { font-size: 11.5px; color: var(--pt-texto-suave); }
+.aj-nuevo { font-weight: 600; }
+.aj-fila--fuera { background: #fafafa; }
+.aj-fila--fuera .aj-nombre, .aj-fila--fuera td { color: var(--pt-texto-suave); }
+.aj-fila--fuera .aj-nuevo { text-decoration: line-through; }
+.aj-pie { align-items: center; }
+.aj-resumen { margin-right: auto; font-size: 12.5px; color: var(--pt-texto-suave); }
+@media (max-width: 640px) {
+  .pt-dialogo--ancho .pt-dialogo__cuerpo { padding: 10px 12px; }
+  .aj-tabla { font-size: 12px; }
+  .aj-tabla th, .aj-tabla td { padding: 5px 4px; }
+  .aj-check { width: 34px; }
+  .aj-tabla th.aj-check { font-size: 0; }                 /* el encabezado "Ajustar" no cabe: queda la casilla */
+  .aj-tabla th.aj-check::after { content: "✓"; font-size: 12px; }
+  .aj-tabla th:nth-child(3), .aj-tabla td:nth-child(3) { display: none; }
+  .aj-pie { flex-wrap: wrap; }
+  .aj-resumen { flex-basis: 100%; }
+}

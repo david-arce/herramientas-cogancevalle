@@ -2081,6 +2081,109 @@ def recalcular_todo():
     return [c.slug for c in _LISTA]
 
 
+def recalcular_por_parametros(antes, no_ajustar=None):
+    """Como recalcular_todo, tras guardar parámetros nuevos: primero ajusta las
+    filas MANUALES de AJUSTAN_MANUALES al cambio de su porcentaje (`antes` son
+    los Parametros que había; `no_ajustar`, las filas que conservan su valor)
+    y luego recalcula todo, en el mismo bloqueo. Devuelve lo ajustado."""
+    with bloqueo():
+        ajustadas = ajustar_manuales(antes, Parametros.cargar(), no_ajustar)
+        _recalcular_todo_sin_bloqueo()
+    return ajustadas
+
+
+# Conceptos cuyas filas MANUALES también siguen al porcentaje: sus valores se
+# toman como ya incrementados con el porcentaje vigente cuando se escribieron,
+# así que al cambiarlo se ajustan por (1 + nuevo) / (1 + anterior), igual que
+# las calculadas. Ej. comisiones de 8 % a 7,44 %: × 1,0744 / 1,08.
+AJUSTAN_MANUALES = ('comisiones',)
+
+
+# Marca (dentro del histórico) de las filas manuales que NO siguen el porcentaje:
+# se elige en la ventana que aparece al guardar los parámetros y se recuerda.
+NO_AJUSTAR = '_no_ajustar'
+
+
+def no_se_ajusta(fila):
+    return bool((fila.historico or {}).get(NO_AJUSTAR))
+
+
+def _cambios_de_porcentaje(antes, despues):
+    """[(concepto, pct antes, pct después, factor)] de AJUSTAN_MANUALES cuyo porcentaje cambia."""
+    salida = []
+    for slug in AJUSTAN_MANUALES:
+        c = CONCEPTOS[slug]
+        pct0, pct1 = (getattr(antes, c.pct, 0) or 0), (getattr(despues, c.pct, 0) or 0)
+        if abs(pct1 - pct0) >= 1e-9:
+            salida.append((c, pct0, pct1, (1 + pct1 / 100) / (1 + pct0 / 100)))
+    return salida
+
+
+def _ajustados(fila, factor):
+    return {m: int(round((getattr(fila, m) or 0) * factor)) for m in MESES}
+
+
+def filas_a_ajustar(antes, despues):
+    """Vista previa de ajustar_manuales: por concepto, sus filas manuales con el
+    total actual y el que quedaría.
+
+      [{'slug', 'etiqueta', 'parametro', 'pct_antes', 'pct_despues',
+        'filas': [{'id', 'cedula', 'nombre', 'cargo', 'centro', 'area',
+                   'concepto', 'total', 'total_nuevo', 'ajustar'}]}]
+    """
+    salida = []
+    for c, pct0, pct1, factor in _cambios_de_porcentaje(antes, despues):
+        filas = PresupuestoNomina.objects.filter(tipo=c.slug, origen=MANUAL).order_by('nombre', 'cedula', 'pk')
+        salida.append({
+            'slug': c.slug, 'etiqueta': c.etiqueta, 'parametro': ETIQUETAS_PARAMETRO.get(c.pct, c.pct),
+            'pct_antes': pct0, 'pct_despues': pct1,
+            'filas': [{'id': f.pk, 'cedula': f.cedula, 'nombre': f.nombre, 'cargo': f.cargo,
+                       'centro': f.centro, 'area': f.area, 'concepto': f.concepto,
+                       'total': f.total or 0, 'total_nuevo': sum(_ajustados(f, factor).values()),
+                       'ajustar': not no_se_ajusta(f)} for f in filas],
+        })
+    return salida
+
+
+def ajustar_manuales(antes, despues, no_ajustar=None):
+    """Ajusta las filas manuales de AJUSTAN_MANUALES al cambio de su porcentaje.
+
+    no_ajustar: ids de las filas que conservan su valor (lo elegido en la
+    ventana; queda recordado en cada fila). None = se usa lo recordado.
+
+    Devuelve [{'slug', 'etiqueta', 'parametro', 'filas', 'excluidas', 'antes',
+    'despues', 'pct_antes', 'pct_despues'}] de los conceptos que cambiaron."""
+    salida = []
+    elegidas = None if no_ajustar is None else {int(i) for i in no_ajustar}
+    for c, pct0, pct1, factor in _cambios_de_porcentaje(antes, despues):
+        filas = list(PresupuestoNomina.objects.filter(tipo=c.slug, origen=MANUAL))
+        ajustadas, marcas = [], []
+        total0 = total1 = 0
+        for fila in filas:
+            if elegidas is not None and (fila.pk in elegidas) != no_se_ajusta(fila):
+                historico = dict(fila.historico or {})
+                if fila.pk in elegidas:
+                    historico[NO_AJUSTAR] = True
+                else:
+                    historico.pop(NO_AJUSTAR, None)
+                fila.historico = historico
+                marcas.append(fila)
+            if no_se_ajusta(fila):
+                continue
+            total0 += fila.total or 0
+            fijar_meses(fila, _ajustados(fila, factor))
+            total1 += fila.total or 0
+            ajustadas.append(fila)
+        if ajustadas:
+            PresupuestoNomina.objects.bulk_update(ajustadas, MESES + ['total'], batch_size=1000)
+        if marcas:
+            PresupuestoNomina.objects.bulk_update(marcas, ['historico'], batch_size=1000)
+        salida.append({'slug': c.slug, 'etiqueta': c.etiqueta, 'parametro': ETIQUETAS_PARAMETRO.get(c.pct, c.pct),
+                       'filas': len(ajustadas), 'excluidas': len(filas) - len(ajustadas),
+                       'antes': total0, 'despues': total1, 'pct_antes': pct0, 'pct_despues': pct1})
+    return salida
+
+
 def _recalcular_todo_sin_bloqueo():
     """Cuerpo de recalcular_todo (quien lo llama ya tiene el bloqueo)."""
     ctx = Contexto()
@@ -2718,8 +2821,10 @@ def guardar(slug, filas_json, usuario='', con_editados=False):
                 forzadas = True
                 invertibles = c.invertibles(fila, ctx.meses_reales())
                 if not c.derivado and invertibles and not any(m in (fila.historico or {}) for m in MESES):
-                    # fila escrita a mano: sus valores pasan a ser el histórico
-                    divisor = fila.factor or 1
+                    # fila escrita a mano: sus valores pasan a ser el histórico. En
+                    # AJUSTAN_MANUALES (comisiones) ya traen el incremento vigente:
+                    # se les quita para no incrementarlos dos veces.
+                    divisor = (fila.factor or 1) * ((1 + p.pct(c.pct)) if slug in AJUSTAN_MANUALES else 1)
                     fila.historico = dict(fila.historico or {}, **{m: entrantes[m] / divisor for m in invertibles})
                 if not c.derivado:
                     # Los meses que la fila manual tenía en 0 se quedan en 0
@@ -2868,12 +2973,37 @@ def listar(slug=None):
     return filas
 
 
+def manuales_que_no_toman(campos):
+    """Conceptos base cuyo porcentaje es uno de `campos` y que tienen filas
+    MANUALES: esas filas conservan su valor y no toman el porcentaje.
+
+      [{'etiqueta', 'parametro', 'filas', 'total_manual', 'total'}]
+    """
+    campos = set(campos)
+    usados = {c.slug: c for c in BASE if (c.pct in campos or c.pct_previo in campos)
+              and c.slug not in AJUSTAN_MANUALES}          # esos se ajustan solos
+    if not usados:
+        return []
+    datos = {r['tipo']: r for r in PresupuestoNomina.objects.filter(tipo__in=list(usados)).values('tipo').annotate(
+        filas=Count('id', filter=Q(origen=MANUAL)), total_manual=Sum('total', filter=Q(origen=MANUAL)),
+        total=Sum('total'))}
+    salida = []
+    for slug, c in usados.items():
+        r = datos.get(slug) or {}
+        if r.get('filas'):
+            salida.append({'etiqueta': c.etiqueta, 'parametro': ETIQUETAS_PARAMETRO.get(c.pct, c.pct),
+                           'filas': r['filas'], 'total_manual': r.get('total_manual') or 0,
+                           'total': r.get('total') or 0})
+    return salida
+
+
 def resumen():
     """Totales por concepto: base del tablero consolidado."""
     anotaciones = {f's_{m}': Sum(m) for m in MESES}
     datos = {
         r['tipo']: r for r in PresupuestoNomina.objects.values('tipo').annotate(
             filas=Count('id'), manuales=Count('id', filter=Q(origen=MANUAL)),
+            total_manual=Sum('total', filter=Q(origen=MANUAL)),
             suma_total=Sum('total'), **anotaciones)
     }
     salida = []
@@ -2882,6 +3012,7 @@ def resumen():
         salida.append({
             'slug': c.slug, 'etiqueta': c.etiqueta, 'grupo': c.grupo, 'derivado': c.derivado,
             'filas': r.get('filas', 0), 'manuales': r.get('manuales', 0),
+            'total_manual': r.get('total_manual') or 0,
             'total': r.get('suma_total') or 0,
             'meses': {m: r.get(f's_{m}') or 0 for m in MESES},
             'depende': [CONCEPTOS[d].etiqueta for d in c.depende],
