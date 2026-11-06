@@ -99,7 +99,6 @@ table.or-tabla .or-col-acciones .pt-btn { margin-left: 4px; text-decoration: non
 .resumen-manual { font-size: .78rem; color: #8a4b00; margin-top: 2px; white-space: nowrap; }
 
 /* Ventana: filas manuales que ajusta el nuevo incremento */
-.pt-dialogo--ancho { width: min(860px, calc(100vw - 32px)); }
 .aj-barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .aj-buscar { flex: 1 1 220px; max-width: 320px; padding: 6px 8px; border: 1px solid var(--pt-borde-fuerte);
              border-radius: var(--pt-radio); font: inherit; }

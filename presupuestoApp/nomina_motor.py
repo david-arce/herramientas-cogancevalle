@@ -2708,7 +2708,7 @@ def _propagar_identidades(identidades, finales, usuario, ctx, avisos):
     return corregidas
 
 
-def guardar(slug, filas_json, usuario='', con_editados=False):
+def guardar(slug, filas_json, usuario='', con_editados=False, propagar_cambios=True):
     """Guarda lo que el usuario editó en la tabla y propaga los cambios.
 
     Solo se puede guardar en los conceptos base (los que se cargan desde
@@ -2988,8 +2988,9 @@ def guardar(slug, filas_json, usuario='', con_editados=False):
                                                                 usuario, ctx, avisos)
         if corregidas:
             resumen['personas_corregidas'] = corregidas
-        # Cualquier cambio, en el concepto que sea, recalcula todo
-        recalculados = propagar(slug)
+        # Cualquier cambio, en el concepto que sea, recalcula todo (salvo que
+        # quien llama recalcule una sola vez al final: restablecer_manuales)
+        recalculados = propagar(slug) if propagar_cambios else []
 
     resumen.update(creadas=len(crear), actualizadas=len(actualizar), eliminadas=len(eliminar))
     salida = dict(resumen)
@@ -3031,6 +3032,130 @@ def listar(slug=None):
             c = CONCEPTOS.get(fila['tipo'])
             fila['tipo_nombre'] = c.etiqueta if c else fila['tipo']
     return filas
+
+
+# ── Recalcular también las filas manuales (ventana de "Recalcular") ─────
+# Marca (dentro del histórico) de las filas manuales que se dejaron sin
+# recalcular en la ventana: la próxima vez salen desmarcadas.
+NO_RECALCULAR = '_no_recalcular'
+
+
+class _Simulacion(Exception):
+    """Para deshacer una simulación (transaction.atomic hace rollback)."""
+
+
+def conceptos_con_manuales():
+    """Conceptos donde una fila manual puede volver a ser calculada."""
+    return [c for c in _LISTA if not c.derivado or c.permite_manual]
+
+
+def _manuales(slugs=None):
+    validos = [c.slug for c in conceptos_con_manuales() if slugs is None or c.slug in slugs]
+    return list(PresupuestoNomina.objects.filter(tipo__in=validos, origen=MANUAL))
+
+
+def _total_tras_restablecer(fila):
+    """Total que tiene la fila (o las que la reemplazan) después de restablecerla."""
+    if not CONCEPTOS[fila.tipo].derivado:
+        return PresupuestoNomina.objects.filter(pk=fila.pk).values_list('total', flat=True).first()
+    if not fila.clave:
+        return None
+    totales = list(PresupuestoNomina.objects.filter(tipo=fila.tipo, origen=SISTEMA)
+                   .filter(Q(clave=fila.clave) | Q(clave__startswith=f'{fila.clave}#'))
+                   .values_list('total', flat=True))
+    return sum(t or 0 for t in totales) if totales else None
+
+
+def simular_restablecer(filas):
+    """{pk: total que tendría la fila al recalcularla} sin guardar nada.
+    None = el cálculo no la cubre (la fila desaparecería)."""
+    resultado = {}
+    if not filas:
+        return resultado
+    try:
+        with transaction.atomic():
+            restablecer_manuales([f.pk for f in filas])
+            _recalcular_todo_sin_bloqueo()
+            for fila in filas:
+                resultado[fila.pk] = _total_tras_restablecer(fila)
+            raise _Simulacion
+    except _Simulacion:
+        pass
+    return resultado
+
+
+def manuales_para_recalcular(slugs=None):
+    """Ventana de "Recalcular": filas manuales por concepto, con su valor y el
+    que tendrían recalculadas.
+
+      [{'slug', 'etiqueta', 'filas': [{'id', 'cedula', 'nombre', 'cargo', 'centro',
+        'area', 'concepto', 'total', 'total_calculado', 'recalcular'}]}]
+    """
+    filas = _manuales(slugs)
+    calculado = simular_restablecer(filas)
+    por_tipo = defaultdict(list)
+    for f in sorted(filas, key=lambda f: (_sin_tildes(f.nombre), f.cedula, f.pk)):
+        nuevo = calculado.get(f.pk)
+        # Filas escritas a mano sin datos de origen (sin salario base ni histórico,
+        # o que el cálculo no cubre): recalcularlas las deja en 0 o las quita.
+        # Esas salen desmarcadas para no perder su valor por error.
+        pierde_valor = bool(f.total) and not nuevo
+        por_tipo[f.tipo].append({
+            'id': f.pk, 'cedula': f.cedula, 'nombre': f.nombre, 'cargo': f.cargo, 'centro': f.centro,
+            'area': f.area, 'concepto': f.concepto, 'total': f.total or 0,
+            'total_calculado': nuevo, 'pierde_valor': pierde_valor,
+            'recalcular': not (f.historico or {}).get(NO_RECALCULAR) and not pierde_valor,
+        })
+    return [{'slug': c.slug, 'etiqueta': c.etiqueta, 'filas': por_tipo[c.slug]}
+            for c in conceptos_con_manuales() if por_tipo.get(c.slug)]
+
+
+def recordar_no_recalcular(ids):
+    """Las filas manuales `ids` quedan marcadas para salir desmarcadas la próxima vez."""
+    filas = list(PresupuestoNomina.objects.filter(pk__in=list(ids), origen=MANUAL))
+    for fila in filas:
+        fila.historico = dict(fila.historico or {}, **{NO_RECALCULAR: True})
+    if filas:
+        PresupuestoNomina.objects.bulk_update(filas, ['historico'], batch_size=1000)
+    return len(filas)
+
+
+def restablecer_manuales(ids, usuario=''):
+    """Las filas manuales `ids` vuelven a ser calculadas, como con "⚙️ Restablecer
+    cálculo" en cada tabla (se usa ese mismo camino: guardar con `_recalcular`).
+    No recalcula el resto: quien llama recalcula una vez al final. Devuelve
+    {slug: cuántas}."""
+    ids = {int(i) for i in ids}
+    if not ids:
+        return {}
+    por_tipo = defaultdict(set)
+    for pk, tipo in PresupuestoNomina.objects.filter(pk__in=ids, origen=MANUAL).values_list('pk', 'tipo'):
+        if tipo in {c.slug for c in conceptos_con_manuales()}:
+            por_tipo[tipo].add(pk)
+    hechos = {}
+    with bloqueo():
+        for c in conceptos_con_manuales():
+            elegidas = por_tipo.get(c.slug)
+            if not elegidas:
+                continue
+            filas = listar(c.slug)
+            for d in filas:
+                d['_editados'] = []                  # nada editado: solo se restablecen las elegidas
+                if d['id'] in elegidas:
+                    d['_recalcular'] = True
+            guardar(c.slug, filas, usuario, con_editados=True, propagar_cambios=False)
+            hechos[c.slug] = len(elegidas)
+    return hechos
+
+
+def recalcular_con_manuales(recalcular, no_recalcular, usuario=''):
+    """Botón "Recalcular todo" con la ventana: restablece las filas manuales
+    elegidas, recuerda las que se dejan y recalcula todo. Devuelve {slug: cuántas}."""
+    with bloqueo():
+        recordar_no_recalcular(no_recalcular)
+        hechos = restablecer_manuales(recalcular, usuario)
+        _recalcular_todo_sin_bloqueo()
+    return hechos
 
 
 def manuales_que_no_toman(campos):

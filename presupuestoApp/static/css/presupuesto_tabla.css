@@ -616,3 +616,41 @@ table.pt-tabla tbody tr.pt-fila--activa td.pt-col-total { background: #cddff8; }
   display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 10px;
   background: #fff4d6; color: #7a5600; font-size: 11px; font-weight: 600;
 }
+
+/* ==========================================================================
+   Ventana de "Recalcular": filas manuales que se pueden recalcular también
+   ========================================================================== */
+.pt-dialogo--ancho { width: min(880px, calc(100vw - 32px)); }
+.rm-barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.rm-buscar { flex: 1 1 220px; max-width: 340px; padding: 6px 8px; border: 1px solid var(--pt-borde-fuerte);
+             border-radius: var(--pt-radio); font: inherit; }
+.rm-tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rm-tabla + .rm-tabla { margin-top: 16px; }
+.rm-tabla caption { text-align: left; font-weight: 700; font-size: 13.5px; padding: 4px 0 6px; }
+.rm-tabla caption small { font-weight: 500; color: var(--pt-texto-suave); margin-left: 6px; }
+.rm-tabla th { background: var(--pt-fondo-alt); text-align: left; font-size: 12px; padding: 6px 8px;
+               border-bottom: 1px solid var(--pt-borde); }
+.rm-tabla td { padding: 6px 8px; border-bottom: 1px solid var(--pt-borde); vertical-align: top; }
+.rm-tabla .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rm-check { width: 76px; text-align: center !important; }
+.rm-check input { width: 16px; height: 16px; cursor: pointer; }
+.rm-nombre { font-weight: 600; }
+.rm-sub { font-size: 11.5px; color: var(--pt-texto-suave); }
+.rm-nuevo { font-weight: 600; }
+.rm-sale { font-weight: 500; font-size: 12px; color: #a15c00; }
+.rm-fila--fuera td { color: var(--pt-texto-suave); background: #fafafa; }
+.rm-fila--alerta td { background: #fff8e6; }
+.rm-fila--fuera .rm-nuevo { text-decoration: line-through; }
+.rm-pie { align-items: center; }
+.rm-resumen { margin-right: auto; font-size: 12.5px; color: var(--pt-texto-suave); }
+@media (max-width: 640px) {
+  .pt-dialogo--ancho .pt-dialogo__cuerpo { padding: 10px 12px; }
+  .rm-tabla { font-size: 12px; }
+  .rm-tabla th, .rm-tabla td { padding: 5px 4px; }
+  .rm-check { width: 34px; }
+  .rm-tabla th.rm-check { font-size: 0; }
+  .rm-tabla th.rm-check::after { content: "✓"; font-size: 12px; }
+  .rm-tabla th:nth-child(3), .rm-tabla td:nth-child(3) { display: none; }
+  .rm-pie { flex-wrap: wrap; }
+  .rm-resumen { flex-basis: 100%; }
+}

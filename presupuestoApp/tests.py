@@ -1428,6 +1428,103 @@ class BonoCanastaTrimestralTests(TestCase):
         self.assertIn("9", self.filas())
 
 
+class RecalcularConManualesTests(TestCase):
+    """Al pulsar "Recalcular" aparece una ventana con las filas manuales (persona y
+    concepto) y lo que quedarían recalculadas; las elegidas se recalculan también."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, incremento_ipc=10, salario_minimo=1423500, incremento_salarial=10)
+        comunes = dict(anio=timezone.localdate().year, archivo="prueba", nombre_cen="ALMACEN TULUA", nomcosto="VENTAS",
+                       nombrecar="CAJERO", fecha_ingreso=datetime.date(2015, 1, 1))
+        for ced in (1, 2):
+            ConceptosNomina.objects.create(concepto="001", cedula=ced, nombre=f"P{ced}", concepto_f=2000000,
+                                           **comunes, **{m: 2000000 for m in MESES_N[:8]})
+        nomina_motor.recargar_bases()
+        self.client.force_login(User.objects.create_user("admin"))
+        # P1: foco editado a mano (manual) · P2: sueldo editado a mano · P9: foco agregado a mano
+        PresupuestoNomina.objects.filter(tipo="bonificaciones_foco", cedula="1").update(origen="manual", enero=5)
+        PresupuestoNomina.objects.filter(tipo="sueldos", cedula="2").update(origen="manual", abril=1)
+        extra = linea_nomina(tipo="bonificaciones_foco", cedula="9", nombre="AGREGADO", origen="manual",
+                             centro="ALMACEN TULUA", area="VENTAS", **{m: 0 for m in MESES_N})
+        extra.enero = 70000
+        extra.clave = "9|ALMACEN TULUA|VENTAS"
+        extra.save()
+        self.foco1 = PresupuestoNomina.objects.get(tipo="bonificaciones_foco", cedula="1")
+        self.sueldo2 = PresupuestoNomina.objects.get(tipo="sueldos", cedula="2")
+        self.foco9 = PresupuestoNomina.objects.get(tipo="bonificaciones_foco", cedula="9")
+
+    def post(self, url, **datos):
+        r = self.client.post(url, datos)
+        self.assertEqual(r.status_code, 200, r.content)
+        return r.json()
+
+    def grupos(self, url):
+        return {g["slug"]: {f["cedula"]: f for f in g["filas"]}
+                for g in self.post(url, previa="1")["grupos"]}
+
+    def test_vista_previa_muestra_manuales_y_no_guarda(self):
+        g = self.grupos(reverse("nomina_recalcular_todo"))
+        self.assertEqual(set(g), {"sueldos", "bonificaciones_foco"})
+        self.assertEqual(set(g["bonificaciones_foco"]), {"1", "9"})
+        f1 = g["bonificaciones_foco"]["1"]
+        self.assertEqual((f1["total"], f1["total_calculado"], f1["recalcular"]), (5, 181500, True))
+        f9 = g["bonificaciones_foco"]["9"]
+        self.assertIsNone(f9["total_calculado"])                                 # el cálculo no la cubre
+        self.assertEqual((f9["pierde_valor"], f9["recalcular"]), (True, False))   # sale desmarcada
+        self.assertFalse(f1["pierde_valor"])
+        s2 = g["sueldos"]["2"]
+        self.assertEqual(s2["total_calculado"], 2000000 * 2 + 2200000 * 9 + 400000 + 2200000)
+        # nada cambió
+        self.foco1.refresh_from_db()
+        self.sueldo2.refresh_from_db()
+        self.assertEqual((self.foco1.origen, self.foco1.enero), ("manual", 5))
+        self.assertEqual((self.sueldo2.origen, self.sueldo2.abril), ("manual", 1))
+
+    def test_recalcula_solo_las_elegidas_y_recuerda_las_demas(self):
+        r = self.post(reverse("nomina_recalcular_todo"),
+                      recalcular=[str(self.foco1.pk), str(self.foco9.pk)], no_recalcular=[str(self.sueldo2.pk)])
+        self.assertIn("Filas manuales recalculadas: Bonificaciones foco 2", r["msg"])
+        foco = {f.cedula: f for f in PresupuestoNomina.objects.filter(tipo="bonificaciones_foco")}
+        self.assertEqual((foco["1"].origen, foco["1"].enero), ("sistema", 181500))
+        self.assertNotIn("9", foco)                                              # salió del cálculo
+        self.sueldo2.refresh_from_db()
+        self.assertEqual((self.sueldo2.origen, self.sueldo2.abril), ("manual", 1))   # se dejó
+        # la próxima vez sale desmarcada
+        g = self.grupos(reverse("nomina_recalcular_todo"))
+        self.assertEqual(set(g), {"sueldos"})
+        self.assertFalse(g["sueldos"]["2"]["recalcular"])
+        # y si ahora se elige, se recalcula
+        self.post(reverse("nomina_recalcular_todo"), recalcular=[str(self.sueldo2.pk)])
+        self.sueldo2.refresh_from_db()
+        self.assertEqual((self.sueldo2.origen, self.sueldo2.abril), ("sistema", 2200000))
+
+    def test_sin_eleccion_recalcula_como_antes(self):
+        self.post(reverse("nomina_recalcular_todo"))
+        self.foco1.refresh_from_db()
+        self.assertEqual((self.foco1.origen, self.foco1.enero), ("manual", 5))
+
+    def test_recalcular_de_un_concepto(self):
+        url = reverse("nomina_cargar", args=["bonificaciones_foco"])
+        g = self.grupos(url)
+        self.assertEqual(set(g), {"bonificaciones_foco"})                       # solo ese concepto
+        r = self.post(url, elegido="1", recalcular=[str(self.foco1.pk)], no_recalcular=[str(self.foco9.pk)])
+        self.assertIn("Filas manuales recalculadas: Bonificaciones foco 1", r["msg"])
+        foco = {d["cedula"]: d for d in r["data"]}
+        self.assertEqual((foco["1"]["origen"], foco["1"]["enero"]), ("sistema", 181500))
+        self.assertEqual((foco["9"]["origen"], foco["9"]["enero"]), ("manual", 70000))
+        self.assertTrue(nomina_motor.PresupuestoNomina.objects.get(pk=self.foco9.pk).historico.get("_no_recalcular"))
+        # el botón sin ventana (sin "elegido") no toca las manuales
+        self.post(url)
+        self.assertEqual(PresupuestoNomina.objects.get(pk=self.foco9.pk).origen, "manual")
+
+    def test_pantallas_cargan_la_ventana(self):
+        html = self.client.get(reverse("presupuestoNomina")).content.decode()
+        self.assertIn("js/nomina_manuales.js", html)
+        html = self.client.get(reverse("nomina_tabla", args=["bonificaciones_foco"])).content.decode()
+        self.assertIn("js/nomina_manuales.js", html)
+
+
 class DestinosComercialesTests(TestCase):
     """Ajustes → Destinos de nómina → Cargos comerciales: asesor comercial, auxiliar
     comercial y asistente técnico comercial llevan un destino VT-00001 … VT-00027."""

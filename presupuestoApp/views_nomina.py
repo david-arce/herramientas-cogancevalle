@@ -611,11 +611,28 @@ def nomina_arl_cargo_guardar(request):
                              recalculados, cargos=nomina.arl_cargos_asistencia())
 
 
+def _ids(request, campo):
+    return [int(v) for v in request.POST.getlist(campo) if str(v).strip().isdigit()]
+
+
+def _texto_restablecidas(hechos):
+    if not hechos:
+        return ''
+    return ' · Filas manuales recalculadas: ' + ', '.join(
+        f'{nomina.CONCEPTOS[slug].etiqueta} {n}' for slug, n in hechos.items())
+
+
 @login_required
 @require_POST
 def nomina_recalcular_todo(request):
-    nomina.recalcular_todo()
-    return JsonResponse({'status': 'ok', 'msg': 'Todo el presupuesto de nómina fue recalculado ✅'})
+    # 1) Ventana: filas manuales que también se pueden recalcular (con lo que quedarían)
+    if request.POST.get('previa') == '1':
+        return JsonResponse({'status': 'ok', 'grupos': nomina.manuales_para_recalcular()})
+    # 2) Recalcular, con las filas manuales elegidas en la ventana
+    hechos = nomina.recalcular_con_manuales(_ids(request, 'recalcular'), _ids(request, 'no_recalcular'),
+                                            request.user.get_username())
+    return JsonResponse({'status': 'ok',
+                         'msg': 'Todo el presupuesto de nómina fue recalculado ✅' + _texto_restablecidas(hechos)})
 
 
 @login_required
@@ -787,12 +804,20 @@ def nomina_base_editable(request, tipo):
 @require_POST
 def nomina_cargar(request, tipo):
     c = _concepto_o_404(tipo)
+    if request.POST.get('previa') == '1':
+        # Ventana de "Recalcular": filas manuales de este concepto que también se pueden recalcular
+        return JsonResponse({'status': 'ok', 'grupos': nomina.manuales_para_recalcular([tipo])})
+    hechos = {}
     try:
-        creadas, recalculados, repetidos, conservadas, bloqueadas, omitidas = nomina.cargar_base(tipo)
+        with nomina.bloqueo():                     # todo o nada
+            if request.POST.get('elegido') == '1':
+                nomina.recordar_no_recalcular(_ids(request, 'no_recalcular'))
+                hechos = nomina.restablecer_manuales(_ids(request, 'recalcular'), request.user.get_username())
+            creadas, recalculados, repetidos, conservadas, bloqueadas, omitidas = nomina.cargar_base(tipo)
     except Exception as exc:                      # noqa: BLE001
         return _error(f'No se pudo cargar: {exc}', 500)
     origen = 'calculadas' if c.derivado else 'cargadas desde Conceptos'
-    mensaje = f'{creadas} filas {origen} ✅'
+    mensaje = f'{creadas} filas {origen} ✅' + _texto_restablecidas(hechos)
     if conservadas:
         mensaje += f' · {conservadas} filas propias conservadas'
     if bloqueadas:

@@ -503,6 +503,7 @@
 
   <script src="{% static_v 'js/envio_seguro.js' %}"></script>
   <script src="{% static_v 'js/presupuesto_tabla.js' %}"></script>
+  <script src="{% static_v 'js/nomina_manuales.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       const token = document.querySelector('meta[name="csrf-token"]').content;
@@ -827,7 +828,10 @@
       const btnRecalcular = document.getElementById('btnRecalcular');
       btnRecalcular.addEventListener('click', () => PT.conSpinner(btnRecalcular, async () => {
         try {
-          const r = await PT.pedir(btnRecalcular.dataset.url, { method: 'POST' });
+          // Ventana: filas manuales que también se pueden recalcular
+          const datos = await PT.formManuales(btnRecalcular.dataset.url);
+          if (datos === null) return;
+          const r = await PT.pedir(btnRecalcular.dataset.url, { method: 'POST', body: datos });
           PT.toast(r.msg || 'Recalculado ✅');
           recargar();
         } catch (e) { PT.toast('Error al recalcular ❌ ' + e.message, 'error'); }
