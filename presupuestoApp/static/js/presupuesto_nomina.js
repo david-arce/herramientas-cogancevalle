@@ -174,11 +174,7 @@
       PT.toast(partes.length ? `Fila agregada. ${partes.join(' · ')}` : 'Fila agregada ✅', 'success', 7000);
     } : undefined;
 
-    // "🔄 Recalcular" de los calculados con filas manuales: ventana para elegir
-    // cuáles de esas filas se recalculan también (nomina_manuales.js)
-    const prepararCarga = (config.soloAgregar && PT.formManuales)
-      ? () => PT.formManuales(config.urls.cargarBase) : null;
-    PT.conectarBarra(tabla, config.urls, { agregar, prepararCarga });
+    PT.conectarBarra(tabla, config.urls, { agregar });
 
     // Valor base editable del concepto (p. ej. base del auxilio de transporte)
     const entradaBase = document.getElementById('baseEditable');

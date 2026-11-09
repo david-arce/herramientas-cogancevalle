@@ -408,3 +408,25 @@ class DestinoNomina(models.Model):
 
     def __str__(self):
         return f'{self.persona} / {self.area} → {self.destino}'
+
+
+class RespaldoRecalculoNomina(models.Model):
+    """Copia del presupuesto de nómina tomada justo ANTES de un recálculo
+    ("Recalcular todo", "Recalcular" de un concepto, guardar parámetros), para
+    poder revertirlo. Las filas copiadas están en la tabla
+    nomina_respaldo_recalculo_lineas (misma estructura que presupuesto_nomina
+    + respaldo_id); se guardan los últimos RESPALDOS_A_GUARDAR (nomina_motor)."""
+    creado = models.DateTimeField(auto_now_add=True)
+    usuario = models.CharField(max_length=150, blank=True, default='')
+    motivo = models.CharField(max_length=200, blank=True, default='')
+    parametros = models.JSONField(default=dict, blank=True)     # ParametrosPresupuestos de ese momento
+    filas = models.IntegerField(default=0)                      # filas (líneas) de nómina copiadas
+    revertido = models.DateTimeField(null=True, blank=True)     # cuándo se revirtió (ya no se ofrece)
+    revertido_por = models.CharField(max_length=150, blank=True, default='')
+
+    class Meta:
+        db_table = 'nomina_respaldo_recalculo'
+        ordering = ['-creado', '-id']
+
+    def __str__(self):
+        return f'{self.motivo} · {self.creado:%Y-%m-%d %H:%M}'

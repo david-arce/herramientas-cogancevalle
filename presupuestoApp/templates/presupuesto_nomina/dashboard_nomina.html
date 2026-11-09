@@ -54,7 +54,15 @@
     <button type="button" class="pt-btn" id="btnRecargarBases" data-url="{% url 'nomina_recargar_bases' %}"
             title="Vuelve a leer todos los conceptos base desde los datos de origen">📥 Recargar desde Conceptos</button>
     <button type="button" class="pt-btn" id="btnRecalcular" data-url="{% url 'nomina_recalcular_todo' %}">🔄 Recalcular todo</button>
+    <button type="button" class="pt-btn" id="btnRevertir" data-url="{% url 'nomina_revertir_recalculo' %}"
+            {% if respaldo %}data-motivo="{{ respaldo.motivo }}" data-fecha="{{ respaldo.creado|date:'d/m/Y H:i' }}"
+            title="Deja la nómina y los parámetros como estaban antes de «{{ respaldo.motivo }}» ({{ respaldo.creado|date:'d/m/Y H:i' }}{% if respaldo.usuario %}, {{ respaldo.usuario }}{% endif %})"
+            {% else %}disabled title="No hay ningún recálculo para revertir"{% endif %}>↩️ Revertir último recálculo</button>
   </div>
+  {% if respaldo %}
+  <p class="dash-revertir-info">Último recálculo que se puede revertir: <strong>{{ respaldo.motivo }}</strong>
+    · {{ respaldo.creado|date:'d/m/Y H:i' }}{% if respaldo.usuario %} · {{ respaldo.usuario }}{% endif %}</p>
+  {% endif %}
 
   <details class="pt-seccion or-seccion" data-recordar="nomina-origen" open>
     <summary class="pt-seccion__titulo">
@@ -503,7 +511,6 @@
 
   <script src="{% static_v 'js/envio_seguro.js' %}"></script>
   <script src="{% static_v 'js/presupuesto_tabla.js' %}"></script>
-  <script src="{% static_v 'js/nomina_manuales.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       const token = document.querySelector('meta[name="csrf-token"]').content;
@@ -825,13 +832,25 @@
         });
       });
 
+      // ↩️ Revertir último recálculo: vuelve a la copia tomada justo antes
+      const btnRevertir = document.getElementById('btnRevertir');
+      btnRevertir.addEventListener('click', () => {
+        const { motivo, fecha } = btnRevertir.dataset;
+        if (!confirm(`¿Revertir «${motivo}» del ${fecha}?\n\nLa nómina y los parámetros quedan como estaban antes de ese ` +
+                     'recálculo. Lo que se haya cambiado después (ediciones, filas agregadas) también se pierde.')) return;
+        PT.conSpinner(btnRevertir, async () => {
+          try {
+            const r = await PT.pedir(btnRevertir.dataset.url, { method: 'POST' });
+            PT.toast(r.msg || 'Recálculo revertido ✅');
+            recargar();
+          } catch (e) { PT.toast('No se pudo revertir ❌ ' + e.message, 'error'); }
+        });
+      });
+
       const btnRecalcular = document.getElementById('btnRecalcular');
       btnRecalcular.addEventListener('click', () => PT.conSpinner(btnRecalcular, async () => {
         try {
-          // Ventana: filas manuales que también se pueden recalcular
-          const datos = await PT.formManuales(btnRecalcular.dataset.url);
-          if (datos === null) return;
-          const r = await PT.pedir(btnRecalcular.dataset.url, { method: 'POST', body: datos });
+          const r = await PT.pedir(btnRecalcular.dataset.url, { method: 'POST' });
           PT.toast(r.msg || 'Recalculado ✅');
           recargar();
         } catch (e) { PT.toast('Error al recalcular ❌ ' + e.message, 'error'); }

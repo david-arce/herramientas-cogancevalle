@@ -272,12 +272,15 @@ def presupuestoNomina(request):
         if request.POST.get('ajuste_elegido') == '1':
             no_ajustar = [int(i) for i in request.POST.getlist('no_ajustar') if str(i).isdigit()]
         cambiados = [campo for campo, valor in valores.items() if getattr(params, campo) != valor]
-        for campo, valor in valores.items():
-            setattr(params, campo, valor)
-        params.save()
-        # Cambiar un parámetro afecta a todo: se recalcula el presupuesto completo
-        # (y las filas manuales de comisiones siguen al nuevo incremento).
-        ajustadas = nomina.recalcular_por_parametros(antes, no_ajustar)
+        with nomina.bloqueo():
+            # copia de la nómina y de los parámetros de antes, para poder revertir
+            nomina.crear_respaldo('Guardar parámetros', request.user.get_username())
+            for campo, valor in valores.items():
+                setattr(params, campo, valor)
+            params.save()
+            # Cambiar un parámetro afecta a todo: se recalcula el presupuesto completo
+            # (y las filas manuales de comisiones siguen al nuevo incremento).
+            ajustadas = nomina.recalcular_por_parametros(antes, no_ajustar)
         msg = 'Parámetros guardados y presupuesto recalculado ✅'
         for a in ajustadas:
             if a['filas']:
@@ -315,6 +318,7 @@ def presupuestoNomina(request):
     anio_base = origen.anio_base()
     return render(request, 'presupuesto_nomina/dashboard_nomina.html', {
         'parametros': params,
+        'respaldo': nomina.ultimo_respaldo(),          # "Revertir último recálculo"
         # texto de cada campo (coma decimal, sin separador de miles ni formato regional)
         'valores_parametros': {campo: valor_parametro(getattr(params, campo))
                                for campo in CAMPOS_PARAMETROS.values()},
@@ -462,7 +466,9 @@ def nomina_origen_borrar(request):
 @login_required
 @require_POST
 def nomina_recargar_bases(request):
-    conteo = nomina.recargar_bases()
+    with nomina.bloqueo():
+        nomina.crear_respaldo('Recargar desde Conceptos', request.user.get_username())
+        conteo = nomina.recargar_bases()
     repetidos = conteo.pop('_repetidos', 0)
     manuales = conteo.pop('_manuales', 0)
     bloqueadas = conteo.pop('_bloqueadas', 0)
@@ -611,28 +617,29 @@ def nomina_arl_cargo_guardar(request):
                              recalculados, cargos=nomina.arl_cargos_asistencia())
 
 
-def _ids(request, campo):
-    return [int(v) for v in request.POST.getlist(campo) if str(v).strip().isdigit()]
-
-
-def _texto_restablecidas(hechos):
-    if not hechos:
-        return ''
-    return ' · Filas manuales recalculadas: ' + ', '.join(
-        f'{nomina.CONCEPTOS[slug].etiqueta} {n}' for slug, n in hechos.items())
+@login_required
+@require_POST
+def nomina_recalcular_todo(request):
+    with nomina.bloqueo():
+        nomina.crear_respaldo('Recalcular todo', request.user.get_username())
+        nomina.recalcular_todo()
+    return JsonResponse({'status': 'ok', 'msg': 'Todo el presupuesto de nómina fue recalculado ✅'})
 
 
 @login_required
 @require_POST
-def nomina_recalcular_todo(request):
-    # 1) Ventana: filas manuales que también se pueden recalcular (con lo que quedarían)
-    if request.POST.get('previa') == '1':
-        return JsonResponse({'status': 'ok', 'grupos': nomina.manuales_para_recalcular()})
-    # 2) Recalcular, con las filas manuales elegidas en la ventana
-    hechos = nomina.recalcular_con_manuales(_ids(request, 'recalcular'), _ids(request, 'no_recalcular'),
-                                            request.user.get_username())
-    return JsonResponse({'status': 'ok',
-                         'msg': 'Todo el presupuesto de nómina fue recalculado ✅' + _texto_restablecidas(hechos)})
+def nomina_revertir_recalculo(request):
+    """Deja la nómina y los parámetros como estaban antes del último recálculo."""
+    try:
+        respaldo = nomina.revertir_ultimo_recalculo(request.user.get_username())
+    except ValueError as exc:
+        return _error(str(exc))
+    creado = timezone.localtime(respaldo.creado)
+    return JsonResponse({
+        'status': 'ok',
+        'msg': f'Se revirtió «{respaldo.motivo}» del {creado:%d/%m/%Y %H:%M}: la nómina quedó como estaba antes ✅',
+        'quedan': bool(nomina.ultimo_respaldo()),
+    })
 
 
 @login_required
@@ -804,20 +811,15 @@ def nomina_base_editable(request, tipo):
 @require_POST
 def nomina_cargar(request, tipo):
     c = _concepto_o_404(tipo)
-    if request.POST.get('previa') == '1':
-        # Ventana de "Recalcular": filas manuales de este concepto que también se pueden recalcular
-        return JsonResponse({'status': 'ok', 'grupos': nomina.manuales_para_recalcular([tipo])})
-    hechos = {}
     try:
-        with nomina.bloqueo():                     # todo o nada
-            if request.POST.get('elegido') == '1':
-                nomina.recordar_no_recalcular(_ids(request, 'no_recalcular'))
-                hechos = nomina.restablecer_manuales(_ids(request, 'recalcular'), request.user.get_username())
+        with nomina.bloqueo():
+            nomina.crear_respaldo(f"{'Recalcular' if c.derivado else 'Cargar desde Conceptos'} · {c.etiqueta}",
+                                  request.user.get_username())
             creadas, recalculados, repetidos, conservadas, bloqueadas, omitidas = nomina.cargar_base(tipo)
     except Exception as exc:                      # noqa: BLE001
         return _error(f'No se pudo cargar: {exc}', 500)
     origen = 'calculadas' if c.derivado else 'cargadas desde Conceptos'
-    mensaje = f'{creadas} filas {origen} ✅' + _texto_restablecidas(hechos)
+    mensaje = f'{creadas} filas {origen} ✅'
     if conservadas:
         mensaje += f' · {conservadas} filas propias conservadas'
     if bloqueadas:

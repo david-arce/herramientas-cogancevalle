@@ -1734,24 +1734,18 @@
     navegar('consolidado', urls.consolidado);
 
     /** Acción de servidor que devuelve la tabla ya actualizada. */
-    const accionServidor = (url, preparar) => (b) => conSpinner(b, async () => {
+    const accionServidor = (url) => (b) => conSpinner(b, async () => {
       try {
         // Primero se guarda lo pendiente: un envío atrasado del autoguardado
         // no puede llegar DESPUÉS y deshacer lo que hizo esta acción.
         if (!(await tabla.guardarAhora())) return;
-        const opciones = { method: 'POST' };
-        if (preparar) {                                  // p. ej. ventana de filas manuales
-          const cuerpo = await preparar();
-          if (cuerpo === null) return;                   // canceló
-          opciones.body = cuerpo;
-        }
-        const r = await pedir(url, opciones);
+        const r = await pedir(url, { method: 'POST' });
         if (Array.isArray(r.data)) tabla.setDatos(r.data); else await tabla.cargar();
         toast(r.msg || 'Listo ✅', 'success', 6000);
       } catch (e) { console.error(e); toast('Error ❌ ' + e.message, 'error', 6000); }
     });
 
-    if (urls.cargarBase) al('cargar-base', accionServidor(urls.cargarBase, extra.prepararCarga));
+    if (urls.cargarBase) al('cargar-base', accionServidor(urls.cargarBase));
     if (urls.borrar) al('borrar', accionServidor(urls.borrar));
 
     al('deshacer', () => tabla.deshacer());

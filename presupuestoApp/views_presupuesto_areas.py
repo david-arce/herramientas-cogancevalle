@@ -1126,6 +1126,11 @@ def zona_de_centro_nomina(centro, del_informe):
     return None
 
 
+def _motor_nomina():
+    from . import nomina_motor
+    return nomina_motor
+
+
 def estado_cuenta5_nomina():
     base = PresupuestoNominaMes.objects.all()
     subible = base.exclude(valor=0).exclude(cuenta="")
@@ -1140,6 +1145,10 @@ def estado_cuenta5_nomina():
     faltan_destinos = len(destinos_nomina.faltantes()) if base.exists() else 0
     esperados = nom["n"]
     cambio_destinos = destinos_nomina.ultimo_cambio()
+    # Revertir un recálculo devuelve filas con su fecha vieja: también deja lo subido desactualizado
+    revertido = _motor_nomina().ultima_reversion()
+    if revertido and (cambio_destinos is None or revertido > cambio_destinos):
+        cambio_destinos = revertido
     if not base.exists():
         estado = "sin_datos"
     elif not config.listo:

@@ -21,12 +21,14 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 from django.db import connection, transaction
-from django.db.models import Avg, Count, Q, Sum
+from django.db.models import Avg, Count, Max, Q, Sum
+from django.utils import timezone
 
 from . import nomina_conceptos as origen
 from .models import ParametrosPresupuestos
 from .models_nomina import (MESES, ArlCargoNomina, ConceptosNomina, CorreccionPersonaNomina, DistribucionNomina,
-                            FilaEliminadaNomina, FocoCargoInforme, FocoSinComision, PresupuestoNomina)
+                            FilaEliminadaNomina, FocoCargoInforme, FocoSinComision, PresupuestoNomina,
+                            RespaldoRecalculoNomina)
 
 MESES = list(MESES)
 SISTEMA = PresupuestoNomina.ORIGEN_SISTEMA
@@ -2708,7 +2710,7 @@ def _propagar_identidades(identidades, finales, usuario, ctx, avisos):
     return corregidas
 
 
-def guardar(slug, filas_json, usuario='', con_editados=False, propagar_cambios=True):
+def guardar(slug, filas_json, usuario='', con_editados=False):
     """Guarda lo que el usuario editó en la tabla y propaga los cambios.
 
     Solo se puede guardar en los conceptos base (los que se cargan desde
@@ -2880,11 +2882,7 @@ def guardar(slug, filas_json, usuario='', con_editados=False, propagar_cambios=T
                 fila.origen = SISTEMA
                 forzadas = True
                 invertibles = c.invertibles(fila, ctx.meses_reales())
-                if not c.derivado and era_manual and datos.get('_desde_manual'):
-                    # Ventana de "Recalcular": se calcula con lo que se ESCRIBIÓ en
-                    # la fila (no con los datos de origen)
-                    entradas_desde_manual(fila, c, entrantes, ctx.meses_reales(), p)
-                elif not c.derivado and invertibles and not any(m in (fila.historico or {}) for m in MESES):
+                if not c.derivado and invertibles and not any(m in (fila.historico or {}) for m in MESES):
                     # fila escrita a mano: sus valores pasan a ser el histórico. En
                     # AJUSTAN_MANUALES (comisiones) ya traen el incremento vigente:
                     # se les quita para no incrementarlos dos veces.
@@ -2992,9 +2990,8 @@ def guardar(slug, filas_json, usuario='', con_editados=False, propagar_cambios=T
                                                                 usuario, ctx, avisos)
         if corregidas:
             resumen['personas_corregidas'] = corregidas
-        # Cualquier cambio, en el concepto que sea, recalcula todo (salvo que
-        # quien llama recalcule una sola vez al final: restablecer_manuales)
-        recalculados = propagar(slug) if propagar_cambios else []
+        # Cualquier cambio, en el concepto que sea, recalcula todo
+        recalculados = propagar(slug)
 
     resumen.update(creadas=len(crear), actualizadas=len(actualizar), eliminadas=len(eliminar))
     salida = dict(resumen)
@@ -3038,172 +3035,82 @@ def listar(slug=None):
     return filas
 
 
-# ── Recalcular también las filas manuales (ventana de "Recalcular") ─────
-# Marca (dentro del histórico) de las filas manuales que se dejaron sin
-# recalcular en la ventana: la próxima vez salen desmarcadas.
-NO_RECALCULAR = '_no_recalcular'
+# ── Revertir un recálculo ─────────────────────────────────────────────
+# Antes de "Recalcular todo", de "Recalcular" un concepto y de guardar los
+# parámetros se copia todo el presupuesto de nómina (tabla vertical) y los
+# parámetros. "Revertir último recálculo" deja todo como estaba en esa copia.
+LINEAS_RESPALDO = 'nomina_respaldo_recalculo_lineas'
+RESPALDOS_A_GUARDAR = 5
 
 
-class _Simulacion(Exception):
-    """Para deshacer una simulación (transaction.atomic hace rollback)."""
+def _columnas_respaldo(cursor):
+    """Columnas de presupuesto_nomina que también tiene la tabla de respaldo."""
+    def columnas(tabla):
+        cursor.execute("SELECT column_name FROM information_schema.columns "
+                       "WHERE table_schema = current_schema() AND table_name = %s ORDER BY ordinal_position",
+                       [tabla])
+        return [r[0] for r in cursor.fetchall()]
+    respaldo = set(columnas(LINEAS_RESPALDO))
+    return ', '.join(f'"{c}"' for c in columnas('presupuesto_nomina') if c in respaldo)
 
 
-def conceptos_con_manuales():
-    """Conceptos donde una fila manual puede volver a ser calculada."""
-    return [c for c in _LISTA if not c.derivado or c.permite_manual]
-
-
-def _manuales(slugs=None):
-    validos = [c.slug for c in conceptos_con_manuales() if slugs is None or c.slug in slugs]
-    return list(PresupuestoNomina.objects.filter(tipo__in=validos, origen=MANUAL))
-
-
-def _total_tras_restablecer(fila):
-    """Total que tiene la fila (o las que la reemplazan) después de restablecerla."""
-    if not CONCEPTOS[fila.tipo].derivado:
-        return PresupuestoNomina.objects.filter(pk=fila.pk).values_list('total', flat=True).first()
-    if not fila.clave:
-        return None
-    totales = list(PresupuestoNomina.objects.filter(tipo=fila.tipo, origen=SISTEMA)
-                   .filter(Q(clave=fila.clave) | Q(clave__startswith=f'{fila.clave}#'))
-                   .values_list('total', flat=True))
-    return sum(t or 0 for t in totales) if totales else None
-
-
-def simular_restablecer(filas):
-    """{pk: total que tendría la fila al recalcularla} sin guardar nada.
-    None = el cálculo no la cubre (la fila desaparecería)."""
-    resultado = {}
-    if not filas:
-        return resultado
-    try:
-        with transaction.atomic():
-            restablecer_manuales([f.pk for f in filas])
-            _recalcular_todo_sin_bloqueo()
-            for fila in filas:
-                resultado[fila.pk] = _total_tras_restablecer(fila)
-            raise _Simulacion
-    except _Simulacion:
-        pass
-    return resultado
-
-
-def manuales_para_recalcular(slugs=None):
-    """Ventana de "Recalcular": filas manuales por concepto, con su valor y el
-    que tendrían recalculadas.
-
-      [{'slug', 'etiqueta', 'filas': [{'id', 'cedula', 'nombre', 'cargo', 'centro',
-        'area', 'concepto', 'total', 'total_calculado', 'recalcular'}]}]
-    """
-    filas = _manuales(slugs)
-    calculado = simular_restablecer(filas)
-    por_tipo = defaultdict(list)
-    for f in sorted(filas, key=lambda f: (_sin_tildes(f.nombre), f.cedula, f.pk)):
-        nuevo = calculado.get(f.pk)
-        # Filas escritas a mano sin datos de origen (sin salario base ni histórico,
-        # o que el cálculo no cubre): recalcularlas las deja en 0 o las quita.
-        # Esas salen desmarcadas para no perder su valor por error.
-        pierde_valor = bool(f.total) and not nuevo
-        por_tipo[f.tipo].append({
-            'id': f.pk, 'cedula': f.cedula, 'nombre': f.nombre, 'cargo': f.cargo, 'centro': f.centro,
-            'area': f.area, 'concepto': f.concepto, 'total': f.total or 0,
-            'total_calculado': nuevo, 'pierde_valor': pierde_valor,
-            'recalcular': not (f.historico or {}).get(NO_RECALCULAR) and not pierde_valor,
-        })
-    return [{'slug': c.slug, 'etiqueta': c.etiqueta, 'filas': por_tipo[c.slug]}
-            for c in conceptos_con_manuales() if por_tipo.get(c.slug)]
-
-
-def recordar_no_recalcular(ids):
-    """Las filas manuales `ids` quedan marcadas para salir desmarcadas la próxima vez."""
-    filas = list(PresupuestoNomina.objects.filter(pk__in=list(ids), origen=MANUAL))
-    for fila in filas:
-        fila.historico = dict(fila.historico or {}, **{NO_RECALCULAR: True})
-    if filas:
-        PresupuestoNomina.objects.bulk_update(filas, ['historico'], batch_size=1000)
-    return len(filas)
-
-
-def entradas_desde_manual(fila, c, meses, meses_reales, p):
-    """Convierte lo escrito en una fila manual (`meses`) en los datos de entrada
-    de su fórmula, para recalcularla "con base en los datos manuales":
-
-      - incrementar (auxilios TBC, bolsa, educación): los 12 meses escritos son
-        el histórico → cada uno × el incremento.
-      - incremento_promedio (comisiones, horas extra): los meses escritos de la
-        ventana de meses reales son el histórico; los demás salen de su promedio.
-      - retroactivo (sueldos, transporte): el valor de enero (o el primer mes
-        con valor) es el salario/valor actual → enero y febrero con ese valor,
-        desde marzo con el incremento y el retroactivo. Si el primer mes con
-        valor es de marzo en adelante, ya trae el incremento: se le quita.
-      - base_fija (aprendices) y kyrovet: el primer mes con valor (febrero en
-        kyrovet) es la base → × el incremento.
-
-    En AJUSTAN_MANUALES (comisiones) lo escrito ya trae el incremento vigente
-    (ver ajustar_manuales): se le quita antes, para no incrementarlo dos veces.
-    Si no se escribió nada, se deja lo que había (base o histórico)."""
-    divisor = fila.factor or 1
-    if c.slug in AJUSTAN_MANUALES:
-        divisor *= 1 + p.pct(c.pct)
-    if c.formula in ('incrementar', 'incremento_promedio'):
-        if not any(meses.values()):
-            return
-        if c.formula == 'incrementar':
-            ventana = MESES
-        else:
-            propios = [m for m in MESES if m in (fila.historico or {})]
-            ventana = propios or MESES[:meses_reales] or MESES
-        especiales = {k: v for k, v in (fila.historico or {}).items() if k not in MESES}
-        fila.historico = {**especiales, **{m: meses[m] / divisor for m in ventana}}
-    elif c.formula in ('retroactivo', 'base_fija', 'kyrovet'):
-        orden = ['febrero', *[m for m in MESES if m != 'febrero']] if c.formula == 'kyrovet' else MESES
-        mes = next((m for m in orden if meses.get(m)), None)
-        if mes is None:
-            return
-        valor = meses[mes] / divisor
-        if c.formula == 'retroactivo' and MESES.index(mes) >= 2:
-            valor /= 1 + p.pct(c.pct)               # de marzo en adelante ya trae el incremento
-        fila.base = int(round(valor))
-
-
-def restablecer_manuales(ids, usuario=''):
-    """Las filas manuales `ids` vuelven a ser calculadas CON LO QUE SE ESCRIBIÓ en
-    ellas (entradas_desde_manual): se usa el camino de "⚙️ Restablecer cálculo"
-    (guardar con `_recalcular`) más `_desde_manual`.
-    No recalcula el resto: quien llama recalcula una vez al final. Devuelve
-    {slug: cuántas}."""
-    ids = {int(i) for i in ids}
-    if not ids:
+def _parametros_actuales():
+    params = ParametrosPresupuestos.objects.order_by('pk').first()
+    if params is None:
         return {}
-    por_tipo = defaultdict(set)
-    for pk, tipo in PresupuestoNomina.objects.filter(pk__in=ids, origen=MANUAL).values_list('pk', 'tipo'):
-        if tipo in {c.slug for c in conceptos_con_manuales()}:
-            por_tipo[tipo].add(pk)
-    hechos = {}
-    with bloqueo():
-        for c in conceptos_con_manuales():
-            elegidas = por_tipo.get(c.slug)
-            if not elegidas:
-                continue
-            filas = listar(c.slug)
-            for d in filas:
-                d['_editados'] = []                  # nada editado: solo se restablecen las elegidas
-                if d['id'] in elegidas:
-                    d['_recalcular'] = True
-                    d['_desde_manual'] = True        # con lo que se escribió, no con los datos de origen
-            guardar(c.slug, filas, usuario, con_editados=True, propagar_cambios=False)
-            hechos[c.slug] = len(elegidas)
-    return hechos
+    return {f.attname: getattr(params, f.attname) for f in params._meta.concrete_fields
+            if isinstance(getattr(params, f.attname), (int, float, str, bool, type(None)))}
 
 
-def recalcular_con_manuales(recalcular, no_recalcular, usuario=''):
-    """Botón "Recalcular todo" con la ventana: restablece las filas manuales
-    elegidas, recuerda las que se dejan y recalcula todo. Devuelve {slug: cuántas}."""
-    with bloqueo():
-        recordar_no_recalcular(no_recalcular)
-        hechos = restablecer_manuales(recalcular, usuario)
-        _recalcular_todo_sin_bloqueo()
-    return hechos
+def crear_respaldo(motivo, usuario=''):
+    """Copia el presupuesto de nómina y los parámetros antes de un recálculo."""
+    with bloqueo(), connection.cursor() as cursor:
+        respaldo = RespaldoRecalculoNomina.objects.create(
+            motivo=motivo[:200], usuario=usuario or '', parametros=_parametros_actuales(),
+            filas=PresupuestoNomina.objects.count())
+        columnas = _columnas_respaldo(cursor)
+        cursor.execute(f'INSERT INTO {LINEAS_RESPALDO} (respaldo_id, {columnas}) '
+                       f'SELECT %s, {columnas} FROM presupuesto_nomina', [respaldo.pk])
+        # solo se guardan los más recientes
+        viejos = list(RespaldoRecalculoNomina.objects.values_list('pk', flat=True)[RESPALDOS_A_GUARDAR:])
+        if viejos:
+            cursor.execute(f'DELETE FROM {LINEAS_RESPALDO} WHERE respaldo_id = ANY(%s)', [viejos])
+            RespaldoRecalculoNomina.objects.filter(pk__in=viejos).delete()
+    return respaldo
+
+
+def ultimo_respaldo():
+    """El recálculo que se puede revertir (el más reciente sin revertir), o None."""
+    return RespaldoRecalculoNomina.objects.filter(revertido__isnull=True).first()
+
+
+def ultima_reversion():
+    """Cuándo se revirtió por última vez (para saber si lo subido quedó desactualizado)."""
+    return RespaldoRecalculoNomina.objects.filter(revertido__isnull=False).aggregate(
+        ultimo=Max('revertido'))['ultimo']
+
+
+def revertir_ultimo_recalculo(usuario=''):
+    """Deja el presupuesto de nómina y los parámetros como estaban antes del
+    último recálculo. Lo que se cambió después de ese recálculo se pierde.
+    Revertir otra vez lleva al recálculo anterior (hasta RESPALDOS_A_GUARDAR)."""
+    with bloqueo(), connection.cursor() as cursor:
+        respaldo = RespaldoRecalculoNomina.objects.select_for_update().filter(revertido__isnull=True).first()
+        if respaldo is None:
+            raise ValueError('No hay ningún recálculo para revertir')
+        columnas = _columnas_respaldo(cursor)
+        cursor.execute('DELETE FROM presupuesto_nomina')
+        cursor.execute(f'INSERT INTO presupuesto_nomina ({columnas}) '
+                       f'SELECT {columnas} FROM {LINEAS_RESPALDO} WHERE respaldo_id = %s', [respaldo.pk])
+        if respaldo.parametros:
+            campos = {f.attname for f in ParametrosPresupuestos._meta.concrete_fields} - {'id'}
+            valores = {k: v for k, v in respaldo.parametros.items() if k in campos}
+            if valores:
+                ParametrosPresupuestos.objects.filter(pk=respaldo.parametros.get('id')).update(**valores)
+        respaldo.revertido = timezone.now()
+        respaldo.revertido_por = usuario or ''
+        respaldo.save(update_fields=['revertido', 'revertido_por'])
+    return respaldo
 
 
 def manuales_que_no_toman(campos):

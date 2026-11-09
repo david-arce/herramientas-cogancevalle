@@ -1428,146 +1428,100 @@ class BonoCanastaTrimestralTests(TestCase):
         self.assertIn("9", self.filas())
 
 
-class RecalcularConManualesTests(TestCase):
-    """Al pulsar "Recalcular" aparece una ventana con las filas manuales (persona y
-    concepto) y lo que quedarían recalculadas; las elegidas se recalculan también."""
+class RevertirRecalculoTests(TestCase):
+    """↩️ Revertir último recálculo: antes de cada recálculo se copia la nómina y
+    los parámetros; revertir deja todo exactamente como estaba."""
 
     def setUp(self):
         from .models import ParametrosPresupuestos
         ParametrosPresupuestos.objects.create(id=1, incremento_ipc=10, salario_minimo=1423500, incremento_salarial=10)
         comunes = dict(anio=timezone.localdate().year, archivo="prueba", nombre_cen="ALMACEN TULUA", nomcosto="VENTAS",
-                       nombrecar="CAJERO", fecha_ingreso=datetime.date(2015, 1, 1))
+                       nombrecar="CAJERO", fecha_ingreso=datetime.date(2015, 1, 1), cuenta="51050601")
         for ced in (1, 2):
             ConceptosNomina.objects.create(concepto="001", cedula=ced, nombre=f"P{ced}", concepto_f=2000000,
                                            **comunes, **{m: 2000000 for m in MESES_N[:8]})
         nomina_motor.recargar_bases()
         self.client.force_login(User.objects.create_user("admin"))
-        # P1: foco editado a mano (manual) · P2: sueldo editado a mano · P9: foco agregado a mano
-        PresupuestoNomina.objects.filter(tipo="bonificaciones_foco", cedula="1").update(origen="manual", enero=5)
-        PresupuestoNomina.objects.filter(tipo="sueldos", cedula="2").update(origen="manual", abril=1)
-        extra = linea_nomina(tipo="bonificaciones_foco", cedula="9", nombre="AGREGADO", origen="manual",
-                             centro="ALMACEN TULUA", area="VENTAS", **{m: 0 for m in MESES_N})
-        extra.enero = 70000
-        extra.clave = "9|ALMACEN TULUA|VENTAS"
-        extra.save()
-        self.foco1 = PresupuestoNomina.objects.get(tipo="bonificaciones_foco", cedula="1")
-        self.sueldo2 = PresupuestoNomina.objects.get(tipo="sueldos", cedula="2")
-        self.foco9 = PresupuestoNomina.objects.get(tipo="bonificaciones_foco", cedula="9")
 
-    def post(self, url, **datos):
-        r = self.client.post(url, datos)
+    def foto(self):
+        """Todo el presupuesto de nómina tal como está (id, tipo, persona, origen, meses)."""
+        return sorted((f.pk, f.tipo, f.cedula, f.origen, f.base, f.clave, *(getattr(f, m) for m in MESES_N))
+                      for f in PresupuestoNomina.objects.all())
+
+    def post(self, nombre, *args, **datos):
+        r = self.client.post(reverse(nombre, args=args), datos, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        return r
+
+    def test_revertir_recalcular_todo_y_las_ediciones_de_despues(self):
+        antes = self.foto()
+        # se edita a mano y se recalcula: la edición queda, el recálculo cambia filas
+        PresupuestoNomina.objects.filter(tipo="sueldos", cedula="1").update(origen="manual", base=3000000)
+        intermedio = self.foto()
+        self.assertEqual(self.post("nomina_recalcular_todo").status_code, 200)
+        PresupuestoNomina.objects.filter(tipo="sueldos", cedula="2").update(enero=1)   # cambio de después
+        self.assertNotEqual(self.foto(), intermedio)
+        r = self.post("nomina_revertir_recalculo")
         self.assertEqual(r.status_code, 200, r.content)
-        return r.json()
+        self.assertIn("Se revirtió «Recalcular todo»", r.json()["msg"])
+        self.assertEqual(self.foto(), intermedio)                  # exactamente como antes del recálculo
+        self.assertNotEqual(self.foto(), antes)
+        # no queda otro recálculo para revertir
+        self.assertFalse(r.json()["quedan"])
+        r = self.post("nomina_revertir_recalculo")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("No hay ningún recálculo para revertir", r.json()["msg"])
 
-    def grupos(self, url):
-        return {g["slug"]: {f["cedula"]: f for f in g["filas"]}
-                for g in self.post(url, previa="1")["grupos"]}
+    def test_revertir_guardar_parametros_vuelve_los_parametros(self):
+        from .models import ParametrosPresupuestos
+        antes = self.foto()
+        r = self.post("presupuestoNomina", incrementoSalarial="20", incrementoIPC="10")
+        self.assertEqual(r.json()["status"], "ok")
+        self.assertEqual(ParametrosPresupuestos.objects.get(id=1).incremento_salarial, 20)
+        self.assertNotEqual(self.foto(), antes)
+        self.post("nomina_revertir_recalculo")
+        self.assertEqual(ParametrosPresupuestos.objects.get(id=1).incremento_salarial, 10)
+        self.assertEqual(self.foto(), antes)
+        self.assertEqual(nomina_motor.Parametros.cargar().incremento_salarial, 10)
 
-    def test_vista_previa_muestra_manuales_y_no_guarda(self):
-        g = self.grupos(reverse("nomina_recalcular_todo"))
-        self.assertEqual(set(g), {"sueldos", "bonificaciones_foco"})
-        self.assertEqual(set(g["bonificaciones_foco"]), {"1", "9"})
-        f1 = g["bonificaciones_foco"]["1"]
-        self.assertEqual((f1["total"], f1["total_calculado"], f1["recalcular"]), (5, 181500, True))
-        f9 = g["bonificaciones_foco"]["9"]
-        self.assertIsNone(f9["total_calculado"])                                 # el cálculo no la cubre
-        self.assertEqual((f9["pierde_valor"], f9["recalcular"]), (True, False))   # sale desmarcada
-        self.assertFalse(f1["pierde_valor"])
-        s2 = g["sueldos"]["2"]
-        self.assertEqual(s2["total_calculado"], 2000000 * 2 + 2200000 * 9 + 400000 + 2200000)
-        # nada cambió
-        self.foco1.refresh_from_db()
-        self.sueldo2.refresh_from_db()
-        self.assertEqual((self.foco1.origen, self.foco1.enero), ("manual", 5))
-        self.assertEqual((self.sueldo2.origen, self.sueldo2.abril), ("manual", 1))
-
-    def test_recalcula_solo_las_elegidas_y_recuerda_las_demas(self):
-        r = self.post(reverse("nomina_recalcular_todo"),
-                      recalcular=[str(self.foco1.pk), str(self.foco9.pk)], no_recalcular=[str(self.sueldo2.pk)])
-        self.assertIn("Filas manuales recalculadas: Bonificaciones foco 2", r["msg"])
-        foco = {f.cedula: f for f in PresupuestoNomina.objects.filter(tipo="bonificaciones_foco")}
-        self.assertEqual((foco["1"].origen, foco["1"].enero), ("sistema", 181500))
-        self.assertNotIn("9", foco)                                              # salió del cálculo
-        self.sueldo2.refresh_from_db()
-        self.assertEqual((self.sueldo2.origen, self.sueldo2.abril), ("manual", 1))   # se dejó
-        # la próxima vez sale desmarcada
-        g = self.grupos(reverse("nomina_recalcular_todo"))
-        self.assertEqual(set(g), {"sueldos"})
-        self.assertFalse(g["sueldos"]["2"]["recalcular"])
-        # y si ahora se elige, se recalcula
-        self.post(reverse("nomina_recalcular_todo"), recalcular=[str(self.sueldo2.pk)])
-        self.sueldo2.refresh_from_db()
-        self.assertEqual((self.sueldo2.origen, self.sueldo2.abril), ("sistema", 2200000))
-
-    def test_sin_eleccion_recalcula_como_antes(self):
-        self.post(reverse("nomina_recalcular_todo"))
-        self.foco1.refresh_from_db()
-        self.assertEqual((self.foco1.origen, self.foco1.enero), ("manual", 5))
-
-    def test_recalcular_de_un_concepto(self):
-        url = reverse("nomina_cargar", args=["bonificaciones_foco"])
-        g = self.grupos(url)
-        self.assertEqual(set(g), {"bonificaciones_foco"})                       # solo ese concepto
-        r = self.post(url, elegido="1", recalcular=[str(self.foco1.pk)], no_recalcular=[str(self.foco9.pk)])
-        self.assertIn("Filas manuales recalculadas: Bonificaciones foco 1", r["msg"])
-        foco = {d["cedula"]: d for d in r["data"]}
-        self.assertEqual((foco["1"]["origen"], foco["1"]["enero"]), ("sistema", 181500))
-        self.assertEqual((foco["9"]["origen"], foco["9"]["enero"]), ("manual", 70000))
-        self.assertTrue(nomina_motor.PresupuestoNomina.objects.get(pk=self.foco9.pk).historico.get("_no_recalcular"))
-        # el botón sin ventana (sin "elegido") no toca las manuales
-        self.post(url)
-        self.assertEqual(PresupuestoNomina.objects.get(pk=self.foco9.pk).origen, "manual")
-
-    def test_se_recalcula_con_lo_que_se_escribio(self):
-        # sueldo escrito a mano (sin salario base ni datos de origen): 3.000.000 todos los meses
-        sueldo = linea_nomina(tipo="sueldos", cedula="30", nombre="ESCRITO", origen="manual", base=0,
-                              clave="", centro="ALMACEN TULUA", area="VENTAS", **{m: 3000000 for m in MESES_N})
-        sueldo.save()
-        # horas extra escritas a mano: 100.000 todos los meses
-        horas = linea_nomina(tipo="horas_extra", cedula="30", nombre="ESCRITO", origen="manual", clave="",
-                             centro="ALMACEN TULUA", area="VENTAS", **{m: 100000 for m in MESES_N})
-        horas.save()
-        g = self.grupos(reverse("nomina_recalcular_todo"))
-        # la vista previa ya muestra lo que dará el cálculo con lo escrito (no $0)
-        self.assertEqual(g["sueldos"]["30"]["total_calculado"], 3000000 * 2 + 3900000 + 3300000 * 9)
-        self.assertTrue(g["sueldos"]["30"]["recalcular"])
-        self.assertEqual(g["horas_extra"]["30"]["total_calculado"], 12 * 110000)
-        self.post(reverse("nomina_recalcular_todo"), recalcular=[str(sueldo.pk), str(horas.pk)])
-        sueldo.refresh_from_db()
-        horas.refresh_from_db()
-        # enero y febrero con lo escrito, desde marzo + 10 % (marzo con 2 meses de retroactivo)
-        self.assertEqual((sueldo.origen, sueldo.base, sueldo.enero, sueldo.marzo, sueldo.abril),
-                         ("sistema", 3000000, 3000000, 3900000, 3300000))
-        self.assertEqual((horas.origen, horas.enero, horas.diciembre), ("sistema", 110000, 110000))
-
-    def test_meses_en_cero_y_primer_mes_despues_de_marzo(self):
-        # ingresa en mayo: lo escrito de mayo ya trae el incremento → base = 3.300.000 / 1,10
-        meses = {m: (3300000 if i >= 4 else 0) for i, m in enumerate(MESES_N)}
-        sueldo = linea_nomina(tipo="sueldos", cedula="31", nombre="DESDE MAYO", origen="manual", base=0,
-                              clave="", centro="ALMACEN TULUA", area="VENTAS", **meses)
-        sueldo.save()
-        self.post(reverse("nomina_recalcular_todo"), recalcular=[str(sueldo.pk)])
-        sueldo.refresh_from_db()
-        self.assertEqual(sueldo.base, 3000000)
-        self.assertEqual((sueldo.enero, sueldo.abril, sueldo.mayo, sueldo.diciembre), (0, 0, 3300000, 3300000))
-
-    def test_restablecer_de_la_tabla_sigue_volviendo_al_origen(self):
-        # el botón "⚙️ Restablecer cálculo" de cada tabla es un "deshacer": vuelve a los datos de origen
-        datos = self.client.get(reverse("nomina_datos", args=["sueldos"])).json()["data"]
-        for d in datos:
-            if d["id"] == self.sueldo2.pk:
-                d.update(_recalcular=True, enero=9999999, _editados=["enero"])
-        r = self.client.post(reverse("nomina_guardar", args=["sueldos"]), json.dumps({"filas": datos, "con_editados": True}),
-                             content_type="application/json")
+    def test_revertir_varias_veces_y_por_concepto(self):
+        f0 = self.foto()
+        self.post("presupuestoNomina", incrementoSalarial="15")
+        f1 = self.foto()
+        r = self.post("nomina_cargar", "bonificaciones_foco")
         self.assertEqual(r.status_code, 200, r.content)
-        self.sueldo2.refresh_from_db()
-        self.assertEqual((self.sueldo2.origen, self.sueldo2.base, self.sueldo2.abril), ("sistema", 2000000, 2200000))
+        PresupuestoNomina.objects.filter(tipo="bonificaciones_foco").update(enero=7)    # para notar la diferencia
+        self.post("nomina_revertir_recalculo")                    # deshace "Recalcular · Bonificaciones foco"
+        self.assertEqual(self.foto(), f1)
+        self.post("nomina_revertir_recalculo")                    # y luego "Guardar parámetros"
+        self.assertEqual(self.foto(), f0)
 
-    def test_pantallas_cargan_la_ventana(self):
+    def test_solo_se_guardan_los_ultimos(self):
+        from .models_nomina import RespaldoRecalculoNomina
+        for _ in range(nomina_motor.RESPALDOS_A_GUARDAR + 3):
+            self.post("nomina_recalcular_todo")
+        self.assertEqual(RespaldoRecalculoNomina.objects.count(), nomina_motor.RESPALDOS_A_GUARDAR)
+        from django.db import connection
+        with connection.cursor() as c:
+            c.execute("SELECT COUNT(DISTINCT respaldo_id) FROM nomina_respaldo_recalculo_lineas")
+            self.assertEqual(c.fetchone()[0], nomina_motor.RESPALDOS_A_GUARDAR)
+
+    def test_boton_en_el_tablero(self):
         html = self.client.get(reverse("presupuestoNomina")).content.decode()
-        self.assertIn("js/nomina_manuales.js", html)
-        html = self.client.get(reverse("nomina_tabla", args=["bonificaciones_foco"])).content.decode()
-        self.assertIn("js/nomina_manuales.js", html)
+        self.assertIn('id="btnRevertir"', html)
+        self.assertIn("No hay ningún recálculo para revertir", html)           # deshabilitado
+        self.post("nomina_recalcular_todo")
+        html = self.client.get(reverse("presupuestoNomina")).content.decode()
+        self.assertIn('data-motivo="Recalcular todo"', html)
+        self.assertIn("Último recálculo que se puede revertir", html)
+
+    def test_lo_subido_a_cuenta5_queda_desactualizado(self):
+        confirmar_nomina(True)
+        self.post("nomina_recalcular_todo")
+        self.client.force_login(User.objects.create_user("NICOLAS"))            # aprobador: sube a Cuenta 5
+        self.assertTrue(self.client.post(reverse("subir_cuenta5_nomina")).json()["success"])
+        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "subido")
+        self.post("nomina_revertir_recalculo")
+        self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "desactualizado")
 
 
 class DestinosComercialesTests(TestCase):

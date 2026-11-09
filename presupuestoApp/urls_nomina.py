@@ -17,6 +17,7 @@ from . import views_nomina as v
 urlpatterns = [
     path('nomina/', v.presupuestoNomina, name='presupuestoNomina'),
     path('nomina/recalcular/', v.nomina_recalcular_todo, name='nomina_recalcular_todo'),
+    path('nomina/revertir-recalculo/', v.nomina_revertir_recalculo, name='nomina_revertir_recalculo'),
     path('nomina/resumen/', v.nomina_resumen, name='nomina_resumen'),
     path('nomina/exportar/', v.exportar_excel_nomina, name='exportar_excel'),
     path('nomina/exportar-vertical/', v.exportar_nomina_vertical, name='exportar_nomina_vertical'),
