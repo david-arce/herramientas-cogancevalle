@@ -2233,6 +2233,7 @@ def ajustar_manuales(antes, despues, no_ajustar=None):
 def _recalcular_todo_sin_bloqueo():
     """Cuerpo de recalcular_todo (quien lo llama ya tiene el bloqueo)."""
     ctx = Contexto()
+    reparar_creadas_incompletas(ctx)        # filas creadas en cero que quedaron solo con la cédula
     for c in BASE:
         if _ventana_desactualizada(c, ctx):
             # Cambiaron los meses con datos reales (o la fecha de corte) desde
@@ -2281,6 +2282,41 @@ def _recordar_eliminadas(c, filas, usuario):
             FilaEliminadaNomina.objects.update_or_create(
                 tipo=c.slug, llave=llave_eliminada(fila)[:400],
                 defaults={'nombre': fila.nombre or fila.concepto, 'eliminado_por': usuario})
+
+
+def personas_que_salen(slug, eliminadas, quedan):
+    """Al guardar Sueldos: {cédula: nombre} de quienes se eliminaron y ya no tienen
+    ninguna fila de sueldo (si estaba repartida y solo se quitó una parte, sigue)."""
+    if slug != 'sueldos':
+        return {}
+    siguen = {f.cedula for f in quedan if f.cedula}
+    salen = {}
+    for fila in eliminadas:
+        if fila.cedula and fila.cedula not in siguen:
+            salen.setdefault(fila.cedula, fila.nombre or '')
+    return salen
+
+
+def eliminar_de_los_demas(cedulas, ctx):
+    """Quita a esas personas de todos los conceptos distintos de Sueldos.
+    No se recargan desde Conceptos mientras no vuelvan a tener sueldo
+    (personas_retiradas). Devuelve {slug: filas quitadas}."""
+    filas = PresupuestoNomina.objects.filter(cedula__in=list(cedulas)).exclude(tipo='sueldos')
+    # Quien tiene filas que vinieron de Conceptos queda como retirada aunque su
+    # fila de sueldo fuera manual, para que no vuelvan al recargar (personas_retiradas)
+    base = [c.slug for c in BASE]
+    de_conceptos = {f.cedula for f in filas.filter(tipo__in=base).only('cedula', 'clave', 'tipo')
+                    if _viene_de_conceptos(f)}
+    for cedula, nombre in dict(cedulas).items():
+        if cedula in de_conceptos:
+            FilaEliminadaNomina.objects.get_or_create(tipo='sueldos', llave=cedula[:400],
+                                                      defaults={'nombre': nombre or cedula})
+    quitadas = Counter(filas.values_list('tipo', flat=True))
+    if quitadas:
+        filas.delete()
+        for tipo in quitadas:
+            ctx.olvidar(tipo)
+    return dict(quitadas)
 
 
 def personas_retiradas():
@@ -2621,11 +2657,33 @@ def _firma_entrante(datos):
 
 
 CREAR_EN = '_crear_en'
+# En el histórico de una fila creada en cero en otro concepto: el id de la fila
+# de Sueldos que la creó, para que le lleguen el nombre, centro, área y cargo
+# que se escriban después (ver _sincronizar_creadas).
+CREADA_DESDE = '_creada_desde'
+CAMPOS_PERSONA = ('cedula', 'nombre', 'centro', 'area', 'cargo')
 
 
 def conceptos_para_crear(slug):
     """Conceptos base (distintos de `slug`) donde se puede crear en cero a una persona nueva."""
     return [c.slug for c in BASE if c.slug != slug and c.con_cedula]
+
+
+def _concepto_por_defecto(c):
+    return (c.carga or {}).get('concepto') or c.etiqueta.upper()
+
+
+def concepto_habitual(slug):
+    """Nombre del concepto que usan las filas de `slug` (el más común; ej. Ayuda de
+    transporte → 'AUXILIO DE MOVILIZACIÓN'). Si no hay filas, el del catálogo."""
+    fila = (PresupuestoNomina.objects.filter(tipo=slug).exclude(concepto='')
+            .values('concepto').annotate(n=Count('id')).order_by('-n', 'concepto').first())
+    return fila['concepto'] if fila else _concepto_por_defecto(CONCEPTOS[slug])
+
+
+def _datos_contables(nueva, ctx, cuenta_origen='', codcosto_origen=''):
+    nueva.cuenta = ctx.cuenta(nueva.area, nueva.tipo, nueva.concepto, nueva.cargo) or cuenta_origen
+    nueva.codcosto = ctx.codcosto(nueva.area) or codcosto_origen
 
 
 def _crear_en_otros(filas, usuario, ctx):
@@ -2650,11 +2708,10 @@ def _crear_en_otros(filas, usuario, ctx):
             nueva = PresupuestoNomina(
                 tipo=slug, origen=MANUAL, clave='', cedula=fila.cedula, nombre=fila.nombre,
                 centro=fila.centro, area=fila.area, cargo=fila.cargo,
-                concepto=(c.carga or {}).get('concepto') or c.etiqueta.upper(),
-                cuenta=ctx.cuenta(fila.area, slug, (c.carga or {}).get('concepto') or c.etiqueta.upper(), fila.cargo)
-                       or fila.cuenta,
-                codcosto=ctx.codcosto(fila.area) or fila.codcosto,
+                concepto=concepto_habitual(slug),
+                historico={CREADA_DESDE: fila.pk},        # le siguen llegando los datos de la persona
                 actualizado_por=usuario)
+            _datos_contables(nueva, ctx, fila.cuenta, fila.codcosto)
             fijar_meses(nueva, {})
             nuevas.append(nueva)
         PresupuestoNomina.objects.bulk_create(nuevas, batch_size=1000)
@@ -2668,6 +2725,82 @@ def _crear_en_otros(filas, usuario, ctx):
         limpiar.append(fila)
     PresupuestoNomina.objects.bulk_update(limpiar, ['historico'], batch_size=1000)
     return hechas
+
+
+def _sincronizar_creadas(origenes, previos, usuario, ctx):
+    """Las filas creadas en cero desde una fila de Sueldos reciben lo que se
+    escribió después en ella (cédula, nombre, centro, área, cargo): el
+    autoguardado las crea en cuanto hay cédula, cuando lo demás aún no se ha
+    escrito. Un campo se lleva si en la fila creada está vacío o sigue igual al
+    que tenía la de Sueldos (si se cambió aparte en ese concepto, se respeta).
+    `previos`: {pk de la fila de Sueldos: sus valores antes de este guardado}."""
+    por_origen = {f.pk: f for f in origenes if f.pk}
+    if not por_origen:
+        return 0
+    cambiadas = []
+    for creada in PresupuestoNomina.objects.filter(historico__has_key=CREADA_DESDE):
+        origen = por_origen.get((creada.historico or {}).get(CREADA_DESDE))
+        if origen is None:
+            continue
+        antes = previos.get(origen.pk) or {}
+        cambio = False
+        for campo in CAMPOS_PERSONA:
+            nuevo, actual = getattr(origen, campo) or '', getattr(creada, campo) or ''
+            if nuevo and nuevo != actual and (not actual or actual == (antes.get(campo) or '')):
+                setattr(creada, campo, nuevo)
+                cambio = True
+        if cambio:
+            _datos_contables(creada, ctx, creada.cuenta, creada.codcosto)
+            creada.actualizado_por = usuario
+            cambiadas.append(creada)
+    if cambiadas:
+        PresupuestoNomina.objects.bulk_update(
+            cambiadas, [*CAMPOS_PERSONA, 'cuenta', 'codcosto', 'actualizado_por'], batch_size=1000)
+        for tipo in {f.tipo for f in cambiadas}:
+            ctx.olvidar(tipo)
+    return len(cambiadas)
+
+
+def reparar_creadas_incompletas(ctx, usuario=''):
+    """Filas creadas en cero antes de este arreglo, que quedaron solo con la
+    cédula: se completan con la fila de Sueldos de esa persona (nombre, centro,
+    área, cargo), se les pone el nombre habitual del concepto si tenían el del
+    catálogo, y quedan enlazadas para recibir los cambios siguientes."""
+    incompletas = list(PresupuestoNomina.objects.filter(origen=MANUAL, clave='', nombre='')
+                       .exclude(cedula='').exclude(historico__has_key=CREADA_DESDE)
+                       .exclude(tipo__in=[c.slug for c in _LISTA if c.crea_en_otros]))
+    if not incompletas:
+        return 0
+    fuentes = {}
+    for f in (PresupuestoNomina.objects.filter(tipo__in=[c.slug for c in _LISTA if c.crea_en_otros],
+                                               cedula__in={f.cedula for f in incompletas})
+              .exclude(nombre='').order_by('pk')):
+        fuentes.setdefault(f.cedula, f)
+    habituales = {}
+    reparadas = []
+    for fila in incompletas:
+        fuente = fuentes.get(fila.cedula)
+        c = CONCEPTOS.get(fila.tipo)
+        if fuente is None or c is None:
+            continue
+        for campo in CAMPOS_PERSONA:
+            if not getattr(fila, campo):
+                setattr(fila, campo, getattr(fuente, campo))
+        if fila.concepto == _concepto_por_defecto(c):
+            if fila.tipo not in habituales:
+                habituales[fila.tipo] = concepto_habitual(fila.tipo)
+            fila.concepto = habituales[fila.tipo]
+        fila.historico = dict(fila.historico or {}, **{CREADA_DESDE: fuente.pk})
+        _datos_contables(fila, ctx, fila.cuenta or fuente.cuenta, fila.codcosto or fuente.codcosto)
+        fila.actualizado_por = usuario or fila.actualizado_por
+        reparadas.append(fila)
+    if reparadas:
+        PresupuestoNomina.objects.bulk_update(
+            reparadas, [*CAMPOS_PERSONA, 'concepto', 'historico', 'cuenta', 'codcosto', 'actualizado_por'],
+            batch_size=1000)
+        for tipo in {f.tipo for f in reparadas}:
+            ctx.olvidar(tipo)
+    return len(reparadas)
 
 
 def _propagar_identidades(identidades, finales, usuario, ctx, avisos):
@@ -2760,6 +2893,7 @@ def guardar(slug, filas_json, usuario='', con_editados=False):
         bloquear = []                               # derivado: claves calculadas que ya no deben salir
         uids = []                                   # (_uid del navegador, fila)
         identidades = []                            # (cédula antes, nombre antes, fila) si cambiaron
+        previos_persona = {}                        # pk → valores antes de guardar (ver _sincronizar_creadas)
 
         def pk_de(datos):
             try:
@@ -2834,6 +2968,7 @@ def guardar(slug, filas_json, usuario='', con_editados=False):
                 uids.append((str(datos['_uid']), fila))
             if not nueva:
                 antes = {campo: getattr(fila, campo) for campo in (*CAMPOS_TEXTO, 'base', *MESES)}
+                previos_persona[fila.pk] = antes
 
             marcas = set(datos.get('_editados') or []) if con_editados else None
 
@@ -2969,6 +3104,14 @@ def guardar(slug, filas_json, usuario='', con_editados=False):
             if crear:
                 regenerar_concepto = True           # una fila nueva puede reemplazar a una calculada
 
+        # Persona eliminada de Sueldos (no le queda ninguna fila de sueldo): sale
+        # también de todos los demás conceptos. Antes se copia todo, para poder
+        # deshacerlo con "↩️ Revertir último recálculo".
+        retiradas = personas_que_salen(slug, existentes.values(), crear + actualizar)
+        if retiradas:
+            crear_respaldo('Eliminar de Sueldos: ' + ', '.join(
+                f'{nombre or "sin nombre"} ({cedula})' for cedula, nombre in retiradas.items()), usuario)
+
         campos = [*CAMPOS_TEXTO, 'cuenta', 'codcosto', 'excluir_de', 'base', 'factor', 'historico',
                   *MESES, 'total', 'origen', 'actualizado_por']
         PresupuestoNomina.objects.filter(pk__in=eliminar).delete()
@@ -2982,10 +3125,22 @@ def guardar(slug, filas_json, usuario='', con_editados=False):
         en_cero = _crear_en_otros(crear + actualizar, usuario, ctx)
         if en_cero:
             resumen['filas_en_cero'] = sum(len(v) for v in en_cero.values())
+        if c.crea_en_otros:
+            # lo que se escribió después (nombre, centro, área, cargo) llega a esas filas
+            _sincronizar_creadas(crear + actualizar, previos_persona, usuario, ctx)
+        reparar_creadas_incompletas(ctx, usuario)
 
         # Cédula o nombre corregidos en un concepto base: se corrigen en todos
         # los demás conceptos (y en las próximas cargas desde Conceptos).
         avisos = []
+        if retiradas:
+            quitadas = eliminar_de_los_demas(retiradas, ctx)
+            if quitadas:
+                resumen['eliminadas_en_otros'] = sum(quitadas.values())
+                avisos.append(
+                    f"{', '.join(f'{n or c}' for c, n in retiradas.items())} se eliminó también de: "
+                    + ', '.join(CONCEPTOS[t].etiqueta for t in sorted(quitadas, key=ORDEN_CONCEPTO.get))
+                    + f" ({sum(quitadas.values())} filas) · se puede deshacer con «↩️ Revertir último recálculo»")
         corregidas = 0 if c.derivado else _propagar_identidades(identidades, crear + actualizar,
                                                                 usuario, ctx, avisos)
         if corregidas:
@@ -3102,6 +3257,9 @@ def revertir_ultimo_recalculo(usuario=''):
         cursor.execute('DELETE FROM presupuesto_nomina')
         cursor.execute(f'INSERT INTO presupuesto_nomina ({columnas}) '
                        f'SELECT {columnas} FROM {LINEAS_RESPALDO} WHERE respaldo_id = %s', [respaldo.pk])
+        # las filas eliminadas después de la copia vuelven: su marca de "eliminada"
+        # (que impide recargarlas desde Conceptos) también se deshace
+        FilaEliminadaNomina.objects.filter(eliminado__gte=respaldo.creado).delete()
         if respaldo.parametros:
             campos = {f.attname for f in ParametrosPresupuestos._meta.concrete_fields} - {'id'}
             valores = {k: v for k, v in respaldo.parametros.items() if k in campos}

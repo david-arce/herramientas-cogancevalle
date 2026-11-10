@@ -1605,7 +1605,8 @@
       const quien = [fila.nombre || fila.cedula, fila.centro, fila.area, fila.concepto]
         .filter(Boolean).join(' · ') || 'fila sin datos';
       const total = formatearNumero(fila.total);
-      if (!confirm(`¿Eliminar esta fila?\n\n${quien}\nTotal: ${total}\n\nSe borrará del presupuesto (y no volverá al cargar desde Conceptos) y se recalcularán los conceptos que dependen de ella.`)) {
+      const extra = this.cfg.avisoEliminar ? (this.cfg.avisoEliminar(fila, this.filas) || '') : '';
+      if (!confirm(`¿Eliminar esta fila?\n\n${quien}\nTotal: ${total}\n\nSe borrará del presupuesto (y no volverá al cargar desde Conceptos) y se recalcularán los conceptos que dependen de ella.${extra}`)) {
         return false;
       }
       this.antesDeCambiar();

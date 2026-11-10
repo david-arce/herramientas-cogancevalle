@@ -102,6 +102,12 @@
 
     const tabla = new PT.TablaPresupuesto({
       montaje: '#tabla',
+      // Sueldos: si es la única fila de sueldo de la persona, sale de todos los conceptos
+      avisoEliminar: config.slug !== 'sueldos' ? null : (fila, filas) => {
+        if (!fila.cedula || filas.some(f => f !== fila && f.cedula === fila.cedula)) return '';
+        return '\n\n⚠️ Es su única fila de sueldo: la persona también se eliminará de TODOS los demás ' +
+               'conceptos. Se puede deshacer con «↩️ Revertir último recálculo» en el tablero de nómina.';
+      },
       urlDatos: config.urls.datos,
       columnas: PT.Columnas.estandar({
         cedula: config.conCedula !== false,

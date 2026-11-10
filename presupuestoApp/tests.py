@@ -6,6 +6,7 @@ Pruebas del presupuesto por área (tabla vertical presupuesto_area).
 import datetime
 import io
 import json
+from pathlib import Path
 
 import pandas as pd
 from django.contrib.auth.models import User
@@ -1522,6 +1523,147 @@ class RevertirRecalculoTests(TestCase):
         self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "subido")
         self.post("nomina_revertir_recalculo")
         self.assertEqual(vpa.estado_cuenta5_nomina()["estado"], "desactualizado")
+
+
+class PersonaNuevaEnOtrosConceptosTests(TestCase):
+    """Persona nueva en Sueldos con "crear en otros conceptos": el autoguardado la
+    crea en cuanto tiene cédula; lo que se escribe después (nombre, centro, área,
+    cargo) también debe llegar a esas filas, y el concepto es el habitual."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1423500, incremento_salarial=10)
+        self.client.force_login(User.objects.create_user("admin"))
+        # filas existentes de Ayuda de transporte con su nombre habitual
+        for ced in ("1", "2"):
+            linea_nomina(tipo="ayuda_transporte", cedula=ced, nombre=f"P{ced}", concepto="AUXILIO DE MOVILIZACIÓN",
+                         origen="manual", centro="ALMACEN TULUA", area="VENTAS GASTOS DE PERSONAL").save()
+
+    def guardar(self, slug, filas):
+        r = self.client.post(reverse("nomina_guardar", args=[slug]),
+                             json.dumps({"filas": filas, "con_editados": True}), content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        return r.json()
+
+    def datos(self, slug):
+        return self.client.get(reverse("nomina_datos", args=[slug])).json()["data"]
+
+    def test_lo_que_se_escribe_despues_llega_a_las_filas_creadas(self):
+        crear = ["ayuda_transporte", "comisiones"]
+        # 1) el autoguardado manda la fila apenas tiene cédula
+        self.guardar("sueldos", [{"id": None, "cedula": "17", "crear_en": crear, "excluir_de": [],
+                                  "_editados": ["cedula"]}])
+        creadas = {f.tipo: f for f in PresupuestoNomina.objects.filter(cedula="17").exclude(tipo="sueldos")}
+        self.assertEqual(set(creadas) & set(crear), set(crear))
+        self.assertEqual(creadas["ayuda_transporte"].concepto, "AUXILIO DE MOVILIZACIÓN")   # el habitual
+        # 2) luego se escriben nombre, centro, área, cargo, base…
+        filas = self.datos("sueldos")
+        fila = next(d for d in filas if d["cedula"] == "17")
+        fila.update(nombre="VACANTE - ASESOR EXTERNO CALI", centro="ALMACEN CALI", area="VENTAS GASTOS DE PERSONAL",
+                    cargo="ASESOR COMERCIAL", concepto="SALARIO BASICO", base=2847701,
+                    _editados=["nombre", "centro", "area", "cargo", "concepto", "base"])
+        self.guardar("sueldos", filas)
+        for f in PresupuestoNomina.objects.filter(cedula="17").exclude(tipo="sueldos"):
+            with self.subTest(tipo=f.tipo):
+                self.assertEqual((f.nombre, f.centro, f.area, f.cargo),
+                                 ("VACANTE - ASESOR EXTERNO CALI", "ALMACEN CALI", "VENTAS GASTOS DE PERSONAL",
+                                  "ASESOR COMERCIAL"))
+        # 3) si en un concepto se cambia aparte, ya no se pisa
+        filas = self.datos("comisiones")
+        com = next(d for d in filas if d["cedula"] == "17")
+        com.update(area="ADMINISTRACION DE PERSONAL", _editados=["area"])
+        self.guardar("comisiones", filas)
+        filas = self.datos("sueldos")
+        fila = next(d for d in filas if d["cedula"] == "17")
+        fila.update(cargo="ASESOR COMERCIAL II", area="VENTAS GASTOS DE PERSONAL", _editados=["cargo"])
+        self.guardar("sueldos", filas)
+        com = PresupuestoNomina.objects.get(tipo="comisiones", cedula="17")
+        self.assertEqual((com.area, com.cargo), ("ADMINISTRACION DE PERSONAL", "ASESOR COMERCIAL II"))
+        aux = PresupuestoNomina.objects.get(tipo="ayuda_transporte", cedula="17")
+        self.assertEqual((aux.area, aux.cargo), ("VENTAS GASTOS DE PERSONAL", "ASESOR COMERCIAL II"))
+
+    def test_repara_las_que_ya_quedaron_solo_con_la_cedula(self):
+        # como quedaron antes del arreglo: solo cédula y el concepto del catálogo
+        linea_nomina(tipo="sueldos", cedula="17", nombre="VACANTE - ASESOR EXTERNO CALI", centro="ALMACEN CALI",
+                     area="VENTAS GASTOS DE PERSONAL", cargo="ASESOR COMERCIAL", origen="manual").save()
+        rota = linea_nomina(tipo="ayuda_transporte", cedula="17", nombre="", centro="", area="", cargo="",
+                            concepto="AYUDA DE TRANSPORTE", origen="manual", clave="", cuenta="",
+                            **{m: 0 for m in MESES_N})
+        rota.save()
+        nomina_motor.recalcular_todo()
+        rota.refresh_from_db()
+        self.assertEqual((rota.nombre, rota.centro, rota.area, rota.cargo, rota.concepto),
+                         ("VACANTE - ASESOR EXTERNO CALI", "ALMACEN CALI", "VENTAS GASTOS DE PERSONAL",
+                          "ASESOR COMERCIAL", "AUXILIO DE MOVILIZACIÓN"))
+        self.assertEqual(rota.historico.get("_creada_desde"),
+                         PresupuestoNomina.objects.get(tipo="sueldos", cedula="17").pk)
+
+
+class EliminarPersonaDeSueldosTests(TestCase):
+    """Al eliminar a una persona de Sueldos (sin que le quede fila de sueldo) se
+    elimina también de todos los demás conceptos; se puede revertir."""
+
+    def setUp(self):
+        from .models import ParametrosPresupuestos
+        ParametrosPresupuestos.objects.create(id=1, salario_minimo=1423500, incremento_salarial=10, incremento_ipc=5)
+        self.client.force_login(User.objects.create_user("admin"))
+        comunes = dict(origen="manual", centro="ALMACEN TULUA", area="VENTAS GASTOS DE PERSONAL")
+        for ced, nombre in (("17", "VACANTE ASESOR"), ("18", "OTRA PERSONA")):
+            linea_nomina(tipo="sueldos", cedula=ced, nombre=nombre, cargo="ASESOR COMERCIAL", base=2000000, **comunes).save()
+            for tipo in ("comisiones", "ayuda_transporte", "bonificaciones_foco"):
+                linea_nomina(tipo=tipo, cedula=ced, nombre=nombre, **comunes).save()
+        # el 18 está repartido: dos filas de sueldo
+        linea_nomina(tipo="sueldos", cedula="18", nombre="OTRA PERSONA", cargo="ASESOR COMERCIAL", base=2000000,
+                     origen="manual", centro="ALMACEN CALI", area="ADMINISTRACION DE PERSONAL").save()
+        nomina_motor.recalcular_todo()
+
+    def sueldos_sin(self, **filtro):
+        datos = self.client.get(reverse("nomina_datos", args=["sueldos"])).json()["data"]
+        quitar = {f.pk for f in PresupuestoNomina.objects.filter(tipo="sueldos", **filtro)}
+        return [d for d in datos if d["id"] not in quitar]
+
+    def guardar(self, slug, filas):
+        r = self.client.post(reverse("nomina_guardar", args=[slug]),
+                             json.dumps({"filas": filas, "con_editados": True}), content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        return r.json()
+
+    def tipos(self, cedula):
+        return set(PresupuestoNomina.objects.filter(cedula=cedula).values_list("tipo", flat=True))
+
+    def test_se_elimina_de_todos_los_conceptos_y_se_puede_revertir(self):
+        antes = self.tipos("17")
+        self.assertTrue({"sueldos", "comisiones", "ayuda_transporte", "bonificaciones_foco"} <= antes)
+        r = self.guardar("sueldos", self.sueldos_sin(cedula="17"))
+        self.assertEqual(self.tipos("17"), set())                       # en ningún concepto
+        self.assertIn("VACANTE ASESOR se eliminó también de:", r["aviso"])
+        self.assertIn("Comisiones", r["aviso"])
+        self.assertTrue(self.tipos("18"))                               # los demás, intactos
+        # no vuelve al recalcular
+        nomina_motor.recalcular_todo()
+        self.assertEqual(self.tipos("17"), set())
+        # y se puede deshacer
+        self.client.post(reverse("nomina_revertir_recalculo"))
+        self.assertEqual(self.tipos("17"), antes)
+        # sin la marca de "eliminada": vuelve a recargarse desde Conceptos normalmente
+        from .models_nomina import FilaEliminadaNomina
+        self.assertFalse(FilaEliminadaNomina.objects.filter(llave="17").exists())
+        self.assertNotIn("17", nomina_motor.personas_retiradas())
+
+    def test_si_le_queda_otra_fila_de_sueldo_no_se_toca(self):
+        self.guardar("sueldos", self.sueldos_sin(cedula="18", centro="ALMACEN CALI"))
+        self.assertEqual(PresupuestoNomina.objects.filter(tipo="sueldos", cedula="18").count(), 1)
+        self.assertTrue({"comisiones", "ayuda_transporte"} <= self.tipos("18"))
+
+    def test_eliminar_en_otro_concepto_no_afecta_a_los_demas(self):
+        datos = self.client.get(reverse("nomina_datos", args=["comisiones"])).json()["data"]
+        self.guardar("comisiones", [d for d in datos if d["cedula"] != "17"])
+        self.assertNotIn("comisiones", self.tipos("17"))
+        self.assertTrue({"sueldos", "ayuda_transporte"} <= self.tipos("17"))
+
+    def test_la_tabla_avisa_al_confirmar(self):
+        js = (Path(__file__).parent / "static/js/presupuesto_nomina.js").read_text(encoding="utf-8")
+        self.assertIn("también se eliminará de TODOS los demás", js)
 
 
 class DestinosComercialesTests(TestCase):
@@ -3766,7 +3908,7 @@ class NominaFilaEliminadaTests(TestCase):
         filas = self.datos()
         r = self.enviar(filas + [dict(filas[0], id=None, clave="", _uid="n1", cedula="30", nombre="NUEVA")])
         self.enviar([f for f in self.datos() if f["cedula"] != "30"])
-        self.assertFalse(FilaEliminadaNomina.objects.exists())
+        self.assertFalse(FilaEliminadaNomina.objects.exists(), list(FilaEliminadaNomina.objects.values_list("tipo", "llave")))
 
 
 class HorasExtraMesesRealesTests(TestCase):
