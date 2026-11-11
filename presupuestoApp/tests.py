@@ -1666,6 +1666,63 @@ class EliminarPersonaDeSueldosTests(TestCase):
         self.assertIn("también se eliminará de TODOS los demás", js)
 
 
+class PermisosPresupuestoComercialTests(TestCase):
+    """Todas las páginas y peticiones del presupuesto comercial piden permiso:
+    "admin" o quien tenga "Comercial (ventas)" en Ajustes → Asignación de presupuestos.
+    Antes cualquiera con el link entraba (solo la portada lo verificaba)."""
+
+    def rutas(self):
+        import re
+        from pathlib import Path
+        urls = (Path(__file__).parent / "urls.py").read_text(encoding="utf-8")
+        tramo = urls[urls.index("path('presupuesto-ventas/'"):urls.index("path('seleccion-cuentas-contables/'")]
+        rutas = []
+        for nombre in re.findall(r"name=['\"](\w+)['\"]", tramo):
+            args = ["x"] if nombre == "estado_importar_bd_ventas_comercial" else []
+            rutas.append((nombre, reverse(nombre, args=args)))
+        self.assertGreaterEqual(len(rutas), 39)
+        return rutas
+
+    def test_sin_sesion_no_entra(self):
+        for nombre, url in self.rutas():
+            with self.subTest(nombre):
+                r = self.client.get(url)
+                if r.status_code != 405:                    # las que solo aceptan POST
+                    self.assertEqual(r.status_code, 302)
+                    self.assertIn("/login/", r["Location"])
+                r = self.client.post(url)
+                self.assertEqual(r.status_code, 401)
+
+    def test_sin_permiso_no_entra(self):
+        self.client.force_login(User.objects.create_user("VENDEDOR"))
+        for nombre, url in self.rutas():
+            with self.subTest(nombre):
+                self.assertIn(self.client.get(url).status_code, (403, 405))   # 405: solo POST
+                r = self.client.post(url, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+                self.assertEqual(r.status_code, 403)
+                self.assertIn("No tienes permisos", r.json()["msg"])
+
+    def test_admin_y_asignados_si_entran(self):
+        from .models_presupuesto import AsignacionPresupuesto
+        asignado = User.objects.create_user("COMERCIAL1")
+        AsignacionPresupuesto.objects.create(usuario=asignado, presupuesto="comercial")
+        for usuario in (User.objects.create_user("admin"), asignado):
+            self.client.force_login(usuario)
+            with self.subTest(usuario.username):
+                self.assertEqual(self.client.get(reverse("baseComercial")).status_code, 200)
+        # otra asignación (p. ej. nómina) no da permiso al comercial
+        otro = User.objects.create_user("NOMINA1")
+        AsignacionPresupuesto.objects.create(usuario=otro, presupuesto="nomina")
+        self.client.force_login(otro)
+        self.assertEqual(self.client.get(reverse("baseComercial")).status_code, 403)
+
+    def test_las_demas_rutas_no_se_tocan(self):
+        # selección de cuentas contables la usan los presupuestos por área: sin el permiso comercial
+        from . import views
+        self.assertFalse(hasattr(views.seleccion_cuentas_contables, "__wrapped__"))
+        self.assertTrue(hasattr(views.obtener_presupuesto_comercial, "__wrapped__"))
+
+
 class DestinosComercialesTests(TestCase):
     """Ajustes → Destinos de nómina → Cargos comerciales: asesor comercial, auxiliar
     comercial y asistente técnico comercial llevan un destino VT-00001 … VT-00027."""
@@ -4733,6 +4790,11 @@ class ImportarVentasComercialDosFormatosTests(TestCase):
     LINNOMBRE, VGRNOMBRE...) y con los del formato alterno (zona, linea_nom,
     cliente_grp_nom, ven_cc, sku...). Ambos guardan lo mismo."""
 
+    def setUp(self):
+        super().setUp()
+        # el presupuesto comercial pide permiso: admin entra siempre
+        self.client.force_login(User.objects.get_or_create(username="admin")[0])
+
     FILAS = [
         # año, mes, zona, cedula vendedor, sku, línea, grupo cliente, subtotal, costo
         (2025, 7, "001", "66728632", "2542", "MEDICAMENTOS VETERINARIOS BOVINOS", "CLIENTE", "13.700,00", "11.178,00"),
@@ -4821,6 +4883,11 @@ class LectorExcelPorPartesTests(TestCase):
 class ImportarVentasComercialSegundoPlanoTests(TransactionTestCase):
     """Por defecto el archivo se procesa en segundo plano y se consulta el estado."""
 
+    def setUp(self):
+        super().setUp()
+        # el presupuesto comercial pide permiso: admin entra siempre
+        self.client.force_login(User.objects.get_or_create(username="admin")[0])
+
     def test_procesa_y_reporta_estado(self):
         import threading, time
         prueba = ImportarVentasComercialDosFormatosTests()
@@ -4908,6 +4975,7 @@ class ReemplazarAnioVentasTests(TestCase):
              "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"]
 
     def setUp(self):
+        self.client.force_login(User.objects.get_or_create(username="admin")[0])   # permiso comercial
         B = views.BdVentasComercial.objects
         comun = dict(centro_de_operacion=1, nombre_centro_de_operacion="ALMACEN TULUA")
         # 2026: una combinación que viene en el archivo y otra que no

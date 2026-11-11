@@ -15,9 +15,11 @@ Las asignaciones viven en la tabla presupuesto_asignacion (AsignacionPresupuesto
 y son también las que dan permiso de entrar a cada presupuesto.
 """
 import json
+from functools import wraps
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
 from django.db import transaction
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
@@ -66,6 +68,37 @@ def puede_entrar(usuario, presupuesto):
     return bool(usuario.is_authenticated and (
         usuario.username in info["siempre"] or tiene_asignacion(usuario, presupuesto)
     ))
+
+
+def _espera_json(request):
+    """Petición hecha desde la pantalla (fetch / AJAX / envío de datos), no una página."""
+    return (request.headers.get("x-requested-with") == "XMLHttpRequest"
+            or "application/json" in request.headers.get("accept", "")
+            or request.content_type == "application/json"
+            or request.method != "GET")
+
+
+def requiere_presupuesto(presupuesto):
+    """Decorador: solo entran quienes pueden entrar a `presupuesto` (puede_entrar:
+    los fijos del catálogo + los asignados en Ajustes → Asignación de presupuestos).
+    Sin sesión: al login (o 401 si es una petición de datos). Sin permiso: 403."""
+    def decorador(vista):
+        @wraps(vista)
+        def envuelta(request, *args, **kwargs):
+            if not request.user.is_authenticated:
+                if _espera_json(request):
+                    return JsonResponse({"success": False, "status": "error",
+                                         "msg": "Tu sesión terminó: vuelve a iniciar sesión."}, status=401)
+                return redirect_to_login(request.get_full_path())
+            if not puede_entrar(request.user, presupuesto):
+                if _espera_json(request):
+                    return JsonResponse({"success": False, "status": "error",
+                                         "msg": "⛔ No tienes permisos para el presupuesto "
+                                                f"{PRESUPUESTOS_ASIGNABLES[presupuesto]['label']}."}, status=403)
+                return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+            return vista(request, *args, **kwargs)
+        return envuelta
+    return decorador
 
 
 def _asignados(usuario):

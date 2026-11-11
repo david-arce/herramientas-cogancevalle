@@ -38,6 +38,7 @@ import numpy as np
 import json
 import zlib
 from django.utils import timezone
+from .views_asignaciones import requiere_presupuesto  # permisos del presupuesto comercial
 from django.contrib.auth.decorators import login_required
 
 logger_presupuesto = logging.getLogger('presupuestoApp.cargas')
@@ -560,6 +561,7 @@ def _procesar_importacion(trabajo, ruta_archivo):
 
 # importar ventas comercial
 @csrf_exempt
+@requiere_presupuesto("comercial")
 def importar_bd_ventas_comercial(request):
     """
     Recibe el Excel de ventas detalladas, lo depura/transforma según
@@ -599,6 +601,7 @@ def importar_bd_ventas_comercial(request):
     }, status=202)
 
 
+@requiere_presupuesto("comercial")
 def estado_importar_bd_ventas_comercial(request, trabajo):
     """Estado de una importación en segundo plano."""
     ruta = _ruta_estado(trabajo)
@@ -611,6 +614,7 @@ def estado_importar_bd_ventas_comercial(request, trabajo):
     return JsonResponse(datos, status=200)
 
 
+@requiere_presupuesto("comercial")
 def vista_importar_bd_ventas_comercial(request):
     anio = timezone.now().year
     return render(request, 'presupuesto_comercial/importar_ventas_comercial.html', {
@@ -737,6 +741,7 @@ def reemplazar_anio_ventas(datos, anio, campo):
 
 
 @require_POST
+@requiere_presupuesto("comercial")
 def importar_resumen_anual_ventas(request):
     """Sube el resumen ZONA / SEGMENTO / LINEA / ENERO..DICIEMBRE y reemplaza el año elegido."""
     archivo = request.FILES.get('file')
@@ -875,15 +880,15 @@ def indice_por_clave(queryset_values, campos_clave):
         indice[clave] = item
     return indice
 
-@login_required
+@requiere_presupuesto("comercial")
 def base_comercial(request):
-    # Quién entra: "admin" + los usuarios con Comercial asignado (Ajustes → Asignación de presupuestos).
-    from .views_asignaciones import puede_entrar
-    if not puede_entrar(request.user, "comercial"):
-        return HttpResponseForbidden("⛔ No tienes permisos para acceder a esta página.")
+    # Quién entra: "admin" + los usuarios con Comercial asignado (Ajustes → Asignación de
+    # presupuestos). Lo verifica @requiere_presupuesto("comercial"), igual que en todas
+    # las páginas y peticiones del presupuesto comercial.
     return render(request, 'presupuesto_comercial/base_presupuesto_comercial.html')
 
 # ------------------------------------------PRESUPUESTO GENERAL VENTAS-----------------------------------------------------
+@requiere_presupuesto("comercial")
 def cargar_presupuesto_general_ventas(request):
     year_actual = timezone.now().year
     year_siguiente = year_actual + 1
@@ -951,13 +956,16 @@ def cargar_presupuesto_general_ventas(request):
 
 from . import calculo
 
+@requiere_presupuesto("comercial")
 def obtener_presupuesto_general_ventas(request):
     return JsonResponse(calculo.construir_ventas('general'), safe=False)
 
+@requiere_presupuesto("comercial")
 def vista_presupuesto_general_ventas(request):
     return render(request, 'presupuesto_comercial/presupuesto_general_ventas.html')
 
 # --------------------------PRESUPUESTO POR CENTRO OPERACION VENTAS------------------------
+@requiere_presupuesto("comercial")
 def cargar_presupuesto_centro_ventas(request):
     year_actual = timezone.now().year
     year_siguiente = year_actual + 1
@@ -1050,13 +1058,16 @@ def cargar_presupuesto_centro_ventas(request):
 
     return JsonResponse(list(PresupuestoCentroOperacionVentas.objects.values()), safe=False)
  
+@requiere_presupuesto("comercial")
 def obtener_presupuesto_centro_ventas(request):
     return JsonResponse(calculo.construir_ventas('centro'), safe=False)
 
+@requiere_presupuesto("comercial")
 def vista_presupuesto_centro_ventas(request):
     return render(request, 'presupuesto_comercial/presupuesto_centro_ventas.html') 
 
 #---------------PRESUPUESTO POR CENTRO OPERACION - SEGMENTO VENTAS--------
+@requiere_presupuesto("comercial")
 def cargar_presupuesto_centro_segmento_ventas(request):
     year_actual = timezone.now().year 
     year_siguiente = year_actual + 1
@@ -1160,13 +1171,16 @@ def cargar_presupuesto_centro_segmento_ventas(request):
 
     return JsonResponse(list(PresupuestoCentroSegmentoVentas.objects.values()), safe=False)
 
+@requiere_presupuesto("comercial")
 def obtener_presupuesto_centro_segmento_ventas(request):
     return JsonResponse(calculo.construir_ventas('centro_segmento'), safe=False)
 
+@requiere_presupuesto("comercial")
 def vista_presupuesto_centro_segmento_ventas(request):
     return render(request, 'presupuesto_comercial/presupuesto_centro_segmento_ventas.html')
 
 #-----------PRESUPUESTO GENERAL COSTOS
+@requiere_presupuesto("comercial")
 def cargar_presupuesto_general_costos(request):
     year_actual = timezone.now().year
     year_siguiente = year_actual + 1
@@ -1234,13 +1248,16 @@ def cargar_presupuesto_general_costos(request):
 
     return JsonResponse(list(PresupuestoGeneralCostos.objects.values()), safe=False)
 
+@requiere_presupuesto("comercial")
 def obtener_presupuesto_general_costos(request):
     return JsonResponse(calculo.construir_costos('general'), safe=False)
 
+@requiere_presupuesto("comercial")
 def vista_presupuesto_general_costos(request):
     return render(request, 'presupuesto_comercial/presupuesto_general_costos.html')
 
 #-----------PRESUPUESTO POR CENTRO OPERACION - COSTOS
+@requiere_presupuesto("comercial")
 def cargar_presupuesto_centro_costos(request):
     year_actual = timezone.now().year
     year_siguiente = year_actual + 1
@@ -1324,13 +1341,16 @@ def cargar_presupuesto_centro_costos(request):
 
     return JsonResponse(list(PresupuestoCentroOperacionCostos.objects.values()), safe=False)
 
+@requiere_presupuesto("comercial")
 def obtener_presupuesto_centro_costos(request):
     return JsonResponse(calculo.construir_costos('centro'), safe=False)
 
+@requiere_presupuesto("comercial")
 def vista_presupuesto_centro_costos(request):
     return render(request, 'presupuesto_comercial/presupuesto_centro_costos.html')
 
 #--------------------------PRESUPUESTO CENTRO OPERACION - SEGMENTO COSTOS---------------
+@requiere_presupuesto("comercial")
 def cargar_presupuesto_centro_segmento_costos(request):
     year_actual = timezone.now().year
     year_siguiente = year_actual + 1
@@ -1419,13 +1439,16 @@ def cargar_presupuesto_centro_segmento_costos(request):
 
     return JsonResponse(list(PresupuestoCentroSegmentoCostos.objects.values()), safe=False)
 
+@requiere_presupuesto("comercial")
 def obtener_presupuesto_centro_segmento_costos(request):
     return JsonResponse(calculo.construir_costos('centro_segmento'), safe=False)
 
+@requiere_presupuesto("comercial")
 def vista_presupuesto_centro_segmento_costos(request):
     return render(request, 'presupuesto_comercial/presupuesto_centro_segmento_costos.html')
 
 # --------------------------PRESUPUESTO CENTRO OPERACION - SEGMENTO - LINEA COSTOS---------------
+@requiere_presupuesto("comercial")
 def cargar_presupuesto_centro_segmento_linea_costos(request):
     df_merged = aux_presupuesto_centro_segmento_linea_costos()
 
@@ -1444,6 +1467,7 @@ def cargar_presupuesto_centro_segmento_linea_costos(request):
 
     return JsonResponse(list(PresupuestoCentroSegLineaCostos.objects.values()), safe=False)
 
+@requiere_presupuesto("comercial")
 def obtener_presupuesto_centro_segmento_linea_costos(request):
     return JsonResponse(calculo.construir_costos('centro_segmento_linea'), safe=False)
 
@@ -1476,10 +1500,12 @@ def aux_presupuesto_centro_segmento_linea_costos():
         how='left',
     )
 
+@requiere_presupuesto("comercial")
 def vista_presupuesto_centro_segmento_linea_costos(request):
     return render(request, 'presupuesto_comercial/presupuesto_centro_segmento_linea_costos.html')
 
 # --------------------------PRESUPUESTO CENTRO OPERACION - SEGMENTO - LINEA VENTAS---------------
+@requiere_presupuesto("comercial")
 def cargar_presupuesto_centro_segmento_linea_ventas(request):
     year_siguiente = _anio_detalle_linea() + 1  # antes: literal "2026"
 
@@ -1560,9 +1586,11 @@ def cargar_presupuesto_centro_segmento_linea_ventas(request):
 
     return JsonResponse(list(PresupuestoCentroSegLineaVentas.objects.values()), safe=False)
 
+@requiere_presupuesto("comercial")
 def obtener_presupuesto_centro_segmento_linea_ventas(request):
     return JsonResponse(calculo.construir_ventas('centro_segmento_linea'), safe=False)
 
+@requiere_presupuesto("comercial")
 def vista_presupuesto_centro_segmento_linea_ventas(request):
     return render(request, 'presupuesto_comercial/presupuesto_centro_segmento_linea_ventas.html')
 
@@ -1710,6 +1738,7 @@ def _guardar_crecimientos(nuevos, year_actual):
 
 
 @csrf_exempt
+@requiere_presupuesto("comercial")
 def guardar_presupuesto_comercial(request):
     """Guarda el % de crecimiento de ventas de las filas recibidas (solo año actual).
 
@@ -1754,6 +1783,7 @@ def guardar_presupuesto_comercial(request):
 # vuelo desde `BdVentasComercial`, porque `PresupuestoComercial` ahora
 # solo guarda el año actual (ver bug 2.16) y no serviría para comparar.
 # =====================================================================
+@requiere_presupuesto("comercial")
 def obtener_comparativo_anual(request):
     """
     Ventas y costos por línea+centro+segmento, año anterior vs año
@@ -1807,6 +1837,7 @@ def obtener_comparativo_anual(request):
         'data': df.to_dict(orient='records'),
     })
 
+@requiere_presupuesto("comercial")
 def vista_comparativo_anual(request):
     return render(request, 'presupuesto_comercial/presupuesto_comparativo_anual.html')
 
@@ -1839,6 +1870,7 @@ def _obtener_df_participacion_mensual():
     """
     return calculo._participacion_mensual()
 
+@requiere_presupuesto("comercial")
 def actualizar_presupuesto_general_ventas(request):
     year_actual = timezone.now().year
     year_siguiente = year_actual + 1
@@ -1905,6 +1937,7 @@ def actualizar_presupuesto_general_ventas(request):
 
     return JsonResponse({"status": "ok", "mensaje": "Presupuesto general de ventas actualizado ✅"})
 
+@requiere_presupuesto("comercial")
 def actualizar_presupuesto_centro_ventas(request):
     year_actual = timezone.now().year
     year_siguiente = year_actual + 1
@@ -1988,6 +2021,7 @@ def actualizar_presupuesto_centro_ventas(request):
 
     return JsonResponse({"status": "ok", "mensaje": "Presupuesto por centro de operación actualizado ✅"})
 
+@requiere_presupuesto("comercial")
 def actualizar_presupuesto_centro_segmento_ventas(request):
     year_actual = timezone.now().year
     year_siguiente = year_actual + 1
@@ -2100,6 +2134,7 @@ def actualizar_presupuesto_centro_segmento_ventas(request):
         "status": "ok", "mensaje": "Presupuesto por centro y segmento actualizado y distribuido por mes ✅",
     })
 
+@requiere_presupuesto("comercial")
 def actualizar_presupuesto_centro_segmento_linea_ventas(request):
     year_actual = timezone.now().year
     year_siguiente = year_actual + 1
@@ -2215,6 +2250,7 @@ def actualizar_presupuesto_centro_segmento_linea_ventas(request):
     })
    
 @csrf_exempt
+@requiere_presupuesto("comercial")
 def importar_crecimiento_ventas(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -2276,6 +2312,7 @@ def importar_crecimiento_ventas(request):
 
     return JsonResponse({'mensaje': mensaje})
 
+@requiere_presupuesto("comercial")
 def exportar_crecimiento_ventas(request):
     """Excel base para cargar crecimientos: las MISMAS filas que muestra la
     pantalla de proyección (línea+centro+segmento con datos en el año actual),
@@ -2305,9 +2342,11 @@ def exportar_crecimiento_ventas(request):
     df.to_excel(response, index=False)
     return response
 
+@requiere_presupuesto("comercial")
 def obtener_presupuesto_comercial(request):
     return JsonResponse(calculo._a_registros(calculo.calcular_comercial()), safe=False)
 
+@requiere_presupuesto("comercial")
 def vista_presupuesto_comercial(request):
     return render(request, 'presupuesto_comercial/presupuesto_comercial_final.html', {
         # El botón "Recalcular presupuesto de ventas" solo se muestra a quien puede generarlo
