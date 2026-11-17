@@ -4443,8 +4443,12 @@ CUENTA_COSTO_VENTAS = '613522'
 CUENTAS_GENERADAS = {**CUENTAS_VENTAS, CUENTA_COSTO_VENTAS: 'Costo de ventas'}
 # Noviembre y diciembre: la participación se saca sobre las ventas BRUTAS
 # (crédito + contado, sin los descuentos otorgados, que esos meses son muy
-# altos). Crédito + contado = proyección del mes y los descuentos van aparte,
-# con su peso sobre las ventas brutas. Los demás meses: sobre las ventas netas.
+# altos) y se reparte la venta BRUTA presupuestada:
+#   descuento     = proyección (venta neta) × descuento ÷ ventas brutas del ejecutado
+#   venta bruta   = proyección + el descuento (en positivo)
+#   crédito/contado = venta bruta × su participación sobre crédito + contado
+# Las ventas netas quedan iguales a la proyección. Ver repartir_proyeccion_bruta.
+# Los demás meses: sobre las ventas netas (repartir_proyeccion).
 MESES_PARTICIPACION_BRUTA = (11, 12)
 CUENTAS_VENTAS_BRUTAS = ('1', '2')
 
@@ -4456,21 +4460,45 @@ def repartir_proyeccion(proyeccion, participacion):
     valor(cuenta) = proyección × participación(cuenta)
     (los descuentos tienen participación negativa, así que quedan negativos).
 
-    Con participación sobre ventas netas las tres suman 1, así que los valores
-    suman la proyección. En noviembre y diciembre (sobre ventas brutas) crédito
-    + contado suman 1 y los descuentos se restan aparte: los valores suman
-    proyección × (suma de participaciones). Los pesos que se pierden al
-    redondear se le asignan a la cuenta de mayor peso para que la suma sea EXACTA.
+    Las participaciones suman 1, así que los valores suman la proyección; los
+    pesos que se pierden al redondear se le asignan a la cuenta de mayor peso
+    para que la suma sea EXACTA.
 
     Ej. Tuluá enero: 1.238.511.267 × 61,6236 % = 763.215.019 (ventas a crédito).
     """
     valores = {cta: round(proyeccion * pct) for cta, pct in participacion.items()}
     if valores:
-        residuo = round(proyeccion * sum(participacion.values())) - sum(valores.values())
+        residuo = round(proyeccion) - sum(valores.values())
         if residuo:
             mayor = max(participacion, key=lambda c: abs(participacion[c]))
             valores[mayor] += residuo
     return valores
+
+
+def repartir_proyeccion_bruta(proyeccion, participacion, descuentos_manuales=None):
+    """Noviembre y diciembre: `participacion` está sobre las ventas BRUTAS
+    (crédito + contado suman 1; el descuento es su peso negativo sobre ellas).
+
+      descuento   = proyección × participación del descuento        (negativo)
+      venta bruta = proyección − descuento   (la venta neta + el descuento)
+      crédito, contado = venta bruta × su participación (suman la venta bruta exacta)
+
+    Así las ventas netas (crédito + contado + descuento) = la proyección.
+    Ej. noviembre: 5.897.556.244 × −3,2326 % = −190.647.092 de descuento;
+    venta bruta 6.088.203.336 repartida 68,90 % crédito y 31,10 % contado.
+
+    `descuentos_manuales` {cuenta: valor}: si el descuento del mes se escribió a
+    mano (modo edición), la venta bruta se arma con ESE descuento, que es el que
+    queda en pantalla; así la venta neta sigue llegando a la proyección.
+    """
+    descuentos = {cta: round(proyeccion * pct) for cta, pct in participacion.items()
+                  if cta not in CUENTAS_VENTAS_BRUTAS}
+    for cta, valor in (descuentos_manuales or {}).items():
+        if cta in descuentos and valor is not None:
+            descuentos[cta] = round(valor)
+    bruta = round(proyeccion) - sum(descuentos.values())
+    brutas = {cta: pct for cta, pct in participacion.items() if cta in CUENTAS_VENTAS_BRUTAS}
+    return {**repartir_proyeccion(bruta, brutas), **descuentos}
 
 # sede (ConsolidadoTotalBase) -> nombre_centro_de_operacion (BdVentasComercial)
 # Se arma con los códigos de zona que ya existen, así no hay un tercer mapeo que mantener:
@@ -4701,11 +4729,20 @@ def generar_presupuesto_ventas(anio_base=None, usuario='', huella=None):
         # ── cálculo: cada cuenta = proyección del mes × su participación ──
         #   ej.: crédito 61,62 %, contado 38,90 %, descuentos -0,53 %
         #        → la suma de las tres es la proyección del mes
-        #   noviembre y diciembre (sobre ventas brutas): crédito + contado =
-        #        proyección del mes y los descuentos se restan aparte
+        #   noviembre y diciembre: a la proyección (venta neta) se le suma el
+        #        descuento y esa venta bruta se reparte con la participación
+        #        sobre ventas brutas (repartir_proyeccion_bruta)
         valores = {cta: {} for cta in CUENTAS_VENTAS}
+        manuales_ventas = _ajustes_sede(sede, anio_ppto)
         for mes in range(1, 13):
-            for cta, valor in repartir_proyeccion(proy_centro[mes], participacion[mes]).items():
+            if mes in MESES_PARTICIPACION_BRUTA:
+                # el descuento que queda en pantalla (el manual, si lo hay)
+                desc_manual = {cta: v for (cta, m), v in manuales_ventas.items()
+                               if m == mes and cta in CUENTAS_VENTAS and cta not in CUENTAS_VENTAS_BRUTAS}
+                repartido = repartir_proyeccion_bruta(proy_centro[mes], participacion[mes], desc_manual)
+            else:
+                repartido = repartir_proyeccion(proy_centro[mes], participacion[mes])
+            for cta, valor in repartido.items():
                 valores[cta][mes] = valor
 
         # ── costo de ventas = ventas netas presupuestadas del mes × % costo del ejecutado de la sede ──

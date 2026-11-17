@@ -3123,9 +3123,10 @@ class PresupuestoVentasRepartoTests(TestCase):
 
 
 class PresupuestoVentasNovDicBrutasTests(TestCase):
-    """Noviembre y diciembre: la proyección se reparte con la participación sobre las
-    ventas BRUTAS (crédito + contado, sin descuentos otorgados). Los demás meses, igual
-    que antes: sobre las ventas netas."""
+    """Noviembre y diciembre: a la proyección (venta neta) se le suma el descuento
+    otorgado y esa venta BRUTA se reparte con la participación sobre ventas brutas
+    (crédito + contado). Las ventas netas siguen siendo la proyección. Los demás
+    meses, igual que antes: participación sobre ventas netas."""
 
     # Ejecutado Tuluá: enero normal; noviembre con descuentos altos
     ENERO = (759_222_744, 479_318_539, -6_508_501)
@@ -3150,22 +3151,34 @@ class PresupuestoVentasNovDicBrutasTests(TestCase):
                                           mcnfecha=datetime.date(self.anio + 1, mes, 1))
                     .values_list("mcncuenta", "valor"))
 
-    def test_noviembre_reparte_sobre_ventas_brutas(self):
+    def test_noviembre_reparte_la_venta_bruta(self):
         credito, contado, descuento = self.NOVIEMBRE
         brutas = credito + contado
         v = self.ppto(11)
-        self.assertAlmostEqual(v["1"] + v["2"], self.PROYECCION, delta=1)        # crédito + contado = proyección
-        self.assertAlmostEqual(v["1"], self.PROYECCION * credito / brutas, delta=1)
-        self.assertAlmostEqual(v["2"], self.PROYECCION * contado / brutas, delta=1)
-        self.assertEqual(v["41750201"], round(self.PROYECCION * descuento / brutas))   # el descuento se resta aparte
-        self.assertLess(sum(v.values()), self.PROYECCION)                        # ventas netas = proyección − descuento
+        desc = round(self.PROYECCION * descuento / brutas)                       # −3,23 % de la proyección
+        bruta = self.PROYECCION - desc                                           # venta neta + descuento
+        self.assertEqual(v["41750201"], desc)
+        self.assertEqual(v["1"] + v["2"], bruta)                                 # crédito + contado = venta bruta
+        self.assertAlmostEqual(v["1"], bruta * credito / brutas, delta=1)
+        self.assertAlmostEqual(v["2"], bruta * contado / brutas, delta=1)
+        self.assertEqual(sum(v.values()), self.PROYECCION)                       # ventas netas = proyección, exacto
         self.assertAlmostEqual(self.r["participacion"]["tulua"]["Noviembre"]["1"]
                                + self.r["participacion"]["tulua"]["Noviembre"]["2"], 100, places=3)
 
     def test_diciembre_sin_ejecutado_usa_la_bruta_del_anio(self):
         v = self.ppto(12)
-        self.assertAlmostEqual(v["1"] + v["2"], self.PROYECCION, delta=1)
         self.assertLess(v["41750201"], 0)
+        self.assertEqual(v["1"] + v["2"], self.PROYECCION - v["41750201"])
+        self.assertEqual(sum(v.values()), self.PROYECCION)
+
+    def test_ejemplo_de_la_pantalla(self):
+        # Total Base noviembre: participación bruta del ejecutado y proyección 5.897.556.244
+        c, k, d = 4_199_265_569, 1_895_306_593, -197_015_918
+        part = {"1": c / (c + k), "2": k / (c + k), "41750201": d / (c + k)}
+        v = views.repartir_proyeccion_bruta(5_897_556_244, part)
+        self.assertEqual(v["41750201"], -190_647_092)
+        self.assertEqual(v["1"] + v["2"], 6_088_203_336)                         # 5.897.556.244 + 190.647.092
+        self.assertEqual(sum(v.values()), 5_897_556_244)
 
     def test_los_demas_meses_siguen_sobre_ventas_netas(self):
         for mes in (1, 6, 10):
@@ -3173,6 +3186,64 @@ class PresupuestoVentasNovDicBrutasTests(TestCase):
                 self.assertEqual(sum(self.ppto(mes).values()), self.PROYECCION)   # netas = proyección, exacto
         credito, contado, descuento = self.ENERO
         self.assertAlmostEqual(self.ppto(1)["1"], self.PROYECCION * credito / (credito + contado + descuento), delta=1)
+
+
+class PresupuestoVentasNovDicLlegaALaProyeccionTests(TestCase):
+    """Con las cifras de la pantalla "Proyección presupuesto centro operación - Ventas":
+    en noviembre y diciembre las ventas netas presupuestadas (crédito + contado +
+    descuentos) de cada sede y del Total Base son exactamente la proyección."""
+
+    NOV = [1_303_664_684, 1_339_035_692, 1_624_924_720, 1_526_901_381]     # total 5.794.526.477
+    DIC = [1_267_192_114, 1_288_293_204, 1_608_479_111, 1_465_027_343]     # total 5.628.991.772
+
+    def test_netas_iguales_a_la_proyeccion(self):
+        from .models import ConsolidadoTotalBase as T
+        anio = timezone.now().year
+        sedes = list(views.SEDE_CENTRO_OPERACION.items())[:4]
+        proyeccion = {}
+        for i, (sede, centro) in enumerate(sedes):
+            # ejecutado de cada sede con descuentos altos en noviembre y diciembre
+            for mes in range(1, 13):
+                descuento = -197_015_918 if mes in (11, 12) else -40_000_000
+                for cta, nombre, valor in (("1", "Ventas a crédito", 4_000_000_000 + i * 1_000_000),
+                                           ("2", "Ventas a contado", 1_800_000_000 - i * 500_000),
+                                           ("41750201", "Descuentos otorgados x pto pago", descuento)):
+                    T.objects.create(mcncuenta=cta, ctanombre=nombre, mcnfecha=datetime.date(anio, mes, 1),
+                                     valor=valor, sede=sede, origen="ejecutado")
+            proyeccion[centro] = {m: 1_000_000_000 for m in range(1, 13)}
+            proyeccion[centro][11], proyeccion[centro][12] = self.NOV[i], self.DIC[i]
+        with mock.patch.object(views, "_proyeccion_ventas_por_centro", return_value=proyeccion):
+            r = views.generar_presupuesto_ventas()
+        self.assertEqual(len(r["sedes_procesadas"]), len(sedes))
+
+        def netas(sede, mes):
+            return sum(T.objects.filter(origen="presupuestado", sede=sede, mcncuenta__in=["1", "2", "41750201"],
+                                        mcnfecha=datetime.date(anio + 1, mes, 1)).values_list("valor", flat=True))
+        for i, (sede, _) in enumerate(sedes):
+            self.assertEqual(netas(sede, 11), self.NOV[i], sede)
+            self.assertEqual(netas(sede, 12), self.DIC[i], sede)
+        total = lambda mes: sum(netas(s, mes) for s, _ in sedes)   # noqa: E731  (Total Base)
+        self.assertEqual(total(11), 5_794_526_477)
+        self.assertEqual(total(12), 5_628_991_772)
+        # con el descuento de noviembre escrito a mano en una sede, la venta sigue llegando
+        from .models import AjustePresupuestado
+        sede0 = sedes[0][0]
+        AjustePresupuestado.objects.create(sede=sede0, cuenta="41750201", mes=11, anio=anio + 1, valor=-197_015_918)
+        with mock.patch.object(views, "_proyeccion_ventas_por_centro", return_value=proyeccion):
+            views.generar_presupuesto_ventas()
+        generados = dict(T.objects.filter(origen="presupuestado", sede=sede0, mcncuenta__in=["1", "2"],
+                                          mcnfecha=datetime.date(anio + 1, 11, 1)).values_list("mcncuenta", "valor"))
+        # en pantalla: crédito + contado generados + el descuento manual = la venta
+        self.assertEqual(generados["1"] + generados["2"] - 197_015_918, self.NOV[0])
+        ppto = views.calcular_movimientos("presupuestado", "total")["data"]
+        en_pantalla = sum(ppto[c]["meses"]["Noviembre"] for c in ("1", "2", "41750201") if c in ppto)
+        self.assertEqual(round(en_pantalla), 5_794_526_477)                      # Total Base
+
+        # y crédito + contado = venta + descuento (la venta bruta que se reparte)
+        for i, (sede, _) in enumerate(sedes):
+            v = dict(T.objects.filter(origen="presupuestado", sede=sede, mcnfecha=datetime.date(anio + 1, 11, 1),
+                                      mcncuenta__in=["1", "2", "41750201"]).values_list("mcncuenta", "valor"))
+            self.assertEqual(v["1"] + v["2"], self.NOV[i] - v["41750201"])
 
 
 class PresupuestoCostoVentasTests(TestCase):
