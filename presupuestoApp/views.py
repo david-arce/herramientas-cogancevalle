@@ -4441,6 +4441,12 @@ USUARIOS_GENERAR_VENTAS = ['admin', 'NICOLAS']
 # misma pestaña (también en Total Base): ver _pct_costo_pantalla_ejecutado.
 CUENTA_COSTO_VENTAS = '613522'
 CUENTAS_GENERADAS = {**CUENTAS_VENTAS, CUENTA_COSTO_VENTAS: 'Costo de ventas'}
+# Noviembre y diciembre: la participación se saca sobre las ventas BRUTAS
+# (crédito + contado, sin los descuentos otorgados, que esos meses son muy
+# altos). Crédito + contado = proyección del mes y los descuentos van aparte,
+# con su peso sobre las ventas brutas. Los demás meses: sobre las ventas netas.
+MESES_PARTICIPACION_BRUTA = (11, 12)
+CUENTAS_VENTAS_BRUTAS = ('1', '2')
 
 
 
@@ -4450,15 +4456,17 @@ def repartir_proyeccion(proyeccion, participacion):
     valor(cuenta) = proyección × participación(cuenta)
     (los descuentos tienen participación negativa, así que quedan negativos).
 
-    Las participaciones suman 1, así que los valores suman la proyección; los
-    pesos que se pierden al redondear se le asignan a la cuenta de mayor peso
-    para que la suma sea EXACTA.
+    Con participación sobre ventas netas las tres suman 1, así que los valores
+    suman la proyección. En noviembre y diciembre (sobre ventas brutas) crédito
+    + contado suman 1 y los descuentos se restan aparte: los valores suman
+    proyección × (suma de participaciones). Los pesos que se pierden al
+    redondear se le asignan a la cuenta de mayor peso para que la suma sea EXACTA.
 
     Ej. Tuluá enero: 1.238.511.267 × 61,6236 % = 763.215.019 (ventas a crédito).
     """
     valores = {cta: round(proyeccion * pct) for cta, pct in participacion.items()}
     if valores:
-        residuo = round(proyeccion) - sum(valores.values())
+        residuo = round(proyeccion * sum(participacion.values())) - sum(valores.values())
         if residuo:
             mayor = max(participacion, key=lambda c: abs(participacion[c]))
             valores[mayor] += residuo
@@ -4499,6 +4507,8 @@ def _participacion_ventas_sede(anio_base, sede):
     """
     {mes: {cuenta: porcentaje}} del ejecutado de una sede.
     participación = valor de la cuenta / VENTAS NETAS (cuentas 1 + 2 + 41750201).
+    En noviembre y diciembre (MESES_PARTICIPACION_BRUTA): / VENTAS BRUTAS
+    (cuentas 1 + 2, sin los descuentos).
     Las cuentas se reconocen por número o por nombre.
     """
     nombre = SEDE_CONFIG_CONSOLIDADO[sede]['nombre']
@@ -4519,20 +4529,24 @@ def _participacion_ventas_sede(anio_base, sede):
         por_mes[f['mcnfecha__month']][cta] += valor
         anual[cta] += valor
 
-    def a_porcentaje(valores):
-        ventas_netas = sum(valores.values())
-        if not ventas_netas:
+    def a_porcentaje(valores, base_cuentas=None):
+        base = sum(valores[c] for c in (base_cuentas or valores))   # ventas netas (o brutas)
+        if not base:
             return None
-        return {cta: val / ventas_netas for cta, val in valores.items()}
+        return {cta: val / base for cta, val in valores.items()}
 
     participacion_anual = a_porcentaje(anual)
     if participacion_anual is None:
         return None
+    participacion_anual_bruta = a_porcentaje(anual, CUENTAS_VENTAS_BRUTAS) or participacion_anual
 
-    return {
-        mes: (a_porcentaje(por_mes[mes]) if mes in por_mes else None) or participacion_anual
-        for mes in range(1, 13)
-    }
+    def del_mes(mes):
+        if mes in MESES_PARTICIPACION_BRUTA:
+            return ((a_porcentaje(por_mes[mes], CUENTAS_VENTAS_BRUTAS) if mes in por_mes else None)
+                    or participacion_anual_bruta)
+        return (a_porcentaje(por_mes[mes]) if mes in por_mes else None) or participacion_anual
+
+    return {mes: del_mes(mes) for mes in range(1, 13)}
 
 def _ventas_y_costo_ejecutado(sede):
     """({mes: ventas netas}, {mes: costo de ventas}, total ventas, total costo) del
@@ -4687,6 +4701,8 @@ def generar_presupuesto_ventas(anio_base=None, usuario='', huella=None):
         # ── cálculo: cada cuenta = proyección del mes × su participación ──
         #   ej.: crédito 61,62 %, contado 38,90 %, descuentos -0,53 %
         #        → la suma de las tres es la proyección del mes
+        #   noviembre y diciembre (sobre ventas brutas): crédito + contado =
+        #        proyección del mes y los descuentos se restan aparte
         valores = {cta: {} for cta in CUENTAS_VENTAS}
         for mes in range(1, 13):
             for cta, valor in repartir_proyeccion(proy_centro[mes], participacion[mes]).items():
