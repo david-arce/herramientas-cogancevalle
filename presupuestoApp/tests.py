@@ -2650,6 +2650,9 @@ class SubidaLotesExcelTests(TestCase):
 
     COLS = ["mcncuenta", "mcnfecha", "mcnvaldebi", "mcnvalcred", "ctanombre"]
 
+    def setUp(self):
+        self.client.force_login(User.objects.create_user("NICOLAS"))
+
     def subir(self, nombre, datos, gzip_=False, **extra):
         import gzip
         cuerpo = json.dumps(datos).encode()
@@ -2698,6 +2701,40 @@ class SubidaLotesExcelTests(TestCase):
         self.assertEqual(r.json()["insertados"], 2500)
         inserts = [q for q in ctx.captured_queries if q["sql"].lstrip().upper().startswith("INSERT")]
         self.assertLess(len(inserts), 100)          # antes: 2.500 INSERT (uno por fila)
+
+
+class AccesoCuentasTests(TestCase):
+    """Los endpoints de Cuenta 4 / 5 (ver, subir, borrar) piden sesión de admin o NICOLAS."""
+
+    ENDPOINTS = [
+        "obtener_cuenta5_base", "subir_excel_cuenta5", "borrar_cuenta5_base",
+        "obtener_cuenta5_presupuestado", "subir_excel_cuenta5_presupuestado", "borrar_cuenta5_presupuestado",
+        "obtener_cuenta4_base", "subir_excel_cuenta4", "borrar_cuenta4_base",
+        "obtener_cuenta4_presupuestado", "subir_excel_cuenta4_presupuestado", "borrar_cuenta4_presupuestado",
+    ]
+
+    def test_sin_sesion_responde_401_y_no_borra(self):
+        from .models import Cuenta5Base
+        Cuenta5Base.objects.create(mcncuenta="5105")
+        self.assertEqual(len(self.ENDPOINTS), 12)
+        for nombre in self.ENDPOINTS:
+            r = self.client.post(reverse(nombre), "{}", content_type="application/json")
+            self.assertEqual(r.status_code, 401, nombre)
+        self.assertEqual(Cuenta5Base.objects.count(), 1)
+
+    def test_otro_usuario_responde_403(self):
+        self.client.force_login(User.objects.create_user("PLOZANO"))
+        for nombre in self.ENDPOINTS:
+            r = self.client.post(reverse(nombre), "{}", content_type="application/json")
+            self.assertEqual(r.status_code, 403, nombre)
+
+    def test_usuario_permitido_entra(self):
+        from .models import Cuenta5Base
+        Cuenta5Base.objects.create(mcncuenta="5105")
+        self.client.force_login(User.objects.create_user("NICOLAS"))
+        self.assertEqual(self.client.get(reverse("obtener_cuenta5_base")).json()["recordsTotal"], 1)
+        self.assertEqual(self.client.post(reverse("borrar_cuenta5_base")).json()["status"], "ok")
+        self.assertFalse(Cuenta5Base.objects.exists())
 
 
 class FilasCalculadasEnOrdenTests(TestCase):

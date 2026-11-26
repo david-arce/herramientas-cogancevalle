@@ -1,6 +1,6 @@
 from collections import defaultdict
 import datetime
-from functools import lru_cache
+from functools import lru_cache, wraps
 import re
 import unicodedata
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
@@ -2476,6 +2476,23 @@ def date_to_excel_serial(value):
         return None
     return (fecha - datetime.date(1899, 12, 30)).days
 
+# Usuarios que pueden ver, subir y borrar Cuenta 4 / Cuenta 5 (base y presupuestado).
+USUARIOS_CUENTAS = ('admin', 'NICOLAS')
+
+
+def solo_usuarios_cuentas(vista):
+    """Protege las peticiones (fetch) de Cuenta 4 / 5: sin sesión → 401, otro usuario → 403.
+    Responde JSON en vez de redirigir al login, porque las llama el JS de la página."""
+    @wraps(vista)
+    def envoltura(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({'status': 'error', 'message': 'Inicia sesión de nuevo.'}, status=401)
+        if request.user.username not in USUARIOS_CUENTAS:
+            return JsonResponse({'status': 'error', 'message': 'No tienes permisos.'}, status=403)
+        return vista(request, *args, **kwargs)
+    return envoltura
+
+
 @login_required
 def cuenta5(request):
     usuarios_permitidos = ['admin', 'NICOLAS']
@@ -2484,6 +2501,7 @@ def cuenta5(request):
     return render(request, "presupuesto_consolidado/cuenta5_base.html")
 
 @csrf_exempt
+@solo_usuarios_cuentas
 def obtener_cuenta5_base(request):
     try:
         params = request.POST or request.GET  # funciona con ambos métodos
@@ -2516,10 +2534,12 @@ def obtener_cuenta5_base(request):
         return JsonResponse({'error': str(e)}, status=500) 
     
 @csrf_exempt
+@solo_usuarios_cuentas
 def subir_excel_cuenta5(request):
     return _subir_lote_excel(request, Cuenta5Base, "cuenta5_base")
 
 @csrf_exempt
+@solo_usuarios_cuentas
 def borrar_cuenta5_base(request):
     if request.method == "POST":
         Cuenta5Base.objects.all().delete()
@@ -2535,6 +2555,7 @@ def cuenta5_presupuestado(request):
     return render(request, "presupuestado/cuenta5_presupuestado.html")
 
 @csrf_exempt
+@solo_usuarios_cuentas
 def obtener_cuenta5_presupuestado(request):
     try:
         params = request.POST or request.GET  # funciona con ambos métodos
@@ -2567,10 +2588,12 @@ def obtener_cuenta5_presupuestado(request):
         return JsonResponse({'error': str(e)}, status=500) 
   
 @csrf_exempt
+@solo_usuarios_cuentas
 def subir_excel_cuenta5_presupuestado(request):
     return _subir_lote_excel(request, Cuenta5Presupuestado, "cuenta5_presupuestado")
 
 @csrf_exempt
+@solo_usuarios_cuentas
 def borrar_cuenta5_presupuestado(request):
     if request.method == "POST":
         Cuenta5Presupuestado.objects.all().delete()
@@ -2587,6 +2610,7 @@ def cuenta4(request):
     return render(request, "presupuesto_consolidado/cuenta4_base.html")
 
 @csrf_exempt
+@solo_usuarios_cuentas
 def obtener_cuenta4_base(request):
     try:
         params = request.POST or request.GET  # funciona con ambos métodos
@@ -2619,10 +2643,12 @@ def obtener_cuenta4_base(request):
         return JsonResponse({'error': str(e)}, status=500) 
     
 @csrf_exempt
+@solo_usuarios_cuentas
 def subir_excel_cuenta4(request):
     return _subir_lote_excel(request, Cuenta4Base, "cuenta4_base")
 
 @csrf_exempt
+@solo_usuarios_cuentas
 def borrar_cuenta4_base(request):
     if request.method == "POST":
         Cuenta4Base.objects.all().delete()
@@ -2638,6 +2664,7 @@ def cuenta4_presupuestado(request):
     return render(request, "presupuestado/cuenta4_presupuestado.html")
 
 @csrf_exempt
+@solo_usuarios_cuentas
 def obtener_cuenta4_presupuestado(request):
     try:
         params = request.POST or request.GET  # funciona con ambos métodos
@@ -2670,10 +2697,12 @@ def obtener_cuenta4_presupuestado(request):
         return JsonResponse({'error': str(e)}, status=500) 
   
 @csrf_exempt
+@solo_usuarios_cuentas
 def subir_excel_cuenta4_presupuestado(request):
     return _subir_lote_excel(request, Cuenta4Presupuestado, "cuenta4_presupuestado")
 
 @csrf_exempt
+@solo_usuarios_cuentas
 def borrar_cuenta4_presupuestado(request):
     if request.method == "POST":
         Cuenta4Presupuestado.objects.all().delete()
