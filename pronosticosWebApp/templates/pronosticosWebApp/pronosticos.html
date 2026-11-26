@@ -2,48 +2,54 @@
 {% load static %} 
 {% block title %}Pronósticos{% endblock %} 
 
+{# Esta página no usa Bootstrap ni Bootstrap Icons: se omiten los estilos de base.html #}
+{% block libs_css %}{% endblock %}
+
 {% block css %}
 <link href="{% static 'pronosticosWebApp/css/index.css' %}" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/jq-3.7.0/dt-2.0.8/b-3.0.2/sp-2.3.1/sl-2.0.3/datatables.min.css">
 {% endblock %}
 
 {% block content %}
 <img
-  class="mx-auto d-block"
+  class="logo-pronosticos"
   src="{% static 'pronosticosWebApp/img/logo_cogancevalle2.png' %}"
   alt="logo"
-  style="width: 22%"
 />
 
-<div class="container">
-  <div class="row my-4">
-    <div class="col-sm-12 col-md-12 col-lg-12 col-xl-12 mx-auto">
-      <div id="chart" class="chart"></div>
-    </div>
+<div class="contenedor">
+  <div id="chart" class="chart"></div>
+</div>
+
+<div class="fila-centrada">
+  <div id="loader" class="spinner" role="status" style="display: none">
+    <span class="solo-lectores">Cargando...</span>
   </div>
 </div>
 
-<div class="d-flex justify-content-center">
-  <div class="spinner-border" role="status" style="display: none">
-    <span class="visually-hidden">Loading...</span>
-  </div>
-</div>
-
-<div class="d-flex justify-content-center p-3">
-  <button id="send-data" class="btn btn-primary btn-md">
-    <i class="bi bi-graph-up"> Generar gráfica</i>
+<div class="fila-centrada">
+  <button id="send-data" class="boton boton-primario" type="button">
+    <svg class="icono" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M1 14.5h14M2 11l4-4.5 3 3L14.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M10.5 3h4v4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    Generar gráfica
   </button>
 </div>
 
-<div style="display: flex; justify-content: center; align-items: center; gap: 20px; flex-wrap: wrap;">
-  <button id="export-visible" class="btn btn-success btn-md" type="button"
-    style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.95rem; border-radius: 6px; min-width: 200px; justify-content: center;">
-    <i class="bi bi-file-earmark-spreadsheet"></i> Exportar a excel
+<div class="fila-centrada fila-botones">
+  <button id="export-visible" class="boton boton-exito boton-ancho" type="button">
+    <svg class="icono" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M4 1h5.5L13 4.5V15H4z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+      <path d="M9.5 1v3.5H13M6 7.5h5M6 10h5M6 12.5h5M8.5 7.5v5" fill="none" stroke="currentColor" stroke-width="1.1"/>
+    </svg>
+    Exportar a excel
   </button>
-  <a href="{% url 'export_elanco' %}"
-    class="btn btn-success btn-md"
-    style="display: inline-flex; align-items: center; gap: 8px; min-width: 200px; justify-content: center;">
-    <i class="bi bi-file-earmark-spreadsheet"></i> Exportar a excel Elanco
+  <a href="{% url 'export_elanco' %}" class="boton boton-exito boton-ancho">
+    <svg class="icono" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M4 1h5.5L13 4.5V15H4z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+      <path d="M9.5 1v3.5H13M6 7.5h5M6 10h5M6 12.5h5M8.5 7.5v5" fill="none" stroke="currentColor" stroke-width="1.1"/>
+    </svg>
+    Exportar a excel Elanco
   </a>
 </div>
 
@@ -108,18 +114,20 @@
 </div>
 
 <!-- botón de busqueda -->
-<div class="d-flex justify-content-center p-3">
-  <button id="search" class="btn btn-primary btn-md">
-    Buscar <i class="bi bi-search"></i>
+<div class="fila-centrada">
+  <button id="search" class="boton boton-primario" type="button">
+    Buscar
+    <svg class="icono" viewBox="0 0 16 16" aria-hidden="true">
+      <circle cx="6.5" cy="6.5" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <path d="M10.2 10.2L15 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>
   </button>
 </div>
 
 
-<div class="container-xxl">
-  <div class="row">
-    <div class="col-sm-12 col-md-12 col-lg-12 col-xl-12">
+<div class="contenedor-tabla">
       <div class="table-responsive">
-        <table id="datatable-productos" class="table table-bordered">
+        <table id="datatable-productos" class="tabla">
           <caption>
             Tabla de pronósticos
           </caption>
@@ -145,8 +153,6 @@
           <tbody id="tableBody_productos"></tbody>
         </table>
       </div>
-    </div>
-  </div>
 </div>
 
 <!-- Modal de procesamiento -->
@@ -159,16 +165,8 @@
 {% endblock %}
 
 {% block js %}
+  <script src="{% static 'pronosticosWebApp/js/excel.js' %}"></script>
+  <script src="{% static 'pronosticosWebApp/js/tabla.js' %}"></script>
+  <script src="{% static 'pronosticosWebApp/js/grafica.js' %}"></script>
   <script src="{% static 'pronosticosWebApp/js/index.js' %}"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.datatables.net/v/bs5/jq-3.7.0/dt-2.0.8/b-3.0.2/sp-2.3.1/sl-2.0.3/datatables.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-
-  {% comment %} <script src="{% static 'bootstrap-5.3.0/dist/js/bootstrap.bundle.min.js' %}"></script>
-  <script src="{% static 'table_echart/js/datatable.js' %}"></script>
-  <script src="{% static 'table_echart/js/echarts.js' %}"></script>
-  <script src="{% static 'table_echart/js/xlsx.js' %}"></script>
-  <script src="{% static 'table_echart/js/fileSaver.js' %}"></script> {% endcomment %}
 {% endblock %}

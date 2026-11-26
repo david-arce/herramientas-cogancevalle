@@ -199,3 +199,371 @@ body.light-mode #mode-toggle {
     text-align: center;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
+
+/* =====================================================================
+   Estilos propios que reemplazan Bootstrap, Bootstrap Icons y DataTables
+   ===================================================================== */
+
+/* Base mínima (antes la daba bootstrap-reboot) */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+/* Contenedor general de base.html */
+.container-xxl {
+    width: 100%;
+    max-width: 1320px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 12px;
+    padding-right: 12px;
+}
+
+.contenedor {
+    width: 100%;
+    max-width: 1140px;
+    margin: 1.5rem auto;
+    padding: 0 12px;
+}
+
+.contenedor-tabla {
+    width: 100%;
+    margin-bottom: 2rem;
+}
+
+.logo-pronosticos {
+    display: block;
+    width: 22%;
+    min-width: 160px;
+    margin: 0 auto;
+}
+
+.fila-centrada {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+}
+
+.fila-botones {
+    gap: 20px;
+    flex-wrap: wrap;
+    padding-top: 0;
+}
+
+.solo-lectores {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Botones */
+.boton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 6px 12px;
+    font-size: 1rem;
+    line-height: 1.5;
+    font-family: inherit;
+    color: #fff;
+    text-decoration: none;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.boton:focus-visible {
+    outline: 3px solid rgba(13, 110, 253, 0.4);
+    outline-offset: 2px;
+}
+
+.boton-primario {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.boton-primario:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+.boton-exito {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+.boton-exito:hover {
+    background-color: #157347;
+    border-color: #146c43;
+    color: #fff;
+}
+
+.boton-ancho {
+    min-width: 200px;
+    font-size: 0.95rem;
+}
+
+.icono {
+    width: 1em;
+    height: 1em;
+    flex-shrink: 0;
+}
+
+/* Spinner de carga */
+.spinner {
+    width: 2rem;
+    height: 2rem;
+    border: 0.25em solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: girar 0.75s linear infinite;
+}
+
+@keyframes girar {
+    to { transform: rotate(360deg); }
+}
+
+/* Tabla */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.tabla {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+    background-color: #fff;
+    color: #212529;
+}
+
+.tabla caption {
+    caption-side: bottom;
+    padding: 0.5rem 0;
+    color: #6c757d;
+    text-align: left;
+}
+
+.tabla th,
+.tabla td {
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+}
+
+.tabla thead th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+}
+
+.tabla th.ordenable {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.tabla th.ordenable::after {
+    content: ' \2195';
+    opacity: 0.3;
+}
+
+.tabla th.orden-asc::after {
+    content: ' \2191';
+    opacity: 0.8;
+}
+
+.tabla th.orden-desc::after {
+    content: ' \2193';
+    opacity: 0.8;
+}
+
+.tabla tbody tr {
+    cursor: pointer;
+}
+
+.tabla tbody tr:hover {
+    background-color: #f2f2f2;
+}
+
+.tabla tbody tr.seleccionada,
+.tabla tbody tr.seleccionada:hover {
+    background-color: #0d6efd;
+    color: #fff;
+}
+
+.tabla .tabla-vacia {
+    cursor: default;
+    color: #6c757d;
+}
+
+.tabla-barra {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0.5rem 0;
+}
+
+.tabla-mostrar select {
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font: inherit;
+}
+
+.tabla-info {
+    color: #555;
+    font-size: 0.95rem;
+}
+
+.tabla-paginador {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tabla-paginador button {
+    min-width: 34px;
+    padding: 4px 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background-color: #fff;
+    color: #0d6efd;
+    font: inherit;
+    cursor: pointer;
+}
+
+.tabla-paginador button:hover:not(:disabled) {
+    background-color: #e9ecef;
+}
+
+.tabla-paginador button.activo {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+}
+
+.tabla-paginador button:disabled {
+    color: #adb5bd;
+    cursor: default;
+}
+
+/* Gráfica SVG */
+.grafica-cabecera {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.grafica-titulo {
+    font-size: 1.15rem;
+    font-weight: bold;
+    color: #333;
+}
+
+.grafica-subtitulo {
+    font-size: 0.85rem;
+    color: #6e7079;
+}
+
+.grafica-guardar {
+    padding: 4px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.grafica-guardar:hover {
+    background-color: #f2f2f2;
+}
+
+.grafica-leyenda {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 14px;
+    margin: 10px 0;
+}
+
+.grafica-leyenda-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 4px;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: 0.85rem;
+    color: #333;
+    cursor: pointer;
+}
+
+.grafica-leyenda-item.inactivo {
+    color: #bbb;
+}
+
+.grafica-leyenda-item.inactivo .grafica-muestra {
+    background: #ccc !important;
+}
+
+.grafica-muestra {
+    display: inline-block;
+    width: 14px;
+    height: 8px;
+    border-radius: 2px;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.grafica-leyenda-item .grafica-muestra {
+    margin-right: 0;
+}
+
+.grafica-lienzo {
+    position: relative;
+}
+
+.grafica-svg {
+    display: block;
+    max-width: 100%;
+    font-family: Arial, sans-serif;
+}
+
+.grafica-tooltip {
+    position: absolute;
+    pointer-events: none;
+    background-color: rgba(255, 255, 255, 0.96);
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    white-space: nowrap;
+}
+
+.grafica-aviso {
+    text-align: center;
+    color: #6c757d;
+    padding: 2rem 0;
+}

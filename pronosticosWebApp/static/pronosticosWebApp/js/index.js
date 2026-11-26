@@ -1,5 +1,5 @@
-let dataTable;
-let dataTableIsInitialized = false;
+let tablaProductos = null; // tabla nativa (tabla.js)
+let grafica = null;        // gráfica SVG (grafica.js)
 let selectedRowData = null;
 let productosData = null; // Variable global para almacenar los datos
 let categ3PorId = {};     // id de pronóstico -> categ3_nom (solo para exportar)
@@ -42,8 +42,8 @@ const handleRowClick = (data) => {
 };
 
 document.getElementById('send-data').addEventListener('click', async () => {
+    const modal = document.getElementById("processingModal");
     try {
-        const modal = document.getElementById("processingModal");
         modal.style.display = "block";  // Mostrar el modal
         const response = await fetch('/send_data/', {
             method: 'POST',
@@ -72,8 +72,9 @@ document.getElementById('send-data').addEventListener('click', async () => {
 
 
 document.getElementById('export-visible').addEventListener('click', async function () {
-    const wb = XLSX.utils.book_new();
-    const filteredData = dataTable.rows({ filter: 'applied' }).data().toArray();
+    const wb = Excel.crearLibro();
+    // Filas de la tabla en el orden actual (copias, no modifica la tabla)
+    const filteredData = tablaProductos ? tablaProductos.filasVisibles() : [];
     // Cargar el mapeo desde la BD (una sola vez, cacheado)
     const multiplosConfig = await loadMultiplosConfig();
     
@@ -145,8 +146,7 @@ document.getElementById('export-visible').addEventListener('click', async functi
         exportData.push(rowData);
     });
 
-    const ws = XLSX.utils.aoa_to_sheet(exportData);
-    XLSX.utils.book_append_sheet(wb, ws, 'Datos_Productos');
+    Excel.agregarHoja(wb, 'Datos_Productos', exportData);
 
     //agregar hojas de traslados entre sedes ────────────────────────
     try {
@@ -163,12 +163,11 @@ document.getElementById('export-visible').addEventListener('click', async functi
                 filas.push([`No se realizaron traslados desde ${sedeOrigen}`]);
             }
 
-            const wsSede = XLSX.utils.aoa_to_sheet(filas);
             const nombreHoja = `Traslados_${sedeOrigen}`
                 .replace(/[:\\/?*\[\]]/g, '')
                 .substring(0, 31);
 
-            XLSX.utils.book_append_sheet(wb, wsSede, nombreHoja);
+            Excel.agregarHoja(wb, nombreHoja, filas);
         });
     } catch (error) {
         console.error('Error al obtener el reporte de traslados:', error);
@@ -181,7 +180,7 @@ document.getElementById('export-visible').addEventListener('click', async functi
     const fechaFormateada = `${dia}/${mes}/${year}`;
     const nombreArchivo = `Datos_filtrados_${fechaFormateada}.xlsx`;
 
-    XLSX.writeFile(wb, nombreArchivo);
+    Excel.descargar(wb, nombreArchivo);
 });
 
 async function uploadData() {
@@ -192,7 +191,7 @@ async function uploadData() {
         return null;
     }
 
-    const loader = document.querySelector('.spinner-border');
+    const loader = document.getElementById('loader');
     try {
         loader.style.display = 'block';
         const response = await fetch(`/lista/?${params.toString()}`);
@@ -221,129 +220,50 @@ function getCookie(name) {
     return cookieValue;
 }
 
-const dataTableOptions = {
-    dom: 'Brtip', // Agregar el control de paneles de búsqueda
-    buttons: [
-        {
-            extend: 'pageLength',
-            text: 'Mostrar',
-            //className: 'btn btn-info',
-            titleAttr: 'Paginación',
-        },
-    ],
-    select: true,
-    language: {
-        "select": {
-            "rows": {
-                "1": "1 fila seleccionada",
-                "_": "%d filas seleccionadas"
-            }
-        },
-        "processing": "Procesando...",
-        "lengthMenu": "Mostrar _MENU_ registros",
-        "zeroRecords": "No se encontraron resultados",
-        "emptyTable": "Ningún dato disponible en esta tabla",
-        "infoEmpty": "Mostrando registros del 0 al 0 de un total de 0 registros",
-        "infoFiltered": "(filtrado de un total de _MAX_ registros)",
-        "search": "Buscar:",
-        "loadingRecords": "Cargando...",
-        "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
-    },
-    columnDefs: [
-        { className: 'centered', targets: '_all' },
-        { targets: [0, 1, 3, 5, 6, 12, 13, 14], visible: false, searchable: false },
-    ],
-};
+// Columnas ocultas en pantalla (siguen disponibles para exportar y para la gráfica)
+const COLUMNAS_OCULTAS = [0, 1, 3, 5, 6, 12, 13, 14];
 
 const initDataTable = async (datos) => {
-    if (dataTableIsInitialized) dataTable.destroy();
-
-    // await listProductos();
-    //dataTable = $('#datatable-productos').DataTable(dataTableOptions);
-
-    const loader = document.querySelector('.spinner-border');
+    const loader = document.getElementById('loader');
     try {
         loader.style.display = 'block';
-        await listProductos(datos);
-        dataTable = $('#datatable-productos').DataTable({
-            ...dataTableOptions,
-
-            createdRow: function (row, data, dataIndex) {
-                $(row).click(function () {
-                    handleRowClick(data);
-                });
-            }
-        });
+        if (!tablaProductos) {
+            tablaProductos = new TablaPronosticos('#datatable-productos', {
+                columnasOcultas: COLUMNAS_OCULTAS,
+                alSeleccionar: handleRowClick,
+            });
+        }
+        tablaProductos.cargar(listProductos(datos));
     } catch (e) {
         alert(e);
     } finally {
-        // Ocultar el loader
-        // document.getElementById('loader').style.display = 'none';
         loader.style.display = 'none';
     }
-
-    // Handle click outside the table to deselect the row
-    // $(document).on('click', function (e) {
-    //     const container = $("#datatable-productos");
-    //     if (!container.is(e.target) && container.has(e.target).length === 0) {
-    //         dataTable.rows().deselect();
-    //         selectedRowData = null; // Clear the selected row data
-    //     }
-    // });
-
-    dataTableIsInitialized = true;
 };
 
-const listProductos = async (datos) => {
-    const loader = document.querySelector('.spinner-border');
-    try {
-        loader.style.display = 'block';
-        // Mostrar el loader
-        // document.getElementById('loader').style.display = 'block';
+// Convierte la respuesta de /lista/ en filas (mismo orden de columnas que el <thead>)
+const listProductos = (datos) => {
+    // categ3_nom no se muestra en la tabla; se guarda por id para la exportación
+    categ3PorId = {};
+    datos.productos.forEach(p => { categ3PorId[String(p.id)] = p.categ3_nom ?? ''; });
 
-        //obtener fecha actual en formato yyyy-mm-dd
-        // const fechaActual = new Date();
-        // const year = fechaActual.getFullYear();
-        // const mes = String(fechaActual.getMonth() + 1).padStart(2, '0'); // Los meses empiezan en 0
-        // const dia = String(fechaActual.getDate()).padStart(2, '0');
-
-        // const fechaFormateada = `${year}/${mes}/${dia}`;
-        
-        // categ3_nom no se muestra en la tabla; se guarda por id para la exportación
-        categ3PorId = {};
-        datos.productos.forEach(p => { categ3PorId[String(p.id)] = p.categ3_nom ?? ''; });
-
-        let content = ``;
-        datos.productos.forEach((producto, index) => {
-            content += `
-                <tr>
-                    <td>${producto.id}</td>
-                    <td>${producto.bodega}</td>
-                    <td>${producto.item}</td>
-                    <td>${producto.codigo}</td>
-                    <td>${producto.producto}</td>
-                    <td>${producto.unimed}</td>
-                    <td>${producto.lotepro}</td>
-                    <td>${producto.proveedor}</td>
-                    <td>${producto.sede}</td>
-                    <td>${producto.cantidad}</td>
-                    <td>${producto.stock}</td>
-                    <td>${producto.cantidadx3}</td>
-                    <td>${producto.precio}</td>
-                    <td>${producto.fecha}</td>
-                    <td>${producto.detalle ?? ''}</td>
-                </tr>
-            `;
-        });
-        const table = document.getElementById('tableBody_productos');
-        table.innerHTML = content;
-    } catch (e) {
-        alert(e);
-    } finally {
-        // Ocultar el loader
-        // document.getElementById('loader').style.display = 'none';
-        loader.style.display = 'none';
-    }
+    return datos.productos.map(producto => [
+        `${producto.id}`,
+        `${producto.bodega}`,
+        `${producto.item}`,
+        `${producto.codigo}`,
+        `${producto.producto}`,
+        `${producto.unimed}`,
+        `${producto.lotepro}`,
+        `${producto.proveedor}`,
+        `${producto.sede}`,
+        `${producto.cantidad}`,
+        `${producto.stock}`,
+        `${producto.cantidadx3}`,
+        `${producto.precio}`,
+        `${producto.fecha}`,
+        `${producto.detalle ?? ''}`,
+    ]);
 };
 
 //GRAFICO
@@ -357,11 +277,10 @@ const getOptionChart = async () => {
 };
 
 const initChart = async () => {
-    const myChart = echarts.init(document.getElementById('chart'));
     const myElement = document.getElementById('chart');
     myElement.style.display = 'block';
-    myChart.setOption(await getOptionChart());
-    myChart.resize();
+    if (!grafica) grafica = new GraficaLineas(myElement);
+    grafica.dibujar(await getOptionChart());
 };
 
 document.getElementById('search').addEventListener('click', async () => {
