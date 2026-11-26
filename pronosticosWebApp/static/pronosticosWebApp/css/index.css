@@ -229,9 +229,9 @@ body {
 
 .contenedor {
     width: 100%;
-    max-width: 1140px;
+    max-width: 100%;   /* ocupa todo el ancho disponible (hasta 1320px de .container-xxl) */
     margin: 1.5rem auto;
-    padding: 0 12px;
+    padding: 0;
 }
 
 .contenedor-tabla {
@@ -552,6 +552,8 @@ body {
 
 .grafica-tooltip {
     position: absolute;
+    left: 0;
+    top: 0;
     pointer-events: none;
     background-color: rgba(255, 255, 255, 0.96);
     border: 1px solid #ccc;
@@ -560,6 +562,58 @@ body {
     font-size: 0.85rem;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    /* el recuadro se desliza entre meses y aparece/desaparece con fundido */
+    transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+                opacity 0.2s ease,
+                visibility 0s linear 0.2s;
+}
+
+.grafica-tooltip.visible {
+    opacity: 1;
+    visibility: visible;
+    transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+                opacity 0.2s ease,
+                visibility 0s;
+}
+
+.grafica-tooltip.sin-transicion {
+    transition: none;
+}
+
+/* Línea guía vertical del tooltip */
+.grafica-guia {
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.2s ease;
+}
+
+.grafica-guia.visible {
+    opacity: 1;
+}
+
+/* Puntos: crecen al pasar el mouse por su mes */
+.grafica-punto {
+    transition: r 0.25s ease, stroke-width 0.25s ease;
+}
+
+.grafica-punto.activo {
+    r: 5px;
+    stroke-width: 2.5px;
+}
+
+.grafica-leyenda-item,
+.grafica-leyenda-item .grafica-muestra {
+    transition: color 0.3s ease, background-color 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .grafica-tooltip,
+    .grafica-tooltip.visible,
+    .grafica-guia,
+    .grafica-punto {
+        transition: none;
+    }
 }
 
 .grafica-aviso {

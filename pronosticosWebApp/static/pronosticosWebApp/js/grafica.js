@@ -3,6 +3,12 @@
  * Acepta el mismo JSON que devuelve la vista /chart/:
  *   { title: {text, subtext}, xAxis: {data: [...]}, series: [{name, data: [...]}, ...] }
  *
+ * Animaciones (al estilo de ECharts):
+ *   - Entrada: las líneas se revelan de izquierda a derecha.
+ *   - Leyenda: al ocultar/mostrar una serie, el eje Y y las líneas se reajustan
+ *     suavemente y la serie se desvanece.
+ *   - Tooltip: la línea guía, el recuadro y los puntos resaltados se deslizan.
+ *
  * Uso:
  *   const g = new GraficaLineas(document.getElementById('chart'));
  *   g.dibujar(opciones);
@@ -14,12 +20,28 @@
     const COLORES = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4'];
     const formatoNumero = new Intl.NumberFormat('es-CO');
 
+    const DURACION_ENTRADA = 1000;   // ms
+    const DURACION_CAMBIO = 500;     // ms
+    const ALTO = 360;
+    const MARGEN = { arriba: 16, derecha: 24, abajo: 40, izquierda: 64 };
+
+    const sinMovimiento = () =>
+        window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Curvas de suavizado
+    const suavizarSalida = t => 1 - Math.pow(1 - t, 3);                 // cubicOut
+    const suavizarEntrada = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2); // cubicInOut
+
+    const interpolar = (a, b, t) => a + (b - a) * t;
+
     function el(nombre, atributos = {}, padre = null) {
         const nodo = document.createElementNS(SVG_NS, nombre);
         Object.entries(atributos).forEach(([k, v]) => nodo.setAttribute(k, v));
         if (padre) padre.appendChild(nodo);
         return nodo;
     }
+
+    const esNumero = v => typeof v === 'number' && Number.isFinite(v);
 
     // Marcas "bonitas" del eje Y (1, 2, 5 × 10^n)
     function marcasEje(min, max, cantidad = 5) {
@@ -37,26 +59,75 @@
         return marcas;
     }
 
+    // Ejecuta una animación con requestAnimationFrame; devuelve una función para cancelarla
+    function animar(duracion, alAvanzar, curva = suavizarSalida) {
+        if (sinMovimiento() || duracion <= 0) {
+            alAvanzar(1);
+            return () => {};
+        }
+        let id = null;
+        const inicio = performance.now();
+        const paso = (ahora) => {
+            const t = Math.min(1, (ahora - inicio) / duracion);
+            alAvanzar(curva(t));
+            if (t < 1) id = requestAnimationFrame(paso);
+        };
+        id = requestAnimationFrame(paso);
+        return () => cancelAnimationFrame(id);
+    }
+
     class GraficaLineas {
         constructor(contenedor) {
             this.contenedor = contenedor;
             this.opciones = null;
             this.ocultas = new Set();
-            this._alRedimensionar = () => this.opciones && this._render();
-            window.addEventListener('resize', this._alRedimensionar);
+            this._cancelar = () => {};
+
+            let temporizador = null;
+            window.addEventListener('resize', () => {
+                clearTimeout(temporizador);
+                temporizador = setTimeout(() => {
+                    if (this.opciones) this._construir(false);
+                }, 150);
+            });
         }
 
         dibujar(opciones) {
             this.opciones = opciones || {};
             this.ocultas.clear();
-            this._render();
+            this._construir(true);
         }
 
-        _render() {
+        // ---------- cálculo de escalas ----------
+        _escalaObjetivo() {
+            const series = this.opciones.series || [];
+            const valores = series
+                .filter((_, i) => !this.ocultas.has(i))
+                .flatMap(s => (s.data || []).filter(esNumero));
+            const marcas = marcasEje(
+                valores.length ? Math.min(0, ...valores) : 0,
+                valores.length ? Math.max(...valores) : 1,
+            );
+            return { min: marcas[0], max: marcas[marcas.length - 1], marcas };
+        }
+
+        _x(j) {
+            const n = this.numPuntos;
+            return MARGEN.izquierda + (n === 1 ? this.anchoUtil / 2 : (j * this.anchoUtil) / (n - 1));
+        }
+
+        _y(v, escala) {
+            return MARGEN.arriba + this.altoUtil - ((v - escala.min) / (escala.max - escala.min)) * this.altoUtil;
+        }
+
+        // ---------- construcción del DOM ----------
+        _construir(animarEntrada) {
+            this._cancelar();
             const op = this.opciones;
             const series = Array.isArray(op.series) ? op.series : [];
             const categorias = (op.xAxis && op.xAxis.data) || [];
             this.contenedor.replaceChildren();
+            this.svg = null;
 
             if (!series.length) {
                 const aviso = document.createElement('p');
@@ -66,7 +137,7 @@
                 return;
             }
 
-            // ---------- encabezado: título, leyenda y botón de descarga ----------
+            // Encabezado: título, subtítulo y botón de descarga
             const cabecera = document.createElement('div');
             cabecera.className = 'grafica-cabecera';
             const titulos = document.createElement('div');
@@ -86,6 +157,7 @@
             botonImagen.addEventListener('click', () => this.guardarImagen());
             cabecera.append(titulos, botonImagen);
 
+            // Leyenda (clic = ocultar/mostrar serie)
             const leyenda = document.createElement('div');
             leyenda.className = 'grafica-leyenda';
             series.forEach((s, i) => {
@@ -99,136 +171,227 @@
                 item.append(muestra, document.createTextNode(s.name || `Serie ${i + 1}`));
                 item.addEventListener('click', () => {
                     if (this.ocultas.has(i)) this.ocultas.delete(i); else this.ocultas.add(i);
-                    this._render();
+                    item.classList.toggle('inactivo', this.ocultas.has(i));
+                    item.setAttribute('aria-pressed', String(!this.ocultas.has(i)));
+                    this._transicionLeyenda();
                 });
                 leyenda.appendChild(item);
             });
-
             this.contenedor.append(cabecera, leyenda);
 
-            // ---------- área de dibujo ----------
-            const ancho = Math.max(this.contenedor.clientWidth, 300);
-            const alto = 360;
-            const margen = { arriba: 16, derecha: 24, abajo: 40, izquierda: 64 };
-            const anchoUtil = ancho - margen.izquierda - margen.derecha;
-            const altoUtil = alto - margen.arriba - margen.abajo;
-
-            const visibles = series.map((s, i) => ({ s, i })).filter(({ i }) => !this.ocultas.has(i));
-            const valores = visibles.flatMap(({ s }) => (s.data || []).filter(v => typeof v === 'number' && Number.isFinite(v)));
-            const numPuntos = Math.max(categorias.length, ...series.map(s => (s.data || []).length), 1);
-
-            const marcas = marcasEje(valores.length ? Math.min(0, ...valores) : 0, valores.length ? Math.max(...valores) : 1);
-            const yMin = marcas[0];
-            const yMax = marcas[marcas.length - 1];
-            const x = (j) => margen.izquierda + (numPuntos === 1 ? anchoUtil / 2 : (j * anchoUtil) / (numPuntos - 1));
-            const y = (v) => margen.arriba + altoUtil - ((v - yMin) / (yMax - yMin)) * altoUtil;
+            // Geometría
+            this.ancho = Math.max(this.contenedor.clientWidth, 300);
+            this.anchoUtil = this.ancho - MARGEN.izquierda - MARGEN.derecha;
+            this.altoUtil = ALTO - MARGEN.arriba - MARGEN.abajo;
+            this.numPuntos = Math.max(categorias.length, ...series.map(s => (s.data || []).length), 1);
+            this.categorias = categorias;
 
             const svg = el('svg', {
                 xmlns: SVG_NS,
-                width: ancho,
-                height: alto,
-                viewBox: `0 0 ${ancho} ${alto}`,
+                width: this.ancho,
+                height: ALTO,
+                viewBox: `0 0 ${this.ancho} ${ALTO}`,
                 role: 'img',
                 'aria-label': titulo.textContent,
                 class: 'grafica-svg',
             });
-            el('rect', { x: 0, y: 0, width: ancho, height: alto, fill: '#ffffff' }, svg);
+            el('rect', { x: 0, y: 0, width: this.ancho, height: ALTO, fill: '#ffffff' }, svg);
 
-            // Rejilla y eje Y
-            marcas.forEach(v => {
-                const yy = y(v);
-                el('line', { x1: margen.izquierda, x2: ancho - margen.derecha, y1: yy, y2: yy, stroke: '#e0e6f1' }, svg);
-                const t = el('text', { x: margen.izquierda - 8, y: yy + 4, 'text-anchor': 'end', 'font-size': 12, fill: '#6e7079' }, svg);
-                t.textContent = formatoNumero.format(v);
-            });
+            // Recorte para la animación de entrada (se revela de izquierda a derecha)
+            const idRecorte = `recorte-${Math.random().toString(36).slice(2)}`;
+            const defs = el('defs', {}, svg);
+            const recorte = el('clipPath', { id: idRecorte }, defs);
+            this.rectRecorte = el('rect', {
+                x: 0, y: 0, height: ALTO,
+                width: animarEntrada && !sinMovimiento() ? MARGEN.izquierda : this.ancho,
+            }, recorte);
+
+            this.capaRejilla = el('g', {}, svg);
 
             // Eje X
             el('line', {
-                x1: margen.izquierda, x2: ancho - margen.derecha,
-                y1: margen.arriba + altoUtil, y2: margen.arriba + altoUtil, stroke: '#6e7079',
+                x1: MARGEN.izquierda, x2: this.ancho - MARGEN.derecha,
+                y1: MARGEN.arriba + this.altoUtil, y2: MARGEN.arriba + this.altoUtil, stroke: '#6e7079',
             }, svg);
-            const saltoEtiqueta = Math.max(1, Math.ceil(numPuntos / Math.max(1, Math.floor(anchoUtil / 70))));
-            for (let j = 0; j < numPuntos; j++) {
-                if (j % saltoEtiqueta !== 0 && j !== numPuntos - 1) continue;
+            const saltoEtiqueta = Math.max(1, Math.ceil(this.numPuntos / Math.max(1, Math.floor(this.anchoUtil / 70))));
+            for (let j = 0; j < this.numPuntos; j++) {
+                if (j % saltoEtiqueta !== 0 && j !== this.numPuntos - 1) continue;
                 const t = el('text', {
-                    x: x(j), y: margen.arriba + altoUtil + 20,
+                    x: this._x(j), y: MARGEN.arriba + this.altoUtil + 20,
                     // la última etiqueta se alinea a la derecha para que no se corte
-                    'text-anchor': (j === numPuntos - 1 && numPuntos > 1) ? 'end' : 'middle',
+                    'text-anchor': (j === this.numPuntos - 1 && this.numPuntos > 1) ? 'end' : 'middle',
                     'font-size': 12, fill: '#6e7079',
                 }, svg);
                 t.textContent = categorias[j] ?? '';
             }
 
-            // Líneas
-            visibles.forEach(({ s, i }) => {
+            // Guía vertical del tooltip (se desliza con transform)
+            this.guia = el('line', {
+                x1: 0, x2: 0, y1: MARGEN.arriba, y2: MARGEN.arriba + this.altoUtil,
+                stroke: '#999', 'stroke-dasharray': '4 4', class: 'grafica-guia',
+            }, svg);
+
+            // Series: una capa por serie con su línea y sus puntos
+            const capaSeries = el('g', { 'clip-path': `url(#${idRecorte})` }, svg);
+            this.series = series.map((s, i) => {
                 const color = COLORES[i % COLORES.length];
-                let d = '';
-                let enTrazo = false;
-                (s.data || []).forEach((v, j) => {
-                    if (typeof v !== 'number' || !Number.isFinite(v)) { enTrazo = false; return; }
-                    d += `${enTrazo ? 'L' : 'M'}${x(j).toFixed(1)},${y(v).toFixed(1)}`;
-                    enTrazo = true;
-                });
-                el('path', { d, fill: 'none', stroke: color, 'stroke-width': 2, 'stroke-linejoin': 'round' }, svg);
-                (s.data || []).forEach((v, j) => {
-                    if (typeof v !== 'number' || !Number.isFinite(v)) return;
-                    el('circle', { cx: x(j), cy: y(v), r: 3, fill: '#ffffff', stroke: color, 'stroke-width': 2 }, svg);
-                });
+                const grupo = el('g', { class: 'grafica-serie' }, capaSeries);
+                const linea = el('path', {
+                    fill: 'none', stroke: color, 'stroke-width': 2,
+                    'stroke-linejoin': 'round', 'stroke-linecap': 'round',
+                }, grupo);
+                const puntos = (s.data || []).map((v, j) => esNumero(v)
+                    ? el('circle', { cx: this._x(j), r: 3, fill: '#ffffff', stroke: color, 'stroke-width': 2, class: 'grafica-punto' }, grupo)
+                    : null);
+                const opacidad = this.ocultas.has(i) ? 0 : 1;
+                return { datos: s.data || [], grupo, linea, puntos, opacidad };
             });
 
-            // Tooltip por eje (como trigger: 'axis')
-            const guia = el('line', {
-                y1: margen.arriba, y2: margen.arriba + altoUtil, stroke: '#999', 'stroke-dasharray': '4 4', visibility: 'hidden',
-            }, svg);
+            // Zona sensible al mouse
             const zona = el('rect', {
-                x: margen.izquierda, y: margen.arriba, width: anchoUtil, height: altoUtil, fill: 'transparent',
+                x: MARGEN.izquierda, y: MARGEN.arriba, width: this.anchoUtil, height: this.altoUtil, fill: 'transparent',
             }, svg);
 
             const lienzo = document.createElement('div');
             lienzo.className = 'grafica-lienzo';
-            const tooltip = document.createElement('div');
-            tooltip.className = 'grafica-tooltip';
-            tooltip.hidden = true;
-            lienzo.append(svg, tooltip);
+            this.tooltip = document.createElement('div');
+            this.tooltip.className = 'grafica-tooltip';
+            this.tooltip.setAttribute('aria-hidden', 'true');
+            lienzo.append(svg, this.tooltip);
             this.contenedor.appendChild(lienzo);
             this.svg = svg;
 
-            const mostrar = (evento) => {
-                const caja = svg.getBoundingClientRect();
-                const px = evento.clientX - caja.left;
-                const j = numPuntos === 1 ? 0
-                    : Math.round(((px - margen.izquierda) / anchoUtil) * (numPuntos - 1));
-                if (j < 0 || j >= numPuntos) return;
-                guia.setAttribute('x1', x(j));
-                guia.setAttribute('x2', x(j));
-                guia.setAttribute('visibility', 'visible');
+            // Pintar el estado final
+            this.escala = this._escalaObjetivo();
+            this._pintar(this.escala, 1);
 
-                tooltip.replaceChildren();
-                const encabezado = document.createElement('strong');
-                encabezado.textContent = categorias[j] ?? '';
-                tooltip.appendChild(encabezado);
-                visibles.forEach(({ s, i }) => {
-                    const v = (s.data || [])[j];
-                    if (typeof v !== 'number') return;
-                    const linea = document.createElement('div');
-                    const muestra = document.createElement('span');
-                    muestra.className = 'grafica-muestra';
-                    muestra.style.background = COLORES[i % COLORES.length];
-                    linea.append(muestra, document.createTextNode(`${s.name}: ${formatoNumero.format(v)}`));
-                    tooltip.appendChild(linea);
-                });
-                tooltip.hidden = false;
-                const izquierda = x(j) + 12;
-                tooltip.style.top = `${margen.arriba}px`;
-                tooltip.style.left = izquierda + tooltip.offsetWidth > ancho
-                    ? `${Math.max(0, x(j) - tooltip.offsetWidth - 12)}px`
-                    : `${izquierda}px`;
-            };
-            zona.addEventListener('mousemove', mostrar);
-            zona.addEventListener('mouseleave', () => {
-                guia.setAttribute('visibility', 'hidden');
-                tooltip.hidden = true;
+            this._indiceActivo = null;
+            zona.addEventListener('mousemove', (e) => this._alMoverMouse(e));
+            zona.addEventListener('mouseleave', () => this._ocultarTooltip());
+
+            if (animarEntrada) {
+                this._cancelar = animar(DURACION_ENTRADA, (t) => {
+                    this.rectRecorte.setAttribute('width', interpolar(MARGEN.izquierda, this.ancho, t));
+                }, suavizarEntrada);
+            }
+        }
+
+        // Dibuja rejilla, líneas y puntos para una escala dada.
+        // opacidadMarcas: opacidad de las etiquetas/rejilla (para el fundido al cambiar de escala)
+        _pintar(escala, opacidadMarcas) {
+            // Rejilla y etiquetas del eje Y
+            this.capaRejilla.replaceChildren();
+            const marcas = escala.marcas || [];
+            marcas.forEach(v => {
+                const yy = this._y(v, escala);
+                if (yy < MARGEN.arriba - 1 || yy > MARGEN.arriba + this.altoUtil + 1) return;
+                const g = el('g', { opacity: opacidadMarcas }, this.capaRejilla);
+                el('line', { x1: MARGEN.izquierda, x2: this.ancho - MARGEN.derecha, y1: yy, y2: yy, stroke: '#e0e6f1' }, g);
+                const t = el('text', { x: MARGEN.izquierda - 8, y: yy + 4, 'text-anchor': 'end', 'font-size': 12, fill: '#6e7079' }, g);
+                t.textContent = formatoNumero.format(v);
             });
+
+            // Líneas y puntos
+            this.series.forEach(serie => {
+                let d = '';
+                let enTrazo = false;
+                serie.datos.forEach((v, j) => {
+                    if (!esNumero(v)) { enTrazo = false; return; }
+                    const yy = this._y(v, escala);
+                    d += `${enTrazo ? 'L' : 'M'}${this._x(j).toFixed(1)},${yy.toFixed(1)}`;
+                    enTrazo = true;
+                    serie.puntos[j].setAttribute('cy', yy.toFixed(1));
+                });
+                serie.linea.setAttribute('d', d);
+                serie.grupo.setAttribute('opacity', serie.opacidad);
+                serie.grupo.style.pointerEvents = serie.opacidad === 0 ? 'none' : '';
+            });
+        }
+
+        // Al cambiar la leyenda: el eje Y se reajusta y las series aparecen/desaparecen suavemente
+        _transicionLeyenda() {
+            this._cancelar();
+            // Si la animación de entrada seguía en curso, se completa de inmediato
+            this.rectRecorte.setAttribute('width', this.ancho);
+            const desde = { min: this.escala.min, max: this.escala.max };
+            const hacia = this._escalaObjetivo();
+            const opacidadesIniciales = this.series.map(s => s.opacidad);
+            const opacidadesFinales = this.series.map((_, i) => (this.ocultas.has(i) ? 0 : 1));
+            const cambiaEscala = desde.min !== hacia.min || desde.max !== hacia.max;
+
+            this._cancelar = animar(DURACION_CAMBIO, (t) => {
+                const escala = {
+                    min: interpolar(desde.min, hacia.min, t),
+                    max: interpolar(desde.max, hacia.max, t),
+                    marcas: hacia.marcas,
+                };
+                this.series.forEach((s, i) => {
+                    s.opacidad = interpolar(opacidadesIniciales[i], opacidadesFinales[i], t);
+                });
+                // Las etiquetas nuevas del eje aparecen con un fundido
+                this._pintar(escala, cambiaEscala ? Math.max(0.15, t) : 1);
+                this.escala = escala;
+            });
+            this._ocultarTooltip();
+        }
+
+        // ---------- tooltip ----------
+        _alMoverMouse(evento) {
+            const caja = this.svg.getBoundingClientRect();
+            const escalaPx = caja.width / this.ancho;   // por si el SVG se reduce con max-width
+            const px = (evento.clientX - caja.left) / escalaPx;
+            const n = this.numPuntos;
+            const j = n === 1 ? 0 : Math.round(((px - MARGEN.izquierda) / this.anchoUtil) * (n - 1));
+            if (j < 0 || j >= n || j === this._indiceActivo) return;
+            this._indiceActivo = j;
+
+            const xx = this._x(j);
+            this.guia.style.transform = `translateX(${xx}px)`;
+            this.guia.classList.add('visible');
+
+            // Resaltar los puntos del mes activo
+            this.series.forEach(s => s.puntos.forEach((p, k) => {
+                if (p) p.classList.toggle('activo', k === j);
+            }));
+
+            // Contenido del tooltip
+            const series = this.opciones.series || [];
+            this.tooltip.replaceChildren();
+            const encabezado = document.createElement('strong');
+            encabezado.textContent = this.categorias[j] ?? '';
+            this.tooltip.appendChild(encabezado);
+            series.forEach((s, i) => {
+                if (this.ocultas.has(i)) return;
+                const v = (s.data || [])[j];
+                if (!esNumero(v)) return;
+                const linea = document.createElement('div');
+                const muestra = document.createElement('span');
+                muestra.className = 'grafica-muestra';
+                muestra.style.background = COLORES[i % COLORES.length];
+                linea.append(muestra, document.createTextNode(`${s.name}: ${formatoNumero.format(v)}`));
+                this.tooltip.appendChild(linea);
+            });
+
+            // Posición: a la derecha de la guía, o a la izquierda si no cabe
+            const anchoTooltip = this.tooltip.offsetWidth;
+            const izquierda = xx + 14 + anchoTooltip > this.ancho
+                ? Math.max(0, xx - anchoTooltip - 14)
+                : xx + 14;
+            const primeraVez = !this.tooltip.classList.contains('visible');
+            if (primeraVez) this.tooltip.classList.add('sin-transicion');
+            this.tooltip.style.transform = `translate(${izquierda * escalaPx}px, ${MARGEN.arriba}px)`;
+            if (primeraVez) {
+                void this.tooltip.offsetWidth;   // aplica la posición sin animar la primera vez
+                this.tooltip.classList.remove('sin-transicion');
+            }
+            this.tooltip.classList.add('visible');
+        }
+
+        _ocultarTooltip() {
+            this._indiceActivo = null;
+            if (this.guia) this.guia.classList.remove('visible');
+            if (this.tooltip) this.tooltip.classList.remove('visible');
+            (this.series || []).forEach(s => s.puntos.forEach(p => p && p.classList.remove('activo')));
         }
 
         // Equivalente a toolbox.saveAsImage: descarga la gráfica como PNG
@@ -240,7 +403,11 @@
             const series = (op.series || []).filter((_, i) => !this.ocultas.has(i));
             const altoCabecera = 70;
 
-            const datos = new XMLSerializer().serializeToString(this.svg);
+            // Copia del SVG sin la guía del tooltip ni el resaltado
+            const copia = this.svg.cloneNode(true);
+            copia.querySelectorAll('.grafica-guia').forEach(n => n.remove());
+            copia.querySelectorAll('.grafica-punto').forEach(n => n.setAttribute('r', 3));
+            const datos = new XMLSerializer().serializeToString(copia);
             const url = URL.createObjectURL(new Blob([datos], { type: 'image/svg+xml;charset=utf-8' }));
             const imagen = new Image();
             imagen.onload = () => {

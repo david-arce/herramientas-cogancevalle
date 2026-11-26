@@ -31,7 +31,9 @@
             this.alSeleccionar = opciones.alSeleccionar || (() => {});
 
             this.filas = [];
-            this.orden = { columna: 0, asc: true };
+            // columna = null -> estado neutro (orden original de carga)
+            this.orden = { columna: null, asc: true };
+            this.posicionOriginal = new WeakMap();   // fila -> posición al cargar
             this.pagina = 0;
             this.porPagina = 10;
             this.seleccionada = null;   // índice dentro de this.filas
@@ -45,11 +47,14 @@
                 th.hidden = this.ocultas.has(i);
                 th.classList.add('ordenable');
                 th.setAttribute('aria-sort', 'none');
+                // Ciclo por clic: ascendente -> descendente -> neutro
                 th.addEventListener('click', () => {
-                    if (this.orden.columna === i) {
-                        this.orden.asc = !this.orden.asc;
-                    } else {
+                    if (this.orden.columna !== i) {
                         this.orden = { columna: i, asc: true };
+                    } else if (this.orden.asc) {
+                        this.orden.asc = false;
+                    } else {
+                        this.orden = { columna: null, asc: true };
                     }
                     this._ordenar();
                     this.pagina = 0;
@@ -98,6 +103,10 @@
 
         cargar(filas) {
             this.filas = filas.map(f => f.map(v => (v === null || v === undefined) ? '' : String(v)));
+            // Orden neutro: por ID ascendente (como se mostraba antes al cargar)
+            this.filas.sort((a, b) => compararValores(a[0], b[0]));
+            this.posicionOriginal = new WeakMap();
+            this.filas.forEach((f, i) => this.posicionOriginal.set(f, i));
             this.pagina = 0;
             this._deseleccionar(false);
             this._ordenar();
@@ -111,16 +120,20 @@
         _ordenar() {
             const { columna, asc } = this.orden;
             const seleccion = this.seleccionada !== null ? this.filas[this.seleccionada] : null;
-            this.filas.sort((a, b) => {
-                const r = compararValores(a[columna], b[columna]);
-                return asc ? r : -r;
-            });
+            if (columna === null) {
+                this.filas.sort((a, b) => this.posicionOriginal.get(a) - this.posicionOriginal.get(b));
+            } else {
+                this.filas.sort((a, b) => {
+                    const r = compararValores(a[columna], b[columna]);
+                    return asc ? r : -r;
+                });
+            }
             this.seleccionada = seleccion ? this.filas.indexOf(seleccion) : null;
 
             this.encabezados.forEach((th, i) => {
                 th.classList.remove('orden-asc', 'orden-desc');
                 th.setAttribute('aria-sort', 'none');
-                if (i === columna) {
+                if (columna !== null && i === columna) {
                     th.classList.add(asc ? 'orden-asc' : 'orden-desc');
                     th.setAttribute('aria-sort', asc ? 'ascending' : 'descending');
                 }
