@@ -37,6 +37,7 @@ class Producto(models.Model):
     categ1_nom = models.CharField(max_length=255, null=True, blank=True)
     categ2 = models.CharField(max_length=50, null=True, blank=True)
     categ2_nom = models.CharField(max_length=255, null=True, blank=True)
+    categ3_nom = models.CharField(max_length=255, null=True, blank=True)
     proveedor = models.CharField(max_length=50, null=True, blank=True)
     proveedor_nom = models.CharField(max_length=255, null=True, blank=True)
     detalle = models.TextField(null=True, blank=True)
@@ -224,7 +225,8 @@ class PronosticoFinal(models.Model):
     precio = models.IntegerField()
     fecha = models.CharField(max_length=50, null=True, blank=True)
     detalle = models.CharField(max_length=255, null=True, blank=True)
-    
+    categ3_nom = models.CharField(max_length=255, null=True, blank=True)
+
     class Meta:
         db_table = "pronostico_final"
         managed = False

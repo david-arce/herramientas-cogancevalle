@@ -2,6 +2,7 @@ let dataTable;
 let dataTableIsInitialized = false;
 let selectedRowData = null;
 let productosData = null; // Variable global para almacenar los datos
+let categ3PorId = {};     // id de pronóstico -> categ3_nom (solo para exportar)
 // Cache del mapeo proveedor|sku -> col_base, cargado desde la BD
 let multiplosConfigCache = null;
 async function loadMultiplosConfig() {
@@ -94,7 +95,7 @@ document.getElementById('export-visible').addEventListener('click', async functi
         'REG.N12', 'BODEGA.C5', 'PRODUCTO.C15', 'CODCMC.C50', 'NOMBRE.C100',
         'UNIMED.C4', 'LOTEPRO.C12', 'CANTIDAD.N20', 'CANTIDAD.N20',
         'CANTIDAD.N20', 'AUTOMATIZACION.C20', 'PRECIO_UNITARIO.N20', 'FECHAENTREGA.C10',
-        'DETALLE.C255',
+        'DETALLE.C255', 'CATEG3_NOM.C255',
     ];
 
     const exportData = [headers];
@@ -136,6 +137,10 @@ document.getElementById('export-visible').addEventListener('click', async functi
         // Columna DETALLE
         const detalle = row[14] !== undefined && row[14] !== null ? row[14] : '';
         rowData.push(detalle);
+
+        // Columna CATEG3_NOM
+        const categ3 = categ3PorId[String(row[0]).trim()] ?? '';
+        rowData.push(categ3);
 
         exportData.push(rowData);
     });
@@ -304,6 +309,10 @@ const listProductos = async (datos) => {
 
         // const fechaFormateada = `${year}/${mes}/${dia}`;
         
+        // categ3_nom no se muestra en la tabla; se guarda por id para la exportación
+        categ3PorId = {};
+        datos.productos.forEach(p => { categ3PorId[String(p.id)] = p.categ3_nom ?? ''; });
+
         let content = ``;
         datos.productos.forEach((producto, index) => {
             content += `

@@ -78,7 +78,7 @@ def demanda(request):
     data = list(qs.values(
         'id', 'bodega', 'item', 'codigo', 'producto', 'unimed',
         'lotepro', 'proveedor', 'sede', 'cantidad',
-        'stock', 'cantidadx3', 'precio', 'fecha', 'detalle'
+        'stock', 'cantidadx3', 'precio', 'fecha', 'detalle', 'categ3_nom'
     ))
     return JsonResponse({"productos": data})
 
