@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Clientes Elanco{% endblock %}
+
+{% block content %}
+<div class="py-4">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <h1 class="h3 mb-0">Clientes Elanco</h1>
+    <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left"></i> Volver a pronósticos
+    </a>
+  </div>
+
+  <p class="text-muted">
+    Los clientes de esta lista aparecen <strong>sin codificar</strong> (CCNIT y razón social reales)
+    en el informe <em>Exportar a excel Elanco</em>. Los demás clientes personas naturales se siguen codificando.
+  </p>
+
+  {% for message in messages %}
+  <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-{{ message.tags }}{% endif %}" role="alert">
+    {{ message }}
+  </div>
+  {% endfor %}
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <h2 class="h5 card-title">Cargar archivo de Excel</h2>
+      <p class="mb-2">
+        El archivo debe tener las columnas <strong>CCNIT</strong> y <strong>RAZON SOCIAL</strong> (en cualquier hoja del libro).
+        El CCNIT va sin dígito de verificación; si lo trae (ej. <code>900062314-1</code>) o tiene puntos, se limpia automáticamente.
+      </p>
+      <p class="text-danger small mb-3">
+        <i class="bi bi-exclamation-triangle"></i>
+        Al cargar un archivo se <strong>reemplaza toda la lista actual</strong> por la del archivo.
+      </p>
+      <form method="post" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-center"
+            onsubmit="return confirm('Se reemplazará toda la lista de clientes Elanco por la del archivo. ¿Continuar?');">
+        {% csrf_token %}
+        <input type="file" name="archivo" accept=".xlsx,.xlsm" class="form-control" style="max-width: 420px;" required>
+        <button type="submit" class="btn btn-success">
+          <i class="bi bi-upload"></i> Cargar
+        </button>
+        <a href="{% url 'plantilla_clientes_elanco' %}" class="btn btn-outline-primary">
+          <i class="bi bi-download"></i> Descargar plantilla
+        </a>
+      </form>
+    </div>
+  </div>
+
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+    <h2 class="h5 mb-0">Clientes cargados: {{ total }}</h2>
+    {% if total %}
+    <input type="search" id="buscar-cliente" class="form-control form-control-sm" style="max-width: 280px;"
+           placeholder="Buscar CCNIT o razón social...">
+    {% endif %}
+  </div>
+
+  {% if total %}
+  <div class="table-responsive" style="max-height: 520px;">
+    <table class="table table-sm table-striped table-hover align-middle">
+      <thead class="table-light" style="position: sticky; top: 0;">
+        <tr>
+          <th>CCNIT</th>
+          <th>RAZÓN SOCIAL</th>
+        </tr>
+      </thead>
+      <tbody id="tabla-clientes">
+        {% for c in clientes %}
+        <tr>
+          <td>{{ c.ccnit }}</td>
+          <td>{{ c.razon_social }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="alert alert-secondary">Aún no hay clientes cargados.</div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+  (function () {
+    const buscador = document.getElementById('buscar-cliente');
+    if (!buscador) return;
+    const filas = Array.from(document.querySelectorAll('#tabla-clientes tr'));
+    buscador.addEventListener('input', () => {
+      const texto = buscador.value.trim().toLowerCase();
+      filas.forEach(tr => {
+        tr.hidden = texto !== '' && !tr.textContent.toLowerCase().includes(texto);
+      });
+    });
+  })();
+</script>
+{% endblock %}

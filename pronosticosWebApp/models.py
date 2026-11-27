@@ -277,3 +277,18 @@ class ConfigProveedorSku(models.Model):
 
     def __str__(self):
         return f"{self.proveedor} - {self.sku}"
+
+class ClienteElanco(models.Model):
+    """
+    Clientes que se muestran SIN codificar en el informe de Elanco (export_elanco).
+    Se carga desde un Excel en /clientes-elanco/ (solo administradores).
+    """
+    ccnit = models.CharField(max_length=50, unique=True)
+    razon_social = models.CharField(max_length=255, blank=True, default='')
+
+    class Meta:
+        db_table = "clientes_elanco"
+        ordering = ['razon_social']
+
+    def __str__(self):
+        return f"{self.ccnit} - {self.razon_social}"
