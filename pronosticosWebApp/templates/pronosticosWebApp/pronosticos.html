@@ -51,7 +51,7 @@
     </svg>
     Exportar a excel Elanco
   </a>
-  {% if user.is_superuser %}
+  {% if puede_clientes_elanco %}
   <a href="{% url 'clientes_elanco' %}" class="boton boton-primario boton-ancho">
     <svg class="icono" viewBox="0 0 16 16" aria-hidden="true">
       <circle cx="6" cy="5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/>

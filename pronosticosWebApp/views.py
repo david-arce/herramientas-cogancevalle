@@ -42,7 +42,11 @@ def dashboard(request):
             'sedes':       list(dict.fromkeys(f[3] for f in filas)),
         }
         cache.set('pron_filtros', ctx, 60 * 30)
-    return render(request, "pronosticosWebApp/pronosticos.html", ctx)
+    # El permiso depende del usuario: se agrega fuera del contexto cacheado
+    return render(request, "pronosticosWebApp/pronosticos.html", {
+        **ctx,
+        'puede_clientes_elanco': puede_cargar_clientes_elanco(request.user),
+    })
 
 @csrf_exempt
 @login_required
@@ -224,7 +228,7 @@ def export_elanco(request):
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Clientes Elanco: clientes que se muestran sin codificar en export_elanco.
-# Solo administradores (superusuarios) pueden ver y cargar la tabla.
+# Solo superusuarios y los usuarios de USUARIOS_CLIENTES_ELANCO pueden ver y cargar la tabla.
 # ─────────────────────────────────────────────────────────────────────────────
 EXTENSIONES_EXCEL = ('.xlsx', '.xlsm')
 TAMANO_MAXIMO_EXCEL = 5 * 1024 * 1024  # 5 MB
@@ -234,8 +238,14 @@ ENCABEZADOS_CCNIT = {'ccnit', 'nit', 'cedula', 'cc', 'documento', 'identificacio
 ENCABEZADOS_RAZON = {'razonsocial', 'razon', 'nombre', 'cliente', 'nombrecliente', 'clientenom'}
 
 
-def es_admin(user):
-    return user.is_authenticated and user.is_superuser
+# Usuarios (además de los superusuarios) que pueden cargar la lista de clientes Elanco
+USUARIOS_CLIENTES_ELANCO = ("EVO",)
+
+
+def puede_cargar_clientes_elanco(user):
+    return user.is_authenticated and (
+        user.is_superuser or user.username in USUARIOS_CLIENTES_ELANCO
+    )
 
 
 def normalizar_ccnit(valor) -> str:
@@ -331,7 +341,7 @@ def leer_excel_clientes(archivo):
 
 @login_required
 def clientes_elanco(request):
-    if not es_admin(request.user):
+    if not puede_cargar_clientes_elanco(request.user):
         raise PermissionDenied
 
     if request.method == 'POST':
@@ -378,7 +388,7 @@ def clientes_elanco(request):
 
 @login_required
 def plantilla_clientes_elanco(request):
-    if not es_admin(request.user):
+    if not puede_cargar_clientes_elanco(request.user):
         raise PermissionDenied
     buffer = BytesIO()
     pd.DataFrame(columns=['CCNIT', 'RAZON SOCIAL']).to_excel(buffer, index=False)
