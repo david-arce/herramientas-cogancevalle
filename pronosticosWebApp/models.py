@@ -226,6 +226,10 @@ class PronosticoFinal(models.Model):
     fecha = models.CharField(max_length=50, null=True, blank=True)
     detalle = models.CharField(max_length=255, null=True, blank=True)
     categ3_nom = models.CharField(max_length=255, null=True, blank=True)
+    # Base para la cantidad a N meses (las llena el proceso de carga_bd)
+    pronostico_mes = models.FloatField(null=True, blank=True)  # mejor pronóstico de 1 mes
+    inventario = models.FloatField(null=True, blank=True)      # inventario actual
+    metodo_pronostico = models.CharField(max_length=60, null=True, blank=True)  # método con menor ECM
 
     class Meta:
         db_table = "pronostico_final"

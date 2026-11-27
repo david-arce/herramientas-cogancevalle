@@ -111,6 +111,14 @@
       {% endfor %}
     </div>
   </div>
+  <div class="filter filter-meses">
+    <label for="meses-input">MESES A PRONOSTICAR</label>
+    <div class="input-container">
+      <input type="text" id="meses-input" inputmode="decimal" value="1" autocomplete="off" />
+    </div>
+    <small class="ayuda-meses">Ej: 3.5 = 3 meses y 15 días</small>
+    <div id="meses-equivalencia" class="meses-equivalencia" aria-live="polite"></div>
+  </div>
 </div>
 
 <!-- botón de busqueda -->
@@ -148,6 +156,7 @@
               <th class="centered">PRECIO</th> <!-- 12 -->
               <th class="centered">FECHA</th> <!-- 13 -->
               <th class="centered">DETALLE</th> <!-- 14 -->
+              <th class="centered" id="th-cantidad-n">CANTIDAD N MESES</th> <!-- 15 -->
             </tr>
           </thead>
           <tbody id="tableBody_productos"></tbody>

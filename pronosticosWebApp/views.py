@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import hashlib
+import math
 from io import BytesIO
 import logging
 import time
@@ -75,12 +76,52 @@ def demanda(request):
     if sedes:
         qs = qs.filter(sede__in=sedes)
 
+    meses = leer_meses(request.GET.get('meses'))
+
     data = list(qs.values(
         'id', 'bodega', 'item', 'codigo', 'producto', 'unimed',
         'lotepro', 'proveedor', 'sede', 'cantidad',
-        'stock', 'cantidadx3', 'precio', 'fecha', 'detalle', 'categ3_nom'
+        'stock', 'cantidadx3', 'precio', 'fecha', 'detalle', 'categ3_nom',
+        'pronostico_mes', 'inventario', 'metodo_pronostico'
     ))
-    return JsonResponse({"productos": data})
+    for fila in data:
+        fila['cantidad_n'] = calcular_cantidad_n(
+            fila['pronostico_mes'], fila.pop('inventario'), meses
+        )
+    return JsonResponse({"productos": data, "meses": meses})
+
+
+MESES_POR_DEFECTO = 1.0
+MESES_MAXIMO = 36.0
+
+
+def leer_meses(valor) -> float:
+    """
+    Convierte los meses digitados en el filtro a número.
+    Acepta decimales con punto o coma: '3.5' o '3,5' = 3 meses y 15 días.
+    Si el valor no es válido o es <= 0 se usa MESES_POR_DEFECTO.
+    """
+    try:
+        meses = float(str(valor).strip().replace(',', '.'))
+    except (TypeError, ValueError):
+        return MESES_POR_DEFECTO
+    if not math.isfinite(meses) or meses <= 0:
+        return MESES_POR_DEFECTO
+    return min(meses, MESES_MAXIMO)
+
+
+def calcular_cantidad_n(pronostico_mes, inventario, meses):
+    """
+    Cantidad a comprar para N meses, con la misma lógica de
+    CANTIDAD 1 MES y CANTIDAD 3 MESES:
+        ceil(pronóstico mensual * N - inventario)
+    Devuelve None si la fila aún no tiene la base calculada
+    (pronostico_final generado antes de este cambio).
+    """
+    if pronostico_mes is None:
+        return None
+    # round(..., 6) evita que errores de coma flotante suban una unidad de más
+    return math.ceil(round(pronostico_mes * meses - (inventario or 0), 6))
 
 def short_hash(valor: str, length: int = 6) -> str:
     return hashlib.md5(valor.encode()).hexdigest()[:length]
@@ -170,12 +211,18 @@ def export_elanco(request):
 @csrf_exempt
 @login_required
 def get_chart(request):
-    # 1) Parámetros de sesión
-    sku       = request.session.get('sku')
-    sku_nom   = request.session.get('sku_nom')
-    bod       = request.session.get('bod')
-    sede      = request.session.get('sede')
-    marca_nom = request.session.get('marca_nom')
+    # 1) Producto a graficar: se recibe directo en la URL (?sku=&sku_nom=&bod=&sede=&marca_nom=).
+    #    No se usa la sesión: con SESSION_ENGINE=cached_db y varios workers de gunicorn,
+    #    cada worker tiene su propia caché en memoria y podía devolver el producto anterior.
+    #    La sesión queda solo como respaldo por compatibilidad.
+    def param(nombre):
+        return request.GET.get(nombre) or request.session.get(nombre)
+
+    sku       = param('sku')
+    sku_nom   = param('sku_nom')
+    bod       = param('bod')
+    sede      = param('sede')
+    marca_nom = param('marca_nom')
 
     if not all([sku, sku_nom, bod]):
         return JsonResponse({

@@ -153,8 +153,12 @@ LOGOUT_REDIRECT_URL = 'login'
 # SESSION_COOKIE_SECURE = IN_PRODUCTION  # Asegura que la cookie de sesión solo se envíe a través de HTTPS en producción
 # CSRF_COOKIE_SECURE = IN_PRODUCTION  # Asegura que la cookie CSRF solo se envíe a través de HTTPS en producción
 
-# Sesiones en caché (filesystem) — sin Redis, sin query extra por request
-SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+# Sesiones en base de datos (tabla django_session).
+# No usar 'cached_db' sin una caché compartida (Redis/Memcached): la caché por defecto es
+# LocMemCache, que es local a cada worker de gunicorn, y cada worker terminaba leyendo
+# una copia vieja de la sesión (p. ej. la gráfica mostraba el producto anterior).
+# Las sesiones existentes se conservan: cached_db ya las guardaba en esta misma tabla.
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 28800  # 8 horas
 
 # Opcional: Expirar la sesión cuando el navegador se cierra

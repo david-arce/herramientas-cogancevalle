@@ -114,6 +114,34 @@ body.light-mode #mode-toggle {
     flex: 1;
 }
 
+.filter-meses {
+    flex: 0 0 170px;
+}
+
+.ayuda-meses {
+    margin-top: 4px;
+    font-size: 0.8em;
+    color: #555;
+}
+
+/* Texto dinámico: equivalencia en meses y días (solo visual).
+   Selector con más especificidad que ".filter div:nth-of-type(2)" (caja de opciones). */
+.filter.filter-meses .meses-equivalencia {
+    margin-top: 6px;
+    max-height: none;
+    overflow: visible;
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #1f5f2c;
+}
+
+.filter.filter-meses .meses-equivalencia.invalido {
+    color: #b00020;
+}
+
 .input-container input[type="text"] {
     width: calc(100% - 20px);
     padding: 5px;

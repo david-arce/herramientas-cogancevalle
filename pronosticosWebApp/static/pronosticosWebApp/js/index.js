@@ -3,6 +3,7 @@ let grafica = null;        // gráfica SVG (grafica.js)
 let selectedRowData = null;
 let productosData = null; // Variable global para almacenar los datos
 let categ3PorId = {};     // id de pronóstico -> categ3_nom (solo para exportar)
+let pronosticoPorId = {}; // id de pronóstico -> { metodo, valor } del pronóstico seleccionado (solo para exportar)
 // Cache del mapeo proveedor|sku -> col_base, cargado desde la BD
 let multiplosConfigCache = null;
 async function loadMultiplosConfig() {
@@ -27,6 +28,47 @@ function buildFilterParams() {
 
     return params;
 }
+// Meses digitados en el filtro (acepta 3.5 o 3,5 = 3 meses y 15 días).
+// Devuelve null si el valor no es válido.
+const MESES_MAXIMO = 36;
+function getMesesPronostico() {
+    const texto = document.getElementById('meses-input').value.trim().replace(',', '.');
+    if (texto === '') return 1;
+    if (!/^\d+(\.\d+)?$/.test(texto)) return null;
+    const meses = Number(texto);
+    if (!(meses > 0) || meses > MESES_MAXIMO) return null;
+    return meses;
+}
+// Texto de la columna: "CANTIDAD 3.5 MESES" / "CANTIDAD 1 MES"
+function etiquetaMeses(meses) {
+    const n = String(meses).replace('.', ',');
+    return `CANTIDAD ${n} ${meses === 1 ? 'MES' : 'MESES'}`;
+}
+let mesesConsultados = 1;   // meses usados en la última búsqueda (para encabezado y Excel)
+
+// Texto de ayuda: convierte los meses digitados a "X meses y Y días" (1 mes = 30 días).
+// Es solo visual; el cálculo real lo hace el servidor con el número digitado.
+function describirMeses(meses) {
+    let enteros = Math.floor(meses);
+    let dias = Math.round((meses - enteros) * 30);
+    if (dias === 30) { enteros += 1; dias = 0; }   // p. ej. 2.99 -> 3 meses
+    const partes = [];
+    if (enteros > 0) partes.push(`${enteros} ${enteros === 1 ? 'mes' : 'meses'}`);
+    if (dias > 0) partes.push(`${dias} ${dias === 1 ? 'día' : 'días'}`);
+    return partes.length ? partes.join(' y ') : 'menos de 1 día';
+}
+
+function actualizarEquivalenciaMeses() {
+    const destino = document.getElementById('meses-equivalencia');
+    const meses = getMesesPronostico();
+    if (meses === null) {
+        destino.textContent = `Valor no válido (mayor a 0 y hasta ${MESES_MAXIMO})`;
+        destino.classList.add('invalido');
+    } else {
+        destino.textContent = `Se pronosticarán: ${describirMeses(meses)}`;
+        destino.classList.remove('invalido');
+    }
+}
 // Función de lookup: exacto primero, luego comodín
 function getMultiplo(config, proveedor, producto) {
     const exactKey    = `${proveedor}|${producto}`;
@@ -42,31 +84,19 @@ const handleRowClick = (data) => {
 };
 
 document.getElementById('send-data').addEventListener('click', async () => {
+    if (!selectedRowData) {
+        alert("Por favor selecciona una fila de la tabla para generar la gráfica");
+        return;
+    }
     const modal = document.getElementById("processingModal");
     try {
         modal.style.display = "block";  // Mostrar el modal
-        const response = await fetch('/send_data/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken'), // Necesario para CSRF en Django
-            },
-            body: JSON.stringify({ selectedRows: selectedRowData }),
-        });
-        const result = await response.json();
-        console.log(result);
-        if (result.status === "success") {
-            await initChart(); // Volver a cargar el gráfico después de enviar los datos
-            modal.style.display = "none";  // Ocultar el modal
-        }
-        else {
-            modal.style.display = "none";  // Ocultar el modal
-            alert("No se pudo generar el gráfico. Intenta de nuevo.");
-        }
+        await initChart(selectedRowData);
     } catch (e) {
-        console.error("Error sending data: ", e);
-        modal.style.display = "none";
-        alert("Por favor selecciona una fila de la tabla para generar la gráfica");
+        console.error("Error al generar la gráfica: ", e);
+        alert("No se pudo generar el gráfico. Intenta de nuevo.");
+    } finally {
+        modal.style.display = "none";  // Ocultar el modal
     }
 });
 
@@ -87,6 +117,7 @@ document.getElementById('export-visible').addEventListener('click', async functi
         row[10] = toInt(row[10]);
         row[11] = toInt(row[11]);
         row[12] = toInt(row[12]);
+        row[15] = toInt(row[15]);
         return row;
     });
 
@@ -97,6 +128,8 @@ document.getElementById('export-visible').addEventListener('click', async functi
         'UNIMED.C4', 'LOTEPRO.C12', 'CANTIDAD.N20', 'CANTIDAD.N20',
         'CANTIDAD.N20', 'AUTOMATIZACION.C20', 'PRECIO_UNITARIO.N20', 'FECHAENTREGA.C10',
         'DETALLE.C255', 'CATEG3_NOM.C255',
+        `${etiquetaMeses(mesesConsultados).replace(/ /g, '_').replace(',', '.')}.N20`,
+        'PRONOSTICO_SELECCIONADO.C60', 'PRONOSTICO_MES.N20',
     ];
 
     const exportData = [headers];
@@ -142,6 +175,14 @@ document.getElementById('export-visible').addEventListener('click', async functi
         // Columna CATEG3_NOM
         const categ3 = categ3PorId[String(row[0]).trim()] ?? '';
         rowData.push(categ3);
+
+        // Columna CANTIDAD N MESES (según los meses digitados en el filtro)
+        rowData.push(row[15]);
+
+        // Pronóstico seleccionado (método con menor ECM) y su valor para 1 mes
+        const pron = pronosticoPorId[String(row[0]).trim()] || {};
+        rowData.push(pron.metodo ?? '');
+        rowData.push(pron.valor ?? '');
 
         exportData.push(rowData);
     });
@@ -191,6 +232,14 @@ async function uploadData() {
         return null;
     }
 
+    const meses = getMesesPronostico();
+    if (meses === null) {
+        alert(`Digita una cantidad de meses válida (mayor a 0 y hasta ${MESES_MAXIMO}). Ej: 3.5 = 3 meses y 15 días.`);
+        document.getElementById('meses-input').focus();
+        return null;
+    }
+    params.append('meses', meses);
+
     const loader = document.getElementById('loader');
     try {
         loader.style.display = 'block';
@@ -233,6 +282,9 @@ const initDataTable = async (datos) => {
                 alSeleccionar: handleRowClick,
             });
         }
+        selectedRowData = null;   // la tabla nueva no tiene fila seleccionada
+        mesesConsultados = Number(datos.meses) || 1;
+        document.getElementById('th-cantidad-n').textContent = etiquetaMeses(mesesConsultados);
         tablaProductos.cargar(listProductos(datos));
     } catch (e) {
         alert(e);
@@ -245,7 +297,15 @@ const initDataTable = async (datos) => {
 const listProductos = (datos) => {
     // categ3_nom no se muestra en la tabla; se guarda por id para la exportación
     categ3PorId = {};
-    datos.productos.forEach(p => { categ3PorId[String(p.id)] = p.categ3_nom ?? ''; });
+    pronosticoPorId = {};
+    datos.productos.forEach(p => {
+        categ3PorId[String(p.id)] = p.categ3_nom ?? '';
+        const valor = Number(p.pronostico_mes);
+        pronosticoPorId[String(p.id)] = {
+            metodo: p.metodo_pronostico ?? '',
+            valor: (p.pronostico_mes === null || p.pronostico_mes === undefined || !Number.isFinite(valor)) ? '' : valor,
+        };
+    });
 
     return datos.productos.map(producto => [
         `${producto.id}`,
@@ -263,24 +323,33 @@ const listProductos = (datos) => {
         `${producto.precio}`,
         `${producto.fecha}`,
         `${producto.detalle ?? ''}`,
+        `${producto.cantidad_n ?? ''}`,
     ]);
 };
 
 //GRAFICO
-const getOptionChart = async () => {
-    try {
-        const response = await fetch('/chart/');
-        return await response.json();
-    } catch (e) {
-        alert(e)
-    }
+// La fila seleccionada se envía en la URL: así siempre se grafica ese producto
+// (antes dependía de la sesión del servidor y podía quedar el producto anterior).
+const getOptionChart = async (fila) => {
+    const params = new URLSearchParams({
+        bod:       fila[1],
+        sku:       fila[2],
+        sku_nom:   fila[4],
+        marca_nom: fila[7],
+        sede:      fila[8],
+    });
+    const response = await fetch(`/chart/?${params.toString()}`, { cache: 'no-store' });
+    const datos = await response.json();
+    if (!response.ok) throw new Error(datos.message || `Error ${response.status}`);
+    return datos;
 };
 
-const initChart = async () => {
+const initChart = async (fila) => {
+    const opciones = await getOptionChart(fila);
     const myElement = document.getElementById('chart');
     myElement.style.display = 'block';
     if (!grafica) grafica = new GraficaLineas(myElement);
-    grafica.dibujar(await getOptionChart());
+    grafica.dibujar(opciones);
 };
 
 document.getElementById('search').addEventListener('click', async () => {
@@ -295,6 +364,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setupFilter('proveedor-search', 'select-all-proveedores');
     setupFilter('producto-search', 'select-all-productos');
     setupFilter('sede-search', 'select-all-sedes');
+
+    const inputMeses = document.getElementById('meses-input');
+    inputMeses.addEventListener('input', actualizarEquivalenciaMeses);
+    actualizarEquivalenciaMeses();
 });
 
 // Función para obtener todos los valores seleccionados de los checkboxes de un filtro
