@@ -5,11 +5,15 @@ from io import BytesIO
 import logging
 import time
 from django.db.models import Q
-from django.shortcuts import render, HttpResponse
+from django.shortcuts import render, redirect, HttpResponse
+from django.contrib import messages
+from django.db import transaction
+import re
+import unicodedata
 from django.http.response import JsonResponse
 from django.views.decorators.http import require_GET
 import pandas as pd
-from .models import ConfigProveedorSku, Producto
+from .models import ClienteElanco, ConfigProveedorSku, Producto
 from django.views.decorators.csrf import csrf_exempt
 import json
 import requests
@@ -141,12 +145,22 @@ def export_elanco(request):
         fecha__range=(fecha_inicio, fecha_fin),
         marca__in=["0004"],
     )
+    # Clientes que se muestran sin codificar (tabla clientes_elanco): ccnit -> razón social
+    clientes_visibles = dict(ClienteElanco.objects.values_list('ccnit', 'razon_social'))
+
     salida = []
     for p in productos:
-        ven_cob_val = short_hash(p.ven_cob)
-        ven_nom_val = "vendedor_" + ven_cob_val
+        # Vendedor: tal como viene de la BD (sin codificar)
+        ven_cob_val = p.ven_cob or ""
+        ven_nom_val = p.ven_nom or ""
 
-        if p.tpper == 1:
+        ccnit_normalizado = normalizar_ccnit(p.ccnit)
+        if ccnit_normalizado in clientes_visibles:
+            # Cliente registrado en clientes_elanco -> sin codificar
+            ccnit_val = p.ccnit
+            ccnit_nom_val = clientes_visibles[ccnit_normalizado] or p.cliente_nom
+        elif p.tpper == 1:
+            # Persona natural no registrada -> se sigue codificando
             ccnit_val = short_hash(p.ccnit)
             ccnit_nom_val = "cliente_" + ccnit_val
         else:
@@ -207,6 +221,175 @@ def export_elanco(request):
     )
     response["Content-Disposition"] = f'attachment; filename="{nombre_archivo}"'
     return response
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Clientes Elanco: clientes que se muestran sin codificar en export_elanco.
+# Solo administradores (superusuarios) pueden ver y cargar la tabla.
+# ─────────────────────────────────────────────────────────────────────────────
+EXTENSIONES_EXCEL = ('.xlsx', '.xlsm')
+TAMANO_MAXIMO_EXCEL = 5 * 1024 * 1024  # 5 MB
+
+# Nombres de encabezado aceptados (se comparan sin tildes, espacios ni signos)
+ENCABEZADOS_CCNIT = {'ccnit', 'nit', 'cedula', 'cc', 'documento', 'identificacion', 'ccnitcliente'}
+ENCABEZADOS_RAZON = {'razonsocial', 'razon', 'nombre', 'cliente', 'nombrecliente', 'clientenom'}
+
+
+def es_admin(user):
+    return user.is_authenticated and user.is_superuser
+
+
+def normalizar_ccnit(valor) -> str:
+    """
+    Deja el ccnit con el mismo formato de productos_venta (solo dígitos, sin DV):
+      '900.062.314-1' -> '900062314' | 900062314.0 -> '900062314' | ' 4618974 ' -> '4618974'
+    """
+    if valor is None:
+        return ''
+    texto = str(valor).strip()
+    if texto.lower() in ('', 'nan', 'none'):
+        return ''
+    if re.fullmatch(r'\d+\.0+', texto):          # número leído como decimal desde Excel
+        texto = texto.split('.')[0]
+    texto = texto.split('-')[0]                   # quitar dígito de verificación
+    return re.sub(r'[^0-9A-Za-z]', '', texto)     # quitar puntos, comas y espacios
+
+
+def _normalizar_encabezado(texto) -> str:
+    texto = unicodedata.normalize('NFKD', str(texto)).encode('ascii', 'ignore').decode()
+    return re.sub(r'[^a-z0-9]', '', texto.lower())
+
+
+FILAS_BUSQUEDA_ENCABEZADO = 20  # el encabezado puede no estar en la fila 1
+
+
+def _buscar_columnas_clientes(hojas):
+    """
+    Recorre las hojas (en orden) y las primeras filas de cada una buscando una fila
+    que tenga a la vez un encabezado de CCNIT y uno de RAZON SOCIAL.
+    Devuelve (df, fila_encabezado, col_ccnit, col_razon) o None si no lo encuentra.
+    """
+    for df in hojas.values():
+        for i in range(min(FILAS_BUSQUEDA_ENCABEZADO, len(df))):
+            col_ccnit = col_razon = None
+            for col, valor in df.iloc[i].items():
+                if valor is None or pd.isna(valor):
+                    continue
+                encabezado = _normalizar_encabezado(valor)
+                if col_ccnit is None and encabezado in ENCABEZADOS_CCNIT:
+                    col_ccnit = col
+                elif col_razon is None and encabezado in ENCABEZADOS_RAZON:
+                    col_razon = col
+            if col_ccnit is not None and col_razon is not None:
+                return df, i, col_ccnit, col_razon
+    return None
+
+
+def leer_excel_clientes(archivo):
+    """
+    Lee el Excel y devuelve (registros, resumen).
+    registros = {ccnit: razon_social}; si un ccnit se repite, queda la última fila.
+    Lanza ValueError con un mensaje para el usuario si el archivo no sirve.
+    """
+    try:
+        # Se leen TODAS las hojas sin asumir dónde está el encabezado
+        hojas = pd.read_excel(archivo, sheet_name=None, header=None, dtype=str)
+    except Exception as e:
+        raise ValueError(f"No se pudo leer el archivo de Excel ({e}).")
+
+    encontrado = _buscar_columnas_clientes(hojas)
+    if encontrado is None:
+        raise ValueError(
+            "No se encontraron las columnas CCNIT y RAZON SOCIAL en ninguna hoja del archivo "
+            f"(hojas revisadas: {', '.join(map(str, hojas.keys())) or 'ninguna'}). "
+            "Verifica que los encabezados estén escritos así en una misma fila."
+        )
+    df, fila_encabezado, col_ccnit, col_razon = encontrado
+
+    registros = {}
+    sin_ccnit = 0
+    filas = 0
+    datos = df.iloc[fila_encabezado + 1:]
+    for ccnit, razon in zip(datos[col_ccnit], datos[col_razon]):
+        filas += 1
+        ccnit_ok = normalizar_ccnit(ccnit)
+        if not ccnit_ok:
+            sin_ccnit += 1
+            continue
+        razon_ok = '' if razon is None or str(razon).strip().lower() == 'nan' else str(razon).strip()
+        registros[ccnit_ok] = razon_ok[:255]
+
+    if not registros:
+        raise ValueError("El archivo no tiene filas con CCNIT válido.")
+
+    resumen = {
+        'filas': filas,
+        'sin_ccnit': sin_ccnit,
+        'duplicados': filas - sin_ccnit - len(registros),
+    }
+    return registros, resumen
+
+
+@login_required
+def clientes_elanco(request):
+    if not es_admin(request.user):
+        raise PermissionDenied
+
+    if request.method == 'POST':
+        archivo = request.FILES.get('archivo')
+        if not archivo:
+            messages.error(request, "Selecciona un archivo de Excel.")
+            return redirect('clientes_elanco')
+        if not archivo.name.lower().endswith(EXTENSIONES_EXCEL):
+            messages.error(request, "El archivo debe ser de Excel (.xlsx).")
+            return redirect('clientes_elanco')
+        if archivo.size > TAMANO_MAXIMO_EXCEL:
+            messages.error(request, "El archivo supera el tamaño máximo de 5 MB.")
+            return redirect('clientes_elanco')
+
+        try:
+            registros, resumen = leer_excel_clientes(archivo)
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect('clientes_elanco')
+
+        # El archivo reemplaza la lista completa
+        with transaction.atomic():
+            ClienteElanco.objects.all().delete()
+            ClienteElanco.objects.bulk_create(
+                [ClienteElanco(ccnit=c, razon_social=r) for c, r in registros.items()],
+                batch_size=1000,
+            )
+        logger.info("Clientes Elanco cargados por %s: %s registros", request.user.username, len(registros))
+
+        detalle = f"Se cargaron {len(registros)} clientes."
+        if resumen['sin_ccnit']:
+            detalle += f" {resumen['sin_ccnit']} filas sin CCNIT se omitieron."
+        if resumen['duplicados']:
+            detalle += f" {resumen['duplicados']} CCNIT repetidos (se tomó la última fila)."
+        messages.success(request, detalle)
+        return redirect('clientes_elanco')
+
+    clientes = ClienteElanco.objects.all()
+    return render(request, "pronosticosWebApp/clientes_elanco.html", {
+        'clientes': clientes,
+        'total': clientes.count(),
+    })
+
+
+@login_required
+def plantilla_clientes_elanco(request):
+    if not es_admin(request.user):
+        raise PermissionDenied
+    buffer = BytesIO()
+    pd.DataFrame(columns=['CCNIT', 'RAZON SOCIAL']).to_excel(buffer, index=False)
+    buffer.seek(0)
+    response = HttpResponse(
+        buffer.read(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = 'attachment; filename="plantilla_clientes_elanco.xlsx"'
+    return response
+
 
 @csrf_exempt
 @login_required
