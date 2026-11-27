@@ -3,7 +3,7 @@ let grafica = null;        // gráfica SVG (grafica.js)
 let selectedRowData = null;
 let productosData = null; // Variable global para almacenar los datos
 let categ3PorId = {};     // id de pronóstico -> categ3_nom (solo para exportar)
-let pronosticoPorId = {}; // id de pronóstico -> { metodo, valor } del pronóstico seleccionado (solo para exportar)
+let metodoPorId = {};     // id de pronóstico -> método de pronóstico seleccionado (solo para exportar)
 // Cache del mapeo proveedor|sku -> col_base, cargado desde la BD
 let multiplosConfigCache = null;
 async function loadMultiplosConfig() {
@@ -129,7 +129,7 @@ document.getElementById('export-visible').addEventListener('click', async functi
         'CANTIDAD.N20', 'AUTOMATIZACION.C20', 'PRECIO_UNITARIO.N20', 'FECHAENTREGA.C10',
         'DETALLE.C255', 'CATEG3_NOM.C255',
         `${etiquetaMeses(mesesConsultados).replace(/ /g, '_').replace(',', '.')}.N20`,
-        'PRONOSTICO_SELECCIONADO.C60', 'PRONOSTICO_MES.N20',
+        'PRONOSTICO_SELECCIONADO.C60',
     ];
 
     const exportData = [headers];
@@ -179,10 +179,8 @@ document.getElementById('export-visible').addEventListener('click', async functi
         // Columna CANTIDAD N MESES (según los meses digitados en el filtro)
         rowData.push(row[15]);
 
-        // Pronóstico seleccionado (método con menor ECM) y su valor para 1 mes
-        const pron = pronosticoPorId[String(row[0]).trim()] || {};
-        rowData.push(pron.metodo ?? '');
-        rowData.push(pron.valor ?? '');
+        // Pronóstico seleccionado (método con menor ECM)
+        rowData.push(metodoPorId[String(row[0]).trim()] ?? '');
 
         exportData.push(rowData);
     });
@@ -297,14 +295,10 @@ const initDataTable = async (datos) => {
 const listProductos = (datos) => {
     // categ3_nom no se muestra en la tabla; se guarda por id para la exportación
     categ3PorId = {};
-    pronosticoPorId = {};
+    metodoPorId = {};
     datos.productos.forEach(p => {
         categ3PorId[String(p.id)] = p.categ3_nom ?? '';
-        const valor = Number(p.pronostico_mes);
-        pronosticoPorId[String(p.id)] = {
-            metodo: p.metodo_pronostico ?? '',
-            valor: (p.pronostico_mes === null || p.pronostico_mes === undefined || !Number.isFinite(valor)) ? '' : valor,
-        };
+        metodoPorId[String(p.id)] = p.metodo_pronostico ?? '';
     });
 
     return datos.productos.map(producto => [
