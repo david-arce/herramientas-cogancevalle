@@ -86,7 +86,7 @@ def demanda(request):
     ))
     for fila in data:
         fila['cantidad_n'] = calcular_cantidad_n(
-            fila.pop('pronostico_mes'), fila.pop('inventario'), meses
+            fila['pronostico_mes'], fila.pop('inventario'), meses
         )
     return JsonResponse({"productos": data, "meses": meses})
 
